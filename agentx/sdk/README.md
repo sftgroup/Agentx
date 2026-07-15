@@ -1,0 +1,247 @@
+# @agentxv2/sdk v0.5.1
+
+**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, MCP tool execution, A2A delegation.
+
+```
+Agent = Prompt + Skills[] + MCP
+```
+
+## Installation
+
+```bash
+npm install @agentxv2/sdk
+# or
+pnpm add @agentxv2/sdk
+```
+
+### Peer Dependencies
+
+| Package | Version | Required |
+|---------|---------|----------|
+| `react` | ^18 or ^19 | yes |
+| `wagmi` | ^2.0 | optional (React hooks only) |
+| `@tanstack/react-query` | ^5.0 | optional (React hooks only) |
+| `viem` | ^2.0 | optional (chain reader only) |
+
+## Quick Start
+
+### 1. Use an Agent (End-to-End Encrypted)
+
+```ts
+import { AgentRunner } from '@agentxv2/sdk'
+import type { OnChainReader, WalletSigner } from '@agentxv2/sdk'
+
+// Implement these interfaces with your viem/wagmi setup
+const reader: OnChainReader = { /* ... */ }
+const wallet: WalletSigner = { /* ... */ }
+
+const runner = new AgentRunner({ reader, wallet })
+const ctx = await runner.useAgent(42)
+
+// Inject into your LLM:
+// ctx.prompt     → system prompt
+// ctx.skills     → tools with execute() method
+// ctx.mcp        → MCP server connection info
+```
+
+### 2. React Hook (with wagmi)
+
+```tsx
+import { useAgentRunner } from '@agentxv2/sdk/react'
+
+function ChatPage({ agentId }: { agentId: number }) {
+  const { ctx, isLoading, error, refetch } = useAgentRunner({ agentId })
+
+  if (isLoading) return <div>Loading agent...</div>
+  if (error) return <div>Error: {error.message}</div>
+
+  // ctx.prompt → inject as LLM system prompt
+  // ctx.skills → call skill.execute({ ... }) for tool invocations
+  return <ChatInterface prompt={ctx!.prompt} skills={ctx!.skills} />
+}
+```
+
+### 3. Publish an Agent
+
+```ts
+import { generateAesKey, encryptPayload, packAgentForPublish } from '@agentxv2/sdk'
+
+const privatePayload = { prompt: '...', skills: [...], mcp: { type: 'http', url: '' } }
+
+// AES-256-GCM encrypt
+const aesKey = generateAesKey()
+const encrypted = encryptPayload(privatePayload, aesKey)
+
+// Pack for on-chain registration
+const packResult = packAgentForPublish(agentPayload, publicKey, aesKey)
+// → packResult.aesKeyHex, packResult.eciesEncryptedKeyHex
+
+// Upload encrypted.data to IPFS, store aesKeyHex as NFT metadata on-chain
+```
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        @agentxv2/sdk                               │
+├──────────┬──────────┬──────────┬──────────┬──────────────────────┤
+│  Core    │  Agent   │  MCP     │  React   │ A2A                  │
+│ crypto   │ Runner   │ Connector│ hooks    │ Agent-to-Agent       │
+│ types    │ useAgent │ callTool │          │ createTask/complete   │
+├──────────┼──────────┼──────────┼──────────┼──────────────────────┤
+│ Registry │ Subscrip │ A2A-X402 │ Reputation│ Endpoint            │
+│ register │ subscribe│ auto-pay │ feedback  │ MultiEndpoint       │
+│ query    │ verify   │ gate     │ stats     │ pickBestEndpoint    │
+├──────────┼──────────┼──────────┼──────────┼──────────────────────┤
+│ Config   │ Config-  │          │          │                      │
+│ store    │ uration  │          │          │                      │
+│ (kv)     │ Client   │          │          │                      │
+└──────────┴──────────┴──────────┴──────────┴──────────────────────┘
+```
+
+## API Reference
+
+### `@agentxv2/sdk` (Core)
+
+| Export | Description |
+|--------|-------------|
+| `AgentRunner` | Main entry: decrypts + loads Agent context |
+| `packForPublish` / `encryptPayload` / `decryptPayload` | AES-256-GCM encrypt/decrypt |
+| `generateAesKey` / `generateKeyPair` | Key generation |
+| `eciesEncrypt` / `eciesDecrypt` / `unpackAgent` | ECIES key wrapping |
+| `MCPConnector` | MCP tool discovery + execution |
+| `IPFSFetcher` | Fetch encrypted payloads from IPFS |
+| `AgentRegistry` | Register and query agents on-chain |
+| `SubscriptionManager` | Subscribe (ETH/ERC20), verify, cancel, trial refund, releaseFunds |
+| `AgentX402` | Auto-subscription gate + X402 payment bridge |
+| `A2AProtocol` | Agent-to-Agent task protocol |
+| `ReputationRegistry` | Give feedback + query reputation |
+| `MultiEndpointClient` | Read/select agent endpoints (HTTP, WebSocket, gRPC) |
+| `ConfigurationClient` | Agent on-chain key-value config store |
+| `ConfigurationRegistry` | Platform-wide config registry (KV store) |
+
+### Agent Composition (A2A Skills)
+
+An Agent's Skill can delegate to **another Agent**. Set `execution.type = "a2a"`:
+
+```typescript
+{
+  name: "solidity_audit",
+  description: "Delegate to Auditing Agent #42",
+  execution: {
+    type: "a2a",
+    targetAgentId: 42,           // On-chain Agent ID
+    skillFilter: ["slither"],    // Optional: restrict exposed skills
+  },
+}
+```
+
+When executed, the SDK:
+1. Loads Agent #42's metadata from IPFS
+2. Decrypts with ECIES+AES-256-GCM
+3. Returns the sub-Agent's prompt + skills to the calling LLM
+
+### `@agentxv2/sdk/react`
+
+| Export | Description |
+|--------|-------------|
+| `useAgentRunner({ agentId })` | React hook: load + decrypt Agent |
+
+### `@agentxv2/sdk/core`
+
+| Export | Description |
+|--------|-------------|
+| All types: `AgentPayload`, `SkillDef`, `McpConnection`, `PricingInfo`, `AgentRunContext`, etc. | |
+| All crypto: `encryptPayload`, `decryptPayload`, `generateAesKey`, `eciesEncrypt`, `eciesDecrypt` | |
+
+## Encryption Pipeline
+
+```
+Publisher creates Agent
+  │
+  ├─ AgentPrivatePayload { prompt, skills, mcp }
+  ├─ encryptPayload() → AES-256-GCM ciphertext
+  ├─ Upload ciphertext to IPFS → get CID
+  ├─ aesKey → stored as on-chain NFT metadata (aes_key_hex)
+  └─ Mint Agent NFT via IdentityRegistry
+
+Subscriber uses Agent
+  │
+  ├─ Verify on-chain subscription (SubscriptionManager)
+  ├─ Fetch encrypted payload from IPFS (CID from NFT metadata)
+  ├─ Read aes_key_hex from on-chain NFT attributes
+  ├─ decryptPayload() → { prompt, skills, mcp }
+  └─ skills[n].execute() → Open (local) or MCP (remote with signed auth)
+```
+
+## Closed Skill Execution (MCP Remote)
+
+Skills with `execution.type === 'mcp'` execute on the publisher's server:
+
+```
+Client                          Publisher MCP Server
+  │                                    │
+  ├─ ECDSA sign(toolName + timestamp)  │
+  ├─ POST { X-Subscriber-Address,      │
+  │         X-Signature,               │
+  │         X-Timestamp }             │
+  │         + JSON-RPC tools/call      │
+  │                                    ├─ Verify signature
+  │                                    ├─ Check on-chain subscription
+  │                                    ├─ Execute skill
+  │◄── Return result ──────────────────┤
+```
+
+## Supported Chains
+
+| Network | Chain ID | RPC | Status |
+|---------|----------|-----|--------|
+| Sepolia (Testnet) | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` | Active |
+| **OxaChain L1** | **19505** | `http://43.156.99.215:18545` | **Mainnet** |
+
+Auto-detected via `KNOWN_CHAINS[chainId]`. Pass `chainId` in AgentX constructor or use the default.
+
+## On-Chain Contracts
+
+| # | Contract | Sepolia | OxaChain L1 |
+|---|----------|---------|-------------|
+| 1 | IdentityRegistry | `0xe94a...96e5F` | `0xbf5F...E212` |
+| 2 | SubscriptionManager v3 | `0xC15f...7E63` | `0x019A...0E6B` |
+| 3 | ReputationRegistry | `0xeb6B...3DC9` | `0x6a18...843F` |
+| 4 | A2AProtocolRegistry | `0xEdb0...6092` | `0x61b7...5169` |
+| 5 | ConfigurationRegistry | `0x68Dc...EA6c` | `0x0728...D2F8` |
+| 6 | MultiEndpointRegistry | `0xEB5e...21Cb7` | `0xB361...f64c` |
+
+Full addresses in `KNOWN_CHAINS` inside `config.ts`.
+
+## Changelog
+
+### v0.5.1 (2026-07-14)
+- New: `MultiEndpointClient` — getActiveEndpoints, pickBestEndpoint, getBestMCPUrl
+- New: `ConfigurationClient` — get, getAll, getKeys, exists
+- `ChainConfig.contracts` added `multiEndpointRegistry`
+- OxaChain L1 all 6 core contracts deployed
+
+### v0.5.0 (2026-07-14)
+- OxaChain L1 full deployment: `KNOWN_CHAINS[19505]` 6 contract addresses
+
+### v0.4.0 (2026-07-13)
+- Integration test fixes
+- OxaChain L1 added to `KNOWN_CHAINS`
+- IdentityRegistry + SubscriptionManager v3 deployed to OxaChain L1
+
+### v0.3.1 (2026-07-13)
+- Fixed ESM directory import error on Node.js 22 (tsup single-file bundling)
+
+### v0.3.0 (2026-07-12)
+- AgentX402 auto-subscription gate
+- SubscriptionManager v3 (ReentrancyGuard, platformFee=250bps, trial escrow)
+
+### v0.2.0 (2026-07-11)
+- Initial public release
+- AgentRunner, MCPConnector, AgentRegistry, SubscriptionManager, ReputationRegistry
+- ECIES + AES-256-GCM encryption pipeline
+
+## License
+
+MIT
