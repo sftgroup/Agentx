@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── AgentX — Glassmorphism Dark Design System ────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+  * { @apply border-border/50; }
+  html {
+    @apply bg-bg text-text-primary antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-feature-settings: 'cv02' 1, 'cv03' 1, 'cv04' 1, 'ss01' 1;
+  }
+  body {
+    @apply min-h-screen;
+    background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(168,85,247,0.08), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(59,130,246,0.05), transparent),
+                #09090B;
+  }
+}
+
+@layer components {
+  /* ── Glass card ──────────────────────────────────── */
+  .glass-card {
+    @apply bg-bg-card backdrop-blur-glass border border-white/5 rounded-glass;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+  .glass-card-hover {
+    @apply transition-all duration-300 hover:border-white/10;
+  }
+  .glass-card-hover:hover {
+    box-shadow: 0 4px 24px -8px rgba(168,85,247,0.12), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  /* ── Buttons ──────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl
+           bg-gradient-to-r from-accent-purple to-accent-purple/80
+           text-white font-semibold text-sm
+           transition-all duration-300 shadow-glow
+           hover:from-accent-purple/90 hover:to-accent-purple/70;
+  }
+  .btn-primary:hover { box-shadow: 0 0 50px -12px rgba(168,85,247,0.3); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { @apply opacity-40 cursor-not-allowed; transform: none; }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl
+           bg-white/5 border border-white/10 text-text-secondary font-medium text-sm
+           transition-all duration-300 hover:bg-white/10 hover:border-white/15 hover:text-text-primary;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+           text-text-secondary font-medium text-sm transition-colors
+           hover:bg-white/5 hover:text-text-primary;
+  }
+
+  /* ── Typography ───────────────────────────────────── */
+  .heading-xl { @apply text-5xl md:text-7xl font-bold tracking-tight text-text-primary; }
+  .heading-lg { @apply text-3xl md:text-4xl font-bold tracking-tight text-text-primary; }
+  .heading-md { @apply text-xl md:text-2xl font-semibold text-text-primary; }
+  .body-lg { @apply text-lg text-text-secondary leading-relaxed; }
+  .body { @apply text-sm text-text-secondary leading-relaxed; }
+  .caption { @apply text-xs text-text-muted; }
+
+  /* ── Gradients ────────────────────────────────────── */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-purple via-accent-blue to-accent-cyan;
+  }
+  .gradient-purple-blue {
+    background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(59,130,246,0.1));
+  }
+  .gradient-cyan-pink {
+    background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(236,72,153,0.1));
+  }
+
+  /* ── Glow orbs ────────────────────────────────────── */
+  .glow-orb { @apply absolute rounded-full blur-3xl pointer-events-none; }
+  .glow-orb-purple { background: radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%); }
+  .glow-orb-blue   { background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%); }
+  .glow-orb-cyan   { background: radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 70%); }
+
+  /* ── Grid bg ──────────────────────────────────────── */
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* ── Animations ───────────────────────────────────── */
+  .fade-up { animation: fadeUp 0.6s ease-out both; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up-delay-1 { animation-delay: 0.1s; }
+  .fade-up-delay-2 { animation-delay: 0.2s; }
+  .fade-up-delay-3 { animation-delay: 0.3s; }
+  .fade-up-delay-4 { animation-delay: 0.4s; }
+}

@@ -1,0 +1,80 @@
+{
+  "name": "@agentxv2/sdk",
+  "version": "0.6.1",
+  "description": "AgentX — Decentralized AI Agent SDK with ReAct AgentLoop + Multi-Tenant LLM Providers",
+  "main": "dist/index.js",
+  "types": "dist/index.d.mts",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.mts",
+      "import": "./dist/core/index.mjs",
+      "require": "./dist/core/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.mts",
+      "import": "./dist/react/index.mjs",
+      "require": "./dist/react/index.js"
+    },
+    "./agent-loop": {
+      "types": "./dist/agent-loop/index.d.mts",
+      "import": "./dist/agent-loop/index.mjs",
+      "require": "./dist/agent-loop/index.js"
+    },
+    "./llm": {
+      "types": "./dist/llm/index.d.mts",
+      "import": "./dist/llm/index.mjs",
+      "require": "./dist/llm/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/core/index.ts src/react/index.ts src/endpoint/index.ts src/configuration/index.ts src/agent-loop/index.ts src/llm/index.ts --format cjs,esm --dts --clean --sourcemap --splitting false --out-dir dist",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "agentx",
+    "ai-agent",
+    "web3",
+    "ecies",
+    "aes-256-gcm",
+    "ipfs",
+    "mcp",
+    "a2a"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@noble/ciphers": "^1.0.0",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.5.0"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "wagmi": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "wagmi": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.17",
+    "react": "^19.2.7",
+    "tsup": "^8.5.1",
+    "typescript": "^5.5.0",
+    "viem": "^2.55.0",
+    "vitest": "^2.0.0",
+    "wagmi": "^2.19.5"
+  }
+}
