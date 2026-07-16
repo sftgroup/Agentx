@@ -175,6 +175,22 @@ forge script script/DeployA2A.s.sol:DeployA2A \
 | Sepolia | `0x309C7447d89f3087A9924BB686d88df020F7e9cB` |
 | OxaChain L1 | `0xDF2939EFafEe6439eB2226DbEd07AD6F5Ae2112B` |
 
+### All Contract Addresses (Dual-Chain)
+
+| # | Contract | Sepolia | OxaChain L1 |
+|---|----------|---------|-------------|
+| 1 | IdentityRegistry | `0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F` | `0xbf5F9db266c8c97E3334466C88597Eb758AfE212` |
+| 2 | SubscriptionManager | `0xC15fE80b9d800abb72121F353a6ae6d6E9077E63` | `0x019AC9d945467478Dd371CDbD70cb2f325800E6B` |
+| 3 | A2AProtocolRegistry | `0x309C7447d89f3087A9924BB686d88df020F7e9cB` | `0xDF2939EFafEe6439eB2226DbEd07AD6F5Ae2112B` |
+| 4 | ReputationRegistry | `0xeb6B410ea71b8d9dA0c96f6A91d35027CE143DC9` | `0x6a18C2664E1b42063860d864b6448b824d7B843F` |
+| 5 | ConfigurationRegistry | `0x68DcE00e4C9077c94BC68016cD14B09557faEA6c` | `0x07280674ccc2898Fd038A9e3C22005CA83ffD2F8` |
+| 6 | MultiEndpointRegistry | `0xEB5e866f186d4B73F97aa0d70B86f2C6e2e21Cb7` | `0xB361d04F49000013FC131D3C59C41c8486C64f8c` |
+
+| Chain | Chain ID | RPC URL |
+|-------|----------|---------|
+| Sepolia (Testnet) | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` |
+| OxaChain L1 (Mainnet) | 19505 | `http://43.156.99.215:18545` |
+
 ---
 
 ## 7. npm SDK Publish
