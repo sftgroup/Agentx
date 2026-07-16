@@ -1,7 +1,7 @@
 # AgentX Integration Guide
 
 > SDK / Contracts / AgentLoop / Gateway — Complete third-party integration guide
-> Version: v0.6.1 · Updated: 2026-07-15
+> Version: v0.6.2 · Updated: 2026-07-17
 
 ## Overview
 
@@ -394,15 +394,25 @@ const result = await a2aSkill.execute({ task: "audit ERC20", severity: "all" })
 | Sepolia (Testnet) | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` |
 | OxaChain L1 (Mainnet) | 19505 | `http://43.156.99.215:18545` |
 
+## Production Gateway
+
+| Endpoint | Description |
+|----------|-------------|
+| `http://43.156.225.164:3090/api/v1/health` | Health check |
+| `http://43.156.225.164:3090/api/v1/auth/challenge` | Wallet auth challenge |
+| `http://43.156.225.164:3090/api/v1/chat/completions` | LLM proxy (SSE) |
+| `http://43.156.225.164:3090/api/v1/tenant/me` | Tenant info |
+| `http://43.156.225.164:3090/api/v1/tenant/usage` | Usage history |
+
 ---
 
 ## Repository
 
 - **GitHub**: [github.com/sftgroup/Agentx](https://github.com/sftgroup/Agentx)
-- **SDK**: `agentx/sdk/` · npm: `@agentxv2/sdk@0.6.1`
+- **SDK**: `agentx/sdk/` · npm: `@agentxv2/sdk@0.6.2`
 - **Contracts**: `agentx/contracts/`
-- **Frontend**: `agentx/frontend/`
-- **Gateway**: `agentx/gateway/` (Express, PostgreSQL, Redis)
+- **Frontend**: `agentx/frontend/` (production: `http://43.156.225.164:3000`)
+- **Gateway**: `agentx/gateway/` (Express, PostgreSQL) — production health: `http://43.156.225.164:3090/api/v1/health`
 
 ---
 
