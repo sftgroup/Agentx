@@ -57,7 +57,7 @@ export const KNOWN_CHAINS: Record<number, ChainConfig> = {
     contracts: {
       identityRegistry: '0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F',
       subscriptionManager: '0xC15fE80b9d800abb72121F353a6ae6d6E9077E63',
-      a2aProtocolRegistry: '0xEdb0022c250B38e281B3EF1418037889fC5C6092',
+      a2aProtocolRegistry: '0x309C7447d89f3087A9924BB686d88df020F7e9cB',
       reputationRegistry: '0xeb6B410ea71b8d9dA0c96f6A91d35027CE143DC9',
       configurationRegistry: '0x68DcE00e4C9077c94BC68016cD14B09557faEA6c',
       multiEndpointRegistry: '0xEB5e866f186d4B73F97aa0d70B86f2C6e2e21Cb7',
@@ -76,7 +76,7 @@ export const KNOWN_CHAINS: Record<number, ChainConfig> = {
     contracts: {
       identityRegistry: '0xbf5F9db266c8c97E3334466C88597Eb758AfE212',
       subscriptionManager: '0x019AC9d945467478Dd371CDbD70cb2f325800E6B',
-      a2aProtocolRegistry: '0x61b7E7Eed21F013e35a90FC5de5c352780ec5169',
+      a2aProtocolRegistry: '0xDF2939EFafEe6439eB2226DbEd07AD6F5Ae2112B',
       reputationRegistry: '0x6a18C2664E1b42063860d864b6448b824d7B843F',
       configurationRegistry: '0x07280674ccc2898Fd038A9e3C22005CA83ffD2F8',
       multiEndpointRegistry: '0xB361d04F49000013FC131D3C59C41c8486C64f8c',

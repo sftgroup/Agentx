@@ -272,10 +272,7 @@ export default function ChatPage() {
           setThinkingText(msg)
         },
 
-        onComplete: (result: AgentLoopResult) => {
-          if (gatewayCtx) {
-            gatewayCtx.refreshContext?.()
-          }
+        onComplete: (_result: AgentLoopResult) => {
         },
 
         onError: (error: Error) => {

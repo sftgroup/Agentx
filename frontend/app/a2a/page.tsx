@@ -11,7 +11,7 @@ import {
 import { createPublicClient, http } from 'viem'
 import { sepolia } from 'viem/chains'
 
-const A2A_REGISTRY = process.env.NEXT_PUBLIC_IDENTITY_REGISTRY_ADDRESS as `0x${string}`
+const A2A_REGISTRY = process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS as `0x${string}`
 
 const STATUS_CONFIG: Record<number, { label: string; icon: typeof Clock; color: string }> = {
   0: { label: 'Created', icon: Clock, color: 'text-yellow-400' },
