@@ -216,5 +216,7 @@ npm install @agentxv2/sdk@0.6.2
 
 | Priority | Task | Status |
 |----------|------|--------|
-| **P2** | GitHub push latest fixes + tag v0.6.2 | pending |
+| **Done** | GitHub push v0.6.2 docs (13 files, 746+ 399-) | ✅ |
+| **Done** | All 6 docs updated (README, INTEGRATION, DEPLOYMENT, MCP_SETUP, SDK README, PROGRESS) | ✅ |
 | **Done** | A2A page address fix + Solidity getUserTasks + dual-chain redeploy | ✅ |
+| **Done** | Production server 164 full-stack (Frontend:3000 + Gateway:3090 + PG:5432) | ✅ |
