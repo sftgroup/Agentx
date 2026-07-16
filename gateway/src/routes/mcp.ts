@@ -1,14 +1,14 @@
 // ---------------------------------------------------------------------------
 // AgentX Gateway — MCP Server (Model Context Protocol)
 // ---------------------------------------------------------------------------
-// Standard MCP JSON-RPC 2.0 endpoint. Supports:
+// Standard MCP JSON-RPC 2.0 endpoint. Supports dual-chain (Sepolia + OxaChain L1).
 //   POST /mcp
-//     tools/list  → all 28 AgentX platform tools
-//     tools/call  → execute a tool (read on-chain, write returns tx payload)
+//     tools/list  → all 29 AgentX platform tools
+//     tools/call  → params.name + params.arguments.{chain:"sepolia"|"oxachain"}
+//     initialize  → handshake
 //
-// Compatible with Claude Desktop, Cursor, and any MCP client.
-//   Claude Desktop config:
-//     { "mcpServers": { "agentx": { "url": "http://43.156.225.164:3090/mcp" } } }
+// Claude Desktop config:
+//   { "mcpServers": { "agentx": { "url": "http://43.156.225.164:3090/mcp" } } }
 // ---------------------------------------------------------------------------
 
 import { Router, Request, Response } from 'express'
@@ -17,43 +17,60 @@ import { config } from '../config'
 
 const router = Router()
 
-// ── Minimal ABI Fragments (read-only) ──────────────────────────────────────
+// ── Chain Config ───────────────────────────────────────────────────────────
 
-const ID_ABI = [
-  'function getAgentsByOwner(address owner) view returns (uint256[])',
-  'function getCurrentAgentId() view returns (uint256)',
-  'function agentExists(uint256 agentId) view returns (bool)',
-  'function tokenURI(uint256 tokenId) view returns (string)',
-]
+type ChainKey = 'sepolia' | 'oxachain'
 
-const SUB_ABI = [
-  'function getPlan(uint256 planId) view returns (uint256,uint256,address,uint256,string,bool,address,uint256)',
-  'function hasActiveSubscription(address subscriber, uint256 agentId) view returns (bool)',
-  'function getSubscriptionDetail(uint256 subscriptionId) view returns (uint256,address,uint256,uint8,uint256,uint256,string,address,uint256,bool,uint256,bool)',
-  'function getUserSubscriptions(address user) view returns (uint256[])',
-  'function platformFeeBps() view returns (uint256)',
-]
+interface ChainInfo {
+  rpcUrl: string
+  chainId: number
+  identityRegistry: string
+  subscriptionManager: string
+  a2aProtocol: string
+  reputationRegistry: string
+  configurationRegistry: string
+  multiEndpoint: string
+}
 
-const A2A_ABI = [
-  'function getTask(uint256 taskId) view returns (uint256,uint256,string,string,string,uint256,address,uint256,uint256)',
-  'function getUserTasks(address user) view returns (uint256[])',
-  'function getAgentCard(uint256 agentId) view returns (uint256,uint256,string,string,string,string[],string[],string,string,string,bool)',
-]
+const CHAINS: Record<ChainKey, ChainInfo> = {
+  sepolia: {
+    rpcUrl: config.rpcUrl,
+    chainId: config.chainId,
+    identityRegistry: config.identityRegistry,
+    subscriptionManager: config.subscriptionManager,
+    a2aProtocol: config.a2aProtocol,
+    reputationRegistry: config.reputationRegistry,
+    configurationRegistry: config.configurationRegistry,
+    multiEndpoint: config.multiEndpoint,
+  },
+  oxachain: {
+    rpcUrl: config.rpcUrlOxaChain,
+    chainId: config.chainIdOxaChain,
+    identityRegistry: config.identityRegistryOxaChain,
+    subscriptionManager: config.subscriptionManagerOxaChain,
+    a2aProtocol: config.a2aProtocolOxaChain,
+    reputationRegistry: config.reputationRegistryOxaChain,
+    configurationRegistry: config.configurationRegistryOxaChain,
+    multiEndpoint: config.multiEndpointOxaChain,
+  },
+}
 
-const REP_ABI = [
-  'function getRating(uint256 agentId) view returns (uint256,uint256)',
-  'function getReviews(uint256 agentId) view returns (tuple(address,uint8,string,uint256)[])',
-]
+function resolveChain(args: Record<string, unknown>): ChainInfo {
+  const key = (args.chain as string)?.toLowerCase() === 'oxachain' ? 'oxachain' : 'sepolia'
+  return CHAINS[key]
+}
 
-const CFG_ABI = [
-  'function getConfig(uint256 agentId, string configKey) view returns (tuple(uint256,string,string,string,uint256,address))',
-  'function getAgentConfigs(uint256 agentId) view returns (tuple(uint256,string,string,string,uint256,address)[])',
-]
+// ── Cached Providers ───────────────────────────────────────────────────────
 
-const EP_ABI = [
-  'function getAgentEndpoints(uint256 agentId) view returns (tuple(uint256,uint256,string,string,string,string,string,bool,uint256,uint256,address)[])',
-  'function getActiveAgentEndpoints(uint256 agentId) view returns (tuple(uint256,uint256,string,string,string,string,string,bool,uint256,uint256,address)[])',
-]
+const providers: Partial<Record<ChainKey, ethers.JsonRpcProvider>> = {}
+function getProvider(chain: ChainKey): ethers.JsonRpcProvider {
+  if (!providers[chain]) providers[chain] = new ethers.JsonRpcProvider(CHAINS[chain].rpcUrl)
+  return providers[chain]!
+}
+
+function getContract(chain: ChainKey, address: string, abi: string[]): ethers.Contract {
+  return new ethers.Contract(address, abi, getProvider(chain))
+}
 
 // ── MCP Tool Definitions ───────────────────────────────────────────────────
 
@@ -63,34 +80,41 @@ interface MCPTool {
   inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] }
 }
 
+function commonArgs(): Record<string, unknown> {
+  return {
+    chain: { type: 'string', description: 'Chain: "sepolia" (default) or "oxachain" for OxaChain L1 mainnet', enum: ['sepolia', 'oxachain'] },
+  }
+}
+
 const MCP_TOOLS: MCPTool[] = [
-  // ── IdentityRegistry (5) ────────────────────────────────────────────────
+  // ── IdentityRegistry ────────────────────────────────────────────────────
   {
     name: 'agentx_identity_list',
-    description: 'List all Agent IDs owned by a wallet address. Returns an array of agent ID numbers.',
-    inputSchema: { type: 'object', properties: { ownerAddress: { type: 'string', description: 'Ethereum wallet address (0x...)' } }, required: ['ownerAddress'] },
+    description: 'List all Agent IDs owned by a wallet address on Sepolia or OxaChain L1.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), ownerAddress: { type: 'string', description: 'Ethereum wallet address (0x...)' } }, required: ['ownerAddress'] },
   },
   {
     name: 'agentx_identity_get',
-    description: 'Get detailed information about an agent: tokenURI, metadata, and whether it exists.',
-    inputSchema: { type: 'object', properties: { agentId: { type: 'integer', description: 'Agent numeric ID' } }, required: ['agentId'] },
+    description: 'Get agent details — tokenURI, metadata, existence.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent numeric ID' } }, required: ['agentId'] },
   },
   {
     name: 'agentx_identity_exists',
-    description: 'Check whether an agent ID exists on the blockchain.',
-    inputSchema: { type: 'object', properties: { agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
+    description: 'Check whether an agent ID exists on-chain.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
   },
   {
     name: 'agentx_identity_total_count',
-    description: 'Get the total number of agents registered in the IdentityRegistry.',
-    inputSchema: { type: 'object', properties: {} },
+    description: 'Total number of agents registered.',
+    inputSchema: { type: 'object', properties: { ...commonArgs() } },
   },
   {
     name: 'agentx_identity_register',
-    description: 'Register a new AI Agent on-chain. This is a WRITE operation — returns the transaction payload the client must sign and submit. Required: tokenURI (IPFS), encryptedPayloadCid, eciesEncryptedKey.',
+    description: 'Register a new Agent on-chain. WRITE operation — returns tx payload.',
     inputSchema: {
       type: 'object',
       properties: {
+        ...commonArgs(),
         tokenURI: { type: 'string', description: 'IPFS URI (ipfs://...)' },
         encryptedPayloadCid: { type: 'string', description: 'IPFS CID of encrypted payload' },
         eciesEncryptedKey: { type: 'string', description: 'Hex ECIES-encrypted AES key' },
@@ -99,213 +123,203 @@ const MCP_TOOLS: MCPTool[] = [
     },
   },
 
-  // ── SubscriptionManager (8) ─────────────────────────────────────────────
+  // ── SubscriptionManager ─────────────────────────────────────────────────
   {
     name: 'agentx_subscription_plans',
-    description: 'Get subscription plan details: price, period, creator, pay token, trial days.',
-    inputSchema: { type: 'object', properties: { planId: { type: 'integer', description: 'Plan ID' } }, required: ['planId'] },
+    description: 'Get plan details: price, period, pay token, trial days.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), planId: { type: 'integer', description: 'Plan ID' } }, required: ['planId'] },
   },
   {
     name: 'agentx_subscription_check',
-    description: 'Check whether a wallet has an active subscription for a specific agent.',
+    description: 'Check if a wallet has an active subscription for an agent.',
     inputSchema: {
       type: 'object',
-      properties: {
-        subscriberAddress: { type: 'string', description: 'Wallet address' },
-        agentId: { type: 'integer', description: 'Agent ID' },
-      },
+      properties: { ...commonArgs(), subscriberAddress: { type: 'string', description: 'Wallet address' }, agentId: { type: 'integer', description: 'Agent ID' } },
       required: ['subscriberAddress', 'agentId'],
     },
   },
   {
     name: 'agentx_subscription_detail',
-    description: 'Get full subscription detail including trial, payment, escrow status.',
-    inputSchema: { type: 'object', properties: { subscriptionId: { type: 'integer', description: 'Subscription ID' } }, required: ['subscriptionId'] },
+    description: 'Full subscription detail including trial info, escrow status.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), subscriptionId: { type: 'integer', description: 'Subscription ID' } }, required: ['subscriptionId'] },
   },
   {
     name: 'agentx_subscription_my_list',
-    description: 'List all subscription IDs for a wallet address.',
-    inputSchema: { type: 'object', properties: { userAddress: { type: 'string', description: 'Wallet address' } }, required: ['userAddress'] },
+    description: 'List all subscription IDs for a wallet.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), userAddress: { type: 'string', description: 'Wallet address' } }, required: ['userAddress'] },
   },
   {
     name: 'agentx_subscription_subscribe',
-    description: 'Subscribe to a plan. WRITE operation — returns transaction payload for the client to sign. For ETH plans, include the plan price as value.',
+    description: 'Subscribe to a plan. WRITE operation.',
     inputSchema: {
       type: 'object',
-      properties: {
-        planId: { type: 'integer', description: 'Plan ID to subscribe' },
-        valueWei: { type: 'string', description: 'ETH amount in wei (only for ETH plans)' },
-      },
+      properties: { ...commonArgs(), planId: { type: 'integer', description: 'Plan ID' }, valueWei: { type: 'string', description: 'ETH in wei' } },
       required: ['planId'],
     },
   },
   {
     name: 'agentx_subscription_cancel',
-    description: 'Cancel a subscription. WRITE operation — returns transaction payload.',
-    inputSchema: { type: 'object', properties: { subscriptionId: { type: 'integer', description: 'Subscription ID' } }, required: ['subscriptionId'] },
+    description: 'Cancel a subscription. WRITE operation.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), subscriptionId: { type: 'integer', description: 'Subscription ID' } }, required: ['subscriptionId'] },
   },
   {
     name: 'agentx_subscription_release',
-    description: 'Release escrowed funds to the creator after trial period. WRITE operation.',
-    inputSchema: { type: 'object', properties: { subscriptionId: { type: 'integer', description: 'Subscription ID' } }, required: ['subscriptionId'] },
+    description: 'Release escrowed funds. WRITE operation.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), subscriptionId: { type: 'integer', description: 'Subscription ID' } }, required: ['subscriptionId'] },
   },
   {
     name: 'agentx_subscription_fee',
-    description: 'Get current platform fee in basis points (250 = 2.5%).',
-    inputSchema: { type: 'object', properties: {} },
+    description: 'Get current platform fee in bps.',
+    inputSchema: { type: 'object', properties: { ...commonArgs() } },
   },
 
-  // ── A2AProtocol (5) ─────────────────────────────────────────────────────
+  // ── A2AProtocol ─────────────────────────────────────────────────────────
   {
     name: 'agentx_a2a_create_task',
-    description: 'Create an on-chain A2A task delegating work to another agent. WRITE operation.',
+    description: 'Create an on-chain A2A task. WRITE operation.',
     inputSchema: {
       type: 'object',
-      properties: {
-        targetAgentId: { type: 'integer', description: 'Target agent ID' },
-        taskType: { type: 'string', description: 'e.g. audit, analyze, generate' },
-        inputData: { type: 'string', description: 'JSON task input' },
-      },
+      properties: { ...commonArgs(), targetAgentId: { type: 'integer', description: 'Target agent ID' }, taskType: { type: 'string', description: 'e.g. audit, analyze' }, inputData: { type: 'string', description: 'JSON input' } },
       required: ['targetAgentId', 'taskType', 'inputData'],
     },
   },
   {
     name: 'agentx_a2a_get_task',
-    description: 'Get full A2A task details: status, input, output, creator, timestamps.',
-    inputSchema: { type: 'object', properties: { taskId: { type: 'integer', description: 'Task ID' } }, required: ['taskId'] },
+    description: 'Get A2A task details.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), taskId: { type: 'integer', description: 'Task ID' } }, required: ['taskId'] },
   },
   {
     name: 'agentx_a2a_complete_task',
-    description: 'Mark a task as completed with output data. WRITE operation.',
+    description: 'Complete a task on-chain. WRITE operation.',
     inputSchema: {
       type: 'object',
-      properties: {
-        taskId: { type: 'integer', description: 'Task ID' },
-        outputData: { type: 'string', description: 'JSON output data' },
-      },
+      properties: { ...commonArgs(), taskId: { type: 'integer', description: 'Task ID' }, outputData: { type: 'string', description: 'JSON output' } },
       required: ['taskId', 'outputData'],
     },
   },
   {
     name: 'agentx_a2a_my_tasks',
-    description: 'Get all A2A task IDs for a wallet address.',
-    inputSchema: { type: 'object', properties: { userAddress: { type: 'string', description: 'Wallet address' } }, required: ['userAddress'] },
+    description: 'Get all task IDs for a wallet.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), userAddress: { type: 'string', description: 'Wallet address' } }, required: ['userAddress'] },
   },
   {
     name: 'agentx_a2a_agent_card',
-    description: 'Get an agent\'s A2A card: name, capabilities, supported tasks.',
-    inputSchema: { type: 'object', properties: { agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
+    description: 'Get agent A2A card: name, capabilities, supported tasks.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
   },
 
-  // ── ReputationRegistry (3) ──────────────────────────────────────────────
+  // ── ReputationRegistry ──────────────────────────────────────────────────
   {
     name: 'agentx_reputation_rate',
-    description: 'Rate an agent (1-5) and leave a comment. WRITE operation.',
+    description: 'Rate an agent (1-5). WRITE operation.',
     inputSchema: {
       type: 'object',
-      properties: {
-        agentId: { type: 'integer', description: 'Agent ID' },
-        rating: { type: 'integer', description: 'Rating 1 (worst) to 5 (best)' },
-        comment: { type: 'string', description: 'Review comment' },
-      },
+      properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' }, rating: { type: 'integer', description: '1-5' }, comment: { type: 'string', description: 'Review' } },
       required: ['agentId', 'rating'],
     },
   },
   {
     name: 'agentx_reputation_get',
-    description: 'Get average rating and total review count for an agent.',
-    inputSchema: { type: 'object', properties: { agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
+    description: 'Average rating and review count.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
   },
   {
     name: 'agentx_reputation_reviews',
-    description: 'Get all reviews for an agent with reviewer, rating, comment, timestamp.',
-    inputSchema: { type: 'object', properties: { agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
+    description: 'All reviews with reviewer, rating, comment, timestamp.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
   },
 
-  // ── ConfigurationRegistry (3) ───────────────────────────────────────────
+  // ── ConfigurationRegistry ───────────────────────────────────────────────
   {
     name: 'agentx_config_get',
-    description: 'Read a single config value for an agent by key.',
+    description: 'Read a config value by key.',
     inputSchema: {
       type: 'object',
-      properties: {
-        agentId: { type: 'integer', description: 'Agent ID' },
-        configKey: { type: 'string', description: 'Config key name' },
-      },
+      properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' }, configKey: { type: 'string', description: 'Config key' } },
       required: ['agentId', 'configKey'],
     },
   },
   {
     name: 'agentx_config_list',
-    description: 'List all configuration entries for an agent.',
-    inputSchema: { type: 'object', properties: { agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
+    description: 'List all configurations for an agent.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
   },
   {
     name: 'agentx_config_set',
-    description: 'Set a config value on-chain. WRITE operation.',
+    description: 'Set config value on-chain. WRITE operation.',
     inputSchema: {
       type: 'object',
-      properties: {
-        agentId: { type: 'integer', description: 'Agent ID' },
-        key: { type: 'string', description: 'Config key' },
-        value: { type: 'string', description: 'Config value' },
-        dataType: { type: 'string', description: 'Data type: string/number/boolean/json' },
-      },
+      properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' }, key: { type: 'string' }, value: { type: 'string' }, dataType: { type: 'string', enum: ['string', 'number', 'boolean', 'json'] } },
       required: ['agentId', 'key', 'value'],
     },
   },
 
-  // ── MultiEndpointRegistry (3) ───────────────────────────────────────────
+  // ── MultiEndpointRegistry ───────────────────────────────────────────────
   {
     name: 'agentx_endpoint_list',
-    description: 'Get all registered endpoints for an agent.',
-    inputSchema: { type: 'object', properties: { agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
+    description: 'All registered endpoints.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
   },
   {
     name: 'agentx_endpoint_active',
-    description: 'Get only active (online) endpoints for an agent.',
-    inputSchema: { type: 'object', properties: { agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
+    description: 'Only active endpoints.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
   },
   {
     name: 'agentx_endpoint_best_mcp',
-    description: 'Find the best available MCP endpoint URL for an agent.',
-    inputSchema: { type: 'object', properties: { agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
+    description: 'Best available MCP endpoint URL.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
   },
 
-  // ── Gateway (2) ──────────────────────────────────────────────────────────
+  // ── Gateway ─────────────────────────────────────────────────────────────
   {
     name: 'agentx_gateway_tenant',
-    description: 'Get the current tenant profile: plan, API keys, daily usage quota.',
-    inputSchema: {
-      type: 'object',
-      properties: { accessToken: { type: 'string', description: 'Gateway JWT access token' } },
-      required: ['accessToken'],
-    },
+    description: 'Get tenant profile, plan, quota.',
+    inputSchema: { type: 'object', properties: { accessToken: { type: 'string', description: 'Gateway JWT token' } }, required: ['accessToken'] },
   },
   {
     name: 'agentx_gateway_health',
-    description: 'Check the AgentX Gateway health status.',
+    description: 'Gateway health + chain contract addresses (both chains).',
     inputSchema: { type: 'object', properties: {} },
   },
 ]
 
-// ── Lazy Provider ──────────────────────────────────────────────────────────
+// ── ABIs ────────────────────────────────────────────────────────────────────
 
-let _provider: ethers.JsonRpcProvider | null = null
-function getProvider(): ethers.JsonRpcProvider {
-  if (!_provider) _provider = new ethers.JsonRpcProvider(config.rpcUrl)
-  return _provider
-}
+const ID_ABI = [
+  'function getAgentsByOwner(address owner) view returns (uint256[])',
+  'function getCurrentAgentId() view returns (uint256)',
+  'function agentExists(uint256 agentId) view returns (bool)',
+  'function tokenURI(uint256 tokenId) view returns (string)',
+]
+const SUB_ABI = [
+  'function getPlan(uint256 planId) view returns (uint256,uint256,address,uint256,string,bool,address,uint256)',
+  'function hasActiveSubscription(address,uint256) view returns (bool)',
+  'function getSubscriptionDetail(uint256) view returns (uint256,address,uint256,uint8,uint256,uint256,string,address,uint256,bool,uint256,bool)',
+  'function getUserSubscriptions(address) view returns (uint256[])',
+  'function platformFeeBps() view returns (uint256)',
+]
+const A2A_ABI = [
+  'function getTask(uint256) view returns (uint256,uint256,string,string,string,uint256,address,uint256,uint256)',
+  'function getUserTasks(address) view returns (uint256[])',
+  'function getAgentCard(uint256) view returns (uint256,uint256,string,string,string,string[],string[],string,string,string,bool)',
+]
+const REP_ABI = [
+  'function getRating(uint256) view returns (uint256,uint256)',
+  'function getReviews(uint256) view returns (tuple(address,uint8,string,uint256)[])',
+]
+const CFG_ABI = [
+  'function getConfig(uint256,string) view returns (tuple(uint256,string,string,string,uint256,address))',
+  'function getAgentConfigs(uint256) view returns (tuple(uint256,string,string,string,uint256,address)[])',
+]
+const EP_ABI = [
+  'function getAgentEndpoints(uint256) view returns (tuple(uint256,uint256,string,string,string,string,string,bool,uint256,uint256,address)[])',
+  'function getActiveAgentEndpoints(uint256) view returns (tuple(uint256,uint256,string,string,string,string,string,bool,uint256,uint256,address)[])',
+]
 
-function getContract(address: string, abi: string[]): ethers.Contract {
-  return new ethers.Contract(address, abi, getProvider())
-}
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
-// ── Format Helpers ─────────────────────────────────────────────────────────
-
-function formatHexAddresses(arr: bigint[]): string[] { return arr.map(a => ethers.getAddress(ethers.toBeHex(a, 20))) }
 function formatBigInts(arr: bigint[]): number[] { return arr.map(Number) }
-function first(arr: any[]): any { return arr[0] }
 function toObj(keys: string[], vals: any[]): Record<string, unknown> {
   const obj: Record<string, unknown> = {}
   for (let i = 0; i < keys.length; i++) {
@@ -315,153 +329,150 @@ function toObj(keys: string[], vals: any[]): Record<string, unknown> {
   return obj
 }
 
-// ── Tool Executor ──────────────────────────────────────────────────────────
+// ── Tool Executor ───────────────────────────────────────────────────────────
 
 async function executeToolCall(name: string, args: Record<string, unknown>): Promise<unknown> {
+  const chain = resolveChain(args) as ChainInfo
+  const ck: ChainKey = (args.chain as string)?.toLowerCase() === 'oxachain' ? 'oxachain' : 'sepolia'
+  const chainLabel = ck === 'oxachain' ? 'OxaChain L1' : 'Sepolia'
+  const chainId = ck === 'oxachain' ? config.chainIdOxaChain : config.chainId
+
   try {
     switch (name) {
       // ── Identity ──────────────────────────────────
       case 'agentx_identity_list': {
         const owner = args.ownerAddress as string
-        const c = getContract(config.identityRegistry, ID_ABI)
-        const ids = await c.getAgentsByOwner(owner)
-        return { agentIds: formatBigInts(ids), owner }
+        const ids = await getContract(ck, chain.identityRegistry, ID_ABI).getAgentsByOwner(owner)
+        return { agentIds: formatBigInts(ids), owner, chain: chainLabel, chainId }
       }
       case 'agentx_identity_get': {
         const agentId = Number(args.agentId)
-        const c = getContract(config.identityRegistry, ID_ABI)
+        const c = getContract(ck, chain.identityRegistry, ID_ABI)
         const [exists, tokenURI] = await Promise.all([
           c.agentExists(agentId).catch(() => false),
           c.tokenURI(agentId).catch(() => null),
         ])
-        return { agentId, exists, tokenURI }
+        return { agentId, exists, tokenURI, chain: chainLabel, chainId }
       }
       case 'agentx_identity_exists':
-        return { exists: await getContract(config.identityRegistry, ID_ABI).agentExists(Number(args.agentId)) }
+        return { exists: await getContract(ck, chain.identityRegistry, ID_ABI).agentExists(Number(args.agentId)), chain: chainLabel, chainId }
       case 'agentx_identity_total_count': {
-        const total = await getContract(config.identityRegistry, ID_ABI).getCurrentAgentId()
-        return { totalAgents: Number(total) }
+        const total = await getContract(ck, chain.identityRegistry, ID_ABI).getCurrentAgentId()
+        return { totalAgents: Number(total), chain: chainLabel, chainId }
       }
       case 'agentx_identity_register':
-        return { _writeOp: true, message: 'This is a WRITE operation. Use the MCP with a wallet client that can sign and submit on-chain transactions. The platform MCP server provides transaction simulation data.', contract: config.identityRegistry, method: 'registerWithMetadata', args: [args.tokenURI, []] }
+        return { _writeOp: true, message: `WRITE. Use a wallet client to sign and submit to ${chainLabel}.`, contract: chain.identityRegistry, chain: chainLabel, chainId }
 
       // ── Subscription ──────────────────────────────
       case 'agentx_subscription_plans': {
-        const planId = Number(args.planId)
-        const c = getContract(config.subscriptionManager, SUB_ABI)
-        const p = await c.getPlan(planId)
-        return toObj(['planId', 'agentId', 'creator', 'price', 'period', 'active', 'payToken', 'trialDays'], p)
+        const p = await getContract(ck, chain.subscriptionManager, SUB_ABI).getPlan(Number(args.planId))
+        return { ...toObj(['planId', 'agentId', 'creator', 'price', 'period', 'active', 'payToken', 'trialDays'], p), chain: chainLabel, chainId }
       }
       case 'agentx_subscription_check': {
-        const ok = await getContract(config.subscriptionManager, SUB_ABI).hasActiveSubscription(args.subscriberAddress, Number(args.agentId))
-        return { active: ok, subscriber: args.subscriberAddress, agentId: Number(args.agentId) }
+        const ok = await getContract(ck, chain.subscriptionManager, SUB_ABI).hasActiveSubscription(args.subscriberAddress, Number(args.agentId))
+        return { active: ok, subscriber: args.subscriberAddress, agentId: Number(args.agentId), chain: chainLabel, chainId }
       }
       case 'agentx_subscription_detail': {
-        const sid = Number(args.subscriptionId)
-        const c = getContract(config.subscriptionManager, SUB_ABI)
-        const d = await c.getSubscriptionDetail(sid)
-        return toObj(['subscriptionId', 'subscriber', 'agentId', 'status', 'startedAt', 'expiresAt', 'period', 'payToken', 'amountPaid', 'trialActive', 'trialEndsAt', 'fundsReleased'], d)
+        const d = await getContract(ck, chain.subscriptionManager, SUB_ABI).getSubscriptionDetail(Number(args.subscriptionId))
+        return { ...toObj(['subscriptionId', 'subscriber', 'agentId', 'status', 'startedAt', 'expiresAt', 'period', 'payToken', 'amountPaid', 'trialActive', 'trialEndsAt', 'fundsReleased'], d), chain: chainLabel, chainId }
       }
       case 'agentx_subscription_my_list': {
-        const ids = await getContract(config.subscriptionManager, SUB_ABI).getUserSubscriptions(args.userAddress as string)
-        return { subscriptionIds: formatBigInts(ids), user: args.userAddress }
+        const ids = await getContract(ck, chain.subscriptionManager, SUB_ABI).getUserSubscriptions(args.userAddress as string)
+        return { subscriptionIds: formatBigInts(ids), user: args.userAddress, chain: chainLabel, chainId }
       }
       case 'agentx_subscription_subscribe':
-        return { _writeOp: true, message: 'WRITE operation. Subscribe to a plan on-chain via a wallet client.', contract: config.subscriptionManager, method: 'subscribe', args: [args.planId] }
+        return { _writeOp: true, message: `WRITE. Subscribe via wallet client on ${chainLabel}.`, contract: chain.subscriptionManager, chain: chainLabel, chainId }
       case 'agentx_subscription_cancel':
-        return { _writeOp: true, message: 'WRITE operation. Cancel subscription via a wallet client.', contract: config.subscriptionManager, method: 'cancelSubscription', args: [args.subscriptionId] }
+        return { _writeOp: true, message: `WRITE. Cancel via wallet client on ${chainLabel}.`, contract: chain.subscriptionManager, chain: chainLabel, chainId }
       case 'agentx_subscription_release':
-        return { _writeOp: true, message: 'WRITE operation. Release funds via a wallet client.', contract: config.subscriptionManager, method: 'releaseFunds', args: [args.subscriptionId] }
+        return { _writeOp: true, message: `WRITE. Release via wallet client on ${chainLabel}.`, contract: chain.subscriptionManager, chain: chainLabel, chainId }
       case 'agentx_subscription_fee': {
-        const fee = await getContract(config.subscriptionManager, SUB_ABI).platformFeeBps()
-        return { platformFeeBps: Number(fee) }
+        const fee = await getContract(ck, chain.subscriptionManager, SUB_ABI).platformFeeBps()
+        return { platformFeeBps: Number(fee), chain: chainLabel, chainId }
       }
 
       // ── A2A ───────────────────────────────────────
       case 'agentx_a2a_get_task': {
-        const tid = Number(args.taskId)
-        const c = getContract(config.a2aProtocol, A2A_ABI)
-        const t = await c.getTask(tid)
-        return toObj(['taskId', 'agentId', 'taskType', 'inputData', 'outputData', 'status', 'clientAddress', 'createdAt', 'completedAt'], t)
+        const t = await getContract(ck, chain.a2aProtocol, A2A_ABI).getTask(Number(args.taskId))
+        return { ...toObj(['taskId', 'agentId', 'taskType', 'inputData', 'outputData', 'status', 'clientAddress', 'createdAt', 'completedAt'], t), chain: chainLabel, chainId }
       }
       case 'agentx_a2a_my_tasks': {
-        const ids = await getContract(config.a2aProtocol, A2A_ABI).getUserTasks(args.userAddress as string)
-        return { taskIds: formatBigInts(ids), user: args.userAddress }
+        const ids = await getContract(ck, chain.a2aProtocol, A2A_ABI).getUserTasks(args.userAddress as string)
+        return { taskIds: formatBigInts(ids), user: args.userAddress, chain: chainLabel, chainId }
       }
       case 'agentx_a2a_agent_card': {
-        const c = getContract(config.a2aProtocol, A2A_ABI)
-        const card = await c.getAgentCard(Number(args.agentId))
+        const card = await getContract(ck, chain.a2aProtocol, A2A_ABI).getAgentCard(Number(args.agentId))
         const [, aId, name, , , capabilities, supportedTasks, comm, auth, , isActive] = card
-        return { agentId: Number(aId), name, capabilities, supportedTasks, communicationProtocol: comm, authenticationMethod: auth, isActive }
+        return { agentId: Number(aId), name, capabilities, supportedTasks, communicationProtocol: comm, authenticationMethod: auth, isActive, chain: chainLabel, chainId }
       }
       case 'agentx_a2a_create_task':
-        return { _writeOp: true, message: 'WRITE operation. Create an A2A task via a wallet client.', contract: config.a2aProtocol, method: 'createTask', args: [args.targetAgentId, args.taskType, args.inputData] }
+        return { _writeOp: true, message: `WRITE. Create task via wallet client on ${chainLabel}.`, contract: chain.a2aProtocol, chain: chainLabel, chainId }
       case 'agentx_a2a_complete_task':
-        return { _writeOp: true, message: 'WRITE operation. Complete a task via a wallet client.', contract: config.a2aProtocol, method: 'completeTask', args: [args.taskId, args.outputData] }
+        return { _writeOp: true, message: `WRITE. Complete task via wallet client on ${chainLabel}.`, contract: chain.a2aProtocol, chain: chainLabel, chainId }
 
       // ── Reputation ─────────────────────────────────
       case 'agentx_reputation_get': {
-        const c = getContract(config.reputationRegistry, REP_ABI)
-        const [avg, total] = await c.getRating(Number(args.agentId))
-        return { agentId: Number(args.agentId), averageRating: Number(avg), totalRatings: Number(total) }
+        const [avg, total] = await getContract(ck, chain.reputationRegistry, REP_ABI).getRating(Number(args.agentId))
+        return { agentId: Number(args.agentId), averageRating: Number(avg), totalRatings: Number(total), chain: chainLabel, chainId }
       }
       case 'agentx_reputation_reviews': {
-        const c = getContract(config.reputationRegistry, REP_ABI)
-        const reviews = await c.getReviews(Number(args.agentId))
-        return { agentId: Number(args.agentId), reviews: reviews.map((r: any) => ({ reviewer: r[0], rating: Number(r[1]), comment: r[2], timestamp: Number(r[3]) })) }
+        const reviews = await getContract(ck, chain.reputationRegistry, REP_ABI).getReviews(Number(args.agentId))
+        return { agentId: Number(args.agentId), reviews: reviews.map((r: any) => ({ reviewer: r[0], rating: Number(r[1]), comment: r[2], timestamp: Number(r[3]) })), chain: chainLabel, chainId }
       }
       case 'agentx_reputation_rate':
-        return { _writeOp: true, message: 'WRITE operation. Rate an agent via a wallet client.', contract: config.reputationRegistry, method: 'rateAgent', args: [args.agentId, args.rating, args.comment ?? ''] }
+        return { _writeOp: true, message: `WRITE. Rate via wallet client on ${chainLabel}.`, contract: chain.reputationRegistry, chain: chainLabel, chainId }
 
       // ── Configuration ──────────────────────────────
       case 'agentx_config_get': {
-        const c = getContract(config.configurationRegistry, CFG_ABI)
-        const v = await c.getConfig(Number(args.agentId), args.configKey)
-        return toObj(['agentId', 'key', 'value', 'dataType', 'updatedAt', 'updatedBy'], v)
+        const v = await getContract(ck, chain.configurationRegistry, CFG_ABI).getConfig(Number(args.agentId), args.configKey as string)
+        return { ...toObj(['agentId', 'key', 'value', 'dataType', 'updatedAt', 'updatedBy'], v), chain: chainLabel, chainId }
       }
       case 'agentx_config_list': {
-        const c = getContract(config.configurationRegistry, CFG_ABI)
-        const configs = await c.getAgentConfigs(Number(args.agentId))
-        return { agentId: Number(args.agentId), configs: configs.map((c: any) => toObj(['agentId', 'key', 'value', 'dataType', 'updatedAt', 'updatedBy'], c)) }
+        const configs = await getContract(ck, chain.configurationRegistry, CFG_ABI).getAgentConfigs(Number(args.agentId))
+        return { agentId: Number(args.agentId), configs: configs.map((c: any) => toObj(['agentId', 'key', 'value', 'dataType', 'updatedAt', 'updatedBy'], c)), chain: chainLabel, chainId }
       }
       case 'agentx_config_set':
-        return { _writeOp: true, message: 'WRITE operation. Set config via a wallet client.', contract: config.configurationRegistry, method: 'setAgentConfig', args: [args.agentId, args.key, args.value, args.dataType ?? 'string'] }
+        return { _writeOp: true, message: `WRITE. Set config via wallet client on ${chainLabel}.`, contract: chain.configurationRegistry, chain: chainLabel, chainId }
 
       // ── MultiEndpoint ──────────────────────────────
       case 'agentx_endpoint_list': {
-        const c = getContract(config.multiEndpoint, EP_ABI)
-        const eps = await c.getAgentEndpoints(Number(args.agentId))
-        return { agentId: Number(args.agentId), endpoints: eps.map((e: any) => ({ endpointId: Number(e[0]), name: e[2], type: e[3], protocol: e[4], url: e[5], isActive: e[7] })) }
+        const eps = await getContract(ck, chain.multiEndpoint, EP_ABI).getAgentEndpoints(Number(args.agentId))
+        return { agentId: Number(args.agentId), endpoints: eps.map((e: any) => ({ endpointId: Number(e[0]), name: e[2], type: e[3], protocol: e[4], url: e[5], isActive: e[7] })), chain: chainLabel, chainId }
       }
       case 'agentx_endpoint_active': {
-        const c = getContract(config.multiEndpoint, EP_ABI)
-        const eps = await c.getActiveAgentEndpoints(Number(args.agentId))
-        return { agentId: Number(args.agentId), endpoints: eps.map((e: any) => ({ endpointId: Number(e[0]), name: e[2], type: e[3], protocol: e[4], url: e[5] })) }
+        const eps = await getContract(ck, chain.multiEndpoint, EP_ABI).getActiveAgentEndpoints(Number(args.agentId))
+        return { agentId: Number(args.agentId), endpoints: eps.map((e: any) => ({ endpointId: Number(e[0]), name: e[2], type: e[3], protocol: e[4], url: e[5] })), chain: chainLabel, chainId }
       }
       case 'agentx_endpoint_best_mcp': {
-        const c = getContract(config.multiEndpoint, EP_ABI)
-        const eps = await c.getActiveAgentEndpoints(Number(args.agentId))
+        const eps = await getContract(ck, chain.multiEndpoint, EP_ABI).getActiveAgentEndpoints(Number(args.agentId))
         const mcp = eps.find((e: any) => e[3] === 'mcp' || e[4] === 'mcp')
-        return { agentId: Number(args.agentId), mcpUrl: mcp ? mcp[5] : null }
+        return { agentId: Number(args.agentId), mcpUrl: mcp ? mcp[5] : null, chain: chainLabel, chainId }
       }
 
       // ── Gateway ────────────────────────────────────
       case 'agentx_gateway_tenant': {
         const token = args.accessToken as string
-        if (!token) return { error: 'accessToken is required' }
+        if (!token) return { error: 'accessToken required' }
         const res = await fetch(`http://127.0.0.1:${config.port}/api/v1/tenant/me`, { headers: { Authorization: `Bearer ${token}` } })
         if (!res.ok) return { error: `HTTP ${res.status}`, detail: await res.text() }
         return res.json()
       }
       case 'agentx_gateway_health':
-        return { status: 'ok', time: new Date().toISOString(), chainId: config.chainId, rpcUrl: config.rpcUrl, contracts: { identityRegistry: config.identityRegistry, subscriptionManager: config.subscriptionManager, a2aProtocol: config.a2aProtocol } }
+        return {
+          status: 'ok',
+          time: new Date().toISOString(),
+          chains: {
+            sepolia: { chainId: config.chainId, rpcUrl: config.rpcUrl, identityRegistry: config.identityRegistry, subscriptionManager: config.subscriptionManager, a2aProtocol: config.a2aProtocol, reputationRegistry: config.reputationRegistry, configurationRegistry: config.configurationRegistry, multiEndpoint: config.multiEndpoint },
+            oxachain: { chainId: config.chainIdOxaChain, rpcUrl: config.rpcUrlOxaChain, identityRegistry: config.identityRegistryOxaChain, subscriptionManager: config.subscriptionManagerOxaChain, a2aProtocol: config.a2aProtocolOxaChain, reputationRegistry: config.reputationRegistryOxaChain, configurationRegistry: config.configurationRegistryOxaChain, multiEndpoint: config.multiEndpointOxaChain },
+          },
+        }
 
       default:
         return { error: `Unknown tool: ${name}`, availableTools: MCP_TOOLS.map(t => t.name) }
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    return { error: msg, tool: name }
+    return { error: msg, tool: name, chain: chainLabel }
   }
 }
 
@@ -470,7 +481,6 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
 router.post('/', async (req: Request, res: Response) => {
   const { jsonrpc, id, method, params } = req.body
 
-  // Validate JSON-RPC
   if (jsonrpc !== '2.0') {
     res.status(400).json({ jsonrpc: '2.0', id: id ?? null, error: { code: -32600, message: 'Invalid Request: jsonrpc must be "2.0"' } })
     return
@@ -497,17 +507,14 @@ router.post('/', async (req: Request, res: Response) => {
           return
         }
 
-        const tool = MCP_TOOLS.find(t => t.name === toolName)
-        if (!tool) {
-          res.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${toolName}`, data: { available: MCP_TOOLS.map(t => t.name) } } })
+        if (!MCP_TOOLS.some(t => t.name === toolName)) {
+          res.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${toolName}` } })
           return
         }
 
         const result = await executeToolCall(toolName, toolArgs)
-
         res.json({
-          jsonrpc: '2.0',
-          id,
+          jsonrpc: '2.0', id,
           result: {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
             isError: result && typeof result === 'object' && 'error' in result,
@@ -516,30 +523,16 @@ router.post('/', async (req: Request, res: Response) => {
         return
       }
 
-      case 'initialize': {
-        res.json({
-          jsonrpc: '2.0',
-          id,
-          result: {
-            protocolVersion: '2024-11-05',
-            serverInfo: {
-              name: 'agentx-gateway',
-              version: '0.1.0',
-            },
-            capabilities: { tools: {} },
-          },
-        })
+      case 'initialize':
+        res.json({ jsonrpc: '2.0', id, result: { protocolVersion: '2024-11-05', serverInfo: { name: 'agentx-gateway', version: '0.2.0' }, capabilities: { tools: {} } } })
         return
-      }
 
-      case 'notifications/initialized': {
+      case 'notifications/initialized':
         res.json({ jsonrpc: '2.0', id, result: {} })
         return
-      }
 
       default:
         res.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${method}` } })
-        return
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
