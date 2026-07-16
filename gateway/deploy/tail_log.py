@@ -1,0 +1,11 @@
+import paramiko, time
+time.sleep(30)
+c = paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect('43.156.78.59', username='ubuntu', password='Asdf1234!', timeout=10)
+stdin, stdout, stderr = c.exec_command('cat /tmp/a2a_deploy.log 2>/dev/null || echo NO_LOG')
+out = stdout.read().decode()
+err = stderr.read().decode()
+print(out)
+if err: print("E:", err[-300:])
+c.close()

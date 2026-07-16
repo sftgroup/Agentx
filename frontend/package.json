@@ -14,7 +14,7 @@
     "prod:logs": "pm2 logs erc8000-platform"
   },
   "dependencies": {
-    "@agentxv2/sdk": "^0.5.4",
+    "@agentxv2/sdk": "^0.6.1",
     "@noble/ciphers": "^2.2.0",
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",

@@ -1,0 +1,20 @@
+import paramiko
+
+transport = paramiko.Transport(('43.156.78.59', 22))
+transport.connect(username='ubuntu', password='Asdf1234!')
+sftp = paramiko.SFTPClient.from_transport(transport)
+sftp.put(r'c:\Users\apply\Downloads\code\agentx\extracted\Agentx\gateway\deploy\deploy_sep_a2a.sh', '/tmp/deploy_sep_a2a.sh')
+sftp.close()
+transport.close()
+
+c = paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect('43.156.78.59', username='ubuntu', password='Asdf1234!', timeout=30)
+stdin, stdout, stderr = c.exec_command('chmod +x /tmp/deploy_sep_a2a.sh && bash /tmp/deploy_sep_a2a.sh 2>&1', timeout=600)
+out = stdout.read().decode()
+err = stderr.read().decode()
+ec = stdout.channel.recv_exit_status()
+print(out[-2000:])
+if err: print("E:", err[-500:])
+print(f"\nExit code: {ec}")
+c.close()
