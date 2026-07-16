@@ -12,6 +12,7 @@ import { tenantRateLimiter } from './middleware/rate-limiter'
 import chatRouter from './routes/chat'
 import tenantRouter from './routes/tenant'
 import historyRouter from './routes/history'
+import mcpRouter from './routes/mcp'
 
 const app = express()
 
@@ -45,6 +46,10 @@ app.use(express.json({ limit: '1mb' }))
 app.get('/api/v1/health', async (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() })
 })
+
+// ── MCP endpoint (public JSON-RPC 2.0) ────────────────────────────────────
+
+app.use('/mcp', mcpRouter)
 
 // ── Auth routes (public) ──────────────────────────────────────────────────
 
