@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.6.2 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.225.164:3000`
+> SDK v0.6.4 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100`
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -8,11 +8,15 @@ AgentX is a decentralized AI Agent platform that enables publishers to create, e
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                   43.156.225.164 (Production)            │
+│                   43.156.99.215 (Production)             │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐  │
-│  │ Next.js FE  │  │ Express GW   │  │  PostgreSQL 16 │  │
-│  │   :3000     │  │   :3090      │  │    :5432       │  │
+│  │ Next.js FE  │  │ Express GW   │  │  PostgreSQL 14 │  │
+│  │   :3100     │  │   :3090      │  │    :5432       │  │
+│  │             │  │  + MCP Srv   │  │                │  │
 │  └─────────────┘  └──────────────┘  └────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ OxaChain L1 Geth Node  :18545  (Clique PoA)     │   │
+│  └──────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────┘
 
 Smart Contracts (dual-chain):
@@ -28,7 +32,7 @@ Smart Contracts (dual-chain):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.6.2
+npm install @agentxv2/sdk@0.6.4
 ```
 
 ```typescript
@@ -64,9 +68,11 @@ await loop.run('Audit this contract for vulnerabilities')
 
 | Service | URL |
 |---------|-----|
-| **Frontend** | `http://43.156.225.164:3000` |
-| **Gateway Health** | `http://43.156.225.164:3090/api/v1/health` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.6.2` |
+| **Frontend** | `http://43.156.99.215:3100` |
+| **Gateway Health** | `http://43.156.99.215:3090/api/v1/health` |
+| **MCP Server** | `http://43.156.99.215:3090/mcp` |
+| **OxaChain RPC** | `http://43.156.99.215:18545` |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.6.4` |
 
 ## Documentation
 

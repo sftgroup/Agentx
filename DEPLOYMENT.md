@@ -1,47 +1,68 @@
 # AgentX Deployment Guide
 
-> Production: `43.156.225.164` (Full-Stack) · Last updated: 2026-07-17
+> Production: `43.156.99.215` (Full-Stack) · Last updated: 2026-07-17
 
 ---
 
-## Production Server: 43.156.225.164
+## Production Server: 43.156.99.215
 
 | Spec | Value |
 |------|-------|
-| **OS** | Ubuntu 24.04.4 LTS |
-| **RAM** | 3.6 GB |
-| **Disk** | 59 GB SSD (6.6G used) |
+| **OS** | Ubuntu 22.04 LTS |
+| **RAM** | 7.3 GB |
+| **Disk** | 79 GB SSD (27G used) |
 | **Node.js** | v22.23.1 |
 | **npm** | 10.9.8 |
-| **PostgreSQL** | 16 (system package) |
-| **Swap** | 2 GB |
+| **PostgreSQL** | 14 |
+| **Swap** | via RAM |
 
 ### Port Layout
 
 ```
-43.156.225.164
-├── :3000 → Next.js Frontend (standalone, Turbopack)
-├── :3090 → Express Gateway (wallet auth / rate-limit / LLM proxy)
-└── :5432 → PostgreSQL
+43.156.99.215
+├── :3100 → Next.js Frontend (standalone)
+├── :3090 → Express Gateway (wallet auth / rate-limit / LLM proxy / MCP Server)
+├── :5432 → PostgreSQL (localhost only)
+├── :18545 → OxaChain L1 Geth Node (Clique PoA)
+└── :3000 → Reserved (root indexer service)
+```
+
+### Firewall — Ports to Open
+
+```
+sudo ufw allow 3090/tcp   # Gateway + MCP
+sudo ufw allow 3100/tcp   # Frontend
+sudo ufw allow 18545/tcp  # OxaChain RPC (if external access needed)
+```
+
+### SSH Access (RSA Key via Jump Host)
+
+```bash
+# Direct (may timeout): ssh -i agentx_new_prod.pem ubuntu@43.156.99.215
+# Via jump host:
+ssh -J ubuntu@43.156.78.59 -i agentx_new_prod.pem ubuntu@43.156.99.215
 ```
 
 ---
 
 ## 1. Frontend Deploy
 
-### Path: `/home/ubuntu/agentx-platform`
+### Path: `/home/ubuntu/agentx-frontend`
 
 ```bash
-cd /home/ubuntu/agentx-platform
+cd /home/ubuntu/agentx-frontend
 
 # Install deps
 npm install --legacy-peer-deps
 
-# Build (Turbopack, ~2-4 min)
-NODE_OPTIONS='--max-old-space-size=2560' ./node_modules/.bin/next build
+# Build (Turbopack, ~3-5 min)
+npx next build
 
-# Start
-nohup ./node_modules/.bin/next start -p 3000 > /tmp/agentx-run.log 2>&1 &
+# Start standalone
+cp -r .next/static .next/standalone/.next/static
+cp -r public .next/standalone/
+cd .next/standalone
+PORT=3100 HOSTNAME=0.0.0.0 nohup node server.js > /tmp/fe.log 2>&1 &
 ```
 
 ### Key Config: `next.config.js`
@@ -50,14 +71,23 @@ nohup ./node_modules/.bin/next start -p 3000 > /tmp/agentx-run.log 2>&1 &
   output: 'standalone',
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
+  webpack: (config) => ({
+    ...config,
+    resolve: {
+      ...config.resolve,
+      alias: { ...config.resolve.alias, '@x402/evm': false, '@x402/svm': false },
+      fallback: { ...config.resolve.fallback, '@x402/evm': false, '@x402/svm': false },
+    },
+  }),
 }
 ```
 
 ### `.env.production` (key values)
 ```
-NEXT_PUBLIC_APP_URL=http://43.156.225.164:3000
-NEXT_PUBLIC_AGENTX_GATEWAY_URL=http://43.156.225.164:3090
+NEXT_PUBLIC_APP_URL=http://43.156.99.215:3100
+NEXT_PUBLIC_AGENTX_GATEWAY_URL=http://43.156.99.215:3090
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
+NEXT_PUBLIC_OXACHAIN_RPC_URL=http://localhost:18545
 NEXT_PUBLIC_SEPOLIA_A2A_PROTOCOL=0x309C7447d89f3087A9924BB686d88df020F7e9cB
 NEXT_PUBLIC_OXACHAIN_A2A_PROTOCOL=0xDF2939EFafEe6439eB2226DbEd07AD6F5Ae2112B
 ```
@@ -75,10 +105,10 @@ cd /home/ubuntu/agentx-gateway
 npm install
 
 # Build TypeScript
-./node_modules/.bin/tsc
+npx tsc
 
 # Run
-nohup node dist/index.js > /tmp/gw.log 2>&1 &
+nohup npx tsx src/index.ts > /tmp/gw.log 2>&1 &
 ```
 
 ### `.env` (key values)
@@ -86,8 +116,10 @@ nohup node dist/index.js > /tmp/gw.log 2>&1 &
 PORT=3090
 NODE_ENV=production
 DATABASE_URL=postgresql://agentx:AgentX2024!Gateway@localhost:5432/agentx_gateway
-JWT_SECRET=agentx-prod-jwt-secret-20260717-gateway-key
+JWT_SECRET=agentx-prod-jwt-secret-key-2026
+MASTER_ENCRYPTION_KEY=agentx-master-encryption-key-32b
 SESSION_TTL_SEC=86400
+RPC_URL_OXACHAIN=http://localhost:18545
 ```
 
 ---
@@ -123,15 +155,18 @@ sudo -u postgres psql -c "CREATE DATABASE agentx_gateway OWNER agentx;"
 
 ```bash
 # Upload source tar
-scp agentx_fe.tar.gz ubuntu@43.156.225.164:/tmp/
+scp -J ubuntu@43.156.78.59 -i agentx_new_prod.pem agentx_fe.tar.gz ubuntu@43.156.99.215:/tmp/
 
 # Extract + deploy
-ssh ubuntu@43.156.225.164 "
-  rm -rf /home/ubuntu/agentx-platform && mkdir -p /home/ubuntu/agentx-platform &&
-  cd /home/ubuntu/agentx-platform && tar xzf /tmp/agentx_fe.tar.gz &&
+ssh -J ubuntu@43.156.78.59 -i agentx_new_prod.pem ubuntu@43.156.99.215 "
+  rm -rf /home/ubuntu/agentx-frontend && mkdir -p /home/ubuntu/agentx-frontend &&
+  cd /home/ubuntu/agentx-frontend && tar xzf /tmp/agentx_fe.tar.gz &&
   npm install --legacy-peer-deps &&
-  NODE_OPTIONS='--max-old-space-size=2560' ./node_modules/.bin/next build &&
-  fuser -k 3000/tcp; nohup ./node_modules/.bin/next start -p 3000 > /tmp/agentx-run.log 2>&1 &
+  npx next build &&
+  cp -r .next/static .next/standalone/.next/static &&
+  cp -r public .next/standalone/ &&
+  sudo fuser -k 3100/tcp;
+  cd .next/standalone && PORT=3100 HOSTNAME=0.0.0.0 nohup node server.js > /tmp/fe.log 2>&1 &
 "
 ```
 
@@ -141,15 +176,21 @@ ssh ubuntu@43.156.225.164 "
 
 ```bash
 # Frontend
-curl -sI http://43.156.225.164:3000/ | head -3
+curl -sI http://43.156.99.215:3100/ | head -3
 # → HTTP/1.1 200 OK
 
 # Gateway
-curl -s http://43.156.225.164:3090/api/v1/health
+curl -s http://43.156.99.215:3090/api/v1/health
 # → {"status":"ok","time":"2026-07-16T17:04:38.560Z"}
 
+# MCP
+curl -s -X POST http://43.156.99.215:3090/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+# → returns 29 tools
+
 # Process check
-ss -tlnp | grep -E '3000|3090'
+ss -tlnp | grep -E '3100|3090'
 ```
 
 ---
@@ -202,7 +243,7 @@ npm version patch        # bump to 0.6.x
 npm publish --access public
 ```
 
-Current: `@agentxv2/sdk@0.6.2`
+Current: `@agentxv2/sdk@0.6.4`
 
 ---
 
@@ -210,5 +251,6 @@ Current: `@agentxv2/sdk@0.6.2`
 
 | Server | Role | Status |
 |--------|------|--------|
-| `101.33.109.117:3090` | Old Gateway | ❌ Migrated to 164 |
-| `43.156.78.59:8080` | Test Frontend | ⚠️ Stale |
+| `43.156.225.164` | Old Production | Migrated to 99.215 |
+| `43.156.78.59:8080` | Test Frontend | Stale |
+| `101.33.109.117:3090` | Old Gateway | Retired |

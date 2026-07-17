@@ -1,20 +1,19 @@
 # AgentX Integration Guide
 
-> SDK / Contracts / AgentLoop / Gateway — Complete third-party integration guide
-> Version: v0.6.2 · Updated: 2026-07-17
+> SDK / Contracts / Integration for third-party developers
+> Version: v5 · Updated: 2026-07-14 (25/25 tasks done, SDK v0.5.4, P3 #22 chain switch complete)
 
 ## Overview
 
-AgentX is a decentralized AI Agent platform providing: ReAct AgentLoop autonomous tool calling, multi-tenant SaaS LLM Gateway, E2E encrypted Agent distribution, on-chain subscription gating with multi-currency payments, escrow trial refunds, MCP remote tool execution, and A2A task protocol.
+AgentX is a decentralized AI Agent platform providing: E2E encrypted Agent distribution, on-chain subscription gating with multi-currency payments, escrow trial refunds, platform fees, MCP remote tool execution, and A2A task protocol.
 
-Third-party projects can integrate via the **SDK (npm package)**, **Gateway API**, or **direct contract calls**.
+Third-party projects can integrate via the **SDK (npm package)** or **direct contract calls**.
 
 ### Integration Path
 
 | Path | When | Prerequisites |
 |------|------|---------------|
 | SDK (`@agentxv2/sdk`) | DApp / frontend / Node.js project | React 18+ (optional) · wagmi/viem (optional) |
-| Gateway API | Multi-tenant SaaS integration | JWT from EIP-191 wallet signature |
 | Contract Direct | Existing Solidity project / backend service | ABI + RPC URL |
 
 ---
@@ -23,114 +22,86 @@ Third-party projects can integrate via the **SDK (npm package)**, **Gateway API*
 
 ```
 Publisher creates Agent  →  encrypts  →  IPFS  →  registers on-chain (IdentityRegistry)
-                                                     │
-                                          creates plans (SubscriptionManager)
-                                                     │
+                                                      │
+                                           creates plans (SubscriptionManager)
+                                                      │
 Subscriber  →  pays (ETH/ERC20)  →  verified  →  fetches encrypted package from IPFS
-                                                   │
-Subscriber  →  decrypts  →  AgentLoop (ReAct engine)  →  executes skills (local / MCP remote)
-                   │
-                   ├─ OpenAIProvider (direct, pure frontend mode)
-                   │
-                   └─ GatewayProvider (SaaS, API key never in browser)
-                        └─ Gateway API (EIP-191 auth → JWT → proxy → LLM)
+                                                    │
+Subscriber  →  decrypts  →  injects prompt into LLM  →  executes skills (local or MCP remote)
 ```
 
 ---
 
 ## Contract Addresses
 
-### Sepolia Testnet (11155111) — 6 Core Contracts
+### Core Platform (6 contracts) — Dual-Chain
 
-| # | Contract | Address | Purpose |
-|---|----------|---------|---------|
-| 1 | IdentityRegistry | `0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F` | Agent NFT mint/register, encrypted key storage |
-| 2 | SubscriptionManager v3 | `0xC15fE80b9d800abb72121F353a6ae6d6E9077E63` | Subscribe, trials, refunds, platform fees |
-| 3 | ReputationRegistry | `0xeb6B410ea71b8d9dA0c96f6A91d35027CE143DC9` | Rating/review storage |
-| 4 | A2AProtocolRegistry | `0xEdb0022c250B38e281B3EF1418037889fC5C6092` | Agent-to-Agent task coordination |
-| 5 | ConfigurationRegistry | `0x68DcE00e4C9077c94BC68016cD14B09557faEA6c` | On-chain key-value config |
-| 6 | MultiEndpointRegistry | `0xEB5e866f186d4B73F97aa0d70B86f2C6e2e21Cb7` | Multi-endpoint routing |
+| # | Contract | Sepolia | OxaChain L1 | Purpose |
+|---|----------|---------|-------------|---------|
+| 1 | IdentityRegistry | `0xe94a...96e5F` | `0xbf5F...E212` | Agent NFT mint/register, encrypted key storage |
+| 2 | SubscriptionManager v3 | `0xC15f...7E63` | `0x019A...0E6B` | Subscribe, trials, refunds, platform fees |
+| 3 | ReputationRegistry | `0xeb6B...3DC9` | `0x6a18...843F` | Rating/review storage |
+| 4 | A2AProtocolRegistry | `0xEdb0...6092` | `0x61b7...5169` | Agent-to-Agent task coordination |
+| 5 | ConfigurationRegistry | `0x68Dc...EA6c` | `0x0728...D2F8` | On-chain key-value config |
+| 6 | MultiEndpointRegistry | `0xEB5e...21Cb7` | `0xB361...f64c` | Multi-endpoint routing |
 
-> Verified on Sepolia Blockscout. Source code in `contracts/src/`.
-> Note: `PaymentGateway` and `AgentFactory` are **deprecated** — replaced by SubscriptionManager v3 + AgentX402.
+> Full addresses in SDK `KNOWN_CHAINS[chainId]` or see [CONTRACTS.md](contracts/CONTRACTS.md).
 
-### OxaChain L1 (Mainnet, Chain ID 19505) — 6 Core Contracts
+### Chains
 
-| # | Contract | Address |
-|---|----------|---------|
-| 1 | IdentityRegistry | `0xbf5F9db266c8c97E3334466C88597Eb758AfE212` |
-| 2 | SubscriptionManager v3 | `0x019AC9d945467478Dd371CDbD70cb2f325800E6B` |
-| 3 | ReputationRegistry | `0x6a18C2664E1b42063860d864b6448b824d7B843F` |
-| 4 | A2AProtocolRegistry | `0x61b7E7Eed21F013e35a90FC5de5c352780ec5169` |
-| 5 | ConfigurationRegistry | `0x07280674ccc2898Fd038A9e3C22005CA83ffD2F8` |
-| 6 | MultiEndpointRegistry | `0xB361d04F49000013FC131D3C59C41c8486C64f8c` |
+| Chain | Chain ID | RPC | Explorer |
+|-------|----------|-----|----------|
+| Sepolia | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` | blockscout.com |
+| **OxaChain L1** | **19505** | `http://43.156.99.215:18545` | http://43.156.99.215:18400 |
 
-> Full 6-contract deploy via `DeployOxaChainFull.s.sol`. Deployer: `0x8E869A0624fF9e766Df71b5B08897d00E4d260ba`.
-
----
+> SDK auto-detects chain via `KNOWN_CHAINS[chainId]`. No manual RPC/contract address config needed.
 
 ## Method 1: SDK Integration
 
 ### Installation
 
 ```bash
-npm install @agentxv2/sdk@0.6.1
+npm install @agentxv2/sdk
+# or
+pnpm add @agentxv2/sdk
 ```
 
 ### Core API
 
-| Module | Method/Class | Description |
-|--------|-------------|-------------|
-| **AgentRunner** | `useAgent(agentId)` | Decrypt + load full Agent context |
-| **AgentLoop** | `run(userMessage, history)` | ReAct engine: Think → Call Tools → Observe → Repeat |
-| **ToolExecutor** | `executeBatch(calls)` | Parallel tool execution (Open/MCP/A2A) |
-| **buildTools** | `buildTools(skills)` | Convert skills to OpenAI function-calling format |
-| **OpenAIProvider** | `chatStream(request)` | Direct LLM (OpenAI/DeepSeek) SSE streaming |
-| **GatewayProvider** | `chatStream(request)` | Multi-tenant SaaS proxy via Gateway |
-| **createLLMProvider** | `createLLMProvider(config)` | Provider factory |
-| SubscriptionManager | `subscribe(planId)` | ETH/ERC20 subscription |
-| SubscriptionManager | `hasActiveSubscription(subscriber, agentId)` | Verify subscription |
-| SubscriptionManager | `releaseFunds(subId)` / `cancelSubscription(subId)` | Escrow management |
+| Module | Method | Description |
+|--------|--------|-------------|
+| AgentRunner | `useAgent(agentId)` | Decrypt + load full Agent context: `{ prompt, skills, mcp }` |
+| SubscriptionManager | `subscribe(planId, opts)` | ETH/ERC20 subscription payment |
+| SubscriptionManager | `releaseFunds(subId)` | Release escrowed funds after trial |
+| SubscriptionManager | `cancelSubscription(subId)` | Cancel subscription (full refund if in trial) |
+| SubscriptionManager | `hasActiveSubscription(subscriber, agentId)` | Verify subscription status |
+| SubscriptionManager | `getSubscriptionDetail(subId)` | Full detail with trial/escrow/payToken fields |
+| SubscriptionManager | `getPlatformFeeBps()` | Query current platform fee rate |
+| SubscriptionManager | `isTokenWhitelisted(token)` | Check ERC20 token whitelist |
 | AgentRegistry | `register(metadata)` | Register agent on-chain |
-| A2AProtocol | `createTask(agentId, params)` | Agent-to-Agent task |
-| MCPConnector | `callTool(name, args)` | Remote MCP tool execution |
-| Crypto | `encryptPayload()` / `decryptPayload()` | AES-256-GCM |
-| Crypto | `packForPublish()` | ECIES key wrapping |
-
----
+| AgentRegistry | `getById(id)` | Query agent metadata |
+| A2AProtocol | `createTask(agentId, params)` | Agent-to-Agent task protocol |
+| ReputationRegistry | `giveFeedback(agentId, score, comment)` | Rating & review |
+| Crypto (Core) | `encryptPayload()` / `decryptPayload()` | AES-256-GCM encryption |
+| Crypto (Core) | `packForPublish()` | ECIES key wrapping for on-chain registration |
+| MultiEndpointClient | `getActiveEndpoints(agentId)` | Active endpoint records |
+| MultiEndpointClient | `pickBestEndpoint(agentId)` | Best HTTP endpoint for agent |
+| ConfigurationClient | `get(agentId, key)` | Agent on-chain config value |
+| ConfigurationClient | `getAll(agentId)` | All configs for agent |
 
 ### Quick Examples
 
-#### AgentLoop — ReAct Autonomous Tool Calling
+#### Load and Use an Agent
 
 ```typescript
-import { AgentRunner, AgentLoop, OpenAIProvider, GatewayProvider } from '@agentxv2/sdk'
+import { AgentRunner } from '@agentxv2/sdk'
 
 const runner = new AgentRunner({ reader, wallet })
 const ctx = await runner.useAgent(42)
 
-// Direct LLM mode (API key in browser — dev only)
-const provider = new OpenAIProvider({ apiKey: 'sk-...', model: 'gpt-4o' })
-
-// SaaS mode (API key never in browser — Gateway handles it)
-const gatewayProvider = new GatewayProvider({
-  gatewayUrl: 'https://gateway.agentx.io',
-  accessToken: jwt,
-  keySource: 'platform',   // Use platform's key pool
-})
-
-const loop = new AgentLoop({
-  ctx,
-  llmProvider: provider,
-  maxIterations: 5,
-  onTextDelta: (delta) => streamToUI(delta),
-  onToolCall: ({ name, arguments: args }) => showToolUI(name, args),
-  onToolResult: ({ name, result }) => updateToolUI(name, result),
-})
-
-const result = await loop.run('Audit contract 0x1234')
-console.log(result.finalText)  // "Found 3 vulnerabilities: ..."
-console.log(`Used ${result.totalIterations} iterations, ${result.toolCalls.length} tool calls`)
+// ctx.prompt  → inject as LLM system prompt
+// ctx.skills  → tool list, each has execute() method
+// ctx.mcp     → MCP server connection info
 ```
 
 #### React Hook
@@ -156,163 +127,195 @@ import { SubscriptionManager } from '@agentxv2/sdk'
 const mgr = new SubscriptionManager(config)
 
 // ETH subscription
-await mgr.subscribe(planId)
+const sid = await mgr.subscribe(planId)
 
 // ERC20 — auto-approve + subscribe
 await mgr.subscribe(planId, { approveTokenFirst: true })
 
 // Query subscription detail (12 fields)
 const detail = await mgr.getSubscriptionDetail(sid)
+// detail.trialActive / detail.trialEndsAt / detail.fundsReleased
+
+// Release escrowed funds after trial
+await mgr.releaseFunds(sid)
 ```
 
 #### Publish an Agent
 
 ```typescript
-import { generateAesKey, encryptPayload, packAgentForPublish } from '@agentxv2/sdk'
+import {
+  generateAesKey, encryptPayload, packAgentForPublish,
+  AgentRegistry, IPFSFetcher
+} from '@agentxv2/sdk'
 
 const privatePayload = { prompt: '...', skills: [...], mcp: {} }
 const aesKey = generateAesKey()
 
+// Step 1: AES-256-GCM encrypt
 const encrypted = encryptPayload(privatePayload, aesKey)
-const cid = await uploadToIPFS(encrypted.data)
-const { aesKeyHex, eciesEncryptedKeyHex } = packAgentForPublish(payload, publicKey, aesKey)
 
+// Step 2: Upload encrypted package to IPFS (requires Pinata JWT)
+const cid = await uploadToIPFS(encrypted.data)
+
+// Step 3: Pack for on-chain (ECIES key wrapping)
+const { aesKeyHex, eciesEncryptedKeyHex } = packAgentForPublish(
+  payload, publicKey, aesKey
+)
+
+// Step 4: Register on-chain
+const registry = new AgentRegistry(config)
 await registry.register({ cid, aesKeyHex, eciesEncryptedKeyHex, ... })
 ```
 
----
+#### Auto-Subscribe via AgentX402
 
-## Method 2: Gateway API (Multi-Tenant SaaS)
+AgentX SDK does NOT bundle wallet or X402 — it provides structured
+subscription errors that payment layers can react to:
 
-### Authentication
+```typescript
+import { AgentRunner, AgentX402 } from '@agentxv2/sdk'
 
-The Gateway uses EIP-191 wallet signature authentication:
+try {
+  const ctx = await runner.useAgent(42)
+} catch (err) {
+  if (err.paymentInfo) {
+    // err.paymentInfo.agentId  → 42
+    // err.paymentInfo.plans[]  → [{planId, price, period, payToken, trialDays}]
 
-```
-1. GET /api/v1/auth/challenge?address=0x...
-   → { challenge: "agentx:auth:{timestamp}:{nonce}" }
+    // ── X402 / wallet auto-pay layer ──
+    const x402 = new AgentX402({
+      subscriptionManagerAddress: SM_ADDRESS,
+      publicClient,
+      walletClient,
+    })
 
-2. Wallet signs: ethers.signMessage(wallet, challenge)
+    // 1. Check + load plan info
+    await x402.requireSubscription(42, address, {
+      planIds: err.paymentInfo.plans?.map(p => p.planId)
+    })
+    // ↑ this throws if still not subscribed (with plans populated)
 
-3. POST /api/v1/auth/verify
-   { wallet_address, signature, timestamp, nonce }
-   → { access_token: "...", expires_in: 86400, tenant: {...} }
+    // 2. For ERC20: approve token spend (use X402 SDK or wagmi)
+    // await approveERC20(token, SM_ADDRESS, price)
 
-4. All subsequent requests: Authorization: Bearer <access_token>
-```
+    // 3. Subscribe
+    const sid = await x402.subscribeAndWait(planId, price, payToken)
 
-### Chat Completions Proxy
-
-```
-POST /api/v1/chat/completions
-Authorization: Bearer <access_token>
-Content-Type: application/json
-
-{
-  "model": "gpt-4o",
-  "messages": [...],
-  "tools": [...],
-  "stream": true,
-  "key_source": "platform",        // "platform" | "tenant_owned"
-  "tenant_key_id": "uuid-xxx"      // required for BYOK mode
+    // 4. Retry
+    const ctx = await runner.useAgent(42)
+  }
 }
-
-Response: SSE stream (OpenAI-compatible)
 ```
 
-### Tenant Management
+**Separation of concerns:**
 
-```
-GET    /api/v1/tenant/me                      → tenant info + plan + keys + today's usage
-GET    /api/v1/tenant/keys                    → list own API keys
-POST   /api/v1/tenant/keys                    → upload BYOK key
-       { provider, endpoint, api_key, model, label }
-DELETE /api/v1/tenant/keys/:keyId             → revoke key
-POST   /api/v1/tenant/keys/:keyId/validate    → test key validity
-GET    /api/v1/tenant/usage?days=30           → usage history
-GET    /api/v1/models                         → platform + owned models
-```
-
-### Rate Limiting
-
-Three-layer rate limiting:
-1. **Global IP**: 1000 req/min (express-rate-limit)
-2. **Per-tenant RPM**: 5 (Free) / 30 (Pro) / 100 (Enterprise) — Redis sliding window
-3. **Per-tenant daily quota**: 0 (Free, BYOK only) / 500K (Pro) / 5M (Enterprise)
-4. **Concurrency**: 1 (Free) / 3 (Pro) / 10 (Enterprise) agent loops
-
-429 responses include: `{ error: "...", limit_type: "rpm|daily_quota|concurrency", retry_after: 60 }`
+| Layer | Who | What |
+|-------|-----|------|
+| Wallet | wagmi / MetaMask / Phantom | Sign messages, send transactions |
+| Payment | X402 SDK / wagmi useWriteContract | ERC20 approve + transfer |
+| AgentX | @agentxv2/sdk | Subscribe gate, decrypt, run agent |
 
 ---
 
-## Method 3: Direct Contract Calls (Solidity)
+## Method 2: Direct Contract Calls (Solidity)
 
 ### IdentityRegistry ABI
 
 ```solidity
+// Check agent exists
+function isRegistered(uint256 agentId) external view returns (bool);
+
+// Get full agent info (includes encryption metadata)
 function getAgent(uint256 agentId) external view returns (
     address owner, string metaUri, bytes data,
     bool active, bool locked, uint256 createdAt
 );
 
+// List agents by owner
 function getAgentsByOwner(address owner) external view returns (uint256[] memory);
 ```
 
-### SubscriptionManager v3 ABI
+### SubscriptionManager ABI (v2)
 
-#### Read
+#### Read Functions (no wallet signature)
 
 ```solidity
-function hasActiveSubscription(address subscriber, uint256 agentId) external view returns (bool);
+// Subscription status (by subscriber + agentId)
+function hasActiveSubscription(
+    address subscriber, uint256 agentId
+) external view returns (bool);
+
+// Full subscription detail — 12 fields
 function getSubscriptionDetail(uint256 subscriptionId) external view returns (
     uint256 subscriptionId, address subscriber, uint256 agentId,
-    uint8 status, uint256 startedAt, uint256 expiresAt, string period,
-    address payToken, uint256 amountPaid,
-    bool trialActive, uint256 trialEndsAt, bool fundsReleased
+    uint8 status,           // 0=Inactive, 1=Active, 2=Expired, 3=Cancelled
+    uint256 startedAt, uint256 expiresAt, string period,
+    address payToken,       // address(0) = ETH
+    uint256 amountPaid,
+    bool trialActive,       // refundable during trial
+    uint256 trialEndsAt,    // timestamp when trial window closes
+    bool fundsReleased      // whether creator has been paid
 );
-function getPlan(uint256 planId) external view returns (...);
+
+// Query plan details
+function getPlan(uint256 planId) external view returns (
+    uint256 planId, uint256 agentId, address creator,
+    uint256 price, string period, bool active,
+    address payToken, uint256 trialDays
+);
+
+// Platform fee rate (bps, 0-2000 = 0%-20%)
 function platformFeeBps() external view returns (uint256);
+
+// Token whitelist check
 function tokenWhitelist(address token) external view returns (bool);
+
+// User's subscriptions
 function getUserSubscriptions(address user) external view returns (uint256[] memory);
+
+// Get subscription by subscriber + agentId
+function getSubscription(
+    address subscriber, uint256 agentId
+) external view returns (
+    uint256 subscriptionId, address subscriber, uint256 agentId,
+    uint8 status, uint256 startedAt, uint256 expiresAt, string period
+);
 ```
 
-#### Write
+#### Write Functions (wallet signature required)
 
 ```solidity
-function createPlan(uint256 agentId, uint256 price, string period, address payToken, uint256 trialDays) external returns (uint256 planId);
+// Create pricing plan
+function createPlan(
+    uint256 agentId,    // Agent ID
+    uint256 price,      // Price in wei or token minimum unit
+    string period,      // "day" | "week" | "month" | "quarter" | "year"
+    address payToken,   // address(0) = ETH, else ERC20 token address
+    uint256 trialDays   // Trial days, 0 = no trial
+) external returns (uint256 planId);
+
+// Subscribe (payable — ETH value sent automatically)
 function subscribe(uint256 planId) external payable returns (uint256 subscriptionId);
+
+// Release escrowed funds to creator after trial
 function releaseFunds(uint256 subscriptionId) external;
+
+// Cancel subscription (full refund during trial, pro-rata after)
 function cancelSubscription(uint256 subscriptionId) external;
 ```
 
----
+#### Events
 
-## AgentLoop — ReAct Engine Integration
-
-```typescript
-import { AgentLoop, AgentRunner, OpenAIProvider } from '@agentxv2/sdk'
-
-const runner = new AgentRunner({ reader, wallet })
-const ctx = await runner.useAgent(42)
-
-const loop = new AgentLoop({
-  ctx,
-  llmProvider: new OpenAIProvider({ apiKey: 'sk-...', model: 'gpt-4o' }),
-  maxIterations: 5,
-  onTextDelta: (delta) => { /* streaming text */ },
-  onToolCall: (call) => { /* tool started */ },
-  onToolResult: (result) => { /* tool finished */ },
-  onComplete: (result) => { /* loop done */ },
-})
-
-// With chat history
-const history = [
-  { role: 'user', content: 'What can you do?' },
-  { role: 'assistant', content: 'I can audit contracts, deploy, and more.' },
-]
-
-const result = await loop.run('Check 0x1234 for vulnerabilities', history)
-// result = { finalText, toolCalls[], totalIterations, totalDuration, usage }
+```solidity
+event PlanCreated(uint256 indexed planId, uint256 indexed agentId, uint256 price, string period, address payToken, uint256 trialDays);
+event Subscribed(uint256 indexed subscriptionId, address indexed subscriber, uint256 indexed agentId, uint256 expiresAt);
+event SubscriptionCancelled(uint256 indexed subscriptionId);
+event SubscriptionExpired(uint256 indexed subscriptionId);
+event TrialRefunded(uint256 indexed subscriptionId, address indexed subscriber, uint256 amount, address payToken);
+event FundsReleased(uint256 indexed subscriptionId, address indexed creator, uint256 amount, address payToken);
+event PlatformFeeUpdated(uint256 oldFee, uint256 newFee);
+event TokenWhitelistUpdated(address indexed token, bool allowed);
+event PlatformFeeCollected(address indexed token, uint256 amount);
 ```
 
 ---
@@ -323,56 +326,129 @@ const result = await loop.run('Check 0x1234 for vulnerabilities', history)
 Publisher:
   1. Agent private content → AES-256-GCM encrypt
   2. Encrypted package → upload to IPFS → get CID
-  3. AES key → store on-chain as NFT metadata
+  3. AES key → store on-chain as NFT metadata (aes_key_hex)
   4. Register Agent via IdentityRegistry
 
 Subscriber:
   1. Verify on-chain subscription (SubscriptionManager)
-  2. Fetch encrypted package from IPFS
+  2. Fetch encrypted package from IPFS (CID from NFT metadata)
   3. Read aes_key_hex from on-chain NFT attributes
   4. Decrypt → { prompt, skills, mcp }
-  5. AgentLoop: LLM autonomously calls skills via execute()
-```
+  5. Inject prompt into LLM, execute skills locally
 
-### Closed Skill (MCP Remote) with AgentLoop
-
-```
-AgentLoop Loop N:
-  LLM decides → skill.execute({ ... })
-    → SDK signs: ECDSA(toolName + timestamp)
-    → POST JSON-RPC tools/call
-      Headers: X-Subscriber-Address, X-Signature, X-Timestamp
-    → Publisher MCP Server:
-        1. Verify ECDSA signature
-        2. Check on-chain subscription
-        3. Execute tool
-    → Return result to LLM
-
-AgentLoop Loop N+1:
-  LLM sees result → decides next action or outputs final answer
+Closed Skill (MCP Remote):
+  1. Subscriber signs (toolName + timestamp) with ECDSA
+  2. POST JSON-RPC tools/call with headers:
+     X-Subscriber-Address, X-Signature, X-Timestamp
+  3. Publisher's MCP server verifies:
+     - ECDSA signature against publisher's on-chain public key
+     - Active subscription on SubscriptionManager
+  4. Execute skill → return result
 ```
 
 ---
 
 ## Agent Composition (A2A Skills)
 
-```typescript
-// Publishers define A2A skills in encrypted payload:
-const skill: SkillDef = {
-  name: "solidity_audit",
-  description: "Delegate to Auditing Agent #42",
-  execution: {
-    type: "a2a",
-    targetAgentId: 42,
-    skillFilter: ["slither", "forge_test"],
-  },
-}
+AgentX's killer feature: **an Agent's Skill can be another Agent.**
 
-// When AgentLoop calls it:
-const result = await a2aSkill.execute({ task: "audit ERC20", severity: "all" })
-// result = { agentId: 42, prompt: "...", skills: [...], callerInput: {...} }
-// LLM now has sub-Agent's full context and can use its tools
+In the encrypted payload, a `SkillDef` can declare `execution.type = "a2a"`,
+pointing to another Agent's on-chain token ID.  When the LLM calls that skill,
+the SDK:
+
+1. Loads the target Agent via `AgentRunner.useAgent(targetAgentId)`
+2. Decrypts the target Agent's prompt + skills (requires subscription)
+3. Returns the target Agent's context to the calling LLM
+4. The LLM injects the sub-Agent's system prompt and calls its skills
+
 ```
+┌──────────────┐    execute("a2a", agentId=42)    ┌──────────────┐
+│  Trading     │ ─────────────────────────────────▶│  Auditing    │
+│  Agent #7    │                                   │  Agent #42   │
+│              │◀──── { prompt, skills[] } ────────│              │
+│  Skills:     │                                   │  Skills:     │
+│  - analyze   │                                   │  - sol_scan  │
+│  - audit▶#42 │  ← A2A delegation                 │  - forge_test│
+└──────────────┘                                   └──────────────┘
+```
+
+### Skill Definition (Publisher side)
+
+```typescript
+import type { SkillDef } from '@agentxv2/sdk'
+
+const agentPayload = {
+  prompt: "You are a Trading agent...",
+  skills: [
+    {
+      name: "solidity_audit",
+      description: "Delegate to Auditing Agent #42 for contract audit",
+      version: "1.0.0",
+      inputSchema: {
+        type: "object",
+        properties: {
+          task: { type: "string", description: "What to audit" },
+          severity: { type: "string", enum: ["critical", "all"] },
+        },
+        required: ["task"],
+      },
+      execution: {
+        type: "a2a",
+        targetAgentId: 42,           // On-chain Agent ID
+        skillFilter: ["slither", "forge_test"],  // Optional: restrict skills
+        promptOverride: undefined,   // Optional: custom sub-Agent prompt
+      },
+    } as SkillDef,
+  ],
+  mcp: { type: "http", url: "https://..." },
+}
+```
+
+### Execution Flow (Subscriber side)
+
+```typescript
+import { AgentRunner } from '@agentxv2/sdk'
+
+const runner = new AgentRunner({ reader, wallet })
+const ctx = await runner.useAgent(7) // Trading Agent #7
+
+// Find the A2A skill
+const a2aSkill = ctx.skills.find(s => s.mode === 'a2a')
+
+// LLM calls it → SDK loads Agent #42 and returns its context
+const result = await a2aSkill.execute({ task: "audit ERC20 token", severity: "all" })
+// result = {
+//   agentId: 42,
+//   prompt: "You are a smart contract auditor...",
+//   skills: [{ name: "slither", ... }, { name: "forge_test", ... }],
+//   callerInput: { task: "audit ERC20 token", severity: "all" },
+// }
+
+// LLM now has Agent #42's full context available as tools
+```
+
+### Standard Interface
+
+| Direction | Type | Description |
+|-----------|------|-------------|
+| Input | `{ task: string, ... }` | Task description + optional params (JSON Schema defined by publisher) |
+| Output | `A2ASkillResult` | `{ agentId, prompt, skills[], callerInput }` — sub-Agent context |
+
+### Security
+
+1. **Subscription chain**: Subscriber must hold active subscription to BOTH agents
+2. **Encryption**: Target Agent's payload is ECIES+AES decrypted, same pipeline
+3. **Skill filter**: Publisher can restrict which sub-Agent skills are exposed
+4. **Prompt override**: Optional; sub-Agent's original prompt is used by default
+
+### Use Cases
+
+| Pattern | Example |
+|---------|---------|
+| Expert delegation | Trading Agent delegates audit to Auditing Agent |
+| Pipeline orchestration | Data Agent → Analysis Agent → Report Agent |
+| Marketplace economics | Each Agent earns subscription revenue independently |
+| Multi-vendor workflows | User subscribes to 3 Agents, LLM orchestrates them |
 
 ---
 
@@ -380,55 +456,86 @@ const result = await a2aSkill.execute({ task: "audit ERC20", severity: "all" })
 
 | State | Value | Meaning | Actions Available |
 |-------|-------|---------|-------------------|
-| Inactive | 0 | Non-existent | — |
+| Inactive | 0 | Non-existent or cleaned up | — |
 | Active | 1 | Valid subscription | `releaseFunds()` · `cancelSubscription()` |
 | Expired | 2 | Auto-marked on expiry | Re-subscribe |
 | Cancelled | 3 | Manually cancelled | Re-subscribe |
 
+### Escrow Mechanism
+
+- `trialDays = 0`: Payment goes directly to creator (no escrow)
+- `trialDays > 0`: Funds held in contract until `releaseFunds()` is called
+  - Cancel during trial → 100% refund (including platform fee)
+  - Cancel after trial → pro-rata refund
+  - `releaseFunds()` → transfers to creator (minus platform fee)
+
 ---
 
-## RPC Endpoints
+## Platform Fee
 
-| Network | Chain ID | RPC URL |
-|---------|----------|---------|
-| Sepolia (Testnet) | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` |
-| OxaChain L1 (Mainnet) | 19505 | `http://43.156.99.215:18545` |
+- `platformFeeBps`: Deducted from each subscription payment (0-2000 bps = 0%-20%)
+- Stored in contract, withdrawable by contract owner via `withdrawPlatformFees(token, to)`
+- Adjustable by contract owner via `setPlatformFee(bps)`
+- Refunded in full on trial cancellations
 
-## Production Gateway
+---
 
-| Endpoint | Description |
-|----------|-------------|
-| `http://43.156.225.164:3090/api/v1/health` | Health check |
-| `http://43.156.225.164:3090/api/v1/auth/challenge` | Wallet auth challenge |
-| `http://43.156.225.164:3090/api/v1/chat/completions` | LLM proxy (SSE) |
-| `http://43.156.225.164:3090/api/v1/tenant/me` | Tenant info |
-| `http://43.156.225.164:3090/api/v1/tenant/usage` | Usage history |
+## RPC Endpoint
+
+| Network | RPC URL |
+|---------|---------|
+| Sepolia (Testnet) | `https://ethereum-sepolia-rpc.publicnode.com` |
+| OxaChain L1 (Mainnet) | `http://43.156.99.215:18545` (Chain ID 19505) |
+| zkSync / Polygon / Base | Planned (multi-chain, P3) |
+
+---
+
+## Inline Frontend Hooks (AgentX Platform)
+
+When developing within the AgentX platform, use local hooks directly:
+
+```typescript
+import { useSubscription } from '@/components/agent/hooks/useSubscription'
+
+const {
+  subscribe,              // ETH subscribe (payable)
+  cancelSubscription,     // cancel by subscription ID
+  releaseFunds,           // release escrow after trial ends
+  hasActiveSubscription,  // verify subscriber + agent ID
+  getSubscriptionDetail,  // 12-field detail (trial/escrow/payToken)
+  getPlatformFeeBps,      // query current platform fee
+  isTokenWhitelisted,     // check ERC20 whitelist
+  getUserSubscriptions,   // list all user subscriptions
+} = useSubscription()
+```
 
 ---
 
 ## Repository
 
-- **GitHub**: [github.com/sftgroup/Agentx](https://github.com/sftgroup/Agentx)
-- **SDK**: `agentx/sdk/` · npm: `@agentxv2/sdk@0.6.2`
-- **Contracts**: `agentx/contracts/`
-- **Frontend**: `agentx/frontend/` (production: `http://43.156.225.164:3000`)
-- **Gateway**: `agentx/gateway/` (Express, PostgreSQL) — production health: `http://43.156.225.164:3090/api/v1/health`
+- **GitHub (Main)**: [github.com/sftgroup/Agentx](https://github.com/sftgroup/Agentx)
+- **GitHub (Backup)**: [github.com/sftgroup/erc8004](https://github.com/sftgroup/erc8004)
+- **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.5.4`](https://www.npmjs.com/package/@agentxv2/sdk)
+- **Contracts**: `agentx/contracts/` — Foundry + Solidity 0.8.20-0.8.24
+- **Frontend**: `agentx/frontend/` — Next.js 14 + wagmi 2.x
+- **Test Server**: http://43.156.78.59:8080
+- **Full README**: See [README.md](README.md) for architecture, code structure, and MCP details
 
 ---
 
 ## FAQ
 
-**Q: What's the difference between AgentLoop and direct skill.execute()?**
-A: Direct `skill.execute()` requires your code to determine WHICH skill to call. AgentLoop lets the LLM autonomously decide when and which tools to use — essential for complex multi-step tasks like "audit this contract and fix all issues."
+**Q: How to subscribe with ERC20 tokens?**
+A: Before calling `subscribe(planId)`, approve the SubscriptionManager contract address for your token spend. The SDK's `subscribe(planId, { approveTokenFirst: true })` handles this automatically.
 
-**Q: How does the Gateway protect API keys?**
-A: API keys are stored AES-256-GCM encrypted in PostgreSQL. The Gateway decrypts in-memory, injects into the LLM request header, and proxies the response. The key never leaves the server. Tenants authenticate via EIP-191 wallet signature.
+**Q: Can I get a refund if I cancel during trial?**
+A: Yes — 100% refund including platform fee. After trial expiry, refunds are pro-rata.
 
-**Q: Can I use both Platform Key and BYOK?**
-A: Yes. A single tenant can have platform quota (from subscription) and multiple personal API keys. The Chat UI shows both in the model selector.
+**Q: Why is ECDSA signing required for MCP Remote Skills?**
+A: Subscription verification happens on the publisher's MCP server. ECDSA signature (against publisher's on-chain public key) + on-chain subscription status check provides dual verification to prevent unauthorized access.
 
 **Q: Does the SDK require React?**
-A: Core modules (AgentRunner, AgentLoop, providers, subscription, crypto) are pure TypeScript. Only `@agentxv2/sdk/react` requires React + wagmi.
+A: Core modules (AgentRunner, SubscriptionManager, crypto) are pure TypeScript with zero React dependency. Only `@agentxv2/sdk/react` requires React ≥18 + wagmi.
 
-**Q: What if hasActiveSubscription returns false but getSubscriptionDetail shows active?**
-A: `hasActiveSubscription` takes `(subscriber, agentId)` while `getSubscriptionDetail` takes `(subscriptionId)`. Make sure you're using the correct subscription ID.
+**Q: What if hasActiveSubscription returns false but getSubscriptionDetail shows an active subscription?**
+A: `hasActiveSubscription` takes `(subscriber, agentId)` while `getSubscriptionDetail` takes `(subscriptionId)`. Make sure you're using the correct subscription ID. Each user can have multiple subscriptions to different agents.
