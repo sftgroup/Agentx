@@ -293,8 +293,10 @@ const ID_ABI = [
   'function tokenURI(uint256 tokenId) view returns (string)',
 ]
 const SUB_ABI = [
-  'function getPlan(uint256 planId) view returns (uint256,uint256,address,uint256,string,bool,address,uint256)',
+  // No named params — avoids ethers.js v6 struct decoding issues with mixed static/dynamic fields
+  'function getPlan(uint256) view returns (uint256,uint256,address,uint256,string,bool,address,uint256)',
   'function hasActiveSubscription(address,uint256) view returns (bool)',
+  'function getSubscription(address,uint256) view returns (uint256,address,uint256,uint8,uint256,uint256,string)',
   'function getSubscriptionDetail(uint256) view returns (uint256,address,uint256,uint8,uint256,uint256,string,address,uint256,bool,uint256,bool)',
   'function getUserSubscriptions(address) view returns (uint256[])',
   'function platformFeeBps() view returns (uint256)',
@@ -305,12 +307,15 @@ const A2A_ABI = [
   'function getAgentCard(uint256) view returns (uint256,uint256,string,string,string,string[],string[],string,string,string,bool)',
 ]
 const REP_ABI = [
-  'function getRating(uint256) view returns (uint256,uint256)',
-  'function getReviews(uint256) view returns (tuple(address,uint8,string,uint256)[])',
+  'function getReputationSummary(uint256 agentId, address[] clientAddresses, bytes32 tag1, bytes32 tag2) view returns (uint64 count, uint8 averageScore)',
+  'function readFeedback(uint256 agentId, address clientAddress, uint64 index) view returns (uint8 score, bytes32 tag1, bytes32 tag2, bool isRevoked)',
+  'function getClients(uint256 agentId) view returns (address[])',
+  'function getLastIndex(uint256 agentId, address clientAddress) view returns (uint64)',
 ]
 const CFG_ABI = [
-  'function getConfig(uint256,string) view returns (tuple(uint256,string,string,string,uint256,address))',
-  'function getAgentConfigs(uint256) view returns (tuple(uint256,string,string,string,uint256,address)[])',
+  'function getConfig(uint256 agentId, string configKey) view returns (tuple(uint256 configId, uint256 agentId, string configKey, string configValue, string dataType, string description, bool isActive, uint256 createdAt, uint256 updatedAt, address createdBy))',
+  'function getAgentConfigs(uint256 agentId) view returns (tuple(uint256 configId, uint256 agentId, string configKey, string configValue, string dataType, string description, bool isActive, uint256 createdAt, uint256 updatedAt, address createdBy)[])',
+  'function getConfigKeys(uint256 agentId) view returns (string[])',
 ]
 const EP_ABI = [
   'function getAgentEndpoints(uint256) view returns (tuple(uint256,uint256,string,string,string,string,string,bool,uint256,uint256,address)[])',
@@ -365,12 +370,20 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
 
       // ── Subscription ──────────────────────────────
       case 'agentx_subscription_plans': {
-        const p = await getContract(ck, chain.subscriptionManager, SUB_ABI).getPlan(Number(args.planId))
-        return { ...toObj(['planId', 'agentId', 'creator', 'price', 'period', 'active', 'payToken', 'trialDays'], p), chain: chainLabel, chainId }
+        // raw eth_call to avoid ethers.js v6 struct-decoding bug with bool+string mix
+        const planId = Number(args.planId)
+        const abiCoder = ethers.AbiCoder.defaultAbiCoder()
+        const data = new ethers.Interface(SUB_ABI).encodeFunctionData('getPlan', [planId])
+        const raw = await getProvider(ck).call({ to: chain.subscriptionManager, data })
+        const decoded = abiCoder.decode(['uint256','uint256','address','uint256','string','bool','address','uint256'], raw)
+        return { planId: Number(decoded[0]), agentId: Number(decoded[1]), creator: decoded[2], price: Number(decoded[3]), period: decoded[4], active: decoded[5], payToken: decoded[6], trialDays: Number(decoded[7]), chain: chainLabel, chainId }
       }
       case 'agentx_subscription_check': {
-        const ok = await getContract(ck, chain.subscriptionManager, SUB_ABI).hasActiveSubscription(args.subscriberAddress, Number(args.agentId))
-        return { active: ok, subscriber: args.subscriberAddress, agentId: Number(args.agentId), chain: chainLabel, chainId }
+        // Accept both 'subscriberAddress' and 'subscriber' parameter names
+        const subscriber = (args.subscriberAddress || args.subscriber || args.subscriber_address) as string
+        const subscriberAddr = ethers.getAddress(subscriber)
+        const ok = await getContract(ck, chain.subscriptionManager, SUB_ABI).hasActiveSubscription(subscriberAddr, Number(args.agentId))
+        return { active: ok, subscriber: subscriberAddr, agentId: Number(args.agentId), chain: chainLabel, chainId }
       }
       case 'agentx_subscription_detail': {
         const d = await getContract(ck, chain.subscriptionManager, SUB_ABI).getSubscriptionDetail(Number(args.subscriptionId))
@@ -412,12 +425,22 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
 
       // ── Reputation ─────────────────────────────────
       case 'agentx_reputation_get': {
-        const [avg, total] = await getContract(ck, chain.reputationRegistry, REP_ABI).getRating(Number(args.agentId))
-        return { agentId: Number(args.agentId), averageRating: Number(avg), totalRatings: Number(total), chain: chainLabel, chainId }
+        const [count, avgScore] = await getContract(ck, chain.reputationRegistry, REP_ABI).getReputationSummary(Number(args.agentId), [], ethers.ZeroHash, ethers.ZeroHash)
+        return { agentId: Number(args.agentId), averageScore: Number(avgScore), reviewCount: Number(count), chain: chainLabel, chainId }
       }
       case 'agentx_reputation_reviews': {
-        const reviews = await getContract(ck, chain.reputationRegistry, REP_ABI).getReviews(Number(args.agentId))
-        return { agentId: Number(args.agentId), reviews: reviews.map((r: any) => ({ reviewer: r[0], rating: Number(r[1]), comment: r[2], timestamp: Number(r[3]) })), chain: chainLabel, chainId }
+        const clients = await getContract(ck, chain.reputationRegistry, REP_ABI).getClients(Number(args.agentId))
+        const reviews: any[] = []
+        for (const client of clients.map(String)) {
+          const lastIdx = await getContract(ck, chain.reputationRegistry, REP_ABI).getLastIndex(Number(args.agentId), client).then(n => Number(n)).catch(() => 0)
+          for (let i = 1; i <= lastIdx; i++) {
+            try {
+              const fb = await getContract(ck, chain.reputationRegistry, REP_ABI).readFeedback(Number(args.agentId), client, i)
+              reviews.push({ reviewer: client, score: Number(fb[0]), tag1: fb[1], tag2: fb[2], isRevoked: fb[3] })
+            } catch { /* skip */ }
+          }
+        }
+        return { agentId: Number(args.agentId), reviews, chain: chainLabel, chainId }
       }
       case 'agentx_reputation_rate':
         return { _writeOp: true, message: `WRITE. Rate via wallet client on ${chainLabel}.`, contract: chain.reputationRegistry, chain: chainLabel, chainId }
@@ -425,11 +448,11 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
       // ── Configuration ──────────────────────────────
       case 'agentx_config_get': {
         const v = await getContract(ck, chain.configurationRegistry, CFG_ABI).getConfig(Number(args.agentId), args.configKey as string)
-        return { ...toObj(['agentId', 'key', 'value', 'dataType', 'updatedAt', 'updatedBy'], v), chain: chainLabel, chainId }
+        return { agentId: Number(args.agentId), configKey: v.configKey, configValue: v.configValue, dataType: v.dataType, description: v.description, isActive: v.isActive, chain: chainLabel, chainId }
       }
       case 'agentx_config_list': {
         const configs = await getContract(ck, chain.configurationRegistry, CFG_ABI).getAgentConfigs(Number(args.agentId))
-        return { agentId: Number(args.agentId), configs: configs.map((c: any) => toObj(['agentId', 'key', 'value', 'dataType', 'updatedAt', 'updatedBy'], c)), chain: chainLabel, chainId }
+        return { agentId: Number(args.agentId), configs: configs.map((c: any) => ({ configKey: c.configKey, configValue: c.configValue, dataType: c.dataType, description: c.description, isActive: c.isActive })), chain: chainLabel, chainId }
       }
       case 'agentx_config_set':
         return { _writeOp: true, message: `WRITE. Set config via wallet client on ${chainLabel}.`, contract: chain.configurationRegistry, chain: chainLabel, chainId }
