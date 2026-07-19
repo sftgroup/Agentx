@@ -17,8 +17,6 @@ export const config = {
 
   sessionTtlSec: parseInt(process.env.SESSION_TTL_SEC || '86400', 10),
 
-  freePlanId: process.env.FREE_PLAN_ID || '',
-
   // MCP / On-chain read — Dual-chain
   // Sepolia
   rpcUrl: process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',

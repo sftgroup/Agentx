@@ -15,14 +15,14 @@ import { getPool } from '../lib/db'
 
 let redis: Redis | null = null
 
-export function getRedis(): Redis {
+export function getRedis(): Redis | null {
   if (!redis) {
     redis = new Redis(config.redisUrl, { lazyConnect: true })
     redis.connect().catch(() => {
       redis = null
     })
   }
-  return redis!
+  return redis
 }
 
 export async function tenantRateLimiter(

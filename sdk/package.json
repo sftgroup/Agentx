@@ -30,6 +30,16 @@
       "types": "./dist/llm/index.d.mts",
       "import": "./dist/llm/index.mjs",
       "require": "./dist/llm/index.js"
+    },
+    "./endpoint": {
+      "types": "./dist/endpoint/index.d.mts",
+      "import": "./dist/endpoint/index.mjs",
+      "require": "./dist/endpoint/index.js"
+    },
+    "./configuration": {
+      "types": "./dist/configuration/index.d.mts",
+      "import": "./dist/configuration/index.mjs",
+      "require": "./dist/configuration/index.js"
     }
   },
   "files": [

@@ -19,7 +19,6 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.13.0",
     "ioredis": "^5.4.1",
-    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -27,7 +26,6 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.10",
-    "@types/uuid": "^10.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0"
   },
