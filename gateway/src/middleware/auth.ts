@@ -209,6 +209,6 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       next()
     })
     .catch(err => {
-      res.status(500).json({ error: 'Auth lookup failed' })
+      next(err)
     })
 }

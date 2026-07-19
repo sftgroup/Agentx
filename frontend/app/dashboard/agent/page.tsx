@@ -96,7 +96,7 @@ export default function DeveloperDashboard() {
           {[
             { label: 'Agent Studio', desc: 'Create a new Agent', href: '/studio', icon: Plus, color: 'text-accent-purple' },
             { label: 'Settings', desc: 'Configure endpoints', href: '/user/settings', icon: Settings, color: 'text-accent-cyan' },
-            { label: 'Docs', desc: 'SDK & API reference', href: '#', icon: FileText, color: 'text-text-muted' },
+            { label: 'Docs', desc: 'SDK & API reference', href: 'https://github.com/sftgroup/Agentx', icon: FileText, color: 'text-text-muted' },
           ].map(a => (
             <Link key={a.label} href={a.href} className="glass-card glass-card-hover p-5">
               <a.icon className={`w-5 h-5 ${a.color} mb-3`} />
