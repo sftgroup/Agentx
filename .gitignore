@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+contracts/cache/
+contracts/out/
+gateway/dist/
+frontend/.next/
+
+# Secrets & env
+*.env
+!*.env.example
+!*.env.production
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
