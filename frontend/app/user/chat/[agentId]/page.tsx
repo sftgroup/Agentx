@@ -373,8 +373,8 @@ export default function ChatPage() {
   const skills = ctx?.skills ?? []
 
   return (
+    <AppLayout>
     <SubscriptionGuard agentId={agentId}>
-      <AppLayout>
         <div className="max-w-6xl mx-auto h-[calc(100vh-5rem)] flex flex-col">
           {/* Header */}
           <div className="p-5 border-b border-white/5 flex items-center justify-between">
@@ -525,7 +525,7 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
-      </AppLayout>
     </SubscriptionGuard>
+    </AppLayout>
   )
 }
