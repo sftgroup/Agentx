@@ -26,6 +26,11 @@ export default function MarketplacePage() {
     const next = selectedTags.includes(tag) ? selectedTags.filter(t => t !== tag) : [...selectedTags, tag]
     setSelectedTags(next); setTags(next)
   }
+  const handleReset = () => {
+    setSearchText('')
+    setSelectedTags([])
+    resetFilters()
+  }
 
   return (
     <AppLayout>
