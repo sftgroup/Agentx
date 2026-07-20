@@ -31,7 +31,7 @@ export const config = {
   subscriptionManagerOxaChain: process.env.SUBSCRIPTION_MANAGER_OXACHAIN || '0x019AC9d945467478Dd371CDbD70cb2f325800E6B',
 
   a2aProtocol: process.env.A2A_PROTOCOL || '0x309C7447d89f3087A9924BB686d88df020F7e9cB',
-  a2aProtocolOxaChain: process.env.A2A_PROTOCOL_OXACHAIN || '0xDF2939EFafEe6439eB2226DbEd07AD6F5Ae2112B',
+  a2aProtocolOxaChain: process.env.A2A_PROTOCOL_OXACHAIN || '0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86',
 
   reputationRegistry: process.env.REPUTATION_REGISTRY || '0xeb6B410ea71b8d9dA0c96f6A91d35027CE143DC9',
   reputationRegistryOxaChain: process.env.REPUTATION_REGISTRY_OXACHAIN || '0x6a18C2664E1b42063860d864b6448b824d7B843F',
