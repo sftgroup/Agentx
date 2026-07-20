@@ -1,9 +1,9 @@
 // hooks/aimarket/useAgentRegistry.ts
 'use client'
 
-import { useReadContract, useAccount, usePublicClient } from 'wagmi'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useAccount, usePublicClient } from 'wagmi'
+import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState, useRef } from 'react'
 import { ipfsDataFetcher, AgentMetadata } from '@/lib/aimarket/ipfsDataFetcher'
 
 const AGENT_REGISTRY_ABI = [
@@ -217,29 +217,13 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
   const [agentCache] = useState(() => AgentCacheManager.getCache())
   const [isRefreshing, setIsRefreshing] = useState(false)
   const initialLoadRef = useRef(false)
+  const [probedMaxId, setProbedMaxId] = useState(0)
 
   // 获取合约地址
   const contractAddress = getContractAddress()
 
-  // 获取当前最大 Agent ID - 移除区块监听
-  const { 
-    data: currentAgentId, 
-    isLoading: isLoadingCount,
-    isError: isCountError,
-    error: countError,
-    refetch: refetchCount
-  } = useReadContract({
-    address: contractAddress,
-    abi: AGENT_REGISTRY_ABI,
-    functionName: 'getCurrentAgentId',
-    query: {
-      enabled: !!contractAddress,
-      staleTime: 60 * 60 * 1000, // 1小时
-    }
-  })
-
   // 合约调用函数
-  const fetchTokenURIFromContract = async (agentId: number): Promise<string> => {
+  const fetchTokenURIFromContract = async (agentId: number): Promise<string | null> => {
     if (!publicClient || !contractAddress) {
       throw new Error('Public client or contract address not available')
     }
@@ -253,9 +237,9 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
       })
       
       return tokenURI as string
-    } catch (error) {
-      console.error(`Failed to fetch tokenURI for agent ${agentId}:`, error)
-      return ''
+    } catch {
+      // tokenURI reverts → agent doesn't exist
+      return null
     }
   }
 
@@ -273,56 +257,28 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
       })
       
       return owner as string
-    } catch (error) {
-      console.error(`Failed to fetch owner for agent ${agentId}:`, error)
+    } catch {
       return '0x0000000000000000000000000000000000000000'
     }
   }
 
-  const checkAgentExists = async (agentId: number): Promise<boolean> => {
-    if (!publicClient || !contractAddress) {
-      return false
-    }
-
-    try {
-      const exists = await publicClient.readContract({
-        address: contractAddress,
-        abi: AGENT_REGISTRY_ABI,
-        functionName: 'agentExists',
-        args: [BigInt(agentId)]
-      })
-      
-      return exists as boolean
-    } catch (error) {
-      console.error(`Failed to check existence for agent ${agentId}:`, error)
-      return true
-    }
-  }
-
-  // 获取单个Agent的完整数据
-  const fetchAgentData = async (agentId: number): Promise<AgentInfo> => {
-    // 首先检查缓存
+  // 获取单个Agent的完整数据 — 不再依赖 agentExists，直接用 tokenURI 探活
+  const fetchAgentData = async (agentId: number): Promise<AgentInfo | null> => {
+    // 检查缓存
     if (agentCache.has(agentId)) {
       const cachedAgent = agentCache.get(agentId)!
       if (cachedAgent.lastUpdated && Date.now() - cachedAgent.lastUpdated < 24 * 60 * 60 * 1000) {
-        console.log(`Using cached data for agent ${agentId}`)
         return cachedAgent
       }
     }
 
     try {
-      // 检查 agent 是否存在
-      const exists = await checkAgentExists(agentId)
-      if (!exists) {
-        throw new Error(`Agent ${agentId} does not exist`)
+      const tokenURI = await fetchTokenURIFromContract(agentId)
+      if (!tokenURI) {
+        return null // agent 不存在
       }
 
-      // 获取链上数据
-      const [tokenURI, owner] = await Promise.all([
-        fetchTokenURIFromContract(agentId),
-        fetchOwnerFromContract(agentId)
-      ])
-      
+      const owner = await fetchOwnerFromContract(agentId)
       const cid = extractCIDFromTokenURI(tokenURI)
       
       const agentInfo: AgentInfo = {
@@ -344,16 +300,10 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
           agentInfo.metadata = result.metadata
           agentInfo.isLoaded = true
           agentInfo.status = 'success'
-          
-          // 检查是否有订阅机制 - 修复逻辑
           if (result.metadata.pricing) {
             agentInfo.hasSubscriptionPlans = true
           }
-          
-          // 修复：使用 agentInfo.cid 而不是 agent.cid
-          console.log(`Loaded metadata for agent ${agentId} from CID: ${agentInfo.cid}`)
         } else {
-          // IPFS 获取失败
           agentInfo.metadata = {
             name: `Agent ${agentId}`,
             description: '元数据获取失败',
@@ -366,15 +316,15 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
           agentInfo.errorMessage = result.error
         }
       } else {
-        // 没有 CID
-        agentInfo.metadata = {
+        // 没有CID但有tokenURI → 尝试从 tokenURI 解析 base64 metadata
+        agentInfo.metadata = parseBase64TokenURI(tokenURI) || {
           name: `Agent ${agentId}`,
           description: '此 Agent 没有配置 IPFS 元数据',
           tags: ['no-metadata'],
           capabilities: []
         }
         agentInfo.isLoaded = true
-        agentInfo.status = 'no-metadata'
+        agentInfo.status = agentInfo.metadata.name ? 'success' : 'no-metadata'
       }
 
       // 更新缓存
@@ -384,36 +334,46 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
       return agentInfo
     } catch (error) {
       console.error(`Failed to fetch agent ${agentId}:`, error)
-      const errorAgent: AgentInfo = {
-        id: agentId,
-        owner: '',
-        tokenURI: '',
-        isLoaded: false,
-        hasError: true,
-        errorMessage: error instanceof Error ? error.message : 'Contract call failed',
-        status: 'error',
-        lastUpdated: Date.now(),
-        hasSubscriptionPlans: false
-      }
-      return errorAgent
+      return null
     }
   }
 
-  // 获取指定范围的 Agent 数据
-  const fetchAgentsInRange = async (startId: number, endId: number): Promise<AgentInfo[]> => {
+  // 解析 base64 data URI tokenURI (例如: data:application/json;base64,eyJuYW1lIjoi...)
+  const parseBase64TokenURI = (tokenURI: string): AgentMetadata | null => {
+    try {
+      const match = tokenURI.match(/^data:application\/json;base64,(.+)$/)
+      if (!match) return null
+      const decoded = atob(match[1])
+      return JSON.parse(decoded) as AgentMetadata
+    } catch {
+      return null
+    }
+  }
+
+  // 顺序探测 agent ID，直到连续失败达到阈值
+  const MAX_CONSECUTIVE_MISSES = 8
+
+  const probeAgents = async (startId: number, maxToLoad: number): Promise<AgentInfo[]> => {
     const agents: AgentInfo[] = []
-    
-    for (let agentId = startId; agentId <= endId; agentId++) {
-      const agent = await fetchAgentData(agentId)
-      agents.push(agent)
+    let consecutiveMisses = 0
+    let currentId = startId
+
+    while (agents.length < maxToLoad && consecutiveMisses < MAX_CONSECUTIVE_MISSES) {
+      const agent = await fetchAgentData(currentId)
+      if (agent) {
+        agents.push(agent)
+        consecutiveMisses = 0
+      } else {
+        consecutiveMisses++
+      }
+      currentId++
     }
 
-    console.log(`Agent loading completed: ${agents.length} agents processed`)
-    
+    setProbedMaxId(currentId - 1)
     return sanitizeDataForReactQuery(agents)
   }
 
-  // 主查询：获取 Agent 数据 - 使用更稳定的缓存策略
+  // 主查询 — 不再依赖 getCurrentAgentId
   const {
     data: initialAgents = [],
     isLoading: isLoadingAgents,
@@ -421,44 +381,28 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
     error: agentsError,
     refetch: refetchAgents
   } = useQuery({
-    queryKey: ['agents', 'market', 'initial', batchSize],
+    queryKey: ['agents', 'market', 'probe', batchSize],
     queryFn: async (): Promise<AgentInfo[]> => {
-      if (!currentAgentId || Number(currentAgentId) === 0) {
-        console.log('No agents found in contract')
+      if (!publicClient || !contractAddress) {
         return []
       }
 
-      const totalAgents = Number(currentAgentId)
-      if (totalAgents === 0) {
-        console.log('Total agents is 0')
-        return []
-      }
-
-      const agentsToLoad = Math.min(totalAgents, batchSize)
-      console.log(`Fetching ${agentsToLoad} agents from contract...`)
-
-      return await fetchAgentsInRange(1, agentsToLoad)
+      return await probeAgents(1, batchSize)
     },
-    enabled: !!currentAgentId && Number(currentAgentId) > 0 && !!publicClient && !!contractAddress,
-    staleTime: 60 * 60 * 1000, // 1小时
-    gcTime: 24 * 60 * 60 * 1000, // 24小时
+    enabled: !!publicClient && !!contractAddress,
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
     retry: 1,
   })
 
-  // 合并 agents - 使用更稳定的状态管理
+  // 合并 agents
   useEffect(() => {
     if (initialAgents.length > 0 && !initialLoadRef.current) {
       initialLoadRef.current = true
       setLocalAgents(prev => {
         const agentMap = new Map<number, AgentInfo>()
-        
-        // 首先添加现有的 agents
         prev.forEach(agent => agentMap.set(agent.id, agent))
-        
-        // 然后添加新的 agents
         initialAgents.forEach(agent => agentMap.set(agent.id, agent))
-        
-        // 按 ID 排序返回
         return Array.from(agentMap.values()).sort((a, b) => b.id - a.id)
       })
     }
@@ -466,25 +410,15 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
 
   // 加载更多数据
   const handleFetchMore = async (count: number): Promise<void> => {
-    if (!currentAgentId || !publicClient || !contractAddress) {
-      console.error('Cannot fetch more: missing dependencies')
+    if (!publicClient || !contractAddress) {
       return
     }
 
-    const totalAgents = Number(currentAgentId)
-    const currentCount = localAgents.length
-    const startId = currentCount + 1
-    const endId = Math.min(totalAgents, currentCount + count)
-
-    if (startId > totalAgents) {
-      console.log('No more agents to load')
-      return
-    }
-
-    console.log(`Fetching more agents: ${startId} to ${endId}`)
+    const startId = probedMaxId + 1
+    console.log(`Probing more agents from ID ${startId}...`)
     
     try {
-      const newAgents = await fetchAgentsInRange(startId, endId)
+      const newAgents = await probeAgents(startId, count)
       setLocalAgents(prev => {
         const agentMap = new Map<number, AgentInfo>()
         prev.forEach(agent => agentMap.set(agent.id, agent))
@@ -498,26 +432,20 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
   }
 
   // 组合状态
-  const isLoading = isLoadingCount || isLoadingAgents || isRefreshing
-  const isError = isCountError || isAgentsError
-  const error = countError || agentsError
+  const isLoading = isLoadingAgents || isRefreshing
+  const isError = isAgentsError
+  const error = agentsError
   
   const loadedCount = localAgents.filter(agent => agent.isLoaded).length
   const errorCount = localAgents.filter(agent => agent.hasError).length
 
   // 重新获取数据
   const refetch = async () => {
-    console.log('Manual refetch triggered')
-    setIsRefreshing(true)
     initialLoadRef.current = false
-    
+    setIsRefreshing(true)
     try {
-      // 清除缓存强制重新获取
       AgentCacheManager.clearCache()
-      await Promise.all([
-        refetchCount(),
-        refetchAgents()
-      ])
+      await refetchAgents()
     } finally {
       setIsRefreshing(false)
     }
@@ -528,7 +456,7 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
     isLoading,
     isError,
     error,
-    totalAgents: currentAgentId ? Number(currentAgentId) : 0,
+    totalAgents: localAgents.length,
     loadedCount,
     errorCount,
     refetch,
