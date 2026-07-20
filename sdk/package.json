@@ -1,6 +1,6 @@
 {
   "name": "@agentxv2/sdk",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "AgentX — Decentralized AI Agent SDK with ReAct AgentLoop + Multi-Tenant LLM Providers",
   "main": "dist/index.js",
   "types": "dist/index.d.mts",
@@ -40,6 +40,11 @@
       "types": "./dist/configuration/index.d.mts",
       "import": "./dist/configuration/index.mjs",
       "require": "./dist/configuration/index.js"
+    },
+    "./ipfs": {
+      "types": "./dist/ipfs/index.d.mts",
+      "import": "./dist/ipfs/index.mjs",
+      "require": "./dist/ipfs/index.js"
     }
   },
   "files": [
@@ -47,7 +52,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/core/index.ts src/react/index.ts src/endpoint/index.ts src/configuration/index.ts src/agent-loop/index.ts src/llm/index.ts --format cjs,esm --dts --clean --sourcemap --splitting false --out-dir dist",
+    "build": "tsup src/index.ts src/core/index.ts src/react/index.ts src/endpoint/index.ts src/configuration/index.ts src/agent-loop/index.ts src/llm/index.ts src/ipfs/index.ts --format cjs,esm --dts --clean --sourcemap --splitting false --out-dir dist",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

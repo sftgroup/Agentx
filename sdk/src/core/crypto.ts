@@ -322,6 +322,100 @@ export function packAgentForPublish(
   }
 }
 
+// ── Integrated Publish Pipeline ────────────────────────────────────────────
+
+import type { IPFSUploader, IPFSUploadResult } from '../ipfs/ipfs-uploader'
+
+export interface PublishAgentConfig {
+  /** Agent payload to publish */
+  agent: import('./types').AgentPayload
+  /** Creator's secp256k1 public key (hex) */
+  publicKey: string
+  /** IPFS uploader instance with Pinata JWT configured */
+  uploader: IPFSUploader
+  /** Optional AES key (auto-generated if not provided) */
+  aesKeyHex?: string
+  /** Agent name for IPFS metadata */
+  agentName?: string
+}
+
+export interface PublishAgentResult {
+  /** AES encryption key (hex) */
+  aesKeyHex: string
+  /** ECIES-encrypted AES key for on-chain storage */
+  eciesEncryptedKeyHex: string
+  /** CID of the encrypted private payload on IPFS */
+  encryptedCid: string
+  /** Public IPFS gateway URL to the encrypted payload */
+  encryptedUrl: string
+  /** CID of the public metadata on IPFS */
+  publicCid: string
+  /** Public IPFS gateway URL to the public metadata */
+  publicUrl: string
+  /** Full PackResult (compatible with existing code) */
+  pack: PackResult
+  /** Raw IPFS upload results */
+  uploads: { encrypted: IPFSUploadResult; public: IPFSUploadResult }
+}
+
+/**
+ * Full publish pipeline: encrypt + upload to IPFS.
+ *
+ * Usage:
+ *   const uploader = new IPFSUploader({ pinataJwt: '...' })
+ *   const result = await publishAgent({ agent, publicKey, uploader })
+ *   // result.encryptedCid → IPFS CID to mint as on-chain tokenURI
+ */
+export async function publishAgent(config: PublishAgentConfig): Promise<PublishAgentResult> {
+  const { agent, publicKey, uploader, aesKeyHex, agentName } = config
+
+  if (!uploader.isConfigured()) {
+    throw new Error('IPFSUploader is not configured — set pinataJwt or customEndpoint')
+  }
+
+  const key = aesKeyHex ?? generateAesKey()
+  const eciesEncryptedKeyHex = eciesEncrypt(key, publicKey)
+
+  // Split into private (encrypted) and public payloads
+  const privatePayload: import('./types').AgentPrivatePayload = {
+    prompt: agent.prompt,
+    skills: agent.skills,
+    mcp: agent.mcp,
+  }
+  const encryptedPayload = encryptPayload(privatePayload, key)
+
+  // Upload both parts to IPFS in parallel
+  const [encrypted, publicMeta] = await Promise.all([
+    uploader.uploadEncryptedPayload(encryptedPayload, agentName),
+    uploader.uploadJSON({
+      name: agent.name,
+      description: agent.description,
+      version: agent.version,
+      tags: agent.tags,
+      capabilities: agent.capabilities,
+      eciesKey: eciesEncryptedKeyHex,
+    }),
+  ])
+
+  const pack: PackResult = {
+    encryptedCid: encrypted.cid,
+    publicCid: publicMeta.cid,
+    aesKeyHex: key,
+    eciesEncryptedKeyHex,
+  }
+
+  return {
+    aesKeyHex: key,
+    eciesEncryptedKeyHex,
+    encryptedCid: encrypted.cid,
+    encryptedUrl: encrypted.url,
+    publicCid: publicMeta.cid,
+    publicUrl: publicMeta.url,
+    pack,
+    uploads: { encrypted, public: publicMeta },
+  }
+}
+
 /**
  * Unpack an Agent:
  *   1. ECIES decrypt the AES key (private key)
