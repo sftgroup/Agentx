@@ -24,6 +24,7 @@ import type { AgentRunner } from '../agent/agent-runner'
 import type { A2AProtocol } from '../a2a/a2a'
 import type { SubscriptionManager } from '../subscription/subscription'
 import type { AgentRegistry } from '../registry/agent-registry'
+import type { IPFSUploader } from '../ipfs/ipfs-uploader'
 
 // ── Tool Definition Types ──────────────────────────────────────────────────
 
@@ -59,6 +60,7 @@ export interface PlatformToolContext {
   gatewayUrl?: string
   gatewayToken?: string
   userAddress: string
+  ipfsUploader?: IPFSUploader
 }
 
 // ── Schema Helpers ─────────────────────────────────────────────────────────
@@ -459,12 +461,52 @@ const gatewayTools: PlatformToolDef[] = [
   },
 ]
 
+// ── 8. IPFS Tools ───────────────────────────────────────────────────────────
+
+const ipfsTools: PlatformToolDef[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'agentx_ipfs_upload',
+      description: 'Upload JSON data to IPFS via Pinata (requires Pinata JWT configured). Returns the IPFS CID and gateway URL.',
+      parameters: object({
+        data: str('The JSON data to upload, as a JSON string'),
+        name: str('Optional name for the uploaded file'),
+      }, required(['data'])),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'agentx_ipfs_upload_encrypted',
+      description: 'Encrypt and upload an Agent payload to IPFS. Used in the Agent publish flow. Generates AES key, encrypts the payload, and uploads to IPFS in one step.',
+      parameters: object({
+        prompt: str('The private system prompt to encrypt and upload'),
+        skillsJson: str('JSON string of skills configuration'),
+        mcpJson: str('JSON string of MCP configuration'),
+        agentName: str('Name for the agent payload metadata'),
+      }, required(['prompt'])),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'agentx_ipfs_get_url',
+      description: 'Build a public IPFS gateway URL from a CID.',
+      parameters: object({
+        cid: str('The IPFS CID (Content Identifier)'),
+        gateway: str('Optional gateway URL (default: ipfs.io)'),
+      }, required(['cid'])),
+    },
+  },
+]
+
 // ── Build All Tools ─────────────────────────────────────────────────────────
 
 export function buildPlatformTools(
-  available?: ('identity' | 'subscription' | 'a2a' | 'reputation' | 'configuration' | 'endpoint' | 'gateway')[]
+  available?: ('identity' | 'subscription' | 'a2a' | 'reputation' | 'configuration' | 'endpoint' | 'gateway' | 'ipfs')[]
 ): PlatformToolDef[] {
-  const modules = available ?? ['identity', 'subscription', 'a2a', 'reputation', 'configuration', 'endpoint', 'gateway']
+  const modules = available ?? ['identity', 'subscription', 'a2a', 'reputation', 'configuration', 'endpoint', 'gateway', 'ipfs']
   const tools: PlatformToolDef[] = []
 
   for (const mod of modules) {
@@ -476,6 +518,7 @@ export function buildPlatformTools(
       case 'configuration': tools.push(...configurationTools); break
       case 'endpoint': tools.push(...endpointTools); break
       case 'gateway': tools.push(...gatewayTools); break
+      case 'ipfs': tools.push(...ipfsTools); break
     }
   }
 
@@ -645,6 +688,31 @@ export async function executePlatformTool(
         return res.json()
       }
 
+      // ── IPFS ───────────────────────────────────────
+      case 'agentx_ipfs_upload': {
+        if (!ctx.ipfsUploader) throw new Error('IPFSUploader not configured')
+        const data = typeof args.data === 'string' ? JSON.parse(args.data as string) : args.data
+        const result = await ctx.ipfsUploader.uploadJSON(data, { name: args.name as string })
+        return { cid: result.cid, url: result.url }
+      }
+      case 'agentx_ipfs_upload_encrypted': {
+        if (!ctx.ipfsUploader) throw new Error('IPFSUploader not configured')
+        const { generateAesKey, encryptPayload } = await import('../core/crypto')
+        const privatePayload = {
+          prompt: args.prompt as string,
+          skills: args.skillsJson ? JSON.parse(args.skillsJson as string) : [],
+          mcp: args.mcpJson ? JSON.parse(args.mcpJson as string) : {},
+        }
+        const key = generateAesKey()
+        const encrypted = encryptPayload(privatePayload, key)
+        const result = await ctx.ipfsUploader.uploadEncryptedPayload(encrypted, args.agentName as string)
+        return { cid: result.cid, url: result.url, aesKeyHex: key }
+      }
+      case 'agentx_ipfs_get_url': {
+        const gateway = (args.gateway as string) ?? 'https://ipfs.io'
+        return { url: `${gateway}/ipfs/${args.cid}` }
+      }
+
       default:
         throw new Error(`Unknown platform tool: ${toolName}`)
     }
@@ -662,7 +730,7 @@ export async function executePlatformTool(
  */
 export function wrapPlatformToolsAsSkills(
   ctx: PlatformToolContext,
-  modules?: ('identity' | 'subscription' | 'a2a' | 'reputation' | 'configuration' | 'endpoint' | 'gateway')[]
+  modules?: ('identity' | 'subscription' | 'a2a' | 'reputation' | 'configuration' | 'endpoint' | 'gateway' | 'ipfs')[]
 ): RunnableSkill[] {
   const toolDefs = buildPlatformTools(modules)
 

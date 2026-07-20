@@ -118,6 +118,8 @@ const packResult = packAgentForPublish(agentPayload, publicKey, aesKey)
 | `ReputationRegistry` | reputation | Feedback + reputation queries |
 | `ConfigurationRegistry` | configuration | On-chain KV configuration |
 | `MultiEndpointClient` | endpoint | Multi-endpoint routing |
+| `IPFSUploader` | ipfs | Upload to IPFS via Pinata or custom endpoint |
+| `publishAgent` | core | Full encrypt + IPFS upload + pack pipeline |
 | `KNOWN_CHAINS` | config | Pre-configured chain configs |
 
 ### Sub-path Imports
@@ -131,6 +133,7 @@ const packResult = packAgentForPublish(agentPayload, publicKey, aesKey)
 | `@agentxv2/sdk/llm` | OpenAIProvider, GatewayProvider, factory |
 | `@agentxv2/sdk/endpoint` | MultiEndpointClient |
 | `@agentxv2/sdk/configuration` | ConfigurationClient |
+| `@agentxv2/sdk/ipfs` | IPFSUploader (Pinata + custom endpoint upload) |
 
 ---
 
@@ -193,6 +196,7 @@ Auto-detected via `KNOWN_CHAINS[chainId]`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.6.4** | 2026-07-20 | IPFSUploader (Pinata + custom endpoint), publishAgent pipeline, IPFS platform tools |
 | **0.6.3** | 2026-07-19 | Production deploy, wallet auto-switch to OxaChain L1, MCP dual-chain fixes |
 | 0.6.1 | 2026-07-15 | AgentLoop ReAct, OpenAIProvider, GatewayProvider, ToolExecutor |
 | 0.5.4 | 2026-07-14 | MultiEndpointClient, ConfigurationClient, OxaChain L1 dual-chain |
