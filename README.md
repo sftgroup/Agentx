@@ -62,6 +62,7 @@ await loop.run('Audit this contract for vulnerabilities')
 | **Dual-Mode LLM** | Platform quota + BYOK transparent proxy |
 | **MCP Remote Tools** | Publisher-hosted tools with ECDSA auth |
 | **A2A Protocol** | Agent-to-Agent task delegation |
+| **IPFS / Pinata** | Encrypted payload + metadata upload to IPFS via Pinata / custom endpoint |
 | **Dual-Chain** | Sepolia (testnet) + OxaChain L1 (mainnet, default) |
 
 ## Production URLs

@@ -248,10 +248,27 @@ ss -tlnp | grep -E '3100|3090|18545'
 cd sdk/
 npm run build
 npm version patch
-npm publish --access public
+npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.6.3` · Project tag: `v0.6.4`
+Current: `@agentxv2/sdk@0.6.4` · Git tag: `v0.6.4`
+
+### SDK v0.6.4 New Features
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| `IPFSUploader` | `@agentxv2/sdk/ipfs` | Upload to IPFS via Pinata API or custom endpoint |
+| `publishAgent()` | `@agentxv2/sdk` | One-shot encrypt + IPFS upload + pack pipeline |
+| IPFS Platform Tools | AgentLoop | `agentx_ipfs_upload` / `upload_encrypted` / `get_url` |
+
+### PINATA_JWT Configuration
+
+For IPFS upload functionality, set the Pinata JWT in the Gateway `.env`:
+
+```bash
+PINATA_JWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+IPFS_GATEWAY_URL=https://ipfs.io
+```
 
 ---
 

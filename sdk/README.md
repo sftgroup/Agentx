@@ -67,16 +67,80 @@ function ChatPage({ agentId }: { agentId: number }) {
 }
 ```
 
-### 3. Publish an Agent
+### 3. Publish an Agent (v0.6.4 — IPFSUploader + publishAgent pipeline)
 
 ```ts
-import { generateAesKey, encryptPayload, packAgentForPublish } from '@agentxv2/sdk'
+import { IPFSUploader, publishAgent } from '@agentxv2/sdk'
 
-const privatePayload = { prompt: '...', skills: [...], mcp: { type: 'http', url: '' } }
-const aesKey = generateAesKey()
-const encrypted = encryptPayload(privatePayload, aesKey)
-const packResult = packAgentForPublish(agentPayload, publicKey, aesKey)
-// Upload encrypted.data to IPFS → mint via IdentityRegistry.register(tokenURI)
+// 1. Configure IPFS uploader (Pinata or custom endpoint)
+const uploader = new IPFSUploader({ pinataJwt: 'eyJ...' })
+
+// 2. One-shot: encrypt + upload both private payload & public metadata
+const result = await publishAgent({
+  agent: {
+    name: 'Solidity Auditor',
+    description: 'AI agent that audits Solidity smart contracts',
+    version: '1.0.0',
+    tags: ['security', 'audit'],
+    capabilities: ['smart_contract_audit'],
+    supportedTasks: ['audit'],
+    communicationProtocol: 'mcp',
+    authenticationMethod: 'ecdsa',
+    pricing: { type: 'subscription', amount: '10', currency: '', period: 'month' },
+    prompt: 'You are an expert Solidity auditor...',
+    skills: [{ name: 'audit', description: 'Audit a contract', version: '1.0', inputSchema: {...} }],
+    mcp: { type: 'http', url: 'https://my-mcp.example.com/mcp' },
+  },
+  publicKey: '0x04abc...',  // creator's secp256k1 public key
+  uploader,
+})
+
+// result = {
+//   aesKeyHex, eciesEncryptedKeyHex,     // for on-chain metadata
+//   encryptedCid, encryptedUrl,          // private payload on IPFS
+//   publicCid, publicUrl,                // public metadata on IPFS
+//   pack: { encryptedCid, publicCid, aesKeyHex, eciesEncryptedKeyHex },
+// }
+
+// 3. Mint Agent NFT on-chain with the CIDs
+await registry.register(
+  `ipfs://${result.publicCid}`,
+  [
+    { key: 'encryptedPayloadCid', value: result.encryptedCid },
+    { key: 'eciesEncryptedKey', value: result.eciesEncryptedKeyHex },
+  ]
+)
+```
+
+### 4. IPFS Uploader (standalone)
+
+```ts
+import { IPFSUploader } from '@agentxv2/sdk/ipfs'
+// or: import { IPFSUploader } from '@agentxv2/sdk'
+
+const uploader = new IPFSUploader({
+  pinataJwt: 'eyJ...',          // Pinata JWT token
+  // customEndpoint: 'https://my-ipfs.example.com/api/v0/add',  // alternative
+  // customApiKey: '...',       // for non-Pinata endpoints
+  gatewayUrl: 'https://ipfs.io', // default
+  namePrefix: 'agentx-',         // prefix for Pinata names
+})
+
+// Upload JSON
+const { cid, url } = await uploader.uploadJSON(
+  { hello: 'world' },
+  { name: 'test-data', keyvalues: { app: 'agentx' } }
+)
+
+// Upload encrypted agent payload
+const encrypted = await uploader.uploadEncryptedPayload(
+  { encrypted: true, algorithm: 'AES-256-GCM', data: '...' },
+  'my-agent'
+)
+
+// Get public gateway URL from CID
+const publicUrl = uploader.getUrl('QmXxx...')
+// → https://ipfs.io/ipfs/QmXxx...
 ```
 
 ---
