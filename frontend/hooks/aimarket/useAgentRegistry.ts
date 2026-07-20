@@ -1,7 +1,7 @@
 // hooks/aimarket/useAgentRegistry.ts
 'use client'
 
-import { useAccount, usePublicClient } from 'wagmi'
+import { usePublicClient } from 'wagmi'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState, useRef } from 'react'
 import { ipfsDataFetcher, AgentMetadata } from '@/lib/aimarket/ipfsDataFetcher'
@@ -210,8 +210,6 @@ class AgentCacheManager {
 }
 
 export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn {
-  const { address, isConnected } = useAccount()
-  const queryClient = useQueryClient()
   const publicClient = usePublicClient()
   const [localAgents, setLocalAgents] = useState<AgentInfo[]>([])
   const [agentCache] = useState(() => AgentCacheManager.getCache())
