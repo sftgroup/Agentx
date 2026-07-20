@@ -18,14 +18,14 @@ export function StepNav({ step }: Props) {
 
   return (
     <div className="flex justify-between">
-      <button
+      <button type="button"
         onClick={() => { setFieldErrors({}); router.push(ROUTES[step - 2]) }}
         disabled={step === 1}
         className="btn-secondary text-sm px-4 py-2 disabled:opacity-30">
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
-      <button
+      <button type="button"
         onClick={() => {
           let errs: Record<string, string> = {}
           if (step === 1) errs = validateBasics(form)

@@ -60,7 +60,7 @@ export default function MarketplacePage() {
               </button>
             ))}
             {hasActiveFilters && (
-              <button onClick={resetFilters} className="px-3 py-1.5 rounded-full text-xs border border-red-400/20 text-red-400/80 hover:text-red-400 transition-colors flex items-center gap-1">
+              <button onClick={handleReset} className="px-3 py-1.5 rounded-full text-xs border border-red-400/20 text-red-400/80 hover:text-red-400 transition-colors flex items-center gap-1">
                 <X className="w-3 h-3" /> Clear
               </button>
             )}

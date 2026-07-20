@@ -234,8 +234,11 @@ export default function AgentDetailPage() {
             )}
             {/* Rating summary */}
             <div className="glass-card p-6 text-center">
-              <div className="text-4xl font-bold mb-1">⭐ {rating}</div>
-              <div className="text-sm text-text-muted">{count} total reviews</div>
+              <div className="text-4xl font-bold mb-1">⭐ {rating || '—'}</div>
+              <div className="text-sm text-text-muted">{count ? `${count} total reviews` : 'No reviews yet'}</div>
+              {!hasActiveSub && count === 0 && (
+                <p className="text-xs text-text-muted mt-3">Subscribe to leave a review</p>
+              )}
             </div>
           </div>
         )}
