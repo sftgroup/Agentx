@@ -80,7 +80,19 @@ app.post('/api/v1/agents-sync', async (_req, res) => {
   }
 })
 
-// ── Protected routes ──────────────────────────────────────────────────────
+// ── Protected routes (auth + rate-limit only on known paths) ─────────────
+
+// Known protected API path prefixes (anything else under /api/v1 returns 404)
+const PROTECTED_PREFIXES = ['/chat/completions', '/chat/history', '/tenant/']
+
+app.use('/api/v1', (req, _res, next) => {
+  if (PROTECTED_PREFIXES.some(p => req.path.startsWith(p))) {
+    next()
+  } else {
+    // Path is not a known API route → 404, skip auth middleware
+    _res.status(404).json({ error: 'Not found' })
+  }
+})
 
 const api = express.Router()
 api.use(authMiddleware)
