@@ -17,37 +17,31 @@ const IDENTITY_ABI = [
 // Parse base64 data URI tokenURI → JSON metadata object
 function parseTokenURIToJSON(tokenURI: string): Record<string, unknown> | null {
   if (!tokenURI) return null
-
-  // Case 1: IPFS — not resolved here, returned as-is
   if (tokenURI.startsWith('ipfs://')) return null
 
-  // Case 2: base64 data URI
   const match = tokenURI.match(/^data:application\/json;base64,(.+)$/i)
-  if (match) {
-    try {
-      let decoded = Buffer.from(match[1], 'base64').toString('utf-8')
-      // Handle trailing garbage: find last valid JSON }
-      const lastBrace = decoded.lastIndexOf('}')
-      if (lastBrace > 0 && lastBrace < decoded.length - 1) {
-        decoded = decoded.substring(0, lastBrace + 1)
-      }
-      return JSON.parse(decoded)
-    } catch {
-      // Fallback: try regex to extract fields from malformed JSON
-      try {
-        const decoded = Buffer.from(match[1], 'base64').toString('utf-8')
-        const result: Record<string, unknown> = {}
-        const nameM = decoded.match(/"name"\s*:\s*"([^"]+)"/)
-        if (nameM) result.name = nameM[1]
-        const descM = decoded.match(/"description"\s*:\s*"([^"]+)"/)
-        if (descM) result.description = descM[1]
-        return Object.keys(result).length > 0 ? result : null
-      } catch { /* */ }
-      return null
-    }
+  if (!match) return null
+
+  // Clean up malformed base64: trim everything after the last "==" padding
+  let b64 = match[1]
+  const lastDoubleEq = b64.lastIndexOf('==')
+  if (lastDoubleEq > 0 && lastDoubleEq < b64.length - 2) {
+    b64 = b64.substring(0, lastDoubleEq + 2)
   }
 
-  return null
+  try {
+    const decoded = Buffer.from(b64, 'base64').toString('utf-8')
+    return JSON.parse(decoded)
+  } catch {
+    // Regex fallback for severely corrupted data
+    try {
+      const decoded = Buffer.from(b64, 'base64').toString('utf-8')
+      const result: Record<string, unknown> = {}
+      const nameM = decoded.match(/"name"\s*:\s*"([^"]+)"/)
+      if (nameM) result.name = nameM[1]
+      return Object.keys(result).length > 0 ? result : null
+    } catch { return null }
+  }
 }
 
 // Extract CID from IPFS tokenURI
