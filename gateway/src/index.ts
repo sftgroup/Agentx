@@ -56,6 +56,10 @@ app.use('/mcp', mcpRouter)
 app.get('/api/v1/auth/challenge', getChallenge)
 app.post('/api/v1/auth/verify', verifyChallenge)
 
+// ── Agents API (public, no auth needed) ────────────────────────────────────
+
+app.use('/api/v1/agents', agentsRouter)
+
 // ── Protected routes ──────────────────────────────────────────────────────
 
 const api = express.Router()
