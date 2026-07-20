@@ -1,4 +1,4 @@
-# @agentxv2/sdk v0.6.3
+# @agentxv2/sdk v0.6.4
 
 **Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers.
 
