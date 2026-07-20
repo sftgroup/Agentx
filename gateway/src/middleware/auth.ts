@@ -106,7 +106,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
             p.id as plan_id, p.slug as plan_slug
      FROM tenants t
      LEFT JOIN plans p ON t.plan_id = p.id
-     WHERE t.wallet_address = $1`,
+     WHERE LOWER(t.wallet_address) = $1`,
     [address]
   )
 
