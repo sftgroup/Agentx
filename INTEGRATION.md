@@ -1,7 +1,7 @@
 # AgentX Integration Guide
 
 > SDK / Contracts / Integration for third-party developers
-> Version: v5 · Updated: 2026-07-14 (25/25 tasks done, SDK v0.5.4, P3 #22 chain switch complete)
+> Version: v6 · Updated: 2026-07-20 (SDK v0.6.4, IPFSUploader + publishAgent)
 
 ## Overview
 
@@ -71,6 +71,11 @@ pnpm add @agentxv2/sdk
 | Module | Method | Description |
 |--------|--------|-------------|
 | AgentRunner | `useAgent(agentId)` | Decrypt + load full Agent context: `{ prompt, skills, mcp }` |
+| IPFSUploader | `uploadJSON(data, meta?)` | Upload JSON to IPFS via Pinata / custom endpoint |
+| IPFSUploader | `uploadEncryptedPayload(payload)` | Upload encrypted agent payload |
+| IPFSUploader | `uploadFile(content)` | Upload file / Blob / Buffer |
+| IPFSUploader | `getUrl(cid)` | Build public gateway URL from CID |
+| publishAgent | `publishAgent({ agent, publicKey, uploader })` | One-shot encrypt + IPFS upload + pack |
 | SubscriptionManager | `subscribe(planId, opts)` | ETH/ERC20 subscription payment |
 | SubscriptionManager | `releaseFunds(subId)` | Release escrowed funds after trial |
 | SubscriptionManager | `cancelSubscription(subId)` | Cancel subscription (full refund if in trial) |
@@ -83,7 +88,7 @@ pnpm add @agentxv2/sdk
 | A2AProtocol | `createTask(agentId, params)` | Agent-to-Agent task protocol |
 | ReputationRegistry | `giveFeedback(agentId, score, comment)` | Rating & review |
 | Crypto (Core) | `encryptPayload()` / `decryptPayload()` | AES-256-GCM encryption |
-| Crypto (Core) | `packForPublish()` | ECIES key wrapping for on-chain registration |
+| Crypto (Core) | `packAgentForPublish()` | ECIES key wrapping for on-chain registration |
 | MultiEndpointClient | `getActiveEndpoints(agentId)` | Active endpoint records |
 | MultiEndpointClient | `pickBestEndpoint(agentId)` | Best HTTP endpoint for agent |
 | ConfigurationClient | `get(agentId, key)` | Agent on-chain config value |
@@ -140,31 +145,47 @@ const detail = await mgr.getSubscriptionDetail(sid)
 await mgr.releaseFunds(sid)
 ```
 
-#### Publish an Agent
+#### Publish an Agent (v0.6.4 — IPFSUploader)
 
 ```typescript
-import {
-  generateAesKey, encryptPayload, packAgentForPublish,
-  AgentRegistry, IPFSFetcher
-} from '@agentxv2/sdk'
+import { IPFSUploader, publishAgent, AgentRegistry } from '@agentxv2/sdk'
 
-const privatePayload = { prompt: '...', skills: [...], mcp: {} }
-const aesKey = generateAesKey()
+// 1. Configure IPFS uploader (Pinata JWT)
+const uploader = new IPFSUploader({ pinataJwt: 'eyJ...' })
 
-// Step 1: AES-256-GCM encrypt
-const encrypted = encryptPayload(privatePayload, aesKey)
+// 2. One-shot: encrypt + upload to IPFS
+const result = await publishAgent({
+  agent: {
+    name: 'My Agent',
+    description: 'An AI agent',
+    version: '1.0.0',
+    tags: ['defi'],
+    capabilities: ['trade_analysis'],
+    supportedTasks: ['analyze'],
+    communicationProtocol: 'mcp',
+    authenticationMethod: 'ecdsa',
+    pricing: { type: 'subscription', amount: '10', currency: '', period: 'month' },
+    prompt: 'You are a DeFi analyst...',
+    skills: [{ name: 'analyze', description: 'Analyze trades', version: '1.0', inputSchema: {...} }],
+    mcp: { type: 'http', url: 'https://my-mcp.example.com/mcp' },
+  },
+  publicKey: '0x04abc...',
+  uploader,
+})
 
-// Step 2: Upload encrypted package to IPFS (requires Pinata JWT)
-const cid = await uploadToIPFS(encrypted.data)
+// result.encryptedCid → IPFS CID of encrypted private payload
+// result.publicCid   → IPFS CID of public metadata
+// result.aesKeyHex, result.eciesEncryptedKeyHex → for on-chain metadata
 
-// Step 3: Pack for on-chain (ECIES key wrapping)
-const { aesKeyHex, eciesEncryptedKeyHex } = packAgentForPublish(
-  payload, publicKey, aesKey
-)
-
-// Step 4: Register on-chain
+// 3. Register on-chain
 const registry = new AgentRegistry(config)
-await registry.register({ cid, aesKeyHex, eciesEncryptedKeyHex, ... })
+await registry.register(
+  `ipfs://${result.publicCid}`,
+  [
+    { key: 'encryptedPayloadCid', value: result.encryptedCid },
+    { key: 'eciesEncryptedKey', value: result.eciesEncryptedKeyHex },
+  ]
+)
 ```
 
 #### Auto-Subscribe via AgentX402
@@ -514,12 +535,10 @@ const {
 ## Repository
 
 - **GitHub (Main)**: [github.com/sftgroup/Agentx](https://github.com/sftgroup/Agentx)
-- **GitHub (Backup)**: [github.com/sftgroup/erc8004](https://github.com/sftgroup/erc8004)
-- **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.5.4`](https://www.npmjs.com/package/@agentxv2/sdk)
+- **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.6.4`](https://www.npmjs.com/package/@agentxv2/sdk)
 - **Contracts**: `agentx/contracts/` — Foundry + Solidity 0.8.20-0.8.24
 - **Frontend**: `agentx/frontend/` — Next.js 14 + wagmi 2.x
-- **Test Server**: http://43.156.78.59:8080
-- **Full README**: See [README.md](README.md) for architecture, code structure, and MCP details
+- **Production**: `http://43.156.99.215:3100`
 
 ---
 
