@@ -3432,7 +3432,7 @@ var KNOWN_CHAINS = {
     contracts: {
       identityRegistry: "0xbf5F9db266c8c97E3334466C88597Eb758AfE212",
       subscriptionManager: "0x019AC9d945467478Dd371CDbD70cb2f325800E6B",
-      a2aProtocolRegistry: "0xDF2939EFafEe6439eB2226DbEd07AD6F5Ae2112B",
+      a2aProtocolRegistry: "0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86",
       reputationRegistry: "0x6a18C2664E1b42063860d864b6448b824d7B843F",
       configurationRegistry: "0x07280674ccc2898Fd038A9e3C22005CA83ffD2F8",
       multiEndpointRegistry: "0xB361d04F49000013FC131D3C59C41c8486C64f8c"
