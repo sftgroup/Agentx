@@ -14,6 +14,7 @@ import tenantRouter from './routes/tenant'
 import historyRouter from './routes/history'
 import mcpRouter from './routes/mcp'
 import agentsRouter from './routes/agents'
+import adminRouter from './routes/admin'
 
 const app = express()
 
@@ -59,6 +60,10 @@ app.get('/api/v1/health', async (_req, res) => {
 // ── MCP endpoint (public JSON-RPC 2.0) ────────────────────────────────────
 
 app.use('/mcp', mcpRouter)
+
+// ── Admin API (protected by admin key, not wallet auth) ──────────────────
+
+app.use('/api/v1/admin', adminRouter)
 
 // ── Auth routes (public) ──────────────────────────────────────────────────
 
