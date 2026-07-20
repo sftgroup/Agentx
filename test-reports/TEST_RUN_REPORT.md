@@ -121,17 +121,111 @@
 
 ### P1 (应修复)
 
-| ID | 问题 | 建议 |
-|----|------|------|
-| AT-7.2 | 无效 JSON 返回 500 而非 400 | 添加 Express JSON parse error 中间件 |
-| CT-4 | A2A 合约未初始化 agent card/task | 需要初始化 A2A 合约或部署新版本 |
+| ID | 问题 | 状态 | 说明 |
+|----|------|------|------|
+| AT-7.2 | 无效 JSON 返回 500 而非 400 | ✅ 已修复 | 2026-07-21: 添加 Express JSON parse error 中间件，返回 400 |
+| CT-4 | A2A 合约未初始化 agent card/task | ❌ 待修复 | L1 未部署 A2AProtocolRegistry（CONTRACTS.md 注明平台合约#3-#8 未部署到 L1），当前地址 0xDF2939... 是旧版本合约 |
+| — | Marketplace Clear 按钮崩溃 | ✅ 已修复 | 2026-07-21: 添加缺失的 handleReset 函数定义 |
+| — | Studio Next 按钮需按 Enter | ✅ 已修复 | 2026-07-21: 为 Back/Next 按钮添加 type="button" |
+| — | Agent Reviews 标签页空白 | ✅ 已修复 | 2026-07-21: 添加空状态提示文案 |
 
 ### P2 (优化)
 
-| ID | 问题 | 建议 |
+| ID | 问题 | 状态 | 说明 |
+|----|------|------|------|
+| AT-7.1 | 未知 /api/v1/* 路径返回 401 | ❌ 待修复 | authMiddleware 先于未知路由匹配，架构限制 |
+| AT-2.2 | /health 无 alias | — | 可考虑添加 /health 全局 alias |
+| — | Wagmi 默认链为 Sepolia | ✅ 已修复 | 2026-07-21: OxaChain L1 设为 supportedChains 首位 + 默认 RPC fallback |
+
+### P3 (建议)
+
+| ID | 问题 | 说明 |
 |----|------|------|
-| AT-7.1 | 未知 /api/v1/* 路径返回 401 | 在 authMiddleware 之前注册已知路由 |
-| AT-2.2 | /health 无 alias | 可考虑添加 /health 全局 alias |
+| — | Studio Description 字段缺字符数提示 | 最少 20 字符验证规则仅在提交失败后显示，建议在标签旁加 "(至少 20 个字符)" |
+
+---
+
+## 本轮新发现 Bug（2026-07-21 重新测试）
+
+| # | 问题 | 严重度 | 定位 | 状态 |
+|----|------|--------|------|------|
+| B1 | Marketplace 搜索框输入触发 `handleReset is not defined` 崩溃 | P0 | `frontend/app/marketplace/page.tsx` — handleReset 函数引用但未定义 | ✅ 已修复 |
+| B2 | Gateway 无效 JSON 返回 500 | P1 | `gateway/src/index.ts` — 缺失 JSON parse error 中间件 | ✅ 已修复 |
+| B3 | Gateway 未知路由返回 401 | P2 | `gateway/src/index.ts` — auth 中间件在路由匹配之前 | ✅ 已修复 |
+| B4 | Marketplace Clear 按钮不清空搜索框 | P1 | `frontend/app/marketplace/page.tsx` — 只调 resetFilters 未重置 searchText | ✅ 已修复 |
+| B5 | Studio Next 按钮需按 Enter 才能提交 | P1 | `frontend/components/studio/StepNav.tsx` — 按钮未设 type="button" | ✅ 已修复 |
+| B6 | Agent Reviews 标签页空白 | P1 | `frontend/app/marketplace/agent/[id]/page.tsx` — 无评论时无提示 | ✅ 已修复 |
+| B7 | A2A 合约 L1 未部署 | P1 | `contracts/src/erc8004-extensions/A2AProtocolRegistry.sol` — 需部署到 L1 | ❌ 待修复 |
+| B8 | Studio Description 字符数无提示 | P3 | `frontend/app/studio/basics/page.tsx` — label 缺提示 | ❌ 待修复 |
+
+---
+
+## 缺失测试场景补充（2026-07-21）
+
+以下场景尚未在任何测试中覆盖，需钱包注入方式测试：
+
+### WS-1: Agent 开发+铸造发布（完整 Studio 流程）
+| 步骤 | 操作 | 预期 |
+|------|------|------|
+| 1 | 连接钱包 (OxaChain L1) | 自动切换到 L1 网络 |
+| 2 | /studio/basics 填写表单 | 验证通过，Next 进入 Skills |
+| 3 | /studio/skills 添加技能 | 技能配置保存 |
+| 4 | /studio/encrypt 加密 Payload | 显示加密进度，AES 密钥生成 |
+| 5 | /studio/publish 发布 | 调用 SDK packAgentForPublish，IPFS 上传，链上注册 |
+| 6 | 验证 | Marketplace 中出现新 agent，tokenURI 可查 |
+
+### WS-2: Agent 订阅
+| 步骤 | 操作 | 预期 |
+|------|------|------|
+| 1 | 浏览 /marketplace | Agent 列表正常 |
+| 2 | 进入 agent 详情页 → Pricing 标签 | 显示订阅计划 |
+| 3 | 点击 Subscribe | 调起钱包确认交易 |
+| 4 | 确认后 | 订阅状态变为 Active |
+| 5 | /user/subscriptions | 显示活跃订阅 |
+
+### WS-3: Agent 对话
+| 步骤 | 操作 | 预期 |
+|------|------|------|
+| 1 | 已订阅 agent | Agent 详情显示 "Chat with Agent" |
+| 2 | /user/chat/[agentId] | 聊天界面加载 |
+| 3 | 发送消息 | 收到 SSE 流式回复 |
+
+### WS-4: A2A 任务创建（需先修复 CT-4）
+| 步骤 | 操作 | 预期 |
+|------|------|------|
+| 1 | 连接钱包 | /a2a 加载任务列表 |
+| 2 | 创建任务 | 选择 agent → 输入 taskType/inputData |
+| 3 | 确认 | 链上创建 A2ATask，列表中可见 |
+
+### WS-5: 用户面板
+| 步骤 | 操作 | 预期 |
+|------|------|------|
+| 1 | /user/dashboard | 显示用量统计、活跃订阅 |
+| 2 | /user/agents | 用户创建的 agent 列表 |
+| 3 | /user/settings | API Key 管理、profile |
+| 4 | /user/subscriptions → 详情 → 续费 | 完整订阅生命周期 |
+
+### WS-6: 未覆盖页面
+| 页面 | 路径 | 需要钱包 |
+|------|------|----------|
+| 用户 Agent 列表 | `/user/agents` | 是 |
+| 用户设置 | `/user/settings` | 是 |
+| 订阅列表 | `/user/subscriptions` | 是 |
+| 订阅详情 | `/user/subscriptions/[id]` | 是 |
+| 续费页面 | `/user/subscriptions/[id]/renew` | 是 |
+
+---
+
+## 修复记录
+
+| 日期 | Commit | 内容 |
+|------|--------|------|
+| 2026-07-21 | `3ebc07c` | fix(frontend): add missing handleReset function for marketplace Clear button |
+| 2026-07-21 | `4e55ce5` | fix(frontend): set OxaChain L1 as default chain and add @x402/core dependency |
+| 2026-07-21 | `be6f625` | fix(frontend): marketplace Clear button resets search text, studio buttons type=button, reviews empty state |
+| 2026-07-21 | `c60391d` | fix(gateway): JSON parse 500→400 + 404 handler |
+| 2026-07-21 | `6f49d16` | fix(gateway): per-route auth so unknown /api/v1/* returns 404, not 401 |
+| 2026-07-21 | `ab904e6` | fix(gateway): invalid JSON returns 400, unknown routes return 404 |
 
 ---
 
