@@ -140,7 +140,7 @@ const getContractAddress = (): `0x${string}` | undefined => {
 
 // 本地缓存管理 - 使用更稳定的缓存策略
 class AgentCacheManager {
-  private static readonly CACHE_KEY = 'agent-registry-cache-v2'; // 更新缓存key
+  private static readonly CACHE_KEY = 'agent-registry-cache-v3'; // 已修复 base64 tokenURI 解析
   private static readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24小时缓存
   
   static getCache(): Map<number, AgentInfo> {
