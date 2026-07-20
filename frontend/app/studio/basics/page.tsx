@@ -20,7 +20,7 @@ export default function BasicsPage() {
             {fieldErrors.name && <p className="text-xs text-red-400 mt-1">{fieldErrors.name}</p>}
           </div>
           <div>
-            <label className="text-sm text-text-secondary mb-1.5 block">Description *</label>
+            <label className="text-sm text-text-secondary mb-1.5 block">Description * <span className="text-text-muted">(至少 20 个字符)</span></label>
             <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})}
               placeholder="What does your Agent do? Why subscribe?" rows={3}
               className={`w-full px-4 py-2.5 bg-white/5 border rounded-xl text-sm focus:outline-none focus:bg-white/8 transition-colors resize-none ${fieldErrors.description ? 'border-red-400/40' : 'border-white/5 focus:border-accent-purple/40'}`} />
