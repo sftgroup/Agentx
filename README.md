@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.6.3 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100`
+> SDK v0.6.4 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100`
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -32,7 +32,7 @@ Smart Contracts (dual-chain):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.6.3
+npm install @agentxv2/sdk@0.6.4
 ```
 
 ```typescript
@@ -74,7 +74,7 @@ await loop.run('Audit this contract for vulnerabilities')
 | **MCP Server** | `http://43.156.99.215:3090/mcp` |
 | **OxaChain RPC** | `http://43.156.99.215:18545` |
 | **OxaChain Explorer** | `http://43.156.99.215:18400` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.6.3` |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.6.4` |
 
 ## Documentation
 
