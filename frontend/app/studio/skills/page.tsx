@@ -6,7 +6,7 @@ import { useStudio } from '@/components/studio/StudioContext'
 import { StepNav } from '@/components/studio/StepNav'
 
 export default function SkillsPage() {
-  const { form, addSkill, updateSkill, removeSkill } = useStudio()
+  const { form, fieldErrors, addSkill, updateSkill, removeSkill } = useStudio()
 
   return (
     <>
@@ -32,6 +32,7 @@ export default function SkillsPage() {
                 <div className="flex-1 space-y-2">
                   <input value={skill.name} onChange={e => updateSkill(i, 'name', e.target.value)} placeholder="Skill name (e.g., get_balance)"
                     className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-cyan/40 transition-colors" />
+                  {fieldErrors[`skill_${i}_name`] && <p className="text-xs text-red-400">{fieldErrors[`skill_${i}_name`]}</p>}
                   <input value={skill.description} onChange={e => updateSkill(i, 'description', e.target.value)} placeholder="Description"
                     className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-cyan/40 transition-colors" />
                   <input value={skill.endpoint} onChange={e => updateSkill(i, 'endpoint', e.target.value)} placeholder="MCP endpoint URL (optional)"

@@ -49,9 +49,11 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const removeSkill = (i: number) => setForm(prev => ({ ...prev, skills: prev.skills.filter((_, idx) => idx !== i) }))
 
   const publish = useCallback(async () => {
+    console.log('[Studio] publish() called, isConnected:', isConnected, 'form.name:', form.name)
     setPublishing(true); setError(null)
     try {
       const tagList = form.tags.split(',').map(t => t.trim()).filter(Boolean)
+      console.log('[Studio] tagList:', tagList, 'skills:', form.skills.length)
 
       const agentPayload: AgentPayload = {
         name: form.name,
