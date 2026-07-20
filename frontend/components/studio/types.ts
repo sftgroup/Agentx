@@ -29,7 +29,7 @@ export const validateSkills = (form: AgentForm): Record<string, string> => {
   const errors: Record<string, string> = {}
   form.skills.forEach((s, i) => {
     if (!s.name.trim()) errors[`skill_${i}_name`] = `Skill #${i + 1} name is required`
-    if (!s.description.trim()) errors[`skill_${i}_desc`] = `Skill #${i + 1} description is required`
+    // description is optional — only validate name
   })
   return errors
 }
