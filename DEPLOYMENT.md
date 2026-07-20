@@ -20,9 +20,9 @@
 
 ```
 43.156.99.215
-├── :3100 → Next.js Frontend (standalone)
-├── :3090 → Express Gateway (wallet auth / rate-limit / LLM proxy / MCP Server)
-├── :5432 → PostgreSQL (localhost only)
+├── :3100 → Next.js Frontend (standalone, calls Gateway API for agent data)
+├── :3090 → Express Gateway (wallet auth / rate-limit / LLM proxy / MCP / Agents API)
+├── :5432 → PostgreSQL (localhost only, agentx_gateway DB)
 ├── :18545 → OxaChain L1 Geth Node (Clique PoA)
 └── :3000 → Reserved (root indexer service)
 ```
@@ -143,6 +143,56 @@ MULTI_ENDPOINT_OXACHAIN=0xB361d04F49000013FC131D3C59C41c8486C64f8c
 ```
 
 ---
+## 2.5 Agents API & Indexer (v0.6.4)
+
+The Gateway serves an **agent metadata index** via `GET /api/v1/agents` (public, no auth).  
+Agents are synced from the IdentityRegistry contract (OxaChain L1) into the `agents` PostgreSQL table.
+
+### Initial Setup
+
+```bash
+# Create the agents table
+psql -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
+
+# Sync agents from chain to DB
+curl -X POST http://localhost:3090/api/v1/agents-sync
+```
+
+### API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/v1/agents` | No | List all agents (JSON) |
+| `GET` | `/api/v1/agents/:id` | No | Single agent detail |
+| `POST` | `/api/v1/agents-sync` | No | Trigger chain→DB sync |
+
+### Agent Indexer Features
+
+- Reads `tokenURI(uint256)` + `ownerOf(uint256)` from IdentityRegistry
+- Handles IPFS CIDs, base64 data URIs, and malformed/corrupt base64 (auto-repair)
+- Stops after 8 consecutive empty tokenURIs (gap detection)
+- Upserts into `agents` table (`ON CONFLICT DO UPDATE`)
+
+### Cron Sync (recommended)
+
+```bash
+# Sync every 5 minutes
+*/5 * * * * curl -s -X POST http://localhost:3090/api/v1/agents-sync > /dev/null
+```
+
+### Why Database Index?
+
+```
+Before:  Frontend → wagmi → RPC → Contract (fragile, contract missing functions)
+After:   Frontend → Gateway API → PostgreSQL (fast, resilient)
+              ↑
+         Sync cron → RPC → Contract
+```
+
+The independent ERC-721 contract on L1 lacks `getCurrentAgentId()`, `agentExists()`, and `totalSupply()`.  
+The Gateway indexer solves this by probing tokenURIs sequentially and storing results in PostgreSQL.
+
+---
 
 ## 3. PostgreSQL Setup
 
@@ -153,9 +203,10 @@ sudo systemctl enable postgresql
 sudo -u postgres psql -c "CREATE USER agentx WITH PASSWORD 'AgentX2024!Gateway' CREATEDB;"
 sudo -u postgres psql -c "CREATE DATABASE agentx_gateway OWNER agentx;"
 psql -U agentx -d agentx_gateway -f db/migrations/001_init.sql
+psql -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
 ```
 
-### Schema (6 tables)
+### Schema (7 tables)
 
 | Table | Purpose |
 |-------|---------|
@@ -165,6 +216,7 @@ psql -U agentx -d agentx_gateway -f db/migrations/001_init.sql
 | `tenant_api_keys` | BYOK keys (encrypted) |
 | `usage_logs` | Per-request token + tool call tracking |
 | `chat_messages` | Conversation history |
+| `agents` | Agent metadata index from IdentityRegistry chain sync |
 
 ---
 
@@ -207,6 +259,9 @@ curl -sI http://43.156.99.215:3100/ | head -1
 
 # Gateway
 curl -s http://43.156.99.215:3090/api/v1/health
+
+# Agents API
+curl -s http://43.156.99.215:3090/api/v1/agents | jq '.total'
 
 # MCP
 curl -s -X POST http://43.156.99.215:3090/mcp \
