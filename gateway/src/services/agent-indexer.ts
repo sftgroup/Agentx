@@ -31,17 +31,26 @@ function parseTokenURIToJSON(tokenURI: string): Record<string, unknown> | null {
 
   try {
     const decoded = Buffer.from(b64, 'base64').toString('utf-8')
-    return JSON.parse(decoded)
-  } catch {
-    // Regex fallback for severely corrupted data
+    // Try JSON parse first
     try {
-      const decoded = Buffer.from(b64, 'base64').toString('utf-8')
-      const result: Record<string, unknown> = {}
-      const nameM = decoded.match(/"name"\s*:\s*"([^"]+)"/)
-      if (nameM) result.name = nameM[1]
-      return Object.keys(result).length > 0 ? result : null
-    } catch { return null }
-  }
+      return JSON.parse(decoded)
+    } catch {
+      // Unterminated JSON (contract bug): append missing closing quotes/braces
+      let fixed = decoded
+      // Count unclosed quotes
+      const quoteCount = (fixed.match(/"/g) || []).length
+      if (quoteCount % 2 !== 0) fixed += '"'
+      // Count unclosed braces
+      const openBraces = (fixed.match(/\{/g) || []).length
+      const closeBraces = (fixed.match(/\}/g) || []).length
+      for (let i = closeBraces; i < openBraces; i++) fixed += '}'
+      try { return JSON.parse(fixed) } catch { /* ok */ }
+    }
+    // Regex fallback
+    const nameM = decoded.match(/"name"\s*:\s*"([^"]*)/)
+    if (nameM) return { name: nameM[1] }
+    return null
+  } catch { return null }
 }
 
 // Extract CID from IPFS tokenURI
