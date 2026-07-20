@@ -13,6 +13,7 @@ import chatRouter from './routes/chat'
 import tenantRouter from './routes/tenant'
 import historyRouter from './routes/history'
 import mcpRouter from './routes/mcp'
+import agentsRouter from './routes/agents'
 
 const app = express()
 
