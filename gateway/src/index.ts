@@ -83,11 +83,12 @@ app.post('/api/v1/agents-sync', async (_req, res) => {
 // ── Protected routes ──────────────────────────────────────────────────────
 
 const api = express.Router()
+api.use(authMiddleware)
+api.use(tenantRateLimiter)
 
-// Per-route auth middleware — unknown /api/v1/* paths return 404, not 401
-api.use(authMiddleware, tenantRateLimiter, chatRouter)
-api.use('/tenant', authMiddleware, tenantRouter)
-api.use('/chat', authMiddleware, tenantRateLimiter, historyRouter)
+api.use(chatRouter)
+api.use('/tenant', tenantRouter)
+api.use('/chat', historyRouter)
 
 app.use('/api/v1', api)
 
