@@ -2,7 +2,7 @@ import { createConfig, http } from 'wagmi'
 import { mainnet, sepolia, polygonMumbai, baseSepolia } from 'wagmi/chains'
 import { injected, metaMask, walletConnect } from 'wagmi/connectors'
 
-// OxaChain L1 — custom chain
+// OxaChain L1 — custom chain (DEFAULT for AgentX platform)
 // Chain ID 19505, Clique PoA, Shanghai+Cancun, gas token T0x
 // RPC: http://43.156.99.215:18545  Explorer: http://43.156.99.215:18400
 export const oxaChain = {
@@ -67,11 +67,11 @@ const getRpcUrl = (chainId: number): string => {
     [zkSyncTestnet.id]: process.env.NEXT_PUBLIC_ZKSYNC_TESTNET_RPC_URL || 'https://sepolia.era.zksync.dev',
     [oxaChain.id]: process.env.NEXT_PUBLIC_OXACHAIN_RPC_URL || 'http://43.156.99.215:18545'
   }
-  return urls[chainId] || urls[sepolia.id]
+  return urls[chainId] || urls[oxaChain.id]
 }
 
 // 确保至少有一个链，使用类型断言
-export const supportedChains = [sepolia, oxaChain, zkSyncTestnet, polygonMumbai, baseSepolia] as const
+export const supportedChains = [oxaChain, sepolia, zkSyncTestnet, polygonMumbai, baseSepolia] as const
 
 export const config = createConfig({
   // 使用类型断言确保类型正确
