@@ -192,7 +192,6 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
         return
       }
       const row = r.rows[0]
-      console.log('[auth:middleware] loaded tenant:', row.id, 'plan:', row.plan_slug, 'quota:', row.quota_daily)
       if (row.status === 'suspended') {
         res.status(403).json({ error: 'Account suspended' })
         return
