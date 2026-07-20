@@ -1,4 +1,4 @@
-// app/a2a/page.tsx — A2A Tasks with On-Chain Index
+// app/a2a/page.tsx — A2A Tasks with On-Chain Index (v2 — OxaChain L1)
 'use client'
 
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -6,12 +6,14 @@ import { useAccount } from 'wagmi'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Cpu, Plus, RefreshCw, Clock, CheckCircle, AlertCircle,
-  Loader2, ArrowRight, Filter
+  Loader2, ArrowRight, Filter, Info
 } from 'lucide-react'
 import { createPublicClient, http } from 'viem'
-import { sepolia } from 'viem/chains'
 
-const A2A_REGISTRY = process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS as `0x${string}`
+const oxaChain = { id: 19505, name: 'OxaChain L1', nativeCurrency: { name: 'T0x', symbol: 'T0x', decimals: 18 }, rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_OXACHAIN_RPC_URL || 'http://43.156.99.215:18545'] } } }
+const A2A_REGISTRY = (process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS || '0xDF2939EFafEe6439eB2226DbEd07AD6F5Ae2112B') as `0x${string}`
+
+const publicClient = createPublicClient({ chain: oxaChain, transport: http() })
 
 const STATUS_CONFIG: Record<number, { label: string; icon: typeof Clock; color: string }> = {
   0: { label: 'Created', icon: Clock, color: 'text-yellow-400' },
@@ -20,8 +22,6 @@ const STATUS_CONFIG: Record<number, { label: string; icon: typeof Clock; color: 
   3: { label: 'Completed', icon: CheckCircle, color: 'text-green-400' },
   4: { label: 'Failed', icon: AlertCircle, color: 'text-red-400' },
 }
-
-const publicClient = createPublicClient({ chain: sepolia, transport: http() })
 
 const A2A_ABI_TASK = {
   inputs: [{ name: 'taskId', type: 'uint256' }], name: 'getTask',
@@ -53,15 +53,39 @@ export default function A2ATasksPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<TaskFilter>('all')
+  const [contractWarning, setContractWarning] = useState(false)
 
   const fetchTasks = useCallback(async () => {
     if (!address) return
-    setLoading(true); setError(null)
+    setLoading(true); setError(null); setContractWarning(false)
     try {
-      const taskIds = await publicClient.readContract({
-        address: A2A_REGISTRY,
-        abi: [A2A_ABI_USER_TASKS], functionName: 'getUserTasks', args: [address],
-      }) as bigint[]
+      let taskIds: bigint[] = []
+      try {
+        taskIds = await publicClient.readContract({
+          address: A2A_REGISTRY,
+          abi: [A2A_ABI_USER_TASKS], functionName: 'getUserTasks', args: [address],
+        }) as bigint[]
+      } catch (e: any) {
+        // getUserTasks not supported on independent contract — probe sequentially instead
+        if (e.message?.includes('returned no data') || e.message?.includes('reverted')) {
+          setContractWarning(true)
+          // Try sequential probe: check taskId 1..N
+          for (let id = 1; id <= 20; id++) {
+            try {
+              const r = await publicClient.readContract({
+                address: A2A_REGISTRY,
+                abi: [A2A_ABI_TASK], functionName: 'getTask', args: [BigInt(id)],
+              }) as any[]
+              const clientAddr = (r[6] as string).toLowerCase()
+              if (clientAddr === address.toLowerCase()) {
+                taskIds.push(BigInt(id))
+              }
+            } catch { break /* no more tasks */ }
+          }
+        } else {
+          throw e
+        }
+      }
 
       const results: A2ATaskDisplay[] = []
       for (const id of taskIds.slice(0, 20)) {
@@ -75,7 +99,7 @@ export default function A2ATasksPage() {
             inputData: r[3] as string, outputData: r[4] as string, status: Number(r[5]),
             clientAddress: r[6] as string, createdAt: Number(r[7]), completedAt: Number(r[8]),
           })
-        } catch { /* skip */ }
+        } catch { /* skip corrupted tasks */ }
       }
       setTasks(results.reverse())
     } catch (e: any) { setError(e.message || 'Failed to load tasks') }
@@ -108,6 +132,19 @@ export default function A2ATasksPage() {
           </div>
         </div>
 
+        {contractWarning && (
+          <div className="p-4 rounded-xl bg-amber-400/5 border border-amber-400/10 text-sm text-amber-400 flex items-center gap-2">
+            <Info className="w-4 h-4 flex-shrink-0" />
+            A2A contract v2 upgrade recommended for full task history. Currently using sequential task scanning.
+          </div>
+        )}
+
+        {error && (
+          <div className="p-4 rounded-xl bg-red-400/5 border border-red-400/10 text-sm text-red-400 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
+          </div>
+        )}
+
         {isConnected && tasks.length > 0 && (
           <div className="flex gap-1 p-1 bg-white/3 rounded-xl w-fit">
             {(['all', 'active', 'completed'] as TaskFilter[]).map(f => (
@@ -116,12 +153,6 @@ export default function A2ATasksPage() {
                 {f}
               </button>
             ))}
-          </div>
-        )}
-
-        {error && (
-          <div className="p-4 rounded-xl bg-red-400/5 border border-red-400/10 text-sm text-red-400 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
           </div>
         )}
 
