@@ -121,6 +121,7 @@ DATABASE_URL=postgresql://agentx:AgentX2024!Gateway@localhost:5432/agentx_gatewa
 REDIS_URL=redis://localhost:6379
 JWT_SECRET=agentx-prod-jwt-secret-key-2026
 MASTER_ENCRYPTION_KEY=agentx-master-encryption-key-32b
+ADMIN_KEY=agentx-admin-key-2026
 SESSION_TTL_SEC=86400
 FREE_PLAN_ID=
 CORS_ORIGIN=http://43.156.99.215:3100
@@ -143,7 +144,7 @@ MULTI_ENDPOINT_OXACHAIN=0xB361d04F49000013FC131D3C59C41c8486C64f8c
 ```
 
 ---
-## 2.5 Agents API & Indexer (v0.6.4)
+## 2.5 Agents API & Indexer (v0.6.5)
 
 The Gateway serves an **agent metadata index** via `GET /api/v1/agents` (public, no auth).  
 Agents are synced from the IdentityRegistry contract (OxaChain L1) into the `agents` PostgreSQL table.
@@ -306,7 +307,16 @@ npm version patch
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.6.4` · Git tag: `v0.6.4`
+Current: `@agentxv2/sdk@0.6.5` · Git tag: `v0.6.5`
+
+### SDK v0.6.5 New Features
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| **Admin Dashboard** | Gateway + Frontend | Web UI for platform key/plan/tenant/usage management |
+| **DeepSeek Platform Key** | Gateway | Add DeepSeek as platform LLM provider |
+| **Auth Fix** | Gateway | Case-insensitive wallet address lookup |
+| **A2A L1 Redeploy** | L1 | A2AProtocolRegistry v2 redeployed at `0x7F42...` |
 
 ### SDK v0.6.4 New Features
 
