@@ -214,7 +214,12 @@ function parseBase64TokenURI(tokenURI: string): AgentMetadata | null {
   try {
     const match = tokenURI.match(/^data:application\/json;base64,(.+)$/)
     if (!match) return null
-    const decoded = atob(match[1])
+    let decoded = atob(match[1])
+    // 处理末尾多余字节: 找到最后一个有效 JSON 的 }
+    const lastBrace = decoded.lastIndexOf('}')
+    if (lastBrace > 0 && lastBrace < decoded.length - 1) {
+      decoded = decoded.substring(0, lastBrace + 1)
+    }
     return JSON.parse(decoded) as AgentMetadata
   } catch {
     return null
