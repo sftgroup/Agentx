@@ -1,14 +1,12 @@
 // ---------------------------------------------------------------------------
-// AgentX Gateway — Agents API (public, read-only)
+// ── Agents API (public, read-only)
 // ---------------------------------------------------------------------------
 // GET /api/v1/agents         → list all agents
 // GET /api/v1/agents/:id     → single agent detail
-// POST /api/v1/agents/sync   → trigger chain sync (admin)
 // ---------------------------------------------------------------------------
 
 import { Router, Request, Response } from 'express'
 import { getPool } from '../lib/db'
-import { syncAgents } from '../services/agent-indexer'
 
 const router = Router()
 
@@ -48,18 +46,6 @@ router.get('/:id', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[agents] detail error:', err.message)
     res.status(500).json({ error: 'Failed to fetch agent' })
-  }
-})
-
-// ── Trigger sync ────────────────────────────────────────────────────────────
-
-router.post('/sync', async (_req: Request, res: Response) => {
-  try {
-    const result = await syncAgents()
-    res.json({ success: true, ...result })
-  } catch (err: any) {
-    console.error('[agents] sync error:', err.message)
-    res.status(500).json({ error: 'Sync failed', detail: err.message })
   }
 })
 
