@@ -15,7 +15,6 @@ const router = Router()
 
 router.post('/chat/completions', async (req: Request, res: Response) => {
   const tenant = req.tenant
-  console.log('[chat] tenant:', tenant ? `${tenant.planSlug} quota=${tenant.quotaDaily}` : 'NONE')
   if (!tenant) {
     res.status(401).json({ error: 'Unauthorized' })
     return
