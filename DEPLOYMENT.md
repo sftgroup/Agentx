@@ -1,6 +1,6 @@
 # AgentX Deployment Guide
 
-> Production: `43.156.99.215` (Full-Stack) · Last updated: 2026-07-20
+> Production: `43.156.99.215` (Full-Stack) · Last updated: 2026-07-21
 
 ---
 
@@ -133,7 +133,7 @@ IDENTITY_REGISTRY_OXACHAIN=0xbf5F9db266c8c97E3334466C88597Eb758AfE212
 SUBSCRIPTION_MANAGER=0xC15fE80b9d800abb72121F353a6ae6d6E9077E63
 SUBSCRIPTION_MANAGER_OXACHAIN=0x019AC9d945467478Dd371CDbD70cb2f325800E6B
 A2A_PROTOCOL=0x309C7447d89f3087A9924BB686d88df020F7e9cB
-A2A_PROTOCOL_OXACHAIN=0xDF2939EFafEe6439eB2226DbEd07AD6F5Ae2112B
+A2A_PROTOCOL_OXACHAIN=0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86
 REPUTATION_REGISTRY=0xeb6B410ea71b8d9dA0c96f6A91d35027CE143DC9
 REPUTATION_REGISTRY_OXACHAIN=0x6a18C2664E1b42063860d864b6448b824d7B843F
 CONFIGURATION_REGISTRY=0x68DcE00e4C9077c94BC68016cD14B09557faEA6c
@@ -324,6 +324,63 @@ For IPFS upload functionality, set the Pinata JWT in the Gateway `.env`:
 PINATA_JWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 IPFS_GATEWAY_URL=https://ipfs.io
 ```
+
+---
+
+## 8. Admin Dashboard
+
+### Access
+`http://43.156.99.215:3100/admin`
+
+### Admin Key
+Set `ADMIN_KEY` in Gateway `.env`:
+```bash
+ADMIN_KEY=agentx-admin-key-2026
+```
+
+### Admin API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/admin/platform-keys` | List platform LLM keys |
+| `POST` | `/api/v1/admin/platform-keys` | Add platform LLM key |
+| `DELETE` | `/api/v1/admin/platform-keys/:id` | Delete platform LLM key |
+| `GET` | `/api/v1/admin/plans` | List subscription plans |
+| `GET` | `/api/v1/admin/tenants?page=1&limit=20` | List tenants (paginated) |
+| `PATCH` | `/api/v1/admin/tenants/:id` | Update tenant plan/status |
+| `GET` | `/api/v1/admin/usage` | Usage stats (30-day) |
+
+Auth: `Authorization: Bearer <ADMIN_KEY>` or `X-Admin-Key: <ADMIN_KEY>`
+
+### Platform LLM Key Setup (DeepSeek example)
+
+```bash
+curl -X POST http://43.156.99.215:3090/api/v1/admin/platform-keys \
+  -H 'X-Admin-Key: agentx-admin-key-2026' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "provider": "deepseek",
+    "endpoint": "https://api.deepseek.com/v1",
+    "api_key": "sk-...",
+    "models": ["deepseek-chat"],
+    "plan_slugs": ["pro", "enterprise"]
+  }'
+```
+
+---
+
+## 9. Database Migrations
+
+### Initial Setup
+
+```bash
+cd /home/ubuntu/agentx-gateway
+export PGPASSWORD='AgentX2024!Gateway'
+psql -h localhost -U agentx -d agentx_gateway -f db/migrations/001_init.sql
+psql -h localhost -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
+```
+
+Creates tables: `plans`, `tenants`, `platform_api_keys`, `tenant_api_keys`, `usage_logs`, `chat_messages`, `agents`
 
 ---
 

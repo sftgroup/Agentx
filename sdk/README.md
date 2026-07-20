@@ -260,8 +260,9 @@ Auto-detected via `KNOWN_CHAINS[chainId]`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.6.5** | 2026-07-21 | Admin dashboard, A2A L1 redeploy (0x7F42...), DeepSeek platform key, auth case-insensitive fix |
 | **0.6.4** | 2026-07-20 | IPFSUploader (Pinata + custom endpoint), publishAgent pipeline, IPFS platform tools |
-| **0.6.3** | 2026-07-19 | Production deploy, wallet auto-switch to OxaChain L1, MCP dual-chain fixes |
+| 0.6.3 | 2026-07-19 | Production deploy, wallet auto-switch to OxaChain L1, MCP dual-chain fixes |
 | 0.6.1 | 2026-07-15 | AgentLoop ReAct, OpenAIProvider, GatewayProvider, ToolExecutor |
 | 0.5.4 | 2026-07-14 | MultiEndpointClient, ConfigurationClient, OxaChain L1 dual-chain |
 | 0.2.0 | 2026-07-13 | AgentRunner, SubscriptionManager v3, A2A Protocol, MCP Connector |

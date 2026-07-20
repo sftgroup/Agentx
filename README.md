@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.6.4 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100`
+> SDK v0.6.5 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100` · Last updated: 2026-07-21
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -32,7 +32,7 @@ Smart Contracts (dual-chain):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.6.4
+npm install @agentxv2/sdk@0.6.5
 ```
 
 ```typescript
@@ -59,9 +59,10 @@ await loop.run('Audit this contract for vulnerabilities')
 | **E2E Encryption** | AES-256-GCM + ECIES for agent distribution |
 | **On-Chain Subscriptions** | ETH subscription with escrow trial, auto-expiry |
 | **Gateway SaaS** | Multi-tenant LLM proxy with EIP-191 wallet auth |
-| **Dual-Mode LLM** | Platform quota + BYOK transparent proxy |
+| **Dual-Mode LLM** | Platform quota (DeepSeek/OpenAI) + BYOK transparent proxy |
+| **Admin Dashboard** | Web UI for platform key/plan/tenant/usage management |
 | **MCP Remote Tools** | Publisher-hosted tools with ECDSA auth |
-| **A2A Protocol** | Agent-to-Agent task delegation |
+| **A2A Protocol** | Agent-to-Agent task delegation (ERC-8004) |
 | **IPFS / Pinata** | Encrypted payload + metadata upload to IPFS via Pinata / custom endpoint |
 | **Dual-Chain** | Sepolia (testnet) + OxaChain L1 (mainnet, default) |
 
@@ -70,11 +71,12 @@ await loop.run('Audit this contract for vulnerabilities')
 | Service | URL |
 |---------|-----|
 | **Frontend** | `http://43.156.99.215:3100` |
+| **Admin Panel** | `http://43.156.99.215:3100/admin` |
 | **Gateway Health** | `http://43.156.99.215:3090/api/v1/health` |
 | **MCP Server** | `http://43.156.99.215:3090/mcp` |
 | **OxaChain RPC** | `http://43.156.99.215:18545` |
 | **OxaChain Explorer** | `http://43.156.99.215:18400` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.6.4` |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.6.5` |
 
 ## Documentation
 
@@ -92,7 +94,7 @@ await loop.run('Audit this contract for vulnerabilities')
 |---|----------|---------|-------------|
 | 1 | IdentityRegistry | `0xe94a...96e5F` | `0xbf5F...E212` |
 | 2 | SubscriptionManager v3 | `0xC15f...7E63` | `0x019A...0E6B` |
-| 3 | A2AProtocolRegistry v2 | `0x309C...7e9cB` | `0xDF29...112B` |
+| 3 | A2AProtocolRegistry v2 | `0x309C...7e9cB` | `0x7F42...Eb86` |
 | 4 | ReputationRegistry | `0xeb6B...3DC9` | `0x6a18...843F` |
 | 5 | ConfigurationRegistry | `0x68Dc...EA6c` | `0x0728...D2F8` |
 | 6 | MultiEndpointRegistry | `0xEB5e...1Cb7` | `0xB361...4f8c` |
