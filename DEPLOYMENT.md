@@ -285,7 +285,7 @@ ss -tlnp | grep -E '3100|3090|18545'
 |---|----------|---------|-------------|
 | 1 | IdentityRegistry | `0xe94a...96e5F` | `0xbf5F...E212` |
 | 2 | SubscriptionManager v3 | `0xC15f...7E63` | `0x019A...0E6B` |
-| 3 | A2AProtocolRegistry v2 | `0x309C...7e9cB` | `0xDF29...112B` |
+| 3 | A2AProtocolRegistry v2 | `0x309C...7e9cB` | `0x7F42...Eb86` |
 | 4 | ReputationRegistry | `0xeb6B...3DC9` | `0x6a18...843F` |
 | 5 | ConfigurationRegistry | `0x68Dc...EA6c` | `0x0728...D2F8` |
 | 6 | MultiEndpointRegistry | `0xEB5e...1Cb7` | `0xB361...4f8c` |
