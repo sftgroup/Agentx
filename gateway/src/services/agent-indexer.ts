@@ -26,13 +26,23 @@ function parseTokenURIToJSON(tokenURI: string): Record<string, unknown> | null {
   if (match) {
     try {
       let decoded = Buffer.from(match[1], 'base64').toString('utf-8')
-      // Handle trailing garbage bytes: find last valid JSON }
+      // Handle trailing garbage: find last valid JSON }
       const lastBrace = decoded.lastIndexOf('}')
       if (lastBrace > 0 && lastBrace < decoded.length - 1) {
         decoded = decoded.substring(0, lastBrace + 1)
       }
       return JSON.parse(decoded)
     } catch {
+      // Fallback: try regex to extract fields from malformed JSON
+      try {
+        const decoded = Buffer.from(match[1], 'base64').toString('utf-8')
+        const result: Record<string, unknown> = {}
+        const nameM = decoded.match(/"name"\s*:\s*"([^"]+)"/)
+        if (nameM) result.name = nameM[1]
+        const descM = decoded.match(/"description"\s*:\s*"([^"]+)"/)
+        if (descM) result.description = descM[1]
+        return Object.keys(result).length > 0 ? result : null
+      } catch { /* */ }
       return null
     }
   }
