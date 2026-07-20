@@ -42,6 +42,14 @@ app.use(rateLimit({
 
 app.use(express.json({ limit: '1mb' }))
 
+// Handle malformed JSON (return 400 instead of 500)
+app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid JSON in request body' })
+  }
+  next(err)
+})
+
 // ── Health check ──────────────────────────────────────────────────────────
 
 app.get('/api/v1/health', async (_req, res) => {
@@ -83,6 +91,14 @@ api.use('/tenant', tenantRouter)
 api.use('/chat', historyRouter)
 
 app.use('/api/v1', api)
+
+// ── 404 handler ───────────────────────────────────────────────────────────
+
+app.use((_req, res) => {
+  if (!res.headersSent) {
+    res.status(404).json({ error: 'Not found' })
+  }
+})
 
 // ── Error handler ─────────────────────────────────────────────────────────
 
