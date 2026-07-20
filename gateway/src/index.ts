@@ -60,6 +60,17 @@ app.post('/api/v1/auth/verify', verifyChallenge)
 
 app.use('/api/v1/agents', agentsRouter)
 
+// Agent sync (public, for cron)
+app.post('/api/v1/agents-sync', async (_req, res) => {
+  try {
+    const { syncAgents } = await import('./services/agent-indexer')
+    const result = await syncAgents()
+    res.json({ success: true, ...result })
+  } catch (err: any) {
+    res.status(500).json({ error: 'Sync failed', detail: err.message })
+  }
+})
+
 // ── Protected routes ──────────────────────────────────────────────────────
 
 const api = express.Router()
