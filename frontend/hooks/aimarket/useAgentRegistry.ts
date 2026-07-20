@@ -566,14 +566,16 @@ export function useAgentDetail(agentId: number) {
             agentInfo.errorMessage = result.error
           }
         } else {
-          agentInfo.metadata = {
+          // 没有CID但有tokenURI → 尝试从 tokenURI 解析 base64 metadata
+          const base64Meta = parseBase64TokenURI(tokenURI)
+          agentInfo.metadata = base64Meta || {
             name: `Agent ${agentId}`,
             description: '此 Agent 没有配置 IPFS 元数据',
             tags: ['no-metadata'],
             capabilities: []
           }
           agentInfo.isLoaded = true
-          agentInfo.status = 'no-metadata'
+          agentInfo.status = base64Meta ? 'success' : 'no-metadata'
         }
 
         // 更新缓存
