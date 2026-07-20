@@ -209,6 +209,18 @@ class AgentCacheManager {
   }
 }
 
+// 解析 base64 data URI tokenURI (例如: data:application/json;base64,eyJuYW1lIjoi...)
+function parseBase64TokenURI(tokenURI: string): AgentMetadata | null {
+  try {
+    const match = tokenURI.match(/^data:application\/json;base64,(.+)$/)
+    if (!match) return null
+    const decoded = atob(match[1])
+    return JSON.parse(decoded) as AgentMetadata
+  } catch {
+    return null
+  }
+}
+
 export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn {
   const publicClient = usePublicClient()
   const [localAgents, setLocalAgents] = useState<AgentInfo[]>([])
@@ -332,18 +344,6 @@ export function useAgentRegistry(batchSize: number = 12): UseAgentRegistryReturn
       return agentInfo
     } catch (error) {
       console.error(`Failed to fetch agent ${agentId}:`, error)
-      return null
-    }
-  }
-
-  // 解析 base64 data URI tokenURI (例如: data:application/json;base64,eyJuYW1lIjoi...)
-  const parseBase64TokenURI = (tokenURI: string): AgentMetadata | null => {
-    try {
-      const match = tokenURI.match(/^data:application\/json;base64,(.+)$/)
-      if (!match) return null
-      const decoded = atob(match[1])
-      return JSON.parse(decoded) as AgentMetadata
-    } catch {
       return null
     }
   }
