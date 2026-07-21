@@ -2,12 +2,16 @@
 
 import Link from 'next/link'
 import { Brain, Hexagon, Sparkles } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { WalletConnect } from '@/components/wallet/WalletConnect'
 import { WalletStatus } from '@/components/wallet/WalletStatus'
 import { NetworkSwitcher } from '@/components/wallet/NetworkSwitcher'
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher'
 import { MobileNav } from '@/components/layout/MobileNav'
 
 export function Header() {
+  const { t } = useTranslation()
+
   return (
     <header className="border-b border-white/5 bg-bg/80 backdrop-blur-xl sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -21,17 +25,18 @@ export function Header() {
               <span className="text-lg font-bold tracking-tight text-text-primary group-hover:text-accent-purple transition-colors">AgentX</span>
             </Link>
             <nav className="hidden md:flex items-center gap-6 ml-4">
-              <Link href="/marketplace" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">Marketplace</Link>
+              <Link href="/marketplace" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">{t('header.marketplace')}</Link>
               <Link href="/studio" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">
-                Studio <Sparkles className="w-3 h-3 inline ml-1 text-accent-purple" />
+                {t('header.studio')} <Sparkles className="w-3 h-3 inline ml-1 text-accent-purple" />
               </Link>
-              <Link href="/dashboard/agent" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">Dashboard</Link>
+              <Link href="/dashboard/agent" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">{t('header.dashboard')}</Link>
             </nav>
           </div>
 
-          {/* Right: Wallet + Mobile Nav */}
+          {/* Right: Wallet + Language + Mobile Nav */}
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-3">
+              <LanguageSwitcher />
               <NetworkSwitcher />
               <WalletConnect />
             </div>

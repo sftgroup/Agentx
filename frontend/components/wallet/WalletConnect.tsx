@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi'
 import { Wallet, LogOut, ChevronDown, CheckCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { oxaChain } from '@/lib/wagmi/config'
 
 const OXACHAIN_ID = oxaChain.id
 
 export function WalletConnect() {
+  const { t } = useTranslation()
   const [showConnectors, setShowConnectors] = useState(false)
   const [isSwitching, setIsSwitching] = useState(false)
   const { address, isConnected } = useAccount()
@@ -45,14 +47,14 @@ export function WalletConnect() {
               {oxaChain.name}
             </span>
           ) : (
-            <span>{isSwitching ? 'Switching to OxaChain...' : `Wrong Network (${chainId})`}</span>
+            <span>{isSwitching ? t('common.switching') : `${t('common.wrongNetwork')} (${chainId})`}</span>
           )}
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg">
           <Wallet className="w-3.5 h-3.5 text-text-muted" />
           <span className="text-sm font-medium text-text-primary">{formatAddress(address)}</span>
         </div>
-        <button onClick={() => disconnect()} className="p-1.5 text-text-muted hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10" title="Disconnect">
+        <button onClick={() => disconnect()} className="p-1.5 text-text-muted hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10" title={t('common.disconnect')}>
           <LogOut className="w-4 h-4" />
         </button>
       </div>
@@ -66,14 +68,14 @@ export function WalletConnect() {
         className="btn-primary text-sm py-2 px-4"
       >
         <Wallet className="w-4 h-4" />
-        <span>Connect Wallet</span>
+        <span>{t('common.connectWallet')}</span>
         <ChevronDown className="w-3 h-3" />
       </button>
 
       {showConnectors && (
         <div className="absolute top-full right-0 mt-2 w-64 glass-card p-2 z-50">
-          <h3 className="text-xs font-semibold text-text-muted mb-2 px-2 uppercase tracking-wider">Select Wallet</h3>
-          {isPending && <div className="text-xs text-accent-purple mb-2 text-center">Connecting...</div>}
+          <h3 className="text-xs font-semibold text-text-muted mb-2 px-2 uppercase tracking-wider">{t('common.selectWallet')}</h3>
+          {isPending && <div className="text-xs text-accent-purple mb-2 text-center">{t('common.connecting')}</div>}
           {connectors.map((connector) => (
             <button
               key={connector.uid}
