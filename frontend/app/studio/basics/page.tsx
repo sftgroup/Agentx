@@ -5,9 +5,23 @@ import { useTranslation } from 'react-i18next'
 import { useStudio } from '@/components/studio/StudioContext'
 import { StepNav } from '@/components/studio/StepNav'
 
+const PRESET_TAGS = [
+  'Customer Service', 'Sales', 'Marketing', 'Trading',
+  'Security Audit', 'Data Analysis', 'Code Review', 'Content Writing',
+  'Legal', 'Finance', 'Healthcare', 'Education',
+  'Social Media', 'DeFi', 'NFT', 'Gaming',
+]
+
 export default function BasicsPage() {
   const { t } = useTranslation()
   const { form, setForm, fieldErrors } = useStudio()
+
+  const toggleTag = (tag: string) => {
+    const next = form.tags.includes(tag)
+      ? form.tags.filter(t => t !== tag)
+      : [...form.tags, tag]
+    setForm({ ...form, tags: next })
+  }
 
   return (
     <>
@@ -36,9 +50,31 @@ export default function BasicsPage() {
             {fieldErrors.prompt && <p className="text-xs text-red-400 mt-1">{fieldErrors.prompt}</p>}
           </div>
           <div>
-            <label className="text-sm text-text-secondary mb-1.5 block">{t('studio.tagsLabel')}</label>
-            <input value={form.tags} onChange={e => setForm({...form, tags: e.target.value})} placeholder={t('studio.tagsPlaceholder')}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-sm focus:outline-none focus:border-accent-purple/40 focus:bg-white/8 transition-colors" />
+            <label className="text-sm text-text-secondary mb-2 block">{t('studio.tagsLabel')}</label>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_TAGS.map(tag => {
+                const selected = form.tags.includes(tag)
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleTag(tag)}
+                    className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                      selected
+                        ? 'bg-accent-purple/15 text-accent-purple border-accent-purple/20'
+                        : 'bg-white/3 border-white/5 text-text-muted hover:text-text-secondary hover:border-white/10'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                )
+              })}
+            </div>
+            {form.tags.length > 0 && (
+              <p className="text-xs text-text-muted mt-2">
+                Selected: {form.tags.join(', ')}
+              </p>
+            )}
           </div>
         </div>
       </div>

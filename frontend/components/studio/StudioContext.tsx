@@ -52,7 +52,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     console.log('[Studio] publish() called, isConnected:', isConnected, 'form.name:', form.name)
     setPublishing(true); setError(null)
     try {
-      const tagList = form.tags.split(',').map(t => t.trim()).filter(Boolean)
+      const tagList = form.tags
       console.log('[Studio] tagList:', tagList, 'skills:', form.skills.length)
 
       const agentPayload: AgentPayload = {
