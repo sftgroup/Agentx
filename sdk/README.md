@@ -1,6 +1,6 @@
-# @agentxv2/sdk v0.6.4
+# @agentxv2/sdk v0.6.6
 
-**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers.
+**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop.
 
 ```
 Agent = Prompt + Skills[] + MCP
@@ -143,6 +143,47 @@ const publicUrl = uploader.getUrl('QmXxx...')
 // → https://ipfs.io/ipfs/QmXxx...
 ```
 
+### 5. A2A Daemon — Multi-Agent Interop (v0.6.6)
+
+```ts
+import { A2ADaemon } from '@agentxv2/sdk/agent-loop'
+// or: import { A2ADaemon } from '@agentxv2/sdk'
+
+// Initialize A2A protocol (needs viem wallet client)
+const a2a = new A2AProtocol({
+  contractAddress: '0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86',
+  publicClient,
+  walletClient,
+})
+
+// Start daemon — automatically processes incoming A2A tasks
+const daemon = new A2ADaemon({
+  agentId: 53,
+  a2a,
+  gatewayUrl: 'http://43.156.99.215:3090',
+  pollIntervalMs: 15000,  // poll every 15 seconds
+  autoComplete: true,     // auto-call completeTask() on-chain
+})
+
+daemon.on('taskCompleted', (result) => {
+  console.log(`Task #${result.task.taskId} completed!`, result.txHash)
+})
+
+daemon.on('taskFailed', (result) => {
+  console.error(`Task #${result.task.taskId} failed:`, result.error)
+})
+
+daemon.start()
+// daemon.stop()
+```
+
+**How it works:**
+```
+Agent A → createTask(Agent B) on-chain
+Gateway Worker → detects → LLM processes → stores result
+SDK A2A Daemon → polls Gateway → gets result → completeTask() on-chain
+```
+
 ---
 
 ## Architecture
@@ -184,6 +225,7 @@ const publicUrl = uploader.getUrl('QmXxx...')
 | `MultiEndpointClient` | endpoint | Multi-endpoint routing |
 | `IPFSUploader` | ipfs | Upload to IPFS via Pinata or custom endpoint |
 | `publishAgent` | core | Full encrypt + IPFS upload + pack pipeline |
+| `A2ADaemon` | agent-loop | Background daemon that auto-processes incoming A2A tasks |
 | `KNOWN_CHAINS` | config | Pre-configured chain configs |
 
 ### Sub-path Imports
@@ -260,6 +302,7 @@ Auto-detected via `KNOWN_CHAINS[chainId]`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.6.6** | 2026-07-22 | A2A Worker + Daemon multi-agent interop, A2A tenant isolation, i18n EN/繁體中文, completeTask ABI fix, getAgentTasks |
 | **0.6.5** | 2026-07-21 | Admin dashboard, A2A L1 redeploy (0x7F42...), DeepSeek platform key, auth case-insensitive fix |
 | **0.6.4** | 2026-07-20 | IPFSUploader (Pinata + custom endpoint), publishAgent pipeline, IPFS platform tools |
 | 0.6.3 | 2026-07-19 | Production deploy, wallet auto-switch to OxaChain L1, MCP dual-chain fixes |

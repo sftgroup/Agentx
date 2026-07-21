@@ -14,6 +14,7 @@ import tenantRouter from './routes/tenant'
 import historyRouter from './routes/history'
 import mcpRouter from './routes/mcp'
 import agentsRouter from './routes/agents'
+import a2aRouter from './routes/a2a'
 import adminRouter from './routes/admin'
 
 const app = express()
@@ -74,6 +75,10 @@ app.post('/api/v1/auth/verify', verifyChallenge)
 
 app.use('/api/v1/agents', agentsRouter)
 
+// ── A2A Task Results API (public, SDK daemon queries this) ────────────────
+
+app.use('/api/v1/a2a', a2aRouter)
+
 // Agent sync (public, for cron)
 app.post('/api/v1/agents-sync', async (_req, res) => {
   try {
@@ -131,4 +136,12 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 app.listen(config.port, () => {
   console.log(`[AgentX Gateway] Running on port ${config.port}`)
   console.log(`[AgentX Gateway] Mode: ${config.nodeEnv}`)
+
+  // Start A2A background worker for multi-agent task processing
+  import('./services/a2a-worker').then(({ startA2AWorker }) => {
+    startA2AWorker()
+    console.log('[AgentX Gateway] A2A Worker started')
+  }).catch(err => {
+    console.error('[AgentX Gateway] Failed to start A2A Worker:', err.message)
+  })
 })

@@ -603,6 +603,7 @@ var init_toBytes = __esm({
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
+  A2ADaemon: () => A2ADaemon,
   A2AProtocol: () => A2AProtocol,
   A2A_VERSION: () => A2A_VERSION,
   AgentLoop: () => AgentLoop,
@@ -2004,6 +2005,135 @@ function wrapPlatformToolsAsSkills(ctx, modules) {
   }));
 }
 
+// src/agent-loop/a2a-daemon.ts
+var import_events = require("events");
+var A2ADaemon = class extends import_events.EventEmitter {
+  config;
+  timer = null;
+  isRunning = false;
+  processedTasks = /* @__PURE__ */ new Set();
+  constructor(config) {
+    super();
+    this.config = {
+      agentId: config.agentId,
+      a2a: config.a2a,
+      gatewayUrl: config.gatewayUrl,
+      pollIntervalMs: config.pollIntervalMs ?? 15e3,
+      autoComplete: config.autoComplete ?? true,
+      maxPerPoll: config.maxPerPoll ?? 3
+    };
+  }
+  // ── Lifecycle ────────────────────────────────────────────────────────────
+  start() {
+    if (this.timer) return;
+    console.log(`[A2A Daemon] Starting for agent #${this.config.agentId}, poll: ${this.config.pollIntervalMs}ms`);
+    this.timer = setInterval(() => this.poll(), this.config.pollIntervalMs);
+    this.poll();
+  }
+  stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+      console.log(`[A2A Daemon] Stopped for agent #${this.config.agentId}`);
+    }
+  }
+  get status() {
+    return {
+      running: this.timer !== null,
+      agentId: this.config.agentId,
+      processedCount: this.processedTasks.size
+    };
+  }
+  // ── Core Logic ───────────────────────────────────────────────────────────
+  async poll() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    try {
+      const pendingTasks = await this.getPendingTasks();
+      if (pendingTasks.length === 0) {
+        this.isRunning = false;
+        return;
+      }
+      console.log(`[A2A Daemon] Found ${pendingTasks.length} pending task(s) for agent #${this.config.agentId}`);
+      let processed = 0;
+      for (const task of pendingTasks) {
+        if (processed >= this.config.maxPerPoll) break;
+        try {
+          const result = await this.processPendingTask(task);
+          processed++;
+          if (result.completed) {
+            this.processedTasks.add(task.taskId);
+            this.emit("taskCompleted", result);
+            console.log(`[A2A Daemon] Task #${task.taskId} completed, tx: ${result.txHash?.slice(0, 10)}...`);
+          } else if (result.error) {
+            this.emit("taskFailed", result);
+            console.warn(`[A2A Daemon] Task #${task.taskId} failed: ${result.error}`);
+          }
+        } catch (err) {
+          console.error(`[A2A Daemon] Error processing task #${task.taskId}:`, err.message);
+        }
+      }
+    } catch (err) {
+      console.error("[A2A Daemon] Poll error:", err.message);
+    } finally {
+      this.isRunning = false;
+    }
+  }
+  /**
+   * Get pending tasks assigned to this agent using getAgentTasks() from the contract.
+   */
+  async getPendingTasks() {
+    try {
+      const allTasks = await this.config.a2a.getAgentTasks(this.config.agentId);
+      return allTasks.filter(
+        (t) => (t.status === "created" || t.status === "accepted") && !this.processedTasks.has(t.taskId)
+      );
+    } catch (err) {
+      console.warn("[A2A Daemon] Failed to fetch pending tasks:", err.message);
+      return [];
+    }
+  }
+  /**
+   * Process a pending A2A task:
+   *   1. Try Gateway API for pre-computed LLM result
+   *   2. Call completeTask() on-chain with the owner's wallet
+   */
+  async processPendingTask(task) {
+    let gatewayOutput;
+    if (this.config.gatewayUrl) {
+      try {
+        const res = await fetch(
+          `${this.config.gatewayUrl}/api/v1/a2a/task-result/${task.taskId}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 2 && data.output_data) {
+            gatewayOutput = data.output_data;
+            console.log(`[A2A Daemon] Got result for task #${task.taskId} from Gateway`);
+          }
+        }
+      } catch (err) {
+        console.warn(`[A2A Daemon] Gateway unavailable for task #${task.taskId}:`, err.message);
+      }
+    }
+    const outputContent = gatewayOutput || `Task processed. Type: ${task.taskType}. Input: ${task.input}`;
+    if (this.config.autoComplete) {
+      try {
+        const txHash = await this.config.a2a.completeTask(
+          task.taskId,
+          outputContent,
+          3
+          // completed
+        );
+        return { task, gatewayOutput, completed: true, txHash };
+      } catch (err) {
+        return { task, gatewayOutput, completed: false, error: err.message };
+      }
+    }
+    return { task, gatewayOutput, completed: false };
+  }
+};
+
 // src/llm/openai-provider.ts
 var DEFAULT_ENDPOINT = "https://api.openai.com/v1";
 var OpenAIProvider = class {
@@ -3090,7 +3220,8 @@ var A2A_ABI = {
   completeTask: {
     inputs: [
       { name: "taskId", type: "uint256" },
-      { name: "outputData", type: "string" }
+      { name: "outputData", type: "string" },
+      { name: "status", type: "uint256" }
     ],
     name: "completeTask",
     outputs: [],
@@ -3118,6 +3249,30 @@ var A2A_ABI = {
     inputs: [{ name: "user", type: "address" }],
     name: "getUserTasks",
     outputs: [{ name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  getAgentTasks: {
+    inputs: [{ name: "agentId", type: "uint256" }],
+    name: "getAgentTasks",
+    outputs: [
+      {
+        name: "",
+        type: "tuple[]",
+        components: [
+          { name: "taskId", type: "uint256" },
+          { name: "agentId", type: "uint256" },
+          { name: "taskType", type: "string" },
+          { name: "inputData", type: "string" },
+          { name: "outputData", type: "string" },
+          { name: "status", type: "uint256" },
+          { name: "clientAddress", type: "address" },
+          { name: "createdAt", type: "uint256" },
+          { name: "completedAt", type: "uint256" },
+          { name: "taskHash", type: "bytes32" }
+        ]
+      }
+    ],
     stateMutability: "view",
     type: "function"
   }
@@ -3196,7 +3351,7 @@ var A2AProtocol = class {
     const taskId = this._parseUintFromLog(receipt, "TaskCreated");
     return { taskId, txHash: hash };
   }
-  async completeTask(taskId, output) {
+  async completeTask(taskId, output, status = 3) {
     const acct = await this.account;
     const outputStr = typeof output === "string" ? output : JSON.stringify(output);
     const { request } = await this.publicClient.simulateContract({
@@ -3204,7 +3359,7 @@ var A2AProtocol = class {
       address: this.address,
       abi: [A2A_ABI.completeTask],
       functionName: "completeTask",
-      args: [BigInt(taskId), outputStr]
+      args: [BigInt(taskId), outputStr, BigInt(status)]
     });
     return this.walletClient.writeContract(request);
   }
@@ -3237,6 +3392,30 @@ var A2AProtocol = class {
       args: [user]
     });
     return r.map(Number);
+  }
+  async getAgentTasks(agentId) {
+    const r = await this.publicClient.readContract({
+      address: this.address,
+      abi: [A2A_ABI.getAgentTasks],
+      functionName: "getAgentTasks",
+      args: [BigInt(agentId)]
+    });
+    const statusMap = ["created", "accepted", "in_progress", "completed", "failed"];
+    const tasks = r;
+    return tasks.map((t) => ({
+      taskId: Number(t.taskId),
+      creator: t.clientAddress,
+      targetAgentId: Number(t.agentId),
+      taskType: t.taskType,
+      input: t.inputData,
+      status: statusMap[Number(t.status)] ?? "created",
+      result: t.outputData,
+      createdAt: Number(t.createdAt),
+      completedAt: t.completedAt > 0n ? Number(t.completedAt) : void 0
+    }));
+  }
+  async getAddress() {
+    return this.account;
   }
   // ── Helpers ─────────────────────────────────────────────────────────────
   _parseUintFromLog(receipt, _eventName) {
@@ -3486,10 +3665,10 @@ var KNOWN_CHAINS = {
     ipfsGateways: ["ipfs.io", "gateway.pinata.cloud", "dweb.link", "cf-ipfs.com"]
   },
   // OxaChain L1 Mainnet
-  // Chain ID 19505, Clique PoA, Shanghai+Cancun, gas token T0x
+  // Chain ID 19505, Clique PoA, Shanghai+Cancun, gas token OXA
   // Deployer: 0x8E869A0624fF9e766Df71b5B08897d00E4d260ba
-  // RPC: http://43.156.99.215:18545
-  // Explorer: http://43.156.99.215:18400
+  // RPC: https://rpc-oxa.0xainet.top
+  // Explorer: https://explorer-oxa.0xainet.top
   // All 6 core contracts deployed 2026-07-14
   19505: {
     chainId: 19505,
@@ -3502,7 +3681,7 @@ var KNOWN_CHAINS = {
       multiEndpointRegistry: "0xB361d04F49000013FC131D3C59C41c8486C64f8c"
     },
     ipfsGateways: ["ipfs.io", "gateway.pinata.cloud", "dweb.link", "cf-ipfs.com"],
-    rpcUrl: "http://43.156.99.215:18545"
+    rpcUrl: "https://rpc-oxa.0xainet.top"
   }
 };
 var ConfigurationRegistry = class {
@@ -4122,6 +4301,7 @@ function useAgentRunner(config) {
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  A2ADaemon,
   A2AProtocol,
   A2A_VERSION,
   AgentLoop,
@@ -4175,4 +4355,3 @@ function useAgentRunner(config) {
   useAgentRunner,
   wrapPlatformToolsAsSkills
 });
-//# sourceMappingURL=index.js.map

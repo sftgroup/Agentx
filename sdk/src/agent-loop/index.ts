@@ -12,6 +12,8 @@ export {
   getAllPlatformToolNames,
 } from './platform-tools'
 export type { PlatformToolDef, PlatformToolContext } from './platform-tools'
+export { A2ADaemon } from './a2a-daemon'
+export type { A2ADaemonConfig, A2ATaskResult } from './a2a-daemon'
 export type {
   LLMMessage,
   LLMToolCall,

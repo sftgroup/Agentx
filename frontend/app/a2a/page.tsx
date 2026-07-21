@@ -1,4 +1,4 @@
-// app/a2a/page.tsx — A2A Tasks with On-Chain Index (v3 — Create + Complete)
+// app/a2a/page.tsx — A2A Tasks with Gateway Auto-Processing (v4)
 'use client'
 
 import { useTranslation } from 'react-i18next'
@@ -7,7 +7,7 @@ import { useAccount, useWriteContract } from 'wagmi'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Cpu, Plus, RefreshCw, Clock, CheckCircle, AlertCircle,
-  Loader2, ArrowRight, Filter, Info, Send, X, Check, ChevronDown, Search
+  Loader2, ArrowRight, Filter, Info, Send, X, Check, Search, Zap, Brain
 } from 'lucide-react'
 import { createPublicClient, http } from 'viem'
 
@@ -49,7 +49,14 @@ interface A2ATaskDisplay {
   clientAddress: string; createdAt: number; completedAt: number
 }
 
-interface AgentOption { id: number; name: string; description: string }
+interface GatewayTaskStatus {
+  status: number  // 0=pending, 1=processing, 2=completed, 3=failed
+  output_data?: string
+  llm_model?: string
+  processed_at?: string
+}
+
+interface AgentOption { id: number; name: string; description: string; owner?: string }
 
 type TaskFilter = 'all' | 'active' | 'completed'
 
@@ -72,6 +79,9 @@ export default function A2ATasksPage() {
   const [filter, setFilter] = useState<TaskFilter>('all')
   const [contractWarning, setContractWarning] = useState(false)
 
+  // Gateway task status map: taskId → GatewayTaskStatus
+  const [gatewayStatuses, setGatewayStatuses] = useState<Record<number, GatewayTaskStatus>>({})
+
   // Create task
   const [showCreate, setShowCreate] = useState(false)
   const [agents, setAgents] = useState<AgentOption[]>([])
@@ -89,15 +99,57 @@ export default function A2ATasksPage() {
   const [completeStatus, setCompleteStatus] = useState('3')
   const [completing, setCompleting] = useState(false)
 
+  // Auto-processing status
+  const [workerStatus, setWorkerStatus] = useState<{ running: boolean; taskCounts: Record<string, number> } | null>(null)
+
+  // Poll Gateway worker status
+  useEffect(() => {
+    const pollWorker = () => {
+      fetch(`${GATEWAY_URL}/api/v1/a2a/worker-status`)
+        .then(r => r.json())
+        .then(d => setWorkerStatus(d))
+        .catch(() => setWorkerStatus(null))
+    }
+    pollWorker()
+    const interval = setInterval(pollWorker, 30_000)
+    return () => clearInterval(interval)
+  }, [])
+
   // Load agents
   useEffect(() => {
     fetch(`${GATEWAY_URL}/api/v1/agents`)
       .then(r => r.json())
       .then(d => setAgents((d.agents || []).map((a: any) => ({
-        id: a.id, name: a.name || `Agent #${a.id}`, description: a.description || '',
+        id: a.id, name: a.name || `Agent #${a.id}`, description: a.description || '', owner: a.owner || '',
       }))))
       .catch(() => {})
   }, [])
+
+  // Poll Gateway for each active task's processing status
+  useEffect(() => {
+    if (tasks.length === 0) return
+    const activeTasks = tasks.filter(t => t.status <= 2)
+    if (activeTasks.length === 0) return
+
+    const pollGateway = async () => {
+      const updates: Record<number, GatewayTaskStatus> = {}
+      for (const task of activeTasks) {
+        try {
+          const res = await fetch(`${GATEWAY_URL}/api/v1/a2a/task-result/${task.taskId}`)
+          if (res.ok) {
+            const data = await res.json()
+            updates[task.taskId] = data
+          }
+        } catch { /* gateway may not have this task */ }
+      }
+      if (Object.keys(updates).length > 0) {
+        setGatewayStatuses(prev => ({ ...prev, ...updates }))
+      }
+    }
+    pollGateway()
+    const interval = setInterval(pollGateway, 15_000)
+    return () => clearInterval(interval)
+  }, [tasks])
 
   const resetCreateForm = () => {
     setSelectedAgent(null); setTaskType(''); setInputData(''); setCreateError(null); setCreateTxHash(null)
@@ -128,18 +180,24 @@ export default function A2ATasksPage() {
       } catch (e: any) {
         if (e.message?.includes('returned no data') || e.message?.includes('reverted')) {
           setContractWarning(true)
-          for (let id = 1; id <= 50; id++) {
+          // Use consecutive-miss counter instead of breaking on first error
+          let consecutiveMisses = 0
+          const MAX_MISSES = 8
+          for (let id = 1; consecutiveMisses < MAX_MISSES && id <= 200; id++) {
             try {
               const r = await publicClient.readContract({
                 address: A2A_REGISTRY, abi: [A2A_ABI_TASK], functionName: 'getTask', args: [BigInt(id)],
               }) as any[]
-              if ((r[6] as string).toLowerCase() === address.toLowerCase()) taskIds.push(BigInt(id))
-            } catch { break }
+              consecutiveMisses = 0
+              if ((r[6] as string).toLowerCase() === address.toLowerCase()) {
+                taskIds.push(BigInt(id))
+              }
+            } catch { consecutiveMisses++ }
           }
         } else { throw e }
       }
       const results: A2ATaskDisplay[] = []
-      for (const id of taskIds.slice(0, 50)) {
+      for (const id of taskIds.slice(-50)) {
         try {
           const r = await publicClient.readContract({
             address: A2A_REGISTRY, abi: [A2A_ABI_TASK], functionName: 'getTask', args: [id],
@@ -167,7 +225,11 @@ export default function A2ATasksPage() {
         args: [BigInt(selectedAgent.id), taskType, inputData],
       })
       setCreateTxHash(hash)
-      setTimeout(() => { setShowCreate(false); resetCreateForm(); fetchTasks() }, 3000)
+      // Wait for tx to be mined, then refresh
+      await publicClient.waitForTransactionReceipt({ hash })
+      setShowCreate(false); resetCreateForm()
+      // Refresh immediately after tx confirmed
+      setTimeout(() => fetchTasks(), 1500)
     } catch (e: any) {
       setCreateError(friendlyError(e, t))
     } finally { setCreating(false) }
@@ -188,11 +250,25 @@ export default function A2ATasksPage() {
     } finally { setCompleting(false) }
   }
 
+  // Auto-fill complete output from Gateway result
+  const openComplete = (task: A2ATaskDisplay) => {
+    const gw = gatewayStatuses[task.taskId]
+    if (gw?.status === 2 && gw.output_data) {
+      setCompleteOutput(gw.output_data)
+    } else {
+      setCompleteOutput('')
+    }
+    setCompleteStatus('3'); setCompleteTarget(task.taskId); setCreateError(null)
+  }
+
   const filtered = tasks.filter(t => {
     if (filter === 'active') return t.status <= 2
     if (filter === 'completed') return t.status >= 3
     return true
   })
+
+  // Check if a task is the current user's own (they created it)
+  const isMyTask = (task: A2ATaskDisplay) => address && task.clientAddress.toLowerCase() === address.toLowerCase()
 
   return (
     <AppLayout>
@@ -205,6 +281,27 @@ export default function A2ATasksPage() {
               {t('a2a.title')}
             </h1>
             <p className="body text-text-secondary mt-1">{t('a2a.desc')}</p>
+            {/* Auto-processing status */}
+            {workerStatus && (
+              <div className="flex flex-wrap items-center gap-3 mt-3">
+                <div className={`flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${
+                  workerStatus.running ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${workerStatus.running ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+                  {workerStatus.running ? t('a2a.workerRunning') : t('a2a.workerStopped')}
+                </div>
+                <span className="text-xs text-text-muted">
+                  <Zap className="w-3 h-3 inline mr-1 text-accent-cyan" />
+                  {t('a2a.autoProcessed')}: {workerStatus.taskCounts?.completed || 0}
+                </span>
+                {(workerStatus.taskCounts?.processing || 0) > 0 && (
+                  <span className="text-xs text-accent-cyan flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {t('a2a.processing')}: {workerStatus.taskCounts?.processing}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {isConnected && (
@@ -325,6 +422,11 @@ export default function A2ATasksPage() {
                 <textarea value={completeOutput} onChange={e => setCompleteOutput(e.target.value)}
                   placeholder={t('a2a.outputDataPlaceholder')} rows={3}
                   className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 resize-none" />
+                {completeOutput && gatewayStatuses[completeTarget]?.llm_model && (
+                  <p className="text-xs text-accent-cyan mt-1 flex items-center gap-1">
+                    <Brain className="w-3 h-3" /> {t('a2a.gatewayGenerated', { model: gatewayStatuses[completeTarget].llm_model! })}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-sm text-text-secondary mb-1 block">{t('a2a.statusLabel')}</label>
@@ -404,20 +506,54 @@ export default function A2ATasksPage() {
             {filtered.map(task => {
               const st = STATUS_CONFIG[task.status] ?? STATUS_CONFIG[0]
               const Icon = st.icon
+              const gw = gatewayStatuses[task.taskId]
+              const isMine = isMyTask(task)
               return (
-                <div key={task.taskId} className="glass-card glass-card-hover p-5">
+                <div key={task.taskId} className={`glass-card glass-card-hover p-5 ${!isMine ? 'border-l-2 border-l-accent-purple/20' : ''}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-sm font-medium truncate">{task.taskType || t('a2a.unknownTask')}</span>
+                        {/* On-chain status */}
                         <span className={`text-xs px-2 py-0.5 rounded-full bg-white/5 flex items-center gap-1 ${st.color}`}>
                           <Icon className="w-3 h-3" /> {st.label}
                         </span>
+                        {/* Multi-tenant tag: only show on tasks created by others */}
+                        {!isMine && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-accent-purple/10 text-accent-purple/70">
+                            {t('a2a.fromOther')}
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-text-muted mb-2">
                         Agent #{task.agentId} · {new Date(task.createdAt * 1000).toLocaleDateString()}
                         {task.completedAt > 0 && ` · ${t('a2a.done')} ${new Date(task.completedAt * 1000).toLocaleDateString()}`}
                       </p>
+
+                      {/* Gateway processing status */}
+                      {task.status <= 2 && gw && (
+                        <div className="mb-2">
+                          {gw.status === 1 && (
+                            <span className="text-xs text-accent-cyan flex items-center gap-1">
+                              <Loader2 className="w-3 h-3 animate-spin" /> {t('a2a.gatewayProcessing')}
+                              {gw.llm_model && <span className="opacity-60">({gw.llm_model})</span>}
+                            </span>
+                          )}
+                          {gw.status === 2 && (
+                            <span className="text-xs text-green-400 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> {t('a2a.gatewayDone')}
+                              <button onClick={() => openComplete(task)}
+                                className="ml-2 underline hover:text-green-300">{t('a2a.clickToComplete')}</button>
+                            </span>
+                          )}
+                          {gw.status === 3 && (
+                            <span className="text-xs text-red-400 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> {t('a2a.gatewayFailed')}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {task.inputData && (
                         <details className="text-xs text-text-muted">
                           <summary className="cursor-pointer hover:text-text-secondary">{t('a2a.input')}</summary>
@@ -432,11 +568,18 @@ export default function A2ATasksPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {task.status <= 2 && (
-                        <button onClick={() => { setCompleteTarget(task.taskId); setCompleteOutput(''); setCompleteStatus('3'); setCreateError(null) }}
+                      {/* Only show Complete for tasks where we are the creator (our agent received the task) */}
+                      {task.status <= 2 && isMine && (
+                        <button onClick={() => openComplete(task)}
                           className="text-xs px-2 py-1 rounded bg-accent-purple/10 text-accent-purple hover:bg-accent-purple/20 transition-colors">
                           <Check className="w-3 h-3 inline mr-1" />{t('a2a.complete')}
                         </button>
+                      )}
+                      {/* For tasks created by us but assigned to other agents, show a waiting indicator */}
+                      {task.status <= 2 && !isMine && (
+                        <span className="text-xs px-2 py-1 rounded bg-white/3 text-text-muted">
+                          <Clock className="w-3 h-3 inline mr-1" />{t('a2a.waiting')}
+                        </span>
                       )}
                       <span className="text-xs text-text-muted">#{task.taskId}</span>
                     </div>

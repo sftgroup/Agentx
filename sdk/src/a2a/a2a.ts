@@ -91,6 +91,7 @@ const A2A_ABI = {
     inputs: [
       { name: 'taskId', type: 'uint256' },
       { name: 'outputData', type: 'string' },
+      { name: 'status', type: 'uint256' },
     ] as const,
     name: 'completeTask' as const,
     outputs: [] as const,
@@ -118,6 +119,29 @@ const A2A_ABI = {
     inputs: [{ name: 'user', type: 'address' }] as const,
     name: 'getUserTasks' as const,
     outputs: [{ name: '', type: 'uint256[]' }] as const,
+    stateMutability: 'view' as const,
+    type: 'function' as const,
+  },
+  getAgentTasks: {
+    inputs: [{ name: 'agentId', type: 'uint256' }] as const,
+    name: 'getAgentTasks' as const,
+    outputs: [
+      {
+        name: '', type: 'tuple[]',
+        components: [
+          { name: 'taskId', type: 'uint256' },
+          { name: 'agentId', type: 'uint256' },
+          { name: 'taskType', type: 'string' },
+          { name: 'inputData', type: 'string' },
+          { name: 'outputData', type: 'string' },
+          { name: 'status', type: 'uint256' },
+          { name: 'clientAddress', type: 'address' },
+          { name: 'createdAt', type: 'uint256' },
+          { name: 'completedAt', type: 'uint256' },
+          { name: 'taskHash', type: 'bytes32' },
+        ],
+      },
+    ] as const,
     stateMutability: 'view' as const,
     type: 'function' as const,
   },
@@ -213,7 +237,7 @@ export class A2AProtocol {
     return { taskId, txHash: hash }
   }
 
-  async completeTask(taskId: number, output: unknown): Promise<Hash> {
+  async completeTask(taskId: number, output: unknown, status: number = 3): Promise<Hash> {
     const acct = await this.account
     const outputStr = typeof output === 'string' ? output : JSON.stringify(output)
     const { request } = await this.publicClient.simulateContract({
@@ -221,7 +245,7 @@ export class A2AProtocol {
       address: this.address,
       abi: [A2A_ABI.completeTask],
       functionName: 'completeTask',
-      args: [BigInt(taskId), outputStr],
+      args: [BigInt(taskId), outputStr, BigInt(status)],
     })
     return this.walletClient.writeContract(request)
   }
@@ -256,6 +280,32 @@ export class A2AProtocol {
       args: [user],
     })
     return (r as bigint[]).map(Number)
+  }
+
+  async getAgentTasks(agentId: number): Promise<A2ATask[]> {
+    const r = await this.publicClient.readContract({
+      address: this.address,
+      abi: [A2A_ABI.getAgentTasks],
+      functionName: 'getAgentTasks',
+      args: [BigInt(agentId)],
+    })
+    const statusMap: A2ATaskStatus[] = ['created', 'accepted', 'in_progress', 'completed', 'failed']
+    const tasks = r as any[]
+    return tasks.map((t: any) => ({
+      taskId: Number(t.taskId),
+      creator: t.clientAddress as string,
+      targetAgentId: Number(t.agentId),
+      taskType: t.taskType as string,
+      input: t.inputData as string,
+      status: statusMap[Number(t.status)] ?? 'created',
+      result: t.outputData as string | undefined,
+      createdAt: Number(t.createdAt),
+      completedAt: t.completedAt as bigint > 0n ? Number(t.completedAt) : undefined,
+    }))
+  }
+
+  async getAddress(): Promise<Address> {
+    return this.account
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
