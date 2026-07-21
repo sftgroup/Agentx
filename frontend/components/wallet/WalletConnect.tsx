@@ -1,31 +1,52 @@
 'use client'
 
-import { useState } from 'react'
-import { useAccount, useConnect, useDisconnect, useChainId } from 'wagmi'
-import { Wallet, LogOut, ChevronDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi'
+import { Wallet, LogOut, ChevronDown, CheckCircle } from 'lucide-react'
+import { oxaChain } from '@/lib/wagmi/config'
+
+const OXACHAIN_ID = oxaChain.id
 
 export function WalletConnect() {
   const [showConnectors, setShowConnectors] = useState(false)
+  const [isSwitching, setIsSwitching] = useState(false)
   const { address, isConnected } = useAccount()
   const { connect, connectors, error, isPending } = useConnect()
   const { disconnect } = useDisconnect()
   const chainId = useChainId()
+  const { switchChain } = useSwitchChain()
+
+  const isCorrectChain = chainId === OXACHAIN_ID
+
+  // Auto-switch to OxaChain L1 after wallet connects
+  useEffect(() => {
+    if (isConnected && !isCorrectChain && !isSwitching) {
+      setIsSwitching(true)
+      switchChain({ chainId: OXACHAIN_ID }, {
+        onSuccess: () => setIsSwitching(false),
+        onError: () => setIsSwitching(false),
+      })
+    }
+  }, [isConnected, isCorrectChain, isSwitching, switchChain])
 
   const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`
-
-  const getChainName = (id: number) => {
-    const chains: Record<number, string> = {
-      1: 'Ethereum', 11155111: 'Sepolia', 19505: 'OxaChain L1', 300: 'zkSync Testnet',
-      80001: 'Polygon Mumbai', 84531: 'Base Sepolia',
-    }
-    return chains[id] || `Chain ${id}`
-  }
 
   if (isConnected && address) {
     return (
       <div className="flex items-center gap-2">
-        <div className="px-2.5 py-1 rounded-lg bg-bg-card border border-white/10 text-xs font-medium text-text-secondary">
-          {getChainName(chainId)}
+        <div className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${
+          isCorrectChain
+            ? 'bg-green-500/10 border-green-500/20 text-green-400'
+            : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+        }`}>
+          {isCorrectChain ? (
+            <span className="flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" />
+              {oxaChain.name}
+            </span>
+          ) : (
+            <span>{isSwitching ? 'Switching to OxaChain...' : `Wrong Network (${chainId})`}</span>
+          )}
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg">
           <Wallet className="w-3.5 h-3.5 text-text-muted" />
