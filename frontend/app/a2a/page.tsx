@@ -3,11 +3,11 @@
 
 import { useTranslation } from 'react-i18next'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { useAccount } from 'wagmi'
+import { useAccount, useWriteContract } from 'wagmi'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Cpu, Plus, RefreshCw, Clock, CheckCircle, AlertCircle,
-  Loader2, ArrowRight, Filter, Info
+  Loader2, ArrowRight, Filter, Info, Send, X, Check
 } from 'lucide-react'
 import { createPublicClient, http } from 'viem'
 
@@ -15,6 +15,22 @@ const oxaChain = { id: 19505, name: 'OxaChain L1', nativeCurrency: { name: 'OXA'
 const A2A_REGISTRY = (process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS || '0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86') as `0x${string}`
 
 const publicClient = createPublicClient({ chain: oxaChain, transport: http() })
+
+const A2A_ABI_CREATE_TASK = {
+  inputs: [
+    { name: 'agentId', type: 'uint256' },
+    { name: 'taskType', type: 'string' },
+    { name: 'inputData', type: 'string' },
+  ], name: 'createTask', outputs: [{ name: 'taskId', type: 'uint256' }], stateMutability: 'nonpayable', type: 'function',
+} as const
+
+const A2A_ABI_COMPLETE_TASK = {
+  inputs: [
+    { name: 'taskId', type: 'uint256' },
+    { name: 'outputData', type: 'string' },
+    { name: 'status', type: 'uint256' },
+  ], name: 'completeTask', outputs: [], stateMutability: 'nonpayable', type: 'function',
+} as const
 
 const A2A_ABI_TASK = {
   inputs: [{ name: 'taskId', type: 'uint256' }], name: 'getTask',
@@ -38,7 +54,10 @@ interface A2ATaskDisplay {
   clientAddress: string; createdAt: number; completedAt: number
 }
 
+interface AgentOption { id: number; name: string }
+
 type TaskFilter = 'all' | 'active' | 'completed'
+const GATEWAY_URL = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://43.156.99.215:3090'
 
 export default function A2ATasksPage() {
   const { t } = useTranslation()
@@ -48,6 +67,29 @@ export default function A2ATasksPage() {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<TaskFilter>('all')
   const [contractWarning, setContractWarning] = useState(false)
+
+  // Create task form
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [agents, setAgents] = useState<AgentOption[]>([])
+  const [createForm, setCreateForm] = useState({ agentId: '', taskType: '', inputData: '' })
+  const [creating, setCreating] = useState(false)
+  const [createTxHash, setCreateTxHash] = useState<string | null>(null)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  // Complete task form
+  const [completingTaskId, setCompletingTaskId] = useState<number | null>(null)
+  const [completeForm, setCompleteForm] = useState({ outputData: '', status: '3' })
+  const [completing, setCompleting] = useState(false)
+
+  const { writeContractAsync } = useWriteContract()
+
+  // Load agents for dropdown
+  useEffect(() => {
+    fetch(`${GATEWAY_URL}/api/v1/agents`)
+      .then(r => r.json())
+      .then(d => setAgents((d.agents || []).map((a: any) => ({ id: a.id, name: a.name || `Agent #${a.id}` }))))
+      .catch(() => {})
+  }, [])
 
   const STATUS_CONFIG: Record<number, { label: string; icon: typeof Clock; color: string }> = {
     0: { label: t('a2a.statusCreated'), icon: Clock, color: 'text-yellow-400' },
@@ -64,44 +106,37 @@ export default function A2ATasksPage() {
       let taskIds: bigint[] = []
       try {
         taskIds = await publicClient.readContract({
-          address: A2A_REGISTRY,
-          abi: [A2A_ABI_USER_TASKS], functionName: 'getUserTasks', args: [address],
+          address: A2A_REGISTRY, abi: [A2A_ABI_USER_TASKS], functionName: 'getUserTasks', args: [address],
         }) as bigint[]
       } catch (e: any) {
-        // getUserTasks not supported on independent contract — probe sequentially instead
         if (e.message?.includes('returned no data') || e.message?.includes('reverted')) {
           setContractWarning(true)
-          // Try sequential probe: check taskId 1..N
-          for (let id = 1; id <= 20; id++) {
+          for (let id = 1; id <= 50; id++) {
             try {
               const r = await publicClient.readContract({
-                address: A2A_REGISTRY,
-                abi: [A2A_ABI_TASK], functionName: 'getTask', args: [BigInt(id)],
+                address: A2A_REGISTRY, abi: [A2A_ABI_TASK], functionName: 'getTask', args: [BigInt(id)],
               }) as any[]
               const clientAddr = (r[6] as string).toLowerCase()
               if (clientAddr === address.toLowerCase()) {
                 taskIds.push(BigInt(id))
               }
-            } catch { break /* no more tasks */ }
+            } catch { break }
           }
-        } else {
-          throw e
-        }
+        } else { throw e }
       }
 
       const results: A2ATaskDisplay[] = []
-      for (const id of taskIds.slice(0, 20)) {
+      for (const id of taskIds.slice(0, 50)) {
         try {
           const r = await publicClient.readContract({
-            address: A2A_REGISTRY,
-            abi: [A2A_ABI_TASK], functionName: 'getTask', args: [id],
+            address: A2A_REGISTRY, abi: [A2A_ABI_TASK], functionName: 'getTask', args: [id],
           }) as any
           results.push({
             taskId: Number(r[0]), agentId: Number(r[1]), taskType: r[2] as string,
             inputData: r[3] as string, outputData: r[4] as string, status: Number(r[5]),
             clientAddress: r[6] as string, createdAt: Number(r[7]), completedAt: Number(r[8]),
           })
-        } catch { /* skip corrupted tasks */ }
+        } catch { /* skip */ }
       }
       setTasks(results.reverse())
     } catch (e: any) { setError(e.message || 'Failed to load tasks') }
@@ -109,6 +144,42 @@ export default function A2ATasksPage() {
   }, [address])
 
   useEffect(() => { if (isConnected) fetchTasks() }, [isConnected, fetchTasks])
+
+  const handleCreateTask = async () => {
+    if (!address || !createForm.agentId) return
+    setCreating(true); setCreateError(null); setCreateTxHash(null)
+    try {
+      const hash = await writeContractAsync({
+        address: A2A_REGISTRY,
+        abi: [A2A_ABI_CREATE_TASK], functionName: 'createTask',
+        args: [BigInt(createForm.agentId), createForm.taskType, createForm.inputData],
+      })
+      setCreateTxHash(hash)
+      setTimeout(() => {
+        setShowCreateForm(false)
+        setCreateForm({ agentId: '', taskType: '', inputData: '' })
+        setCreateTxHash(null)
+        fetchTasks()
+      }, 3000)
+    } catch (e: any) {
+      setCreateError(e.message || 'Transaction failed')
+    } finally { setCreating(false) }
+  }
+
+  const handleCompleteTask = async (taskId: number) => {
+    setCreating(true)
+    try {
+      await writeContractAsync({
+        address: A2A_REGISTRY,
+        abi: [A2A_ABI_COMPLETE_TASK], functionName: 'completeTask',
+        args: [BigInt(taskId), completeForm.outputData, BigInt(completeForm.status)],
+      })
+      setCompletingTaskId(null)
+      setCompleteForm({ outputData: '', status: '3' })
+      fetchTasks()
+    } catch (e: any) { /* ignore */ }
+    finally { setCreating(false) }
+  }
 
   const filtered = tasks.filter(t => {
     if (filter === 'active') return t.status <= 2
@@ -128,11 +199,91 @@ export default function A2ATasksPage() {
             <p className="body text-text-secondary mt-1">{t('a2a.desc')}</p>
           </div>
           <div className="flex items-center gap-2">
+            {isConnected && (
+              <button onClick={() => setShowCreateForm(true)} className="btn-primary text-sm py-2 px-4 flex items-center gap-2">
+                <Plus className="w-4 h-4" /> {t('a2a.createTask')}
+              </button>
+            )}
             <button onClick={fetchTasks} disabled={loading} className="btn-secondary text-sm py-2 px-3">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
+
+        {/* Create Task Form */}
+        {showCreateForm && (
+          <div className="glass-card p-6 space-y-4 border border-accent-purple/10">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm">{t('a2a.createTaskTitle')}</h3>
+              <button onClick={() => setShowCreateForm(false)} className="text-text-muted hover:text-text-primary"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">{t('a2a.targetAgent')}</label>
+                <select value={createForm.agentId} onChange={e => setCreateForm({...createForm, agentId: e.target.value})}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40">
+                  <option value="">{t('a2a.selectAgent')}</option>
+                  {agents.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">{t('a2a.taskTypeLabel')}</label>
+                <input value={createForm.taskType} onChange={e => setCreateForm({...createForm, taskType: e.target.value})}
+                  placeholder={t('a2a.taskTypePlaceholder')}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted mb-1 block">{t('a2a.inputDataLabel')}</label>
+              <textarea value={createForm.inputData} onChange={e => setCreateForm({...createForm, inputData: e.target.value})}
+                placeholder={t('a2a.inputDataPlaceholder')} rows={3}
+                className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 resize-none" />
+            </div>
+            {createTxHash && (
+              <div className="text-xs text-green-400">Tx: {createTxHash.slice(0, 10)}...{createTxHash.slice(-6)}</div>
+            )}
+            {createError && (
+              <div className="text-xs text-red-400">{createError}</div>
+            )}
+            <button onClick={handleCreateTask} disabled={creating || !createForm.agentId || !createForm.taskType}
+              className="btn-primary text-sm py-2 px-6 flex items-center gap-2">
+              {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('a2a.creating')}</> : <><Send className="w-4 h-4" /> {t('a2a.submitTask')}</>}
+            </button>
+          </div>
+        )}
+
+        {/* Complete Task Modal */}
+        {completingTaskId !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setCompletingTaskId(null)}>
+            <div className="glass-card p-6 w-full max-w-md mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+              <h3 className="font-semibold">{t('a2a.completeTaskTitle')} #{completingTaskId}</h3>
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">{t('a2a.outputDataLabel')}</label>
+                <textarea value={completeForm.outputData} onChange={e => setCompleteForm({...completeForm, outputData: e.target.value})}
+                  placeholder={t('a2a.outputDataPlaceholder')} rows={3}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 resize-none" />
+              </div>
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">{t('a2a.statusLabel')}</label>
+                <select value={completeForm.status} onChange={e => setCompleteForm({...completeForm, status: e.target.value})}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40">
+                  <option value="3">{t('a2a.statusCompleted')}</option>
+                  <option value="4">{t('a2a.statusFailed')}</option>
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setCompletingTaskId(null)} className="btn-secondary text-sm py-2 flex-1">{t('studio.back')}</button>
+                <button onClick={() => handleCompleteTask(completingTaskId)} disabled={completing}
+                  className="btn-primary text-sm py-2 flex-1 flex items-center justify-center gap-2">
+                  {completing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  {t('a2a.submitComplete')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {contractWarning && (
           <div className="p-4 rounded-xl bg-amber-400/5 border border-amber-400/10 text-sm text-amber-400 flex items-center gap-2">
@@ -175,12 +326,18 @@ export default function A2ATasksPage() {
             <p className="body text-text-muted mb-4 max-w-md mx-auto">
               {t('a2a.noTasksDesc')}
             </p>
+            {isConnected && (
+              <button onClick={() => setShowCreateForm(true)} className="btn-primary text-sm py-2 px-6">
+                <Plus className="w-4 h-4" /> {t('a2a.createTask')}
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
             {filtered.map(task => {
               const st = STATUS_CONFIG[task.status] ?? STATUS_CONFIG[0]
               const Icon = st.icon
+              const isAgentOwner = task.agentId > 0 // Any agent can be completed by the task creator currently
               return (
                 <div key={task.taskId} className="glass-card glass-card-hover p-5">
                   <div className="flex items-start justify-between gap-4">
@@ -208,7 +365,15 @@ export default function A2ATasksPage() {
                         </details>
                       )}
                     </div>
-                    <div className="text-xs text-text-muted flex-shrink-0">#{task.taskId}</div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {task.status <= 2 && (
+                        <button onClick={() => { setCompletingTaskId(task.taskId); setCompleteForm({ outputData: '', status: '3' }) }}
+                          className="text-xs px-2 py-1 rounded bg-accent-purple/10 text-accent-purple hover:bg-accent-purple/20 transition-colors">
+                          <Check className="w-3 h-3 inline mr-1" />{t('a2a.complete')}
+                        </button>
+                      )}
+                      <span className="text-xs text-text-muted">#{task.taskId}</span>
+                    </div>
                   </div>
                 </div>
               )
