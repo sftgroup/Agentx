@@ -24,7 +24,7 @@ export default function PublishPage() {
             { label: t('studio.reviewDesc'), value: form.description || '—' },
             { label: t('studio.reviewSkills'), value: form.skills.length ? `${form.skills.length} skills` : t('studio.reviewSkillsNone') },
             { label: t('studio.reviewPricing'), value: form.price ? `${form.price} ETH (${form.pricingType})` : '—' },
-            { label: t('studio.reviewTags'), value: form.tags || '—' },
+            { label: t('studio.reviewTags'), value: form.tags.length ? form.tags.join(', ') : '—' },
           ].map(row => (
             <div key={row.label} className="flex justify-between text-sm">
               <span className="text-text-muted">{row.label}</span>

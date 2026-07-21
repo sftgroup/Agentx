@@ -4,13 +4,13 @@
 export type Skill = { name: string; description: string; endpoint?: string }
 
 export type AgentForm = {
-  name: string; description: string; prompt: string; tags: string
+  name: string; description: string; prompt: string; tags: string[]
   pricingType: 'subscription' | 'per-use'; price: string
   skills: Skill[]
 }
 
 export function makeEmptyForm(): AgentForm {
-  return { name: '', description: '', prompt: '', tags: '', pricingType: 'subscription', price: '', skills: [] }
+  return { name: '', description: '', prompt: '', tags: [], pricingType: 'subscription', price: '', skills: [] }
 }
 
 export const validateBasics = (form: AgentForm): Record<string, string> => {
