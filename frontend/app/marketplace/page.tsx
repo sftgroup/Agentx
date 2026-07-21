@@ -4,13 +4,11 @@
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useAgentRegistry } from '@/hooks/aimarket/useAgentRegistry'
 import { useAgentSearch } from '@/hooks/aimarket/useAgentSearch'
-import { useAccount } from 'wagmi'
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { Brain, Search, Sparkles, Tag, ArrowRight, Star, Filter, X, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 
 export default function MarketplacePage() {
-  const { isConnected } = useAccount()
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 12
 
