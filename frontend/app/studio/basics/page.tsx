@@ -9,7 +9,7 @@ const PRESET_TAGS = [
   'Customer Service', 'Sales', 'Marketing', 'Trading',
   'Security Audit', 'Data Analysis', 'Code Review', 'Content Writing',
   'Legal', 'Finance', 'Healthcare', 'Education',
-  'Social Media', 'DeFi', 'NFT', 'Gaming',
+  'Social Media', 'DeFi', 'NFT', 'Gaming', 'Other',
 ]
 
 export default function BasicsPage() {
