@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.6.5 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100` · Last updated: 2026-07-21
+> SDK v0.6.6 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100` · Last updated: 2026-07-22
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -32,7 +32,7 @@ Smart Contracts (dual-chain):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.6.5
+npm install @agentxv2/sdk@0.6.6
 ```
 
 ```typescript
@@ -62,9 +62,10 @@ await loop.run('Audit this contract for vulnerabilities')
 | **Dual-Mode LLM** | Platform quota (DeepSeek/OpenAI) + BYOK transparent proxy |
 | **Admin Dashboard** | Web UI for platform key/plan/tenant/usage management |
 | **MCP Remote Tools** | Publisher-hosted tools with ECDSA auth |
-| **A2A Protocol** | Agent-to-Agent task delegation (ERC-8004) |
+| **A2A Protocol** | Agent-to-Agent task delegation with auto-processing Worker + SDK Daemon |
 | **IPFS / Pinata** | Encrypted payload + metadata upload to IPFS via Pinata / custom endpoint |
 | **Dual-Chain** | Sepolia (testnet) + OxaChain L1 (mainnet, default) |
+| **i18n** | English / 繁體中文 language switcher |
 
 ## Production URLs
 
@@ -76,7 +77,7 @@ await loop.run('Audit this contract for vulnerabilities')
 | **MCP Server** | `http://43.156.99.215:3090/mcp` |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.6.5` |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.6.6` |
 
 ## Documentation
 

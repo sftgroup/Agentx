@@ -1,16 +1,60 @@
-import { M as McpConnection, a as AgentReview, b as AgentReputation } from './types-CCl4P8IB.js';
-export { c as A2AAgentCard, d as A2ASkillExecution, e as A2ATask, f as A2ATaskStatus, A as AgentPayload, g as AgentPricing, h as AgentPrivatePayload, i as AgentPublicPayload, j as AgentSearchQuery, k as AgentSearchResult, l as AgentSubscription, m as AgentXConfig, n as AgentXContracts, o as AgentXError, p as AgentXErrorCode, E as EncryptedPayload, J as JSONSchema, q as JSONSchemaProperty, r as McpTransport, O as OnChainAgentMetadata, P as PackResult, s as PricingType, R as RegisteredAgent, S as SkillDef, t as SkillExecutionMode, u as SkillExecutionRemote, v as SubscriptionRequired, w as SubscriptionStatus, U as UnpackResult } from './types-CCl4P8IB.js';
+import { M as McpConnection, b as AgentReview, c as AgentReputation } from './types-DF0FqVs3.js';
+export { A as A2AAgentCard, d as A2ASkillExecution, a as A2ATask, e as A2ATaskStatus, f as AgentPayload, g as AgentPricing, h as AgentPrivatePayload, i as AgentPublicPayload, j as AgentSearchQuery, k as AgentSearchResult, l as AgentSubscription, m as AgentXConfig, n as AgentXContracts, o as AgentXError, p as AgentXErrorCode, E as EncryptedPayload, J as JSONSchema, q as JSONSchemaProperty, r as McpTransport, O as OnChainAgentMetadata, P as PackResult, s as PricingType, R as RegisteredAgent, S as SkillDef, t as SkillExecutionMode, u as SkillExecutionRemote, v as SubscriptionRequired, w as SubscriptionStatus, U as UnpackResult } from './types-DF0FqVs3.js';
 export { PublishAgentConfig, PublishAgentResult, aesDecrypt, aesEncrypt, decryptPayload, eciesDecrypt, eciesEncrypt, encryptPayload, generateAesKey, generateKeyPair, getPublicKey, packAgentForPublish, publishAgent, randomBytes, unpackAgent } from './core/index.js';
-export { A as A2ASkillResult, a as AgentRunContext, b as AgentRunner, c as AgentRunnerConfig, I as IPFSFetcher, d as IPFSFetcherConfig, O as OnChainReader, R as RunnableSkill, W as WalletSigner, e as defaultIPFSFetcher } from './agent-runner-DFUWHCzi.js';
-export { A as A2AConfig, a as A2AProtocol, b as AgentLoop, c as AgentRegistry, d as AgentRegistryConfig, P as PlanDetail, e as PlatformToolContext, f as PlatformToolDef, S as SubscriptionConfig, g as SubscriptionDetail, h as SubscriptionManager, T as ToolExecutor, i as buildPlatformTools, j as buildSystemPrompt, k as buildTools, l as cidFromURI, m as executePlatformTool, n as getAllPlatformToolNames, o as guardSubscription, w as wrapPlatformToolsAsSkills } from './index-BFMhNal1.js';
-export { A as AgentLoopConfig, a as AgentLoopResult, C as ChatRequest, b as ChatStreamEvent, L as LLMMessage, c as LLMProvider, d as LLMToolCall, e as LoopRunContext, O as OpenAIToolDef, T as ToolCallRecord, f as ToolCallResult, g as ToolCallStart } from './types-CFQjaO86.js';
-export { GatewayProvider, GatewayProviderConfig, OpenAIProvider, OpenAIProviderConfig, ProviderFactoryConfig, createLLMProvider } from './llm/index.js';
-export { EndpointRecord, MultiEndpointClient, MultiEndpointConfig } from './endpoint/index.js';
-export { ConfigEntry, ConfigurationClient, ConfigurationConfig } from './configuration/index.js';
-export { IPFSUploadResult, IPFSUploader, IPFSUploaderConfig, defaultIPFSUploader } from './ipfs/index.js';
-export { C as ChainConfig, a as ConfigRegistryOpts, b as ConfigurationRegistry, K as KNOWN_CHAINS, U as UseAgentRunnerConfig, c as UseAgentRunnerResult, u as useAgentRunner } from './index-BZvToR5C.js';
+import { L as LLMProvider, C as ChatRequest, a as ChatStreamEvent, A as AgentRunContext } from './index-CP8m73zO.js';
+export { b as A2ADaemon, c as A2ADaemonConfig, d as A2ASkillResult, e as A2ATaskResult, f as AgentLoop, g as AgentLoopConfig, h as AgentLoopResult, i as AgentRegistry, j as AgentRegistryConfig, k as AgentRunner, l as AgentRunnerConfig, I as IPFSFetcher, m as IPFSFetcherConfig, n as LLMMessage, o as LLMToolCall, p as LoopRunContext, O as OnChainReader, q as OpenAIToolDef, P as PlanDetail, r as PlatformToolContext, s as PlatformToolDef, R as RunnableSkill, S as SubscriptionConfig, t as SubscriptionDetail, u as SubscriptionManager, T as ToolCallRecord, v as ToolCallResult, w as ToolCallStart, x as ToolExecutor, W as WalletSigner, y as buildPlatformTools, z as buildSystemPrompt, B as buildTools, D as cidFromURI, E as defaultIPFSFetcher, F as executePlatformTool, G as getAllPlatformToolNames, H as guardSubscription, J as wrapPlatformToolsAsSkills } from './index-CP8m73zO.js';
+export { A2A_VERSION } from './a2a/index.js';
 import { Address, PublicClient, WalletClient, Hash } from 'viem';
+export { I as IPFSUploadResult, a as IPFSUploader, b as IPFSUploaderConfig, d as defaultIPFSUploader } from './ipfs-uploader-0Ppkn075.js';
+export { A as A2AConfig, a as A2AProtocol } from './a2a-Bt7hBaLS.js';
 export { bytesToHex, hexToBytes } from '@noble/ciphers/utils.js';
+import 'events';
+
+interface OpenAIProviderConfig {
+    apiKey: string;
+    endpoint?: string;
+    model: string;
+    temperature?: number;
+    maxTokens?: number;
+    timeoutMs?: number;
+}
+interface GatewayProviderConfig {
+    gatewayUrl: string;
+    accessToken: string;
+    model?: string;
+    keySource?: 'platform' | 'tenant_owned';
+    tenantKeyId?: string;
+    temperature?: number;
+    maxTokens?: number;
+    timeoutMs?: number;
+}
+interface ProviderFactoryConfig {
+    type: 'openai' | 'gateway' | 'direct';
+    gatewayUrl?: string;
+    accessToken?: string;
+    apiKey?: string;
+    endpoint?: string;
+    model?: string;
+    keySource?: 'platform' | 'tenant_owned';
+    tenantKeyId?: string;
+    temperature?: number;
+    maxTokens?: number;
+    timeoutMs?: number;
+}
+
+declare class OpenAIProvider implements LLMProvider {
+    private config;
+    constructor(config: OpenAIProviderConfig);
+    chatStream(request: ChatRequest, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent>;
+}
+
+declare class GatewayProvider implements LLMProvider {
+    private config;
+    constructor(config: GatewayProviderConfig);
+    chatStream(request: ChatRequest, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent>;
+}
+
+declare function createLLMProvider(config: ProviderFactoryConfig): LLMProvider;
 
 declare const REGISTRY_VERSION = "0.1.0";
 
@@ -47,8 +91,6 @@ declare class AgentX402 {
 }
 
 declare const SUBSCRIPTION_VERSION = "0.2.0";
-
-declare const A2A_VERSION = "0.1.0";
 
 interface MCPTool {
     name: string;
@@ -120,6 +162,114 @@ declare class ReputationRegistry {
 
 declare const REPUTATION_VERSION = "0.1.0";
 
+interface ChainConfig {
+    chainId: number;
+    contracts: {
+        identityRegistry: Address;
+        subscriptionManager: Address;
+        a2aProtocolRegistry: Address;
+        reputationRegistry: Address;
+        configurationRegistry: Address;
+        multiEndpointRegistry: Address;
+    };
+    ipfsGateways: string[];
+    rpcUrl?: string;
+}
+declare const KNOWN_CHAINS: Record<number, ChainConfig>;
+interface ConfigRegistryOpts {
+    contractAddress: Address;
+    publicClient: PublicClient;
+    walletClient: WalletClient;
+}
+declare class ConfigurationRegistry {
+    private address;
+    private publicClient;
+    private walletClient;
+    constructor(opts: ConfigRegistryOpts);
+    private get account();
+    set(key: string, value: string): Promise<Hash>;
+    get(key: string): Promise<string>;
+    getAll(): Promise<Record<string, string>>;
+}
+
 declare const CONFIG_VERSION = "0.1.0";
 
-export { A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, CONFIG_VERSION, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION };
+/**
+ * MultiEndpointRegistry SDK
+ * OxaChain L1 + Sepolia — multi-endpoint management for AI Agents
+ */
+
+interface EndpointRecord {
+    endpointId: bigint;
+    agentId: bigint;
+    name: string;
+    endpointType: string;
+    protocol: string;
+    url: string;
+    description: string;
+    isActive: boolean;
+    createdAt: bigint;
+    updatedAt: bigint;
+    createdBy: Address;
+}
+interface MultiEndpointConfig {
+    address: Address;
+}
+declare class MultiEndpointClient {
+    private address;
+    private publicClient;
+    constructor(config: MultiEndpointConfig, publicClient?: PublicClient);
+    setPublicClient(client: PublicClient): void;
+    getActiveEndpoints(agentId: bigint): Promise<EndpointRecord[]>;
+    getAllEndpoints(agentId: bigint): Promise<EndpointRecord[]>;
+    getEndpoint(endpointId: bigint): Promise<EndpointRecord>;
+    getStats(agentId: bigint): Promise<[bigint, bigint, bigint, bigint, bigint]>;
+    /** Pick best active endpoint for the agent — prefer HTTP, take first active */
+    pickBestEndpoint(agentId: bigint): Promise<EndpointRecord | null>;
+    /** Pick any active endpoint URL — for MCP connector */
+    getBestMCPUrl(agentId: bigint): Promise<string | null>;
+}
+
+/**
+ * ConfigurationRegistry SDK
+ * On-chain key-value config store for AI Agents
+ */
+
+interface ConfigEntry {
+    agentId: bigint;
+    key: string;
+    value: string;
+    dataType: string;
+    updatedAt: bigint;
+    updatedBy: Address;
+}
+interface ConfigurationConfig {
+    address: Address;
+}
+declare class ConfigurationClient {
+    private address;
+    private publicClient;
+    constructor(config: ConfigurationConfig, publicClient?: PublicClient);
+    setPublicClient(client: PublicClient): void;
+    get(agentId: bigint, key: string): Promise<ConfigEntry | null>;
+    getAll(agentId: bigint): Promise<ConfigEntry[]>;
+    getKeys(agentId: bigint): Promise<string[]>;
+    getCount(agentId: bigint): Promise<bigint>;
+    exists(agentId: bigint, key: string): Promise<boolean>;
+}
+
+interface UseAgentRunnerConfig {
+    agentId: number;
+    chainConfig?: ChainConfig;
+    ipfsGateways?: string[];
+}
+interface UseAgentRunnerResult {
+    ctx: AgentRunContext | null;
+    isLoading: boolean;
+    error: Error | null;
+    /** Re-trigger the load (e.g. after connecting wallet or subscribing) */
+    refetch: () => void;
+}
+declare function useAgentRunner(config: UseAgentRunnerConfig): UseAgentRunnerResult;
+
+export { AgentReputation, AgentReview, AgentRunContext, AgentX402, type AgentX402Config, CONFIG_VERSION, type ChainConfig, ChatRequest, ChatStreamEvent, type ConfigEntry, type ConfigRegistryOpts, ConfigurationClient, type ConfigurationConfig, ConfigurationRegistry, type EndpointRecord, GatewayProvider, type GatewayProviderConfig, KNOWN_CHAINS, LLMProvider, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, MultiEndpointClient, type MultiEndpointConfig, OpenAIProvider, type OpenAIProviderConfig, type ProviderFactoryConfig, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, type UseAgentRunnerConfig, type UseAgentRunnerResult, createLLMProvider, useAgentRunner };

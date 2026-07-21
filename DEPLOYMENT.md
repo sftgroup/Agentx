@@ -1,6 +1,6 @@
 # AgentX Deployment Guide
 
-> Production: `43.156.99.215` (Full-Stack) · Last updated: 2026-07-21
+> Production: `43.156.99.215` (Full-Stack) · Last updated: 2026-07-22
 
 ---
 
@@ -195,6 +195,56 @@ The Gateway indexer solves this by probing tokenURIs sequentially and storing re
 
 ---
 
+## 2.6 A2A Auto-Processing Worker (v0.6.6)
+
+The Gateway runs a background A2A Worker that enables **true multi-agent interop**:
+
+```
+Agent A → createTask(Agent B) on-chain
+           ↓
+Gateway Worker → detects pending tasks → LLM processes → stores result in DB
+           ↓
+Agent B's SDK A2A Daemon → polls Gateway → completeTask() on-chain
+```
+
+### Architecture
+
+| Component | Location | Role |
+|-----------|----------|------|
+| **A2A Worker** | `gateway/src/services/a2a-worker.ts` | Polls OxaChain A2A contract every 30s, calls LLM, stores results |
+| **A2A API** | `gateway/src/routes/a2a.ts` | Exposes task results for SDK daemon to consume |
+| **A2A Daemon** | `sdk/src/agent-loop/a2a-daemon.ts` | Agent owner's SDK process: polls → gets result → completeTask() on-chain |
+
+### A2A API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/a2a/pending-tasks?agentId=X` | List completed task results for an agent |
+| `GET` | `/api/v1/a2a/task-result/:taskId` | Single task LLM result |
+| `GET` | `/api/v1/a2a/worker-status` | Worker health + task counts |
+
+### Tenant Isolation
+
+- Worker queries `agents.owner` → matches `tenants` table
+- Prefers agent owner's **BYOK key** for LLM processing (cost isolation)
+- Falls back to platform shared pool
+- Stores `tenant_id` in `a2a_task_results` for usage tracking
+
+### Migration
+
+```bash
+psql -h localhost -U agentx -d agentx_gateway -f db/migrations/003_a2a_results.sql
+```
+
+### Health Check
+
+```bash
+curl -s http://43.156.99.215:3090/api/v1/a2a/worker-status
+# → {"running":true,"taskCounts":{"completed":1,"pending":0,...}}
+```
+
+---
+
 ## 3. PostgreSQL Setup
 
 ```bash
@@ -205,9 +255,10 @@ sudo -u postgres psql -c "CREATE USER agentx WITH PASSWORD 'AgentX2024!Gateway' 
 sudo -u postgres psql -c "CREATE DATABASE agentx_gateway OWNER agentx;"
 psql -U agentx -d agentx_gateway -f db/migrations/001_init.sql
 psql -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
+psql -U agentx -d agentx_gateway -f db/migrations/003_a2a_results.sql
 ```
 
-### Schema (7 tables)
+### Schema (8 tables)
 
 | Table | Purpose |
 |-------|---------|
@@ -218,6 +269,7 @@ psql -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
 | `usage_logs` | Per-request token + tool call tracking |
 | `chat_messages` | Conversation history |
 | `agents` | Agent metadata index from IdentityRegistry chain sync |
+| `a2a_task_results` | Gateway A2A Worker LLM processing results (tenant-isolated) |
 
 ---
 
@@ -307,7 +359,20 @@ npm version patch
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.6.5` · Git tag: `v0.6.5`
+Current: `@agentxv2/sdk@0.6.6` · Git tag: `v0.6.6`
+
+### SDK v0.6.6 New Features
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| **A2A Worker** | Gateway | Background worker: poll contract → LLM process → store results in DB |
+| **A2A Daemon** | `@agentxv2/sdk` | `A2ADaemon` class: SDK process polls Gateway → auto-completes tasks on-chain |
+| **Multi-Agent Interop** | Full Stack | Agent A → createTask → Worker → LLM → Daemon → completeTask() |
+| **A2A Tenant Isolation** | Gateway | Agent owner BYOK key preferred for LLM costs, tenant_id tracking |
+| **A2A Live Status** | Frontend | Real-time Gateway processing status per task (Gateway Processing / Result Ready) |
+| **Multi-Language (i18n)** | Frontend | EN / 繁體中文 toggle, A2A + Marketplace + Studio translations |
+| **completeTask ABI Fix** | SDK | Updated from 2-param to 3-param (taskId, outputData, status) |
+| **getAgentTasks** | SDK `A2AProtocol` | New method: query all tasks for an agent by agentId |
 
 ### SDK v0.6.5 New Features
 
@@ -388,9 +453,10 @@ cd /home/ubuntu/agentx-gateway
 export PGPASSWORD='AgentX2024!Gateway'
 psql -h localhost -U agentx -d agentx_gateway -f db/migrations/001_init.sql
 psql -h localhost -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
+psql -h localhost -U agentx -d agentx_gateway -f db/migrations/003_a2a_results.sql
 ```
 
-Creates tables: `plans`, `tenants`, `platform_api_keys`, `tenant_api_keys`, `usage_logs`, `chat_messages`, `agents`
+Creates tables: `plans`, `tenants`, `platform_api_keys`, `tenant_api_keys`, `usage_logs`, `chat_messages`, `agents`, `a2a_task_results`
 
 ---
 

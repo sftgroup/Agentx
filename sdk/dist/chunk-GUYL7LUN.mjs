@@ -1,82 +1,21 @@
-"use strict";
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// src/core/index.ts
-var core_exports = {};
-__export(core_exports, {
-  AgentXError: () => AgentXError,
-  AgentXErrorCode: () => AgentXErrorCode,
-  aesDecrypt: () => aesDecrypt,
-  aesEncrypt: () => aesEncrypt,
-  bytesToHex: () => import_utils.bytesToHex,
-  decryptPayload: () => decryptPayload,
-  eciesDecrypt: () => eciesDecrypt,
-  eciesEncrypt: () => eciesEncrypt,
-  encryptPayload: () => encryptPayload,
-  generateAesKey: () => generateAesKey,
-  generateKeyPair: () => generateKeyPair,
-  getPublicKey: () => getPublicKey,
-  hexToBytes: () => import_utils.hexToBytes,
-  packAgentForPublish: () => packAgentForPublish,
-  publishAgent: () => publishAgent,
-  randomBytes: () => randomBytes,
-  unpackAgent: () => unpackAgent
-});
-module.exports = __toCommonJS(core_exports);
-
-// src/core/types.ts
-var AgentXErrorCode = /* @__PURE__ */ ((AgentXErrorCode2) => {
-  AgentXErrorCode2["NOT_SUBSCRIBED"] = "NOT_SUBSCRIBED";
-  AgentXErrorCode2["SUBSCRIPTION_EXPIRED"] = "SUBSCRIPTION_EXPIRED";
-  AgentXErrorCode2["DECRYPTION_FAILED"] = "DECRYPTION_FAILED";
-  AgentXErrorCode2["IPFS_FETCH_FAILED"] = "IPFS_FETCH_FAILED";
-  AgentXErrorCode2["AGENT_NOT_FOUND"] = "AGENT_NOT_FOUND";
-  AgentXErrorCode2["INVALID_SCHEMA"] = "INVALID_SCHEMA";
-  AgentXErrorCode2["TX_FAILED"] = "TX_FAILED";
-  AgentXErrorCode2["WALLET_NOT_CONNECTED"] = "WALLET_NOT_CONNECTED";
-  return AgentXErrorCode2;
-})(AgentXErrorCode || {});
-var AgentXError = class extends Error {
-  code;
-  /** If NOT_SUBSCRIBED, carry enough info for wallet/X402 auto-payment */
-  paymentInfo;
-  constructor(code, message) {
-    super(message);
-    this.code = code;
-    this.name = "AgentXError";
-  }
-};
+import {
+  __require
+} from "./chunk-XGB3TDIC.mjs";
 
 // src/core/crypto.ts
-var import_aes = require("@noble/ciphers/aes.js");
-var import_secp256k1 = require("@noble/curves/secp256k1.js");
-var import_sha2 = require("@noble/hashes/sha2.js");
-var import_hkdf = require("@noble/hashes/hkdf.js");
-var import_hmac = require("@noble/hashes/hmac.js");
-var import_utils = require("@noble/ciphers/utils.js");
+import { gcm } from "@noble/ciphers/aes.js";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { hmac } from "@noble/hashes/hmac.js";
+import { bytesToHex, hexToBytes } from "@noble/ciphers/utils.js";
 function randomBytes(length) {
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
     const buf = new Uint8Array(length);
     crypto.getRandomValues(buf);
     return buf;
   }
-  const nodeCrypto = require("crypto");
+  const nodeCrypto = __require("crypto");
   return new Uint8Array(nodeCrypto.randomBytes(length));
 }
 var AES_KEY_SIZE = 32;
@@ -96,10 +35,10 @@ function fromBase64(b64) {
   return bytes;
 }
 function aesEncrypt(plaintext, keyHex) {
-  const key = (0, import_utils.hexToBytes)(keyHex);
+  const key = hexToBytes(keyHex);
   const iv = randomBytes(IV_SIZE);
   const plainBytes = new TextEncoder().encode(plaintext);
-  const cipher = (0, import_aes.gcm)(key, iv);
+  const cipher = gcm(key, iv);
   const encrypted = cipher.encrypt(plainBytes);
   const ciphertext = encrypted.subarray(0, -TAG_SIZE);
   const authTag = encrypted.subarray(-TAG_SIZE);
@@ -110,12 +49,12 @@ function aesEncrypt(plaintext, keyHex) {
   return toBase64(combined);
 }
 function aesDecrypt(encryptedBase64, keyHex) {
-  const key = (0, import_utils.hexToBytes)(keyHex);
+  const key = hexToBytes(keyHex);
   const combined = fromBase64(encryptedBase64);
   const iv = combined.subarray(0, IV_SIZE);
   const ciphertext = combined.subarray(IV_SIZE, -TAG_SIZE);
   const authTag = combined.subarray(-TAG_SIZE);
-  const cipher = (0, import_aes.gcm)(key, iv);
+  const cipher = gcm(key, iv);
   const ciphertextWithTag = new Uint8Array(ciphertext.length + TAG_SIZE);
   ciphertextWithTag.set(ciphertext, 0);
   ciphertextWithTag.set(authTag, ciphertext.length);
@@ -123,7 +62,7 @@ function aesDecrypt(encryptedBase64, keyHex) {
   return new TextDecoder().decode(decrypted);
 }
 function generateAesKey() {
-  return (0, import_utils.bytesToHex)(randomBytes(AES_KEY_SIZE));
+  return bytesToHex(randomBytes(AES_KEY_SIZE));
 }
 function eciesEncode(ephemeralPub, iv, ciphertext, mac) {
   const out = new Uint8Array(33 + 16 + ciphertext.length + 32);
@@ -131,10 +70,10 @@ function eciesEncode(ephemeralPub, iv, ciphertext, mac) {
   out.set(iv, 33);
   out.set(ciphertext, 33 + 16);
   out.set(mac, 33 + 16 + ciphertext.length);
-  return (0, import_utils.bytesToHex)(out);
+  return bytesToHex(out);
 }
 function eciesDecode(dataHex) {
-  const d = (0, import_utils.hexToBytes)(dataHex);
+  const d = hexToBytes(dataHex);
   return {
     ephemeralPub: d.subarray(0, 33),
     iv: d.subarray(33, 49),
@@ -144,12 +83,12 @@ function eciesDecode(dataHex) {
 }
 function aesCtrEncrypt(key, ctrBytes, data) {
   const blockSize = 16;
-  const cipher = (0, import_aes.gcm)(key, ctrBytes);
+  const cipher = gcm(key, ctrBytes);
   const result = new Uint8Array(data.length);
   const counter = new Uint8Array(blockSize);
   counter.set(ctrBytes);
   for (let i = 0; i < data.length; i += blockSize) {
-    const keystream = (0, import_aes.gcm)(key, counter).encrypt(new Uint8Array(blockSize));
+    const keystream = gcm(key, counter).encrypt(new Uint8Array(blockSize));
     for (let j = 0; j < blockSize && i + j < data.length; j++) {
       result[i + j] = keystream[j] ^ data[i + j];
     }
@@ -165,50 +104,50 @@ function aesCtrEncrypt(key, ctrBytes, data) {
 }
 function eciesEncrypt(dataHex, publicKey) {
   const ephPriv = randomBytes(32);
-  const ephPub = import_secp256k1.secp256k1.getPublicKey(ephPriv, true);
+  const ephPub = secp256k1.getPublicKey(ephPriv, true);
   let recipientPub;
   if (publicKey.startsWith("04") && publicKey.length === 130) {
-    recipientPub = (0, import_utils.hexToBytes)(publicKey);
+    recipientPub = hexToBytes(publicKey);
   } else if (publicKey.startsWith("02") || publicKey.startsWith("03")) {
-    recipientPub = (0, import_utils.hexToBytes)(publicKey);
+    recipientPub = hexToBytes(publicKey);
   } else {
     throw new Error("Invalid public key format: expected hex with 02/03/04 prefix");
   }
-  const shared = import_secp256k1.secp256k1.getSharedSecret(ephPriv, recipientPub);
+  const shared = secp256k1.getSharedSecret(ephPriv, recipientPub);
   const sharedX = shared.subarray(1, 33);
-  const sharedKey = (0, import_sha2.sha256)(sharedX);
-  const hkdfOut = (0, import_hkdf.hkdf)(import_sha2.sha256, sharedKey, void 0, void 0, 64);
+  const sharedKey = sha256(sharedX);
+  const hkdfOut = hkdf(sha256, sharedKey, void 0, void 0, 64);
   const encKey = hkdfOut.subarray(0, 32);
   const macKey = hkdfOut.subarray(32, 64);
   const iv = randomBytes(16);
-  const plaintext = (0, import_utils.hexToBytes)(dataHex);
+  const plaintext = hexToBytes(dataHex);
   const ciphertext = aesCtrEncrypt(encKey, iv, plaintext);
   const macInput = new Uint8Array(33 + 16 + ciphertext.length);
   macInput.set(ephPub, 0);
   macInput.set(iv, 33);
   macInput.set(ciphertext, 33 + 16);
-  const mac = (0, import_hmac.hmac)(import_sha2.sha256, macKey, macInput);
+  const mac = hmac(sha256, macKey, macInput);
   return eciesEncode(ephPub, iv, ciphertext, mac);
 }
 function eciesDecrypt(dataHex, privateKey) {
   const { ephemeralPub, iv, ciphertext, mac } = eciesDecode(dataHex);
-  const privBytes = (0, import_utils.hexToBytes)(privateKey);
-  const shared = import_secp256k1.secp256k1.getSharedSecret(privBytes, ephemeralPub);
+  const privBytes = hexToBytes(privateKey);
+  const shared = secp256k1.getSharedSecret(privBytes, ephemeralPub);
   const sharedX = shared.subarray(1, 33);
-  const sharedKey = (0, import_sha2.sha256)(sharedX);
-  const hkdfOut = (0, import_hkdf.hkdf)(import_sha2.sha256, sharedKey, void 0, void 0, 64);
+  const sharedKey = sha256(sharedX);
+  const hkdfOut = hkdf(sha256, sharedKey, void 0, void 0, 64);
   const encKey = hkdfOut.subarray(0, 32);
   const macKey = hkdfOut.subarray(32, 64);
   const macInput = new Uint8Array(33 + 16 + ciphertext.length);
   macInput.set(ephemeralPub, 0);
   macInput.set(iv, 33);
   macInput.set(ciphertext, 33 + 16);
-  const expectedMac = (0, import_hmac.hmac)(import_sha2.sha256, macKey, macInput);
+  const expectedMac = hmac(sha256, macKey, macInput);
   if (!constantTimeEqual(mac, expectedMac)) {
     throw new Error("ECIES decryption failed: MAC mismatch");
   }
   const plaintext = aesCtrEncrypt(encKey, iv, ciphertext);
-  return (0, import_utils.bytesToHex)(plaintext);
+  return bytesToHex(plaintext);
 }
 function constantTimeEqual(a, b) {
   if (a.length !== b.length) return false;
@@ -289,29 +228,27 @@ function unpackAgent(encryptedPayload, eciesEncryptedKey, privateKey) {
 }
 function generateKeyPair() {
   const priv = randomBytes(32);
-  const pub = import_secp256k1.secp256k1.getPublicKey(priv, false);
-  return { privateKey: (0, import_utils.bytesToHex)(priv), publicKey: (0, import_utils.bytesToHex)(pub) };
+  const pub = secp256k1.getPublicKey(priv, false);
+  return { privateKey: bytesToHex(priv), publicKey: bytesToHex(pub) };
 }
 function getPublicKey(privateKey) {
-  return (0, import_utils.bytesToHex)(import_secp256k1.secp256k1.getPublicKey((0, import_utils.hexToBytes)(privateKey), false));
+  return bytesToHex(secp256k1.getPublicKey(hexToBytes(privateKey), false));
 }
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  AgentXError,
-  AgentXErrorCode,
-  aesDecrypt,
-  aesEncrypt,
+
+export {
   bytesToHex,
-  decryptPayload,
-  eciesDecrypt,
-  eciesEncrypt,
-  encryptPayload,
-  generateAesKey,
-  generateKeyPair,
-  getPublicKey,
   hexToBytes,
+  randomBytes,
+  aesEncrypt,
+  aesDecrypt,
+  generateAesKey,
+  eciesEncrypt,
+  eciesDecrypt,
+  encryptPayload,
+  decryptPayload,
   packAgentForPublish,
   publishAgent,
-  randomBytes,
-  unpackAgent
-});
+  unpackAgent,
+  generateKeyPair,
+  getPublicKey
+};
