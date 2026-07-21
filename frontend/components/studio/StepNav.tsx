@@ -1,6 +1,7 @@
 // components/studio/StepNav.tsx — Shared Back/Next navigation
 'use client'
 
+import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, ArrowLeft } from 'lucide-react'
 import { useStudio } from './StudioContext'
@@ -12,6 +13,7 @@ const ROUTES = ['/studio/basics', '/studio/skills', '/studio/encrypt', '/studio/
 
 export function StepNav({ step }: Props) {
   const router = useRouter()
+  const { t } = useTranslation()
   const { form, setFieldErrors } = useStudio()
 
   if (step === 4) return null // publish handles navigation itself
@@ -22,7 +24,7 @@ export function StepNav({ step }: Props) {
         onClick={() => { setFieldErrors({}); router.push(ROUTES[step - 2]) }}
         disabled={step === 1}
         className="btn-secondary text-sm px-4 py-2 disabled:opacity-30">
-        <ArrowLeft className="w-4 h-4" /> Back
+        <ArrowLeft className="w-4 h-4" /> {t('studio.back')}
       </button>
 
       <button type="button"
@@ -35,7 +37,7 @@ export function StepNav({ step }: Props) {
           if (Object.keys(errs).length === 0) router.push(ROUTES[step])
         }}
         className="btn-primary text-sm px-6 py-2">
-        Next <ArrowRight className="w-4 h-4" />
+        {t('studio.next')} <ArrowRight className="w-4 h-4" />
       </button>
     </div>
   )

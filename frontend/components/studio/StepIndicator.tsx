@@ -1,18 +1,20 @@
 // components/studio/StepIndicator.tsx — Shared step nav bar
 'use client'
 
+import { useTranslation } from 'react-i18next'
 import { Sparkles, Hexagon, Zap, Shield, Check } from 'lucide-react'
-
-const STEPS = [
-  { id: 1, label: 'Basics', icon: Hexagon },
-  { id: 2, label: 'Skills', icon: Zap },
-  { id: 3, label: 'Encrypt', icon: Shield },
-  { id: 4, label: 'Publish', icon: Check },
-]
 
 interface Props { current: number }
 
 export function StepIndicator({ current }: Props) {
+  const { t } = useTranslation()
+  const STEPS = [
+    { id: 1, label: t('studio.basics'), icon: Hexagon },
+    { id: 2, label: t('studio.skills'), icon: Zap },
+    { id: 3, label: t('studio.encrypt'), icon: Shield },
+    { id: 4, label: t('studio.publish'), icon: Check },
+  ]
+
   return (
     <div className="glass-card p-4">
       <div className="flex items-center justify-between">
