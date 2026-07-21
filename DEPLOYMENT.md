@@ -75,8 +75,8 @@ NEXT_PUBLIC_APP_URL=http://43.156.99.215:3100
 NEXT_PUBLIC_SITE_URL=http://43.156.99.215:3100
 NEXT_PUBLIC_AGENTX_GATEWAY_URL=http://43.156.99.215:3090
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=19505
-NEXT_PUBLIC_OXACHAIN_RPC_URL=http://43.156.99.215:18545
-NEXT_PUBLIC_OXACHAIN_EXPLORER=http://43.156.99.215:18400
+NEXT_PUBLIC_OXACHAIN_RPC_URL=https://rpc-oxa.0xainet.top
+NEXT_PUBLIC_OXACHAIN_EXPLORER=https://explorer-oxa.0xainet.top
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=b405f4f15938582260758473465a651b
 ```
 
@@ -88,9 +88,9 @@ After connecting wallet, `WalletConnect.tsx` automatically calls `switchChain({ 
 |-------|-------|
 | Network Name | OxaChain L1 |
 | Chain ID | 19505 |
-| RPC URL | `http://43.156.99.215:18545` |
-| Currency Symbol | T0x |
-| Block Explorer | `http://43.156.99.215:18400` |
+| RPC URL | `https://rpc-oxa.0xainet.top` |
+| Currency Symbol | OXA |
+| Block Explorer | `https://explorer-oxa.0xainet.top` |
 
 ---
 
@@ -235,12 +235,12 @@ forge build
 
 # Deploy (IdentityRegistry + SubscriptionManager)
 forge script script/DeployOxaChain.s.sol \
-  --rpc-url http://43.156.99.215:18545 \
+  --rpc-url https://rpc-oxa.0xainet.top \
   --broadcast --legacy
 
 # Full 6-contract suite
 forge script script/DeployOxaChainFull.s.sol \
-  --rpc-url http://43.156.99.215:18545 \
+  --rpc-url https://rpc-oxa.0xainet.top \
   --broadcast --legacy
 ```
 
@@ -270,7 +270,7 @@ curl -s -X POST http://43.156.99.215:3090/mcp \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
 # OxaChain RPC
-curl -s -X POST http://43.156.99.215:18545 \
+curl -s -X POST https://rpc-oxa.0xainet.top \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
 
@@ -294,7 +294,7 @@ ss -tlnp | grep -E '3100|3090|18545'
 | Chain | Chain ID | RPC URL |
 |-------|----------|---------|
 | Sepolia (Testnet) | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` |
-| **OxaChain L1 (Mainnet)** | **19505** | `http://43.156.99.215:18545` |
+| **OxaChain L1 (Mainnet)** | **19505** | `https://rpc-oxa.0xainet.top` |
 
 ---
 

@@ -24,3 +24,7 @@ Thumbs.db
 *.log
 logs/
 agentx/
+sdk/.npmrc
+e2e_*.js
+package-lock.json
+package.json

@@ -20,7 +20,7 @@ export const config = {
   // MCP / On-chain read — Dual-chain
   // Sepolia
   rpcUrl: process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
-  rpcUrlOxaChain: process.env.RPC_URL_OXACHAIN || 'http://43.156.99.215:18545',
+  rpcUrlOxaChain: process.env.RPC_URL_OXACHAIN || 'https://rpc-oxa.0xainet.top',
   chainId: parseInt(process.env.CHAIN_ID || '11155111', 10),
   chainIdOxaChain: parseInt(process.env.CHAIN_ID_OXACHAIN || '19505', 10),
 

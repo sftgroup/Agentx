@@ -74,8 +74,8 @@ await loop.run('Audit this contract for vulnerabilities')
 | **Admin Panel** | `http://43.156.99.215:3100/admin` |
 | **Gateway Health** | `http://43.156.99.215:3090/api/v1/health` |
 | **MCP Server** | `http://43.156.99.215:3090/mcp` |
-| **OxaChain RPC** | `http://43.156.99.215:18545` |
-| **OxaChain Explorer** | `http://43.156.99.215:18400` |
+| **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
+| **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
 | **SDK (npm)** | `npm install @agentxv2/sdk@0.6.5` |
 
 ## Documentation
@@ -103,7 +103,7 @@ await loop.run('Audit this contract for vulnerabilities')
 
 | Chain | Chain ID | RPC | Native |
 |-------|----------|-----|--------|
-| **OxaChain L1** | **19505** | `http://43.156.99.215:18545` | T0x |
+| **OxaChain L1** | **19505** | `https://rpc-oxa.0xainet.top` | OXA |
 | Sepolia Testnet | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` | ETH |
 
 ## License

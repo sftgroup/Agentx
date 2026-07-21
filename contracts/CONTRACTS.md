@@ -39,7 +39,7 @@
 | Chain | Chain ID | RPC |
 |-------|----------|-----|
 | Sepolia | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` |
-| OxaChain L1 | 19505 | `http://43.156.99.215:18545` |
+| OxaChain L1 | 19505 | `https://rpc-oxa.0xainet.top` |
 
 ### Deployers
 

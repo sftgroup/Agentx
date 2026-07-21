@@ -52,7 +52,7 @@ Subscriber  →  decrypts  →  injects prompt into LLM  →  executes skills (l
 | Chain | Chain ID | RPC | Explorer |
 |-------|----------|-----|----------|
 | Sepolia | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` | blockscout.com |
-| **OxaChain L1** | **19505** | `http://43.156.99.215:18545` | http://43.156.99.215:18400 |
+| **OxaChain L1** | **19505** | `https://rpc-oxa.0xainet.top` | https://explorer-oxa.0xainet.top |
 
 > SDK auto-detects chain via `KNOWN_CHAINS[chainId]`. No manual RPC/contract address config needed.
 
@@ -506,7 +506,7 @@ const result = await a2aSkill.execute({ task: "audit ERC20 token", severity: "al
 | Network | RPC URL |
 |---------|---------|
 | Sepolia (Testnet) | `https://ethereum-sepolia-rpc.publicnode.com` |
-| OxaChain L1 (Mainnet) | `http://43.156.99.215:18545` (Chain ID 19505) |
+| OxaChain L1 (Mainnet) | `https://rpc-oxa.0xainet.top` (Chain ID 19505) |
 | zkSync / Polygon / Base | Planned (multi-chain, P3) |
 
 ---
