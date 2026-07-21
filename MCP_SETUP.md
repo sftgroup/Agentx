@@ -6,12 +6,12 @@
 
 ## Overview
 
-AgentX exposes its entire platform (7 smart contracts + Gateway API) as a standard **MCP (Model Context Protocol) Server**. Any MCP-compatible client �?Claude Desktop, Cursor, VS Code, custom agents �?can directly read on-chain data and interact with AgentX contracts through 29 built-in tools.
+AgentX exposes its entire platform (7 smart contracts + Gateway API) as a standard **MCP (Model Context Protocol) Server**. Any MCP-compatible client �?Claude Desktop, Cursor, VS Code, custom agents �?can directly read on-chain data and interact with AgentX contracts through 29 built-in tools.
 
 ```
 Claude Desktop / Cursor / Any MCP Client
-         �?         �? JSON-RPC 2.0 over HTTP POST
-         �?┌─────────────────────────────────────�?�? AgentX Gateway (:3090)             �?�? ┌─────────────────────────────�?   �?�? �? POST /mcp                  �?   �?�? �?   tools/list �?29 tools    �?   �?�? �?   tools/call �?execute     �?   �?�? �?   initialize   �?handshake �?   �?�? └─────────────────────────────�?   �?�?             �?                      �?�?             �?                      �?�? ethers.JsonRpcProvider              �?�? �?Sepolia RPC                      �?�? �?6 Smart Contracts (read)         �?└─────────────────────────────────────�?```
+         �?         �? JSON-RPC 2.0 over HTTP POST
+         �?┌─────────────────────────────────────�?�? AgentX Gateway (:3090)             �?�? ┌─────────────────────────────�?   �?�? �? POST /mcp                  �?   �?�? �?   tools/list �?29 tools    �?   �?�? �?   tools/call �?execute     �?   �?�? �?   initialize   �?handshake �?   �?�? └─────────────────────────────�?   �?�?             �?                      �?�?             �?                      �?�? ethers.JsonRpcProvider              �?�? �?Sepolia RPC                      �?�? �?6 Smart Contracts (read)         �?└─────────────────────────────────────�?```
 
 ---
 
@@ -35,7 +35,7 @@ Restart Claude Desktop. AgentX tools appear automatically.
 
 ### Cursor / VS Code
 
-In Cursor Settings �?MCP �?Add new MCP Server:
+In Cursor Settings �?MCP �?Add new MCP Server:
 
 ```
 Name: agentx
@@ -193,7 +193,7 @@ const { result } = await res.json()
 | Chain | Chain ID | RPC URL |
 |-------|----------|---------|
 | Sepolia (Testnet) | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` |
-| OxaChain L1 (Mainnet) | 19505 | `http://43.156.99.215:18545` |
+| OxaChain L1 (Mainnet) | 19505 | `https://rpc-oxa.0xainet.top` |
 
 **Using OxaChain L1:** Pass `"chain": "oxachain"` in tool arguments. Default is Sepolia.
 

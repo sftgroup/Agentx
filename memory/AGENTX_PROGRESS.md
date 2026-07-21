@@ -84,9 +84,9 @@
 | 5 | ConfigurationRegistry | `0x07280674ccc2898Fd038A9e3C22005CA83ffD2F8` |
 | 6 | MultiEndpointRegistry | `0xB361d04F49000013FC131D3C59C41c8486C64f8c` |
 
-**Network**: Chain ID 19505, Clique PoA, Shanghai+Cancun, gas T0x
-**RPC**: `http://43.156.99.215:18545`
-**Explorer**: `http://43.156.99.215:18400`
+**Network**: Chain ID 19505, Clique PoA, Shanghai+Cancun, gas OXA
+**RPC**: `https://rpc-oxa.0xainet.top`
+**Explorer**: `https://explorer-oxa.0xainet.top`
 **Deployer**: `0x8E869A0624fF9e766Df71b5B08897d00E4d260ba`
 
 ## Sepolia — 6 Contracts

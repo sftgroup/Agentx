@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { createPublicClient, http } from 'viem'
 
-const oxaChain = { id: 19505, name: 'OxaChain L1', nativeCurrency: { name: 'T0x', symbol: 'T0x', decimals: 18 }, rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_OXACHAIN_RPC_URL || 'http://43.156.99.215:18545'] } } }
+const oxaChain = { id: 19505, name: 'OxaChain L1', nativeCurrency: { name: 'OXA', symbol: 'OXA', decimals: 18 }, rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_OXACHAIN_RPC_URL || 'https://rpc-oxa.0xainet.top'] } } }
 const A2A_REGISTRY = (process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS || '0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86') as `0x${string}`
 
 const publicClient = createPublicClient({ chain: oxaChain, transport: http() })

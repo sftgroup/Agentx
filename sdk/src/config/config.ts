@@ -66,10 +66,10 @@ export const KNOWN_CHAINS: Record<number, ChainConfig> = {
   },
 
   // OxaChain L1 Mainnet
-  // Chain ID 19505, Clique PoA, Shanghai+Cancun, gas token T0x
+  // Chain ID 19505, Clique PoA, Shanghai+Cancun, gas token OXA
   // Deployer: 0x8E869A0624fF9e766Df71b5B08897d00E4d260ba
-  // RPC: http://43.156.99.215:18545
-  // Explorer: http://43.156.99.215:18400
+  // RPC: https://rpc-oxa.0xainet.top
+  // Explorer: https://explorer-oxa.0xainet.top
   // All 6 core contracts deployed 2026-07-14
   19505: {
     chainId: 19505,
@@ -82,7 +82,7 @@ export const KNOWN_CHAINS: Record<number, ChainConfig> = {
       multiEndpointRegistry: '0xB361d04F49000013FC131D3C59C41c8486C64f8c',
     },
     ipfsGateways: ['ipfs.io', 'gateway.pinata.cloud', 'dweb.link', 'cf-ipfs.com'],
-    rpcUrl: 'http://43.156.99.215:18545',
+    rpcUrl: 'https://rpc-oxa.0xainet.top',
   },
 }
 

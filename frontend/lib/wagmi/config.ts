@@ -2,30 +2,32 @@ import { createConfig, http } from 'wagmi'
 import { injected, metaMask, walletConnect } from 'wagmi/connectors'
 
 // OxaChain L1 — the ONLY chain supported by AgentX platform
-// Chain ID 19505, Clique PoA, Shanghai+Cancun, gas token T0x
-// RPC: http://43.156.99.215:18545  Explorer: http://43.156.99.215:18400
+// Chain ID 19505, Clique PoA, Shanghai+Cancun, gas token OXA
+// RPC: https://rpc-oxa.0xainet.top  Explorer: https://explorer-oxa.0xainet.top
 export const oxaChain = {
   id: 19505,
   name: 'OxaChain L1',
   network: 'oxachain',
   nativeCurrency: {
     decimals: 18,
-    name: 'T0x',
-    symbol: 'T0x',
+    name: 'OXA',
+    symbol: 'OXA',
   },
   rpcUrls: {
-    public: { http: ['http://43.156.99.215:18545'] },
-    default: { http: ['http://43.156.99.215:18545'] },
+    public: { http: ['https://rpc-oxa.0xainet.top'] },
+    default: { http: ['https://rpc-oxa.0xainet.top'] },
   },
   blockExplorers: {
     default: {
       name: 'OxaChain Explorer',
-      url: 'http://43.156.99.215:18400',
+      url: 'https://explorer-oxa.0xainet.top',
     },
   },
 } as const
 
 export const supportedChains = [oxaChain] as const
+
+const RPC_URL = process.env.NEXT_PUBLIC_OXACHAIN_RPC_URL || 'https://rpc-oxa.0xainet.top'
 
 export const config = createConfig({
   chains: [oxaChain],
@@ -37,7 +39,7 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [oxaChain.id]: http(process.env.NEXT_PUBLIC_OXACHAIN_RPC_URL || 'http://43.156.99.215:18545'),
+    [oxaChain.id]: http(RPC_URL),
   },
 })
 
