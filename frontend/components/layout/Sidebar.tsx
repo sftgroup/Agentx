@@ -3,28 +3,25 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import {
   Home, ShoppingBag, Brain, BarChart3, Users,
   Zap, Settings, ChevronLeft, ChevronRight, Sparkles, Terminal,
 } from 'lucide-react'
 import { WalletStatus } from '@/components/wallet/WalletStatus'
 
-const navigation = [
-  { name: 'Home', href: '/', icon: Home },
-  { name: 'Marketplace', href: '/marketplace', icon: ShoppingBag },
-  { name: 'Studio', href: '/studio', icon: Sparkles, highlight: true },
-  {
-    name: 'Dashboard',
-    href: '/dashboard/agent',
-    icon: BarChart3,
-    description: 'Manage your Agents'
-  },
-  { name: 'A2A Tasks', href: '/a2a', icon: Terminal, description: 'Agent collaboration' },
-]
-
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
+  const { t } = useTranslation()
+
+  const navigation = [
+    { name: t('sidebar.home'), href: '/', icon: Home },
+    { name: t('sidebar.marketplace'), href: '/marketplace', icon: ShoppingBag },
+    { name: t('sidebar.studio'), href: '/studio', icon: Sparkles, highlight: true },
+    { name: t('sidebar.dashboard'), href: '/dashboard/agent', icon: BarChart3, description: t('sidebar.dashboardDesc') },
+    { name: t('sidebar.a2a'), href: '/a2a', icon: Terminal, description: t('sidebar.a2aDesc') },
+  ]
 
   return (
     <aside className={`

@@ -5,10 +5,12 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { useAgentRegistry } from '@/hooks/aimarket/useAgentRegistry'
 import { useAgentSearch } from '@/hooks/aimarket/useAgentSearch'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Brain, Search, Sparkles, Tag, ArrowRight, Star, Filter, X, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 
 export default function MarketplacePage() {
+  const { t } = useTranslation()
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 12
 
@@ -34,9 +36,9 @@ export default function MarketplacePage() {
       <div className="max-w-7xl mx-auto py-8 px-6 space-y-8">
         {/* Hero */}
         <div className="text-center py-8">
-          <h1 className="heading-lg mb-3">Agent <span className="gradient-text">Marketplace</span></h1>
+          <h1 className="heading-lg mb-3">{t('marketplace.title')} <span className="gradient-text">{t('marketplace.titleHighlight')}</span></h1>
           <p className="body text-text-secondary max-w-lg mx-auto">
-            Discover, subscribe to, and run AI agents created by developers worldwide. All powered by on-chain ownership.
+            {t('marketplace.desc')}
           </p>
         </div>
 
@@ -45,7 +47,7 @@ export default function MarketplacePage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
           <input
             type="text" value={searchText} onChange={e => handleSearch(e.target.value)}
-            placeholder="Search agents by name, description, or tags..."
+            placeholder={t('common.search')}
             className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/5 rounded-2xl text-sm focus:outline-none focus:border-accent-purple/40 focus:bg-white/8 transition-all placeholder:text-text-muted"
           />
         </div>
@@ -63,7 +65,7 @@ export default function MarketplacePage() {
             ))}
             {hasActiveFilters && (
               <button onClick={handleReset} className="px-3 py-1.5 rounded-full text-xs border border-red-400/20 text-red-400/80 hover:text-red-400 transition-colors flex items-center gap-1">
-                <X className="w-3 h-3" /> Clear
+                <X className="w-3 h-3" /> {t('common.clear')}
               </button>
             )}
           </div>
@@ -88,8 +90,8 @@ export default function MarketplacePage() {
         ) : filteredAgents.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-2xl bg-accent-purple/10 flex items-center justify-center mx-auto mb-4"><Brain className="w-8 h-8 text-accent-purple/30" /></div>
-            <h3 className="font-semibold mb-1">No Agents Found</h3>
-            <p className="body text-text-muted">{hasActiveFilters ? 'Try adjusting your filters.' : 'Be the first to create one.'}</p>
+            <h3 className="font-semibold mb-1">{t('common.noAgents')}</h3>
+            <p className="body text-text-muted">{hasActiveFilters ? t('common.noAgentsFilterHint') : t('common.noAgentsHint')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -103,7 +105,7 @@ export default function MarketplacePage() {
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     agent.metadata?.pricing?.type === 'subscription' ? 'bg-accent-cyan/10 text-accent-cyan' : 'bg-accent-purple/10 text-accent-purple'
                   }`}>
-                    {agent.metadata?.pricing?.type === 'subscription' ? 'Subscription' : 'Pay-per-use'}
+                    {agent.metadata?.pricing?.type === 'subscription' ? t('common.subscription') : t('common.payPerUse')}
                   </span>
                 </div>
                 <h3 className="font-semibold mb-1.5 group-hover:text-accent-purple transition-colors truncate">
@@ -120,7 +122,7 @@ export default function MarketplacePage() {
                 <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-white/5">
                   <span className="flex items-center gap-1"><Star className="w-3 h-3 text-yellow-400/70" /> 4.8</span>
                   <span className="flex items-center gap-1">
-                    {agent.metadata?.pricing?.amount ? `${agent.metadata.pricing.amount} ETH` : 'Free'}
+                    {agent.metadata?.pricing?.amount ? `${agent.metadata.pricing.amount} ETH` : t('common.free')}
                     <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </span>
                 </div>

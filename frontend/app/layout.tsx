@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { CustomWagmiProvider } from '@/components/providers/WagmiProvider'
+import { I18nProvider } from '@/components/providers/I18nProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 export const metadata: Metadata = {
@@ -37,11 +38,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="font-sans antialiased">
-        <CustomWagmiProvider>
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
-        </CustomWagmiProvider>
+        <I18nProvider>
+          <CustomWagmiProvider>
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </CustomWagmiProvider>
+        </I18nProvider>
       </body>
     </html>
   )
