@@ -4,6 +4,7 @@
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useAccount } from 'wagmi'
 import { useAgentRegistry } from '@/hooks/aimarket/useAgentRegistry'
+import { useMyAgentIds } from '@/hooks/user/useMyAgentIds'
 import { useState, useMemo } from 'react'
 import {
   Brain, Plus, RefreshCw, ExternalLink, Edit3, Eye, Users,
@@ -13,11 +14,12 @@ import Link from 'next/link'
 
 export default function MyAgentsPage() {
   const { address, isConnected } = useAccount()
-  const { agents: allAgents, isLoading: loadingAgents } = useAgentRegistry(100)
+  const { agents: allAgents, isLoading: loadingAgents } = useAgentRegistry(200)
+  const { myAgentIds } = useMyAgentIds()
 
   const myAgents = useMemo(() =>
-    allAgents.filter(a => a.owner?.toLowerCase() === address?.toLowerCase()),
-    [allAgents, address]
+    allAgents.filter(a => myAgentIds.has(a.id)),
+    [allAgents, myAgentIds]
   )
 
   if (!isConnected) {
@@ -39,7 +41,7 @@ export default function MyAgentsPage() {
               <div className="w-9 h-9 rounded-xl bg-accent-purple/10 flex items-center justify-center"><Brain className="w-5 h-5 text-accent-purple" /></div>
               My Agents
             </h1>
-            <p className="body text-text-secondary mt-1">Agents you&apos;ve created and deployed on-chain</p>
+            <p className="body text-text-secondary mt-1">Agents you&apos;ve created or subscribed to on-chain</p>
           </div>
           <Link href="/studio" className="btn-primary text-sm py-2"><Plus className="w-4 h-4" /> Create Agent</Link>
         </div>

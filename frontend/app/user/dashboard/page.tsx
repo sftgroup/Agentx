@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { useAccount } from 'wagmi'
 import { useUserSubscriptions } from '@/hooks/user/useUserSubscriptions'
 import { useAgentRegistry } from '@/hooks/aimarket/useAgentRegistry'
+import { useMyAgentIds } from '@/hooks/user/useMyAgentIds'
 import {
   Brain, CreditCard, BarChart3, MessageSquare, RefreshCw, AlertCircle,
   CheckCircle, Clock, Settings, Sparkles, TrendingUp, Activity,
@@ -23,14 +24,13 @@ export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState<'active' | 'expired' | 'all'>('active')
 
   const { subscriptions, isLoading, refetch: refetchSubscriptions } = useUserSubscriptions()
-  const { agents: allAgents, isLoading: loadingAgents } = useAgentRegistry(100)
+  const { agents: allAgents, isLoading: loadingAgents } = useAgentRegistry(200)
+  const { myAgentIds } = useMyAgentIds()
   const [mintedCount, setMintedCount] = useState(0)
   const [loadingOnchain, setLoadingOnchain] = useState(false)
 
-  // My agents (agents minted by current user)
-  const myAgents = allAgents.filter(a => 
-    a.owner?.toLowerCase() === address?.toLowerCase()
-  )
+  // My agents (owned + subscribed)
+  const myAgents = allAgents.filter(a => myAgentIds.has(a.id))
 
   // Fetch minted agent count from chain
   const fetchOnchainData = useCallback(async () => {
