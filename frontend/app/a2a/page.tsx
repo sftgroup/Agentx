@@ -4,7 +4,8 @@
 import { useTranslation } from 'react-i18next'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useAccount, useWriteContract } from 'wagmi'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useMyAgentIds } from '@/hooks/user/useMyAgentIds'
 import {
   Cpu, Plus, RefreshCw, Clock, CheckCircle, AlertCircle,
   Loader2, ArrowRight, Filter, Info, Send, X, Check, Search, Zap, Brain
@@ -71,6 +72,7 @@ export default function A2ATasksPage() {
   const { t } = useTranslation()
   const { address, isConnected } = useAccount()
   const { writeContractAsync } = useWriteContract()
+  const { myAgentIds } = useMyAgentIds()
 
   // Task list
   const [tasks, setTasks] = useState<A2ATaskDisplay[]>([])
@@ -125,6 +127,12 @@ export default function A2ATasksPage() {
       .catch(() => {})
   }, [])
 
+  // Filter to only agents the user owns or is subscribed to
+  const mySelectableAgents = useMemo(() =>
+    agents.filter(a => myAgentIds.has(a.id)),
+    [agents, myAgentIds]
+  )
+
   // Poll Gateway for each active task's processing status
   useEffect(() => {
     if (tasks.length === 0) return
@@ -156,7 +164,7 @@ export default function A2ATasksPage() {
     setAgentSearch('')
   }
 
-  const filteredAgents = agents.filter(a =>
+  const filteredAgents = mySelectableAgents.filter(a =>
     !agentSearch || a.name.toLowerCase().includes(agentSearch.toLowerCase())
   ).slice(0, 20)
 
