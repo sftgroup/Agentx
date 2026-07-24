@@ -1,6 +1,6 @@
 # AgentX Deployment Guide
 
-> Production: `43.156.99.215` (Full-Stack) · Last updated: 2026-07-22
+> Production: `43.156.99.215` (Full-Stack) · Last updated: 2026-07-24
 
 ---
 
@@ -58,9 +58,10 @@ npm install --legacy-peer-deps
 # Build (Turbopack, ~3-5 min)
 npx next build
 
-# Copy static files for standalone
+# CRITICAL: Copy static files to standalone output
+# Without this step, CSS/JS will 404 and the page appears completely black!
 cp -r .next/static .next/standalone/.next/static
-cp -r public .next/standalone/
+cp -r public .next/standalone/ 2>/dev/null  # public dir is optional
 
 # Kill old process & restart
 sudo fuser -k 3100/tcp
@@ -141,6 +142,10 @@ CONFIGURATION_REGISTRY=0x68DcE00e4C9077c94BC68016cD14B09557faEA6c
 CONFIGURATION_REGISTRY_OXACHAIN=0x07280674ccc2898Fd038A9e3C22005CA83ffD2F8
 MULTI_ENDPOINT=0xEB5e866f186d4B73F97aa0d70B86f2C6e2e21Cb7
 MULTI_ENDPOINT_OXACHAIN=0xB361d04F49000013FC131D3C59C41c8486C64f8c
+
+# A2A Worker wallet private key (for creating sub-tasks on-chain during multi-agent orchestration)
+# Without this, the Worker can process tasks but cannot delegate to other agents
+A2A_WORKER_PRIVATE_KEY=0x...
 ```
 
 ---
@@ -195,33 +200,61 @@ The Gateway indexer solves this by probing tokenURIs sequentially and storing re
 
 ---
 
-## 2.6 A2A Auto-Processing Worker (v0.6.6)
+## 2.6 A2A Auto-Processing Worker v2 — ReAct AgentLoop + Multi-Agent Orchestration (v0.6.6)
 
-The Gateway runs a background A2A Worker that enables **true multi-agent interop**:
+The Gateway runs a background A2A Worker v2 that enables **true multi-agent orchestration** via LLM tool-calling:
 
 ```
-Agent A → createTask(Agent B) on-chain
-           ↓
-Gateway Worker → detects pending tasks → LLM processes → stores result in DB
-           ↓
-Agent B's SDK A2A Daemon → polls Gateway → completeTask() on-chain
+Agent A's task → Worker LLM(Agent A) analyzes
+  → LLM decides: "I need Agent B for auditing"
+  → calls agentx_a2a_create_task(Agent B, "audit", ...)
+  → Worker submits tx on-chain, processes Agent B's task inline (recursive)
+  → Agent B's result fed back to Agent A's LLM
+  → LLM continues: "Now I need Agent C to summarize"
+  → calls agentx_a2a_create_task(Agent C, "summarize", ...)
+  → Worker processes Agent C's task inline
+  → Agent A's LLM aggregates all results → final output
 ```
 
 ### Architecture
 
 | Component | Location | Role |
 |-----------|----------|------|
-| **A2A Worker** | `gateway/src/services/a2a-worker.ts` | Polls OxaChain A2A contract every 30s, calls LLM, stores results |
-| **A2A API** | `gateway/src/routes/a2a.ts` | Exposes task results for SDK daemon to consume |
+| **A2A Worker v2** | `gateway/src/services/a2a-worker.ts` | ReAct AgentLoop with A2A tools: polls contract → LLM with tools → processes inline |
+| **A2A API** | `gateway/src/routes/a2a.ts` | Exposes task results + worker status (incl. `totalOrchestrated` counter) |
 | **A2A Daemon** | `sdk/src/agent-loop/a2a-daemon.ts` | Agent owner's SDK process: polls → gets result → completeTask() on-chain |
+| **useMyAgentIds** | `frontend/hooks/user/useMyAgentIds.ts` | Combines owned + subscribed agent IDs for tenant-scoped agent selection |
+
+### Key Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Poll interval | 30s | Contract poll frequency |
+| Max batch size | 3 | Tasks per poll (reduced: each may spawn sub-tasks) |
+| Max depth | 3 | Recursive delegation limit |
+| Max ReAct iterations | 5 | LLM tool-call rounds per task |
+
+### LLM Tools Available
+
+| Tool | Description |
+|------|-------------|
+| `agentx_a2a_create_task` | Delegate sub-task to another agent (on-chain tx) |
+| `agentx_a2a_get_task` | Check sub-task status/result |
+| `agentx_list_agents` | List all available agents with names/descriptions |
+
+### Prerequisites
+
+- `A2A_WORKER_PRIVATE_KEY` in Gateway `.env` (wallet for `createTask` on-chain tx)
+- Fund the worker wallet with OXA for gas
+- Agent sync cron must be active (see section 2.5)
 
 ### A2A API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/v1/a2a/pending-tasks?agentId=X` | List completed task results for an agent |
-| `GET` | `/api/v1/a2a/task-result/:taskId` | Single task LLM result |
-| `GET` | `/api/v1/a2a/worker-status` | Worker health + task counts |
+| `GET` | `/api/v1/a2a/task-result/:taskId` | Single task LLM result (incl. Gateway processing status) |
+| `GET` | `/api/v1/a2a/worker-status` | Worker health + `totalOrchestrated` + task counts |
 
 ### Tenant Isolation
 
@@ -240,7 +273,7 @@ psql -h localhost -U agentx -d agentx_gateway -f db/migrations/003_a2a_results.s
 
 ```bash
 curl -s http://43.156.99.215:3090/api/v1/a2a/worker-status
-# → {"running":true,"taskCounts":{"completed":1,"pending":0,...}}
+# → {"running":true,"totalOrchestrated":0,"taskCounts":{"completed":1,...}}
 ```
 
 ---
@@ -321,6 +354,9 @@ curl -s -X POST http://43.156.99.215:3090/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
+# A2A Worker
+curl -s http://43.156.99.215:3090/api/v1/a2a/worker-status
+
 # OxaChain RPC
 curl -s -X POST https://rpc-oxa.0xainet.top \
   -H "Content-Type: application/json" \
@@ -365,12 +401,14 @@ Current: `@agentxv2/sdk@0.6.6` · Git tag: `v0.6.6`
 
 | Feature | Module | Description |
 |---------|--------|-------------|
-| **A2A Worker** | Gateway | Background worker: poll contract → LLM process → store results in DB |
+| **A2A Worker v2 (ReAct)** | Gateway | Full ReAct AgentLoop: LLM gets A2A tools, can autonomously delegate sub-tasks to other agents |
+| **Multi-Agent Orchestration** | Gateway | Agent A → LLM decides → createTask(Agent B/C) → recursive inline processing → result aggregation (max depth 3) |
 | **A2A Daemon** | `@agentxv2/sdk` | `A2ADaemon` class: SDK process polls Gateway → auto-completes tasks on-chain |
-| **Multi-Agent Interop** | Full Stack | Agent A → createTask → Worker → LLM → Daemon → completeTask() |
 | **A2A Tenant Isolation** | Gateway | Agent owner BYOK key preferred for LLM costs, tenant_id tracking |
-| **A2A Live Status** | Frontend | Real-time Gateway processing status per task (Gateway Processing / Result Ready) |
-| **Multi-Language (i18n)** | Frontend | EN / 繁體中文 toggle, A2A + Marketplace + Studio translations |
+| **useMyAgentIds Hook** | Frontend | Shared hook: owned + subscribed agent IDs for tenant-scoped filtering |
+| **My Agents + Subscriptions** | Frontend | "My Agents" now includes subscribed agents; A2A selector restricted to owned/subscribed |
+| **A2A Live Status** | Frontend | Real-time Gateway processing status per task (Processing / Result Ready / Orchestrated) |
+| **Multi-Language (i18n)** | Frontend | EN / 繁體中文 toggle across all pages |
 | **completeTask ABI Fix** | SDK | Updated from 2-param to 3-param (taskId, outputData, status) |
 | **getAgentTasks** | SDK `A2AProtocol` | New method: query all tasks for an agent by agentId |
 
