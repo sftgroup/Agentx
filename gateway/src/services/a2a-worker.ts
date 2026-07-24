@@ -1,14 +1,22 @@
 // ---------------------------------------------------------------------------
-// AgentX Gateway — A2A Task Worker
+// AgentX Gateway — A2A Task Worker (v2 — ReAct AgentLoop + Multi-Agent Orchestration)
 // ---------------------------------------------------------------------------
 // Background service that:
 //   1. Polls OxaChain A2A contract for pending tasks (status=Created/Accepted)
-//   2. Calls LLM to process each task (using agent context from DB)
-//   3. Stores results in a2a_task_results table
+//   2. Runs ReAct-style AgentLoop with A2A tools for each task
+//   3. LLM can autonomously delegate sub-tasks to other agents via createTask()
+//   4. Sub-tasks are processed inline and results fed back to the parent LLM
 //
-// This enables true multi-agent interop:
-//   Agent A creates task for Agent B → Worker detects → LLM processes → 
-//   Agent B's SDK daemon picks up result → calls completeTask() on-chain
+// Multi-Agent Orchestration Flow:
+//   Agent A's task → LLM(Agent A) analyzes
+//     → LLM decides: "I need Agent B for auditing"
+//     → calls agentx_a2a_create_task(Agent B, "audit", ...)
+//     → Worker submits tx on-chain, processes Agent B's task inline
+//     → Agent B's result fed back to Agent A's LLM
+//     → LLM(Agent A) continues: "Now I need Agent C to summarize"
+//     → calls agentx_a2a_create_task(Agent C, "summarize", ...)
+//     → Worker processes Agent C's task inline
+//     → Agent A's LLM aggregates all results → final output
 // ---------------------------------------------------------------------------
 
 import { ethers } from 'ethers'
@@ -21,6 +29,7 @@ import { decryptApiKey } from '../lib/crypto'
 const A2A_ABI = [
   'function getAgentTasks(uint256 agentId) view returns (tuple(uint256,uint256,string,string,string,uint256,address,uint256,uint256,bytes32)[])',
   'function getTask(uint256 taskId) view returns (uint256,uint256,string,string,string,uint256,address,uint256,uint256)',
+  'function createTask(uint256 agentId, string taskType, string inputData) returns (uint256)',
   'event TaskCreated(uint256 indexed taskId, uint256 indexed agentId, address indexed client, string taskType, uint256 status)',
 ]
 
@@ -37,153 +46,158 @@ interface A2ATaskOnChain {
   createdAt: number
 }
 
+interface AgentInfo {
+  id: number
+  name: string
+  owner: string
+  description: string
+}
+
 // ── Worker State ───────────────────────────────────────────────────────────
 
 let pollingTimer: ReturnType<typeof setInterval> | null = null
 let isRunning = false
-const POLL_INTERVAL_MS = 30_000  // Poll every 30 seconds
-const MAX_BATCH_SIZE = 5         // Max tasks to process per poll
-
-// Track which task IDs have been processed to avoid duplicates
+const POLL_INTERVAL_MS = 30_000
+const MAX_BATCH_SIZE = 3            // Reduced since each task may spawn sub-tasks
+const MAX_DEPTH = 3                 // Max delegation depth
+const MAX_REACT_ITERATIONS = 5      // Max LLM tool-call rounds per task
 const processingSet = new Set<number>()
+let totalOrchestrated = 0           // Counter for multi-agent orchestrations
 
 // ── Public API ─────────────────────────────────────────────────────────────
 
 export function startA2AWorker(): void {
   if (pollingTimer) return
-  console.log('[A2A Worker] Starting, poll interval:', POLL_INTERVAL_MS / 1000, 's')
+  console.log('[A2A Worker v2] Starting ReAct AgentLoop mode, poll:', POLL_INTERVAL_MS / 1000, 's')
   pollingTimer = setInterval(pollAndProcess, POLL_INTERVAL_MS)
-  // Run first poll after 5 seconds (give server time to start)
   setTimeout(pollAndProcess, 5_000)
 }
 
 export function stopA2AWorker(): void {
-  if (pollingTimer) {
-    clearInterval(pollingTimer)
-    pollingTimer = null
-    console.log('[A2A Worker] Stopped')
-  }
+  if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; console.log('[A2A Worker] Stopped') }
 }
 
-export function getWorkerStatus(): { running: boolean; processingSetSize: number } {
-  return { running: pollingTimer !== null, processingSetSize: processingSet.size }
+export function getWorkerStatus(): { running: boolean; processingSetSize: number; totalOrchestrated: number } {
+  return { running: pollingTimer !== null, processingSetSize: processingSet.size, totalOrchestrated }
 }
 
 // ── Core Logic ─────────────────────────────────────────────────────────────
 
 async function pollAndProcess(): Promise<void> {
-  if (isRunning) {
-    console.log('[A2A Worker] Previous poll still running, skipping')
-    return
-  }
+  if (isRunning) { console.log('[A2A Worker] Previous poll still running, skipping'); return }
   isRunning = true
-
   try {
     const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
     const a2aContract = new ethers.Contract(config.a2aProtocolOxaChain, A2A_ABI, provider)
     const pool = getPool()
-
-    // 1. Get all known agents from DB
-    const { rows: agents } = await pool.query(`SELECT id, name, owner FROM agents ORDER BY id`)
-    if (agents.length === 0) {
-      isRunning = false
-      return
-    }
+    const { rows: agents } = await pool.query(`SELECT id, name, owner, description FROM agents ORDER BY id`)
+    if (agents.length === 0) { isRunning = false; return }
 
     let processedCount = 0
-
-    // 2. For each agent, check for pending tasks
     for (const agent of agents) {
       if (processedCount >= MAX_BATCH_SIZE) break
-
       const agentId = agent.id as number
       const agentName = agent.name as string
       const agentOwner = (agent.owner as string || '').toLowerCase()
-
-      // Resolve agent owner's tenant ID for cost tracking
       let tenantId: string | null = null
       if (agentOwner) {
-        const { rows: tenants } = await pool.query(
-          `SELECT id FROM tenants WHERE LOWER(wallet_address) = $1`,
-          [agentOwner]
-        )
+        const { rows: tenants } = await pool.query(`SELECT id FROM tenants WHERE LOWER(wallet_address) = $1`, [agentOwner])
         tenantId = tenants[0]?.id || null
       }
 
-      // Check if we already have results for this task (already processed)
       const { rows: existingResults } = await pool.query(
-        `SELECT task_id FROM a2a_task_results WHERE agent_id = $1 AND status = 2`,
-        [agentId]
+        `SELECT task_id FROM a2a_task_results WHERE agent_id = $1 AND status = 2`, [agentId]
       )
       const completedTaskIds = new Set(existingResults.map((r: any) => r.task_id))
 
       try {
-        // Get all tasks for this agent from the contract
         const tasks: any[] = await a2aContract.getAgentTasks(agentId)
-
         for (const task of tasks) {
           if (processedCount >= MAX_BATCH_SIZE) break
-
           const taskId = Number(task[0])
           const status = Number(task[5])
-
-          // Skip non-pending tasks (0=Created, 1=Accepted)
-          if (status > 1) continue
-          // Skip already completed
-          if (completedTaskIds.has(taskId)) continue
-          // Skip currently being processed
-          if (processingSet.has(taskId)) continue
+          if (status > 1 || completedTaskIds.has(taskId) || processingSet.has(taskId)) continue
 
           const onChainTask: A2ATaskOnChain = {
-            taskId,
-            agentId: Number(task[1]),
-            taskType: String(task[2] || ''),
-            inputData: String(task[3] || ''),
-            outputData: String(task[4] || ''),
-            status,
-            clientAddress: String(task[6] || ''),
-            createdAt: Number(task[7] || 0),
+            taskId, agentId: Number(task[1]), taskType: String(task[2] || ''),
+            inputData: String(task[3] || ''), outputData: String(task[4] || ''),
+            status, clientAddress: String(task[6] || ''), createdAt: Number(task[7] || 0),
           }
 
-          // Process this task
-          processingSet.add(taskId)
-          processedCount++
-          console.log(`[A2A Worker] Processing task #${taskId} for agent #${agentId} (${agentName}), tenant: ${tenantId || 'none'}`)
+          processingSet.add(taskId); processedCount++
+          console.log(`[A2A Worker] Task #${taskId} → Agent #${agentId} (${agentName})`)
 
-          // Process asynchronously (don't block the loop)
-          processTask(pool, onChainTask, agentName, tenantId).catch(err => {
-            console.error(`[A2A Worker] Failed to process task #${taskId}:`, err.message)
-          }).finally(() => {
-            processingSet.delete(taskId)
-          })
+          processTask(pool, onChainTask, { id: agentId, name: agentName, owner: agentOwner, description: agent.description as string }, tenantId, agents as AgentInfo[], 0)
+            .catch(err => console.error(`[A2A Worker] Task #${taskId} failed:`, err.message))
+            .finally(() => processingSet.delete(taskId))
         }
       } catch (err: any) {
-        // Agent might not have any tasks or contract call failed
         if (!err.message?.includes('TaskNotFound') && !err.message?.includes('revert')) {
-          console.warn(`[A2A Worker] Error fetching tasks for agent #${agentId}:`, err.message?.slice(0, 100))
+          console.warn(`[A2A Worker] Error for agent #${agentId}:`, err.message?.slice(0, 100))
         }
       }
     }
-
-    if (processedCount > 0) {
-      console.log(`[A2A Worker] Queued ${processedCount} tasks for processing`)
-    }
-  } catch (err: any) {
-    console.error('[A2A Worker] Poll error:', err.message)
-  } finally {
-    isRunning = false
-  }
+    if (processedCount > 0) console.log(`[A2A Worker] Queued ${processedCount} task(s)`)
+  } catch (err: any) { console.error('[A2A Worker] Poll error:', err.message) }
+  finally { isRunning = false }
 }
+
+// ── ReAct AgentLoop Task Processing ────────────────────────────────────────
+
+const A2A_TOOLS = [
+  {
+    type: 'function' as const,
+    function: {
+      name: 'agentx_a2a_create_task',
+      description: 'DELEGATE work to another AgentX agent. Creates an on-chain task. Use this when you need another agent\'s expertise. The sub-task will be processed and its result returned to you.',
+      parameters: {
+        type: 'object',
+        properties: {
+          targetAgentId: { type: 'integer', description: 'The agent ID to delegate to' },
+          taskType: { type: 'string', description: 'Type of task (e.g., "audit", "analyze", "summarize", "translate")' },
+          inputData: { type: 'string', description: 'Full task description. Include ALL context the sub-agent needs.' },
+        },
+        required: ['targetAgentId', 'taskType', 'inputData'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'agentx_a2a_get_task',
+      description: 'Check the status and result of an A2A task by ID. Use to check if a delegated sub-task has completed.',
+      parameters: {
+        type: 'object',
+        properties: { taskId: { type: 'integer', description: 'The task ID to query' } },
+        required: ['taskId'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'agentx_list_agents',
+      description: 'List ALL available agents with their IDs, names, and descriptions. Use this to discover which agents can help with sub-tasks.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+]
 
 async function processTask(
   pool: ReturnType<typeof getPool>,
   task: A2ATaskOnChain,
-  agentName: string,
-  tenantId: string | null
-): Promise<void> {
+  agent: AgentInfo,
+  tenantId: string | null,
+  allAgents: AgentInfo[],
+  depth: number,
+): Promise<string> {
+  const indent = '  '.repeat(depth)
   const taskId = task.taskId
 
-  // 1. Mark as processing in DB
+  if (depth >= MAX_DEPTH) {
+    console.log(`${indent}[A2A] Max depth reached for task #${taskId}, processing directly`)
+  }
+
   await pool.query(
     `INSERT INTO a2a_task_results (task_id, agent_id, task_type, input_data, tenant_id, status, created_at)
      VALUES ($1, $2, $3, $4, $5, 1, NOW())
@@ -192,39 +206,181 @@ async function processTask(
   )
 
   try {
-    // 2. Resolve LLM API key (prefer agent owner's tenant key, fallback to platform)
     const llmConfig = await resolveLLMConfig(pool, tenantId)
-    if (!llmConfig) {
-      throw new Error('No LLM API key available')
+    if (!llmConfig) throw new Error('No LLM API key available')
+
+    console.log(`${indent}[A2A] ReAct loop for task #${taskId} (Agent: ${agent.name}, depth: ${depth})`)
+
+    // ── ReAct AgentLoop ─────────────────────────────────────────────────
+    const messages: { role: string; content: string | null; tool_calls?: any[]; tool_call_id?: string }[] = [
+      {
+        role: 'system',
+        content: buildOrchestrationSystemPrompt(agent, allAgents),
+      },
+      {
+        role: 'user',
+        content: buildOrchestrationUserPrompt(task),
+      },
+    ]
+
+    let finalContent = ''
+    let totalTokens = 0
+    let subTaskResults: { taskId: number; agentName: string; output: string }[] = []
+
+    for (let iter = 0; iter < MAX_REACT_ITERATIONS; iter++) {
+      const response = await callLLMWithTools(llmConfig, messages, A2A_TOOLS)
+      totalTokens += response.tokens
+      const choice = response.choices[0]
+      const msg = choice.message
+
+      // If no tool calls, we have the final answer
+      if (!msg.tool_calls || msg.tool_calls.length === 0) {
+        finalContent = msg.content || ''
+        messages.push({ role: 'assistant', content: finalContent })
+        break
+      }
+
+      // Process tool calls
+      messages.push({ role: 'assistant', content: msg.content || null, tool_calls: msg.tool_calls })
+
+      for (const tc of msg.tool_calls) {
+        const toolName = tc.function.name
+        let args: Record<string, unknown> = {}
+        try { args = JSON.parse(tc.function.arguments) } catch { /* raw string */ }
+
+        console.log(`${indent}[A2A] LLM calls ${toolName}(${JSON.stringify(args).slice(0, 80)})`)
+
+        let toolResult: string
+
+        switch (toolName) {
+          case 'agentx_list_agents': {
+            const list = allAgents.map(a => `#${a.id} "${a.name}" — ${a.description || '(no description)'}`).join('\n')
+            toolResult = `Available agents:\n${list}`
+            break
+          }
+
+          case 'agentx_a2a_create_task': {
+            const targetId = Number(args.targetAgentId)
+            const subTaskType = String(args.taskType || 'analyze')
+            const subInput = String(args.inputData || '')
+
+            if (!targetId || isNaN(targetId)) {
+              toolResult = 'Error: targetAgentId is required'
+              break
+            }
+
+            const targetAgent = allAgents.find(a => a.id === targetId)
+            const targetName = targetAgent?.name || `Agent #${targetId}`
+
+            // Submit createTask on-chain (permissionless — anyone can call)
+            let subTaskId: number
+            try {
+              subTaskId = await createTaskOnChain(targetId, subTaskType, subInput)
+            } catch (err: any) {
+              toolResult = `Error creating sub-task: ${err.message}`
+              break
+            }
+
+            console.log(`${indent}[A2A] → Delegated to ${targetName} (#${targetId}), sub-task: #${subTaskId}`)
+            totalOrchestrated++
+
+            // Process sub-task recursively inline
+            const subOutput = await processTask(
+              pool,
+              {
+                taskId: subTaskId, agentId: targetId, taskType: subTaskType,
+                inputData: subInput, outputData: '', status: 0,
+                clientAddress: task.clientAddress, createdAt: Math.floor(Date.now() / 1000),
+              },
+              targetAgent || { id: targetId, name: targetName, owner: '', description: '' },
+              tenantId,
+              allAgents,
+              depth + 1,
+            )
+
+            subTaskResults.push({ taskId: subTaskId, agentName: targetName, output: subOutput })
+            toolResult = `Sub-task #${subTaskId} completed by ${targetName}.\nResult: ${subOutput.slice(0, 2000)}`
+            break
+          }
+
+          case 'agentx_a2a_get_task': {
+            const queryId = Number(args.taskId)
+            if (!queryId || isNaN(queryId)) { toolResult = 'Error: taskId required'; break }
+            try {
+              const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
+              const a2aContract = new ethers.Contract(config.a2aProtocolOxaChain, A2A_ABI, provider)
+              const t = await a2aContract.getTask(queryId)
+              const statusMap = ['Created', 'Accepted', 'InProgress', 'Completed', 'Failed']
+              toolResult = JSON.stringify({
+                taskId: Number(t[0]), agentId: Number(t[1]), taskType: String(t[2]),
+                status: statusMap[Number(t[5])] || 'Unknown',
+                outputData: String(t[4] || ''),
+              })
+            } catch { toolResult = `Task #${queryId} not found` }
+            break
+          }
+
+          default:
+            toolResult = `Unknown tool: ${toolName}`
+        }
+
+        messages.push({ role: 'tool', content: toolResult, tool_call_id: tc.id })
+      }
     }
 
-    // 3. Build prompt for the LLM
-    const systemPrompt = buildA2ASystemPrompt(agentName, task)
-    const userPrompt = buildA2AUserPrompt(task)
+    if (!finalContent && messages.length > 2) {
+      // LLM used tools but didn't produce final text — get a summary
+      messages.push({ role: 'user', content: 'Based on all the sub-task results above, provide your final combined output. Return ONLY the final result.' })
+      const finalResp = await callLLMWithTools(llmConfig, messages, [])
+      finalContent = finalResp.choices[0]?.message?.content || 'Task processed via multi-agent orchestration.'
+      totalTokens += finalResp.tokens
+    }
 
-    // 4. Call LLM
-    console.log(`[A2A Worker] Calling LLM for task #${taskId} (${task.taskType})`)
-    const llmResponse = await callLLM(llmConfig, systemPrompt, userPrompt)
+    if (!finalContent) finalContent = 'Task processed.'
 
-    // 5. Store successful result
+    // Store result
     await pool.query(
-      `UPDATE a2a_task_results 
-       SET status = 2, output_data = $2, llm_model = $3, tokens_used = $4, processed_at = NOW()
+      `UPDATE a2a_task_results SET status = 2, output_data = $2, llm_model = $3, tokens_used = $4, processed_at = NOW()
        WHERE task_id = $1`,
-      [taskId, llmResponse.content, llmConfig.model, llmResponse.tokens]
+      [taskId, finalContent, llmConfig.model, totalTokens]
     )
 
-    console.log(`[A2A Worker] Task #${taskId} completed, tokens: ${llmResponse.tokens}`)
+    const orchestrationNote = subTaskResults.length > 0
+      ? ` (orchestrated ${subTaskResults.length} sub-task(s): ${subTaskResults.map(s => `#${s.taskId}→${s.agentName}`).join(', ')})`
+      : ''
+    console.log(`${indent}[A2A] Task #${taskId} done, tokens: ${totalTokens}${orchestrationNote}`)
+
+    return finalContent
   } catch (err: any) {
-    // Store failure
     await pool.query(
-      `UPDATE a2a_task_results 
-       SET status = 3, error_message = $2, processed_at = NOW()
-       WHERE task_id = $1`,
+      `UPDATE a2a_task_results SET status = 3, error_message = $2, processed_at = NOW() WHERE task_id = $1`,
       [taskId, err.message.slice(0, 500)]
     )
-    console.error(`[A2A Worker] Task #${taskId} failed:`, err.message.slice(0, 100))
+    console.error(`${'  '.repeat(depth)}[A2A] Task #${taskId} failed:`, err.message.slice(0, 100))
+    throw err
   }
+}
+
+// ── On-Chain Helpers ──────────────────────────────────────────────────────
+
+async function createTaskOnChain(agentId: number, taskType: string, inputData: string): Promise<number> {
+  const workerPk = process.env.A2A_WORKER_PRIVATE_KEY
+  if (!workerPk) throw new Error('A2A_WORKER_PRIVATE_KEY not configured — cannot create sub-tasks')
+
+  const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
+  const wallet = new ethers.Wallet(workerPk, provider)
+  const a2aContract = new ethers.Contract(config.a2aProtocolOxaChain, A2A_ABI, wallet)
+
+  const tx = await a2aContract.createTask(agentId, taskType, inputData)
+  const receipt = await tx.wait()
+
+  // Parse TaskCreated event to get taskId
+  for (const log of receipt.logs) {
+    if (log.topics.length >= 2) {
+      try { return Number(log.topics[1]) } catch { /* */ }
+    }
+  }
+  throw new Error('Could not parse taskId from createTask tx')
 }
 
 // ── LLM Helpers ────────────────────────────────────────────────────────────
@@ -236,77 +392,85 @@ interface LLMConfig {
 }
 
 async function resolveLLMConfig(pool: ReturnType<typeof getPool>, tenantId: string | null): Promise<LLMConfig | null> {
-  // 1. Prefer agent owner's tenant BYOK key (tenant isolation)
   if (tenantId) {
-    const { rows: tenantKeys } = await pool.query(
-      `SELECT * FROM tenant_api_keys WHERE tenant_id = $1 AND is_active = true ORDER BY random() LIMIT 1`,
-      [tenantId]
+    const { rows } = await pool.query(
+      `SELECT * FROM tenant_api_keys WHERE tenant_id = $1 AND is_active = true ORDER BY random() LIMIT 1`, [tenantId]
     )
-    if (tenantKeys.length > 0) {
-      const tk = tenantKeys[0]
-      return {
-        endpoint: tk.endpoint,
-        apiKey: decryptApiKey(tk.api_key, config.masterEncryptionKey),
-        model: tk.model || 'deepseek-chat',
-      }
-    }
+    if (rows.length > 0) return { endpoint: rows[0].endpoint, apiKey: decryptApiKey(rows[0].api_key, config.masterEncryptionKey), model: rows[0].model || 'deepseek-chat' }
   }
-
-  // 2. Fallback to platform keys (shared pool)
-  const { rows: platformKeys } = await pool.query(
-    `SELECT * FROM platform_api_keys WHERE is_active = true ORDER BY random() LIMIT 1`
-  )
-  if (platformKeys.length > 0) {
-    const pk = platformKeys[0]
-    return {
-      endpoint: pk.endpoint,
-      apiKey: decryptApiKey(pk.api_key, config.masterEncryptionKey),
-      model: pk.models?.[0] || 'deepseek-chat',
-    }
-  }
-
+  const { rows: pks } = await pool.query(`SELECT * FROM platform_api_keys WHERE is_active = true ORDER BY random() LIMIT 1`)
+  if (pks.length > 0) return { endpoint: pks[0].endpoint, apiKey: decryptApiKey(pks[0].api_key, config.masterEncryptionKey), model: pks[0].models?.[0] || 'deepseek-chat' }
   return null
 }
 
-function buildA2ASystemPrompt(agentName: string, task: A2ATaskOnChain): string {
-  return `You are "${agentName}", an AI agent on the AgentX platform.
+function buildOrchestrationSystemPrompt(agent: AgentInfo, allAgents: AgentInfo[]): string {
+  const agentList = allAgents.slice(0, 30).map(a => `  #${a.id} "${a.name}" — ${a.description || 'No description'}`).join('\n')
 
-A user has delegated a task to you. Process it professionally and return only the result.
+  return `You are "${agent.name}", an AI agent on the AgentX decentralized platform.
 
-Task Type: ${task.taskType}
+## Your Role
+${agent.description || 'Process delegated tasks professionally and return results.'}
+
+## Multi-Agent Orchestration
+You have access to A2A (Agent-to-Agent) tools that let you DELEGATE work to other agents.
+When a task is complex or requires specialized skills, break it down and delegate sub-tasks.
+
+### Available Agents
+${agentList}
+
+### How to Orchestrate
+1. Analyze the task — what parts need specialized agents?
+2. Call agentx_list_agents to see available agents
+3. Call agentx_a2a_create_task to delegate sub-tasks (each runs autonomously)
+4. Call agentx_a2a_get_task to check sub-task results
+5. Aggregate ALL sub-task results into your final output
+
+### Rules
+- Delegate when another agent has relevant expertise
+- Include ALL context in inputData so the sub-agent can work independently
+- After getting sub-task results, synthesize them into a coherent final answer
+- If the task is simple and you can handle it alone, just answer directly
+- Always provide a final answer (don't leave the user hanging)`
+}
+
+function buildOrchestrationUserPrompt(task: A2ATaskOnChain): string {
+  return `Task Type: ${task.taskType}
 Client: ${task.clientAddress}
 
-Respond with the completed task output only. Do not include explanations, prefixes, or meta-commentary.`
+Task Input:
+${task.inputData || 'Please process this task.'}
+
+Process this task. If it requires multiple specialized skills, use the available A2A tools to delegate sub-tasks to appropriate agents. Return your final combined output.`
 }
 
-function buildA2AUserPrompt(task: A2ATaskOnChain): string {
-  return task.inputData || 'Please process this task.'
-}
+// ── LLM Call with Tools (ReAct) ──────────────────────────────────────────
 
-interface LLMResponse {
-  content: string
+interface LLMToolCallResponse {
+  choices: { message: { role: string; content: string | null; tool_calls?: { id: string; function: { name: string; arguments: string } }[] } }[]
   tokens: number
 }
 
-async function callLLM(cfg: LLMConfig, systemPrompt: string, userPrompt: string): Promise<LLMResponse> {
-  const body = {
+async function callLLMWithTools(
+  cfg: LLMConfig,
+  messages: { role: string; content: string | null; tool_calls?: any[]; tool_call_id?: string }[],
+  tools: typeof A2A_TOOLS,
+): Promise<LLMToolCallResponse> {
+  const body: Record<string, unknown> = {
     model: cfg.model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
+    messages,
     max_tokens: 2048,
     temperature: 0.3,
+  }
+  if (tools.length > 0) {
+    body.tools = tools
+    body.tool_choice = 'auto'
   }
 
   const res = await fetch(`${cfg.endpoint}/chat/completions`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${cfg.apiKey}`,
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(120_000),
   })
 
   if (!res.ok) {
@@ -314,9 +478,9 @@ async function callLLM(cfg: LLMConfig, systemPrompt: string, userPrompt: string)
     throw new Error(`LLM call failed (HTTP ${res.status}): ${errText.slice(0, 200)}`)
   }
 
-  const data = await res.json() as any
-  const content = data.choices?.[0]?.message?.content || ''
-  const tokens = data.usage?.total_tokens || 0
-
-  return { content, tokens }
+  const data = await res.json()
+  return {
+    choices: data.choices || [],
+    tokens: data.usage?.total_tokens || 0,
+  }
 }
