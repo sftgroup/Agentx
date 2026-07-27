@@ -13,10 +13,16 @@ import {
   Loader2, Wallet, Users
 } from 'lucide-react'
 import Link from 'next/link'
-import { createPublicClient, http } from 'viem'
-import { sepolia } from 'viem/chains'
+import { createPublicClient, http, defineChain } from 'viem'
 
-const publicClient = createPublicClient({ chain: sepolia, transport: http() })
+const oxaChain = defineChain({
+  id: 19505,
+  name: 'OxaChain L1',
+  nativeCurrency: { name: 'OXA', symbol: 'OXA', decimals: 18 },
+  rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_OXACHAIN_RPC_URL || 'https://rpc-oxa.0xainet.top'] } },
+})
+
+const publicClient = createPublicClient({ chain: oxaChain, transport: http() })
 const IDENTITY_REGISTRY = process.env.NEXT_PUBLIC_IDENTITY_REGISTRY_ADDRESS as `0x${string}`
 
 export default function UserDashboard() {

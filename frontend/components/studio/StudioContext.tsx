@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import { useAccount } from 'wagmi'
-import { useAgentRegistry } from '@/components/agent/hooks/useAgentRegistry'
+import { useOnChainAgentRegistry as useAgentRegistry } from '@/components/agent/hooks/useAgentRegistry'
 import { packAgentForPublish, encryptPayload, generateAesKey } from '@agentxv2/sdk/core'
 import type { AgentPayload, AgentPrivatePayload, EncryptedPayload, PackResult } from '@agentxv2/sdk/core'
 import { makeEmptyForm, type AgentForm } from './types'

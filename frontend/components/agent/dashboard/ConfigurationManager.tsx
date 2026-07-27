@@ -20,7 +20,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { useConfiguration, ConfigDataType, type ConfigEntry } from '../hooks/useConfiguration'
-import { useAgentRegistry } from '../hooks/useAgentRegistry'
+import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
 
 interface ConfigFormData {
   configKey: string

@@ -21,7 +21,7 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import { useMultiEndpoint, type Endpoint, type ProtocolConfig, type EndpointStats } from '../hooks/useMultiEndpoint'
-import { useAgentRegistry } from '../hooks/useAgentRegistry'
+import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
 
 interface EndpointFormData {
   name: string

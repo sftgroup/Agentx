@@ -1,7 +1,11 @@
 // components/agent/dashboard/AgentDashboard.tsx
+// @deprecated 此独立 Dashboard 组件将在重构中被应用级 Dashboard 页面取代。
+//           请使用 app/user/dashboard/ 作为新的统一入口。
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import i18n from '@/lib/i18n'
 import { useAccount, useConnect } from 'wagmi'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -20,7 +24,7 @@ import {
   FileText,
   Link as LinkIcon
 } from 'lucide-react'
-import { useAgentRegistry } from '../hooks/useAgentRegistry'
+import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
 import { usePaymentGateway } from '../hooks/usePaymentGateway'
 import { useSubscription } from '../hooks/useSubscription'
 import { useMultiEndpoint } from '../hooks/useMultiEndpoint'
@@ -42,20 +46,22 @@ interface AgentStats {
 }
 
 // Agent Dashboard 侧边栏导航项
-const dashboardNavigation = [
-  { id: 'overview', label: '概览', icon: BarChart3 },
-  { id: 'register', label: '注册Agent', icon: Users },
-  { id: 'revenue', label: '收益管理', icon: DollarSign },
-  { id: 'endpoints', label: '端点管理', icon: Globe },
-  { id: 'subscriptions', label: '订阅管理', icon: CreditCard },
-  { id: 'cards', label: '卡片管理', icon: TrendingUp },
-  { id: 'config', label: '配置管理', icon: Settings }
+const getDashboardNav = () => [
+  { id: 'overview', label: i18n.t('agentDashboard.overview'), icon: BarChart3 },
+  { id: 'register', label: i18n.t('agentDashboard.registerAgent'), icon: Users },
+  { id: 'revenue', label: i18n.t('agentDashboard.revenueManage'), icon: DollarSign },
+  { id: 'endpoints', label: i18n.t('agentDashboard.endpointManage'), icon: Globe },
+  { id: 'subscriptions', label: i18n.t('agentDashboard.subscriptionManage'), icon: CreditCard },
+  { id: 'cards', label: i18n.t('agentDashboard.cardManage'), icon: TrendingUp },
+  { id: 'config', label: i18n.t('agentDashboard.configManage'), icon: Settings }
 ]
 
 export function AgentDashboard() {
+  const { t } = useTranslation()
   const { address, isConnected } = useAccount()
   const { connectors, connect } = useConnect()
   const router = useRouter()
+  const dashboardNavigation = getDashboardNav()
   
   const [activeTab, setActiveTab] = useState('overview')
   const [agentStats, setAgentStats] = useState<AgentStats>({
@@ -78,7 +84,7 @@ export function AgentDashboard() {
     try {
       await connect({ connector })
     } catch (error) {
-      console.error('连接钱包失败:', error)
+      console.error(t('agentDashboard.connectFailed') + ':', error)
     }
   }
 
@@ -137,62 +143,62 @@ export function AgentDashboard() {
 
   const statsCards = [
     {
-      name: 'Agent数量',
+      name: t('agentDashboard.agentCount'),
       value: agentStats.totalAgents.toString(),
       icon: Brain,
-      description: '已注册的Agent总数'
+      description: t('agentDashboard.agentCountDesc')
     },
     {
-      name: '活跃订阅',
+      name: t('agentDashboard.activeSubsCount'),
       value: agentStats.activeSubscriptions.toString(),
       icon: CreditCard,
-      description: '当前活跃订阅数'
+      description: t('agentDashboard.activeSubsCountDesc')
     },
     {
-      name: '总收益',
+      name: t('agentDashboard.totalRevenueLabel'),
       value: `${agentStats.totalRevenue} ETH`,
       icon: DollarSign,
-      description: '累计收益总额'
+      description: t('agentDashboard.totalRevenueDesc')
     },
     {
-      name: '活跃端点',
+      name: t('agentDashboard.activeEndpointsLabel'),
       value: agentStats.activeEndpoints.toString(),
       icon: Globe,
-      description: '运行中的服务端点'
+      description: t('agentDashboard.activeEndpointsDesc')
     },
     {
-      name: '系统技能',
+      name: t('agentDashboard.skillsCount'),
       value: agentStats.totalSkills.toString(),
       icon: Zap,
-      description: '可用技能总数'
+      description: t('agentDashboard.skillsCountDesc')
     }
   ]
 
   const quickActions = [
     {
-      name: '注册新Agent',
-      description: '创建新的AI Agent身份',
+      name: t('agentDashboard.registerNew'),
+      description: t('agentDashboard.registerNewDesc'),
       icon: Plus,
       action: () => setActiveTab('register'),
       color: 'blue'
     },
     {
-      name: '管理端点',
-      description: '配置和管理服务端点',
+      name: t('agentDashboard.manageEndpoints'),
+      description: t('agentDashboard.manageEndpointsDesc'),
       icon: Server,
       action: () => setActiveTab('endpoints'),
       color: 'green'
     },
     {
-      name: '订阅管理',
-      description: '设置和管理订阅计划',
+      name: t('agentDashboard.manageSubscriptions'),
+      description: t('agentDashboard.manageSubscriptionsDesc'),
       icon: FileText,
       action: () => setActiveTab('subscriptions'),
       color: 'purple'
     },
     {
-      name: '收益查看',
-      description: '查看收益数据和统计',
+      name: t('agentDashboard.viewRevenue'),
+      description: t('agentDashboard.viewRevenueDesc'),
       icon: TrendingUp,
       action: () => setActiveTab('revenue'),
       color: 'orange'
@@ -206,8 +212,8 @@ export function AgentDashboard() {
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
             <Brain className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">连接钱包</h2>
-            <p className="text-gray-600 mb-6">请连接您的钱包来管理Agent</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('agentDashboard.connectWalletTitle')}</h2>
+            <p className="text-gray-600 mb-6">{t('agentDashboard.connectWalletDesc')}</p>
             <div className="space-y-3">
               {connectors.map((connector) => (
                 <button
@@ -215,7 +221,7 @@ export function AgentDashboard() {
                   onClick={() => connectWallet(connector)}
                   className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
-                  连接 {connector.name}
+                  {t('agentDashboard.connectBtn', { name: connector.name })}
                 </button>
               ))}
             </div>
@@ -283,8 +289,8 @@ export function AgentDashboard() {
               <div className="p-6">
                 <div className="flex justify-between items-center mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">概览</h2>
-                    <p className="text-gray-600 mt-1">查看您的Agent整体运营情况</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('agentDashboard.overview')}</h2>
+                    <p className="text-gray-600 mt-1">{t('agentDashboard.overviewDesc')}</p>
                   </div>
                 </div>
                 
@@ -317,7 +323,7 @@ export function AgentDashboard() {
 
                     {/* 快速操作 */}
                     <div className="mb-8">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">快速操作</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('agentDashboard.quickActions')}</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {quickActions.map((action, index) => {
                           const Icon = action.icon
@@ -356,25 +362,25 @@ export function AgentDashboard() {
 
                     {/* 最近活动 */}
                     <div className="mb-8">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">最近活动</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('agentDashboard.recentActivity')}</h3>
                       <div className="bg-gray-50 rounded-xl p-6 text-center">
                         <div className="text-gray-400 mb-2">
                           <BarChart3 className="w-8 h-8 mx-auto" />
                         </div>
-                        <p className="text-gray-600">暂无最近活动</p>
-                        <p className="text-sm text-gray-500 mt-1">当有新的支付、订阅或配置变更时会显示在这里</p>
+                        <p className="text-gray-600">{t('agentDashboard.noRecentActivity')}</p>
+                        <p className="text-sm text-gray-500 mt-1">{t('agentDashboard.noRecentActivityDesc')}</p>
                       </div>
                     </div>
 
                     {/* A2A协议状态 */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">A2A协议状态</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('agentDashboard.a2aStatus')}</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h4 className="font-semibold text-blue-900">系统技能</h4>
-                              <p className="text-blue-700 text-sm mt-1">平台可用的技能总数</p>
+                              <h4 className="font-semibold text-blue-900">{t('agentDashboard.systemSkills')}</h4>
+                              <p className="text-blue-700 text-sm mt-1">{t('agentDashboard.systemSkillsDesc')}</p>
                             </div>
                             <div className="text-2xl font-bold text-blue-600">
                               {allSkills.length}
@@ -384,8 +390,8 @@ export function AgentDashboard() {
                         <div className="bg-green-50 rounded-xl p-6 border border-green-200">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h4 className="font-semibold text-green-900">Agent技能</h4>
-                              <p className="text-green-700 text-sm mt-1">您的Agent拥有的技能</p>
+                              <h4 className="font-semibold text-green-900">{t('agentDashboard.agentSkillsCount')}</h4>
+                              <p className="text-green-700 text-sm mt-1">{t('agentDashboard.agentSkillsCountDesc')}</p>
                             </div>
                             <div className="text-2xl font-bold text-green-600">
                               {agentSkills.length}
