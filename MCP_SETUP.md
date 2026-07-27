@@ -1,17 +1,34 @@
 # AgentX MCP Server
 
-> v0.6.4 · Production: `http://43.156.99.215:3090/mcp` · Standard MCP JSON-RPC 2.0
+> v0.6.7 · Production: `http://43.156.99.215:3090/mcp` · Standard MCP JSON-RPC 2.0
 
 ---
 
 ## Overview
 
-AgentX exposes its entire platform (7 smart contracts + Gateway API) as a standard **MCP (Model Context Protocol) Server**. Any MCP-compatible client �?Claude Desktop, Cursor, VS Code, custom agents �?can directly read on-chain data and interact with AgentX contracts through 29 built-in tools.
+AgentX exposes its entire platform (6 smart contracts + Gateway API) as a standard **MCP (Model Context Protocol) Server**. Any MCP-compatible client — Claude Desktop, Cursor, VS Code, custom agents — can directly read on-chain data and interact with AgentX contracts through 29 built-in tools.
 
 ```
 Claude Desktop / Cursor / Any MCP Client
-         �?         �? JSON-RPC 2.0 over HTTP POST
-         �?┌─────────────────────────────────────�?�? AgentX Gateway (:3090)             �?�? ┌─────────────────────────────�?   �?�? �? POST /mcp                  �?   �?�? �?   tools/list �?29 tools    �?   �?�? �?   tools/call �?execute     �?   �?�? �?   initialize   �?handshake �?   �?�? └─────────────────────────────�?   �?�?             �?                      �?�?             �?                      �?�? ethers.JsonRpcProvider              �?�? �?Sepolia RPC                      �?�? �?6 Smart Contracts (read)         �?└─────────────────────────────────────�?```
+         │                    ▲
+         │ JSON-RPC 2.0       │ over HTTP POST
+         ▼                    │
+┌─────────────────────────────────────┐
+│ AgentX Gateway (:3090)              │
+│ ┌───────────────────────────────┐   │
+│ │ POST /mcp                     │   │
+│ │   tools/list    → 29 tools    │   │
+│ │   tools/call    → execute     │   │
+│ │   initialize    → handshake   │   │
+│ └───────────────────────────────┘   │
+│             │                       │
+│             ▼                       │
+│ ethers.JsonRpcProvider              │
+│ ├─ Sepolia RPC                      │
+│ └─ OxaChain L1 RPC                  │
+│ 6 Smart Contracts (read + write)    │
+└─────────────────────────────────────┘
+```
 
 ---
 
@@ -35,7 +52,7 @@ Restart Claude Desktop. AgentX tools appear automatically.
 
 ### Cursor / VS Code
 
-In Cursor Settings �?MCP �?Add new MCP Server:
+In Cursor Settings → MCP → Add new MCP Server:
 
 ```
 Name: agentx
@@ -153,7 +170,7 @@ Claude: [calls agentx_subscription_check]
         Yes, 0xAbC... has an active subscription to Agent #5.
 ```
 
-### MCP Client Integration
+### MCP Client Integration (TypeScript)
 
 ```typescript
 // Any MCP client can use the standard JSON-RPC 2.0 protocol
@@ -177,25 +194,37 @@ const { result } = await res.json()
 // result.content[0].text = JSON of on-chain data
 ```
 
+### Using the SDK's MCPConnector
+
+```typescript
+import { MCPConnector } from '@agentxv2/sdk'
+
+const mcp = new MCPConnector({
+  transport: 'http',
+  url: 'http://43.156.99.215:3090/mcp',
+})
+
+// List all 29 platform tools
+const tools = await mcp.listTools()
+
+// Query on-chain data
+const health = await mcp.callTool('agentx_gateway_health', {})
+const agents = await mcp.callTool('agentx_identity_list', {
+  ownerAddress: '0x...',
+  chain: 'oxachain',
+})
+```
+
 ---
 
-## Smart Contract Addresses
+## Dual-Chain Support
 
-| Contract | Sepolia | OxaChain L1 |
-|----------|---------|-------------|
-| IdentityRegistry | `0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F` | `0xbf5F9db266c8c97E3334466C88597Eb758AfE212` |
-| SubscriptionManager | `0xC15fE80b9d800abb72121F353a6ae6d6E9077E63` | `0x019AC9d945467478Dd371CDbD70cb2f325800E6B` |
-| A2AProtocolRegistry | `0x309C7447d89f3087A9924BB686d88df020F7e9cB` | `0xDF2939EFafEe6439eB2226DbEd07AD6F5Ae2112B` |
-| ReputationRegistry | `0xeb6B410ea71b8d9dA0c96f6A91d35027CE143DC9` | `0x6a18C2664E1b42063860d864b6448b824d7B843F` |
-| ConfigurationRegistry | `0x68DcE00e4C9077c94BC68016cD14B09557faEA6c` | `0x07280674ccc2898Fd038A9e3C22005CA83ffD2F8` |
-| MultiEndpointRegistry | `0xEB5e866f186d4B73F97aa0d70B86f2C6e2e21Cb7` | `0xB361d04F49000013FC131D3C59C41c8486C64f8c` |
+| Chain | Chain ID | Flag | RPC URL |
+|-------|----------|------|---------|
+| Sepolia (Testnet) | 11155111 | (default) | `https://ethereum-sepolia-rpc.publicnode.com` |
+| **OxaChain L1** | **19505** | `"chain": "oxachain"` | `https://rpc-oxa.0xainet.top` |
 
-| Chain | Chain ID | RPC URL |
-|-------|----------|---------|
-| Sepolia (Testnet) | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` |
-| OxaChain L1 (Mainnet) | 19505 | `https://rpc-oxa.0xainet.top` |
-
-**Using OxaChain L1:** Pass `"chain": "oxachain"` in tool arguments. Default is Sepolia.
+Pass `"chain": "oxachain"` in tool arguments to query OxaChain L1. Default is Sepolia.
 
 ```json
 // List agents on OxaChain L1
@@ -212,6 +241,115 @@ const { result } = await res.json()
 
 ---
 
+## Smart Contract Addresses
+
+| Contract | Sepolia | OxaChain L1 |
+|----------|---------|-------------|
+| IdentityRegistry | `0xe94a...96e5F` | `0xbf5F...E212` |
+| SubscriptionManager | `0xC15f...7E63` | `0x019A...0E6B` |
+| A2AProtocolRegistry | `0x309C...7e9cB` | `0x7F42...Eb86` |
+| ReputationRegistry | `0xeb6B...3DC9` | `0x6a18...843F` |
+| ConfigurationRegistry | `0x68Dc...EA6c` | `0x0728...D2F8` |
+| MultiEndpointRegistry | `0xEB5e...1Cb7` | `0xB361...4f8c` |
+
+Full addresses are available in [contracts/CONTRACTS.md](./contracts/CONTRACTS.md).
+
+---
+
 ## Publisher MCP Servers (Closed Skills)
 
-This is separate from the AgentX Platform MCP Server. Publishers who want to host proprietary tools (e.g. proprietary audit logic) should deploy their own MCP server and define it as a "closed skill" in the agent payload. Refer to the SDK's `MCPConnector` class (`sdk/src/mcp/connector.ts`) and `AgentRunner._executeMCPTool()` for the subscriber-side integration.
+This is separate from the AgentX Platform MCP Server. Publishers who want to host proprietary tools (e.g. proprietary audit logic) should deploy their own MCP server and define it as a "closed skill" in the agent payload.
+
+### Setup
+
+```typescript
+import { encryptPayload, generateAesKey } from '@agentxv2/sdk/core'
+
+// Define your agent with a closed skill pointing to your MCP server
+const agent = {
+  prompt: 'You are a proprietary audit agent...',
+  skills: [{
+    name: 'audit',
+    description: 'Proprietary smart contract audit',
+    version: '1.0',
+    execution: 'mcp',
+    mcp: {
+      transport: 'http',
+      url: 'https://my-private-mcp.example.com/mcp',
+      authType: 'ecdsa',  // ECDSA signature-based auth
+    },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        contractCode: { type: 'string', description: 'Solidity source code' },
+      },
+      required: ['contractCode'],
+    },
+  }],
+}
+
+// Encrypt and publish on-chain (subscribers see only encrypted payload)
+const aesKey = generateAesKey()
+const encrypted = await encryptPayload(agent, '0x04...')
+```
+
+### Subscriber-Side Usage
+
+When a subscriber runs your agent via `@agentxv2/sdk`:
+
+1. AgentRunner fetches encrypted payload from IPFS
+2. Reads ECIES-wrapped AES key from on-chain NFT metadata
+3. Decrypts to get `{ prompt, skills, mcp }`
+4. When the agent tries to call your `audit` tool, `MCPConnector` is invoked:
+   - Signs the request with subscriber's secp256k1 key (ECDSA auth)
+   - Your server verifies the signature against the subscriber's wallet address
+   - If valid, executes the proprietary logic
+   - Returns result (subscriber never sees your source code)
+
+---
+
+## Authentication
+
+### Gateway JWT Auth
+
+The AgentX MCP server does not require authentication for read-only tools. For write tools, the MCP client must provide a valid JWT token obtained via the Gateway's EIP-191 wallet signature flow:
+
+```bash
+# 1. Get challenge
+curl http://43.156.99.215:3090/api/v1/auth/challenge?address=0x...
+
+# 2. Sign the challenge with your wallet
+# 3. Verify and get JWT
+curl -X POST http://43.156.99.215:3090/api/v1/auth/verify \
+  -H "Content-Type: application/json" \
+  -d '{"wallet_address":"0x...","signature":"0x...","timestamp":...,"nonce":"..."}'
+
+# 4. Use JWT in MCP requests
+curl -X POST http://43.156.99.215:3090/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <jwt>" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",...}'
+```
+
+> Note: The Gateway uses Redis-backed challenge storage (v0.1.1+) for PM2 cluster compatibility.
+
+---
+
+## Deployment
+
+The MCP server is built into the Gateway. Install and run:
+
+```bash
+npm install @agentxv2/gateway@0.1.1
+
+# Configure 26 environment variables (see gateway/.env.example)
+cp gateway/.env.example .env
+# Edit .env with your values
+
+# Build and start
+cd gateway
+npm run build
+npx pm2 start ecosystem.config.js
+```
+
+The MCP endpoint is available at `http://localhost:3090/mcp`.
