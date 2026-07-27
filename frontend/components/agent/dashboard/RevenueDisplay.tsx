@@ -27,7 +27,7 @@ import {
   PaymentStatus
 } from '../hooks/usePaymentGateway'
 import { useSubscription, type Subscription, SubscriptionStatus } from '../hooks/useSubscription'
-import { useAgentRegistry } from '../hooks/useAgentRegistry'
+import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
 
 // 导入图表库
 import {

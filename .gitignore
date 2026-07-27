@@ -28,3 +28,6 @@ sdk/.npmrc
 e2e_*.js
 package-lock.json
 package.json
+
+# Knowledge Graph (generated)
+.ua/

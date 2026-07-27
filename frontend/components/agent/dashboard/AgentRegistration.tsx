@@ -19,7 +19,7 @@ import {
   Info,
   ArrowLeft
 } from 'lucide-react'
-import { useAgentRegistry } from '../hooks/useAgentRegistry'
+import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
 import { useConfiguration } from '../hooks/useConfiguration'
 import { useMultiEndpoint } from '../hooks/useMultiEndpoint'
 import { useA2AProtocol } from '../hooks/useA2AProtocol'

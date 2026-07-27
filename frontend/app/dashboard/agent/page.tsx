@@ -1,10 +1,12 @@
 // app/dashboard/agent/page.tsx — Developer Dashboard (Glassmorphism Dark)
+// @deprecated 此 Dashboard 将在未来版本中移除。
+//            请迁移到 app/user/dashboard/ 作为统一入口。
 'use client'
 
 import { useTranslation } from 'react-i18next'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useAccount } from 'wagmi'
-import { useAgentRegistry } from '@/components/agent/hooks/useAgentRegistry'
+import { useOnChainAgentRegistry as useAgentRegistry } from '@/components/agent/hooks/useAgentRegistry'
 import { useSubscription } from '@/components/agent/hooks/useSubscription'
 import { Brain, CreditCard, DollarSign, Plus, Users, Zap, Settings, FileText, ArrowRight } from 'lucide-react'
 import Link from 'next/link'

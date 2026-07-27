@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Key, Shield, Users, BarChart3, Plus, Trash2, Loader2, Check, X, RefreshCw } from 'lucide-react'
 
-const GATEWAY = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://43.156.99.215:3090'
+const GATEWAY = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
 
 type Tab = 'keys' | 'plans' | 'tenants' | 'usage'
 

@@ -171,7 +171,7 @@ interface UseAgentRegistryReturn {
   resetState: () => void
 }
 
-export function useAgentRegistry(): UseAgentRegistryReturn {
+export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { data: blockNumber } = useBlockNumber({ watch: true })

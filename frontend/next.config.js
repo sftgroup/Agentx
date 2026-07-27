@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  // FIXME: 临时禁用类型检查以绕过 @x402/* 类型解析问题。
+  //        待 @x402 提供正确的类型声明后应移除 ignoreBuildErrors。
   typescript: {
     ignoreBuildErrors: true,
   },

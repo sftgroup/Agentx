@@ -10,6 +10,7 @@ import { ethers } from 'ethers'
 import jwt from 'jsonwebtoken'
 import { config } from '../config'
 import { getPool } from '../lib/db'
+import { getRedis } from './rate-limiter'
 
 export interface TenantContext {
   id: string
@@ -37,19 +38,48 @@ interface Challenge {
   nonce: string
 }
 
-const challengeMap = new Map<string, Challenge>()
+// Challenge TTL in seconds (matches the 5-minute window)
+const CHALLENGE_TTL_SEC = 5 * 60
 
-function cleanChallengeMap(): void {
-  const now = Date.now()
-  for (const [key, ch] of challengeMap) {
-    if (now - ch.timestamp > 5 * 60 * 1000) {
-      challengeMap.delete(key)
-    }
+/**
+ * Store a challenge in Redis so it works across PM2 cluster workers.
+ * Falls back to an in-memory Map when Redis is unavailable (single-process dev).
+ */
+const fallbackMap = new Map<string, Challenge>()
+
+function challengeKey(address: string): string {
+  return `auth:challenge:${address}`
+}
+
+async function saveChallenge(address: string, challenge: Challenge): Promise<void> {
+  const r = getRedis()
+  if (r) {
+    await r.setex(challengeKey(address), CHALLENGE_TTL_SEC, JSON.stringify(challenge))
+  } else {
+    fallbackMap.set(address, challenge)
   }
 }
-setInterval(cleanChallengeMap, 60_000)
 
-export function getChallenge(req: Request, res: Response): void {
+async function loadChallenge(address: string): Promise<Challenge | undefined> {
+  const r = getRedis()
+  if (r) {
+    const raw = await r.get(challengeKey(address))
+    if (raw) return JSON.parse(raw) as Challenge
+    return undefined
+  }
+  return fallbackMap.get(address)
+}
+
+async function deleteChallenge(address: string): Promise<void> {
+  const r = getRedis()
+  if (r) {
+    await r.del(challengeKey(address))
+  } else {
+    fallbackMap.delete(address)
+  }
+}
+
+export async function getChallenge(req: Request, res: Response): Promise<void> {
   const address = (req.query.address as string || '').toLowerCase()
   if (!address) {
     res.status(400).json({ error: 'Missing wallet address' })
@@ -60,7 +90,7 @@ export function getChallenge(req: Request, res: Response): void {
   const nonce = crypto.randomBytes(16).toString('hex')
   const message = `agentx:auth:${timestamp}:${nonce}`
 
-  challengeMap.set(address, { address, timestamp, nonce })
+  await saveChallenge(address, { address, timestamp, nonce })
 
   res.json({ challenge: message, timestamp, nonce })
 }
@@ -74,7 +104,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
   }
 
   const address = wallet_address.toLowerCase()
-  const challenge = challengeMap.get(address)
+  const challenge = await loadChallenge(address)
 
   if (!challenge || challenge.nonce !== nonce) {
     res.status(401).json({ error: 'Challenge expired or not found. Please request a new challenge.' })
@@ -95,7 +125,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
     return
   }
 
-  challengeMap.delete(address)
+  await deleteChallenge(address)
 
   const pool = getPool()
   let tenant: TenantContext | null = null

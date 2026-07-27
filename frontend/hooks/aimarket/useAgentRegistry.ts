@@ -37,7 +37,7 @@ export interface UseAgentRegistryReturn {
   fetchMore: (count: number) => Promise<void>
 }
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://43.156.99.215:3090'
+const GATEWAY_URL = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
 
 function mapAgent(row: any): AgentInfo {
   return {

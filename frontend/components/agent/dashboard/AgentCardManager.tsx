@@ -25,7 +25,7 @@ import {
   type AgentSkill,
   type A2ASkill
 } from '../hooks/useA2AProtocol'
-import { useAgentRegistry } from '../hooks/useAgentRegistry'
+import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
 
 interface AgentCardForm {
   name: string

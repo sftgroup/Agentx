@@ -22,7 +22,7 @@ import {
   type SubscriptionPlan,
   BillingPeriod
 } from '../hooks/useSubscription'
-import { useAgentRegistry } from '../hooks/useAgentRegistry'
+import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
 
 interface PlanFormData {
   name: string

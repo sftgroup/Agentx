@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit'
 import { config } from './config'
 import { getChallenge, verifyChallenge, authMiddleware } from './middleware/auth'
 import { tenantRateLimiter } from './middleware/rate-limiter'
+import { globalErrorHandler } from './middleware/error-handler'
 import chatRouter from './routes/chat'
 import tenantRouter from './routes/tenant'
 import historyRouter from './routes/history'
@@ -80,13 +81,13 @@ app.use('/api/v1/agents', agentsRouter)
 app.use('/api/v1/a2a', a2aRouter)
 
 // Agent sync (public, for cron)
-app.post('/api/v1/agents-sync', async (_req, res) => {
+app.post('/api/v1/agents-sync', async (_req, res, next) => {
   try {
     const { syncAgents } = await import('./services/agent-indexer')
     const result = await syncAgents()
     res.json({ success: true, ...result })
   } catch (err: any) {
-    res.status(500).json({ error: 'Sync failed', detail: err.message })
+    next(err)
   }
 })
 
@@ -124,12 +125,7 @@ app.use((_req, res) => {
 
 // ── Error handler ─────────────────────────────────────────────────────────
 
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('[Gateway Error]', err)
-  if (!res.headersSent) {
-    res.status(500).json({ error: 'Internal server error' })
-  }
-})
+app.use(globalErrorHandler)
 
 // ── Start ─────────────────────────────────────────────────────────────────
 
