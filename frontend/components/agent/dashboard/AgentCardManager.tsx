@@ -1,4 +1,9 @@
 // components/agent/dashboard/AgentCardManager.tsx
+// @refactor TODO: 1519行上帝组件，建议拆分为:
+//   - AgentCardForm.tsx      — 卡片创建/编辑表单
+//   - AgentCardList.tsx      — 卡片列表 + 技能切换
+//   - SkillConfigForm.tsx    — 技能配置弹窗
+//   - hooks/useAgentCards.ts — 卡片 CRUD 状态管理
 'use client'
 
 import { useState, useEffect } from 'react'

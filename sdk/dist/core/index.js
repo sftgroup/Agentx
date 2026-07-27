@@ -315,3 +315,4 @@ function getPublicKey(privateKey) {
   randomBytes,
   unpackAgent
 });
+//# sourceMappingURL=index.js.map
