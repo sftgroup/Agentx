@@ -1,15 +1,17 @@
-# @agentxv2/sdk v0.6.6
+# @agentxv2/sdk v0.6.7
 
-**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop.
+**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools.
 
 ```
 Agent = Prompt + Skills[] + MCP
 ```
 
+---
+
 ## Installation
 
 ```bash
-npm install @agentxv2/sdk
+npm install @agentxv2/sdk@0.6.7
 ```
 
 ### Peer Dependencies
@@ -38,7 +40,7 @@ const provider = new OpenAIProvider({ apiKey: 'sk-...', model: 'gpt-4o' })
 
 // Mode B: SaaS multi-tenant — via AgentX Gateway (API key never in browser)
 const provider = new GatewayProvider({
-  gatewayUrl: 'http://43.156.99.215:3090',
+  gatewayUrl: 'http://localhost:3090',
   accessToken: 'jwt...',
   keySource: 'platform',
 })
@@ -67,15 +69,13 @@ function ChatPage({ agentId }: { agentId: number }) {
 }
 ```
 
-### 3. Publish an Agent (v0.6.4 — IPFSUploader + publishAgent pipeline)
+### 3. Publish an Agent (IPFSUploader + publishAgent pipeline)
 
 ```ts
 import { IPFSUploader, publishAgent } from '@agentxv2/sdk'
 
-// 1. Configure IPFS uploader (Pinata or custom endpoint)
 const uploader = new IPFSUploader({ pinataJwt: 'eyJ...' })
 
-// 2. One-shot: encrypt + upload both private payload & public metadata
 const result = await publishAgent({
   agent: {
     name: 'Solidity Auditor',
@@ -91,39 +91,91 @@ const result = await publishAgent({
     skills: [{ name: 'audit', description: 'Audit a contract', version: '1.0', inputSchema: {...} }],
     mcp: { type: 'http', url: 'https://my-mcp.example.com/mcp' },
   },
-  publicKey: '0x04abc...',  // creator's secp256k1 public key
+  publicKey: '0x04abc...',
   uploader,
 })
 
-// result = {
-//   aesKeyHex, eciesEncryptedKeyHex,     // for on-chain metadata
-//   encryptedCid, encryptedUrl,          // private payload on IPFS
-//   publicCid, publicUrl,                // public metadata on IPFS
-//   pack: { encryptedCid, publicCid, aesKeyHex, eciesEncryptedKeyHex },
-// }
-
-// 3. Mint Agent NFT on-chain with the CIDs
-await registry.register(
-  `ipfs://${result.publicCid}`,
-  [
-    { key: 'encryptedPayloadCid', value: result.encryptedCid },
-    { key: 'eciesEncryptedKey', value: result.eciesEncryptedKeyHex },
-  ]
-)
+// 3. Mint Agent NFT on-chain
+await registry.register(`ipfs://${result.publicCid}`, [
+  { key: 'encryptedPayloadCid', value: result.encryptedCid },
+  { key: 'eciesEncryptedKey', value: result.eciesEncryptedKeyHex },
+])
 ```
 
-### 4. IPFS Uploader (standalone)
+---
+
+## Encryption & Decryption (Core)
+
+The SDK provides a full E2E encryption pipeline using AES-256-GCM + ECIES (secp256k1).
+
+### Low-Level Crypto
+
+```ts
+import {
+  aesEncrypt, aesDecrypt,
+  eciesEncrypt, eciesDecrypt,
+  generateAesKey, generateKeyPair,
+  randomBytes,
+} from '@agentxv2/sdk/core'
+
+// Generate keys
+const keyPair = generateKeyPair()
+// → { privateKey: '0x...', publicKey: '0x04...' }
+const aesKey = generateAesKey()
+// → 64-char hex string (32 bytes)
+
+// AES-256-GCM encrypt/decrypt
+const ciphertext = aesEncrypt('Hello, AgentX!', aesKey)
+const plaintext = aesDecrypt(ciphertext, aesKey)
+
+// ECIES encrypt/decrypt (key wrapping)
+const wrapped = eciesEncrypt(aesKey, keyPair.publicKey)
+const unwrapped = eciesDecrypt(wrapped, keyPair.privateKey)
+```
+
+### High-Level Payload Encryption
+
+```ts
+import { encryptPayload, decryptPayload, packAgentForPublish } from '@agentxv2/sdk/core'
+
+// Publisher: encrypt agent payload for a subscriber
+const encrypted = encryptPayload({
+  prompt: 'You are a DeFi analyst...',
+  skills: [{ name: 'audit', ... }],
+  mcp: { type: 'http', url: '...' },
+}, subscriberPublicKey)
+// → { aesKeyHex, eciesEncryptedKeyHex, encryptedCid }
+
+// Subscriber: decrypt with private key
+const decrypted = decryptPayload(encrypted, subscriberPrivateKey)
+// → { prompt, skills, mcp }
+
+// Package agent ready for on-chain registration
+const pack = packAgentForPublish(agentPayload, creatorPublicKey)
+```
+
+### Wire Format
+
+```
+AES-256-GCM:  base64( IV[12] || ciphertext || authTag[16] )
+ECIES:        hex( ephemeralPub[33] || IV[16] || ciphertext || MAC[32] )
+```
+
+---
+
+## IPFS Upload
 
 ```ts
 import { IPFSUploader } from '@agentxv2/sdk/ipfs'
 // or: import { IPFSUploader } from '@agentxv2/sdk'
 
 const uploader = new IPFSUploader({
-  pinataJwt: 'eyJ...',          // Pinata JWT token
-  // customEndpoint: 'https://my-ipfs.example.com/api/v0/add',  // alternative
-  // customApiKey: '...',       // for non-Pinata endpoints
-  gatewayUrl: 'https://ipfs.io', // default
-  namePrefix: 'agentx-',         // prefix for Pinata names
+  pinataJwt: 'eyJ...',              // Pinata JWT token
+  // customEndpoint: 'https://my-ipfs.example.com/api/v0/add',
+  // customApiKey: '...',
+  gatewayUrl: 'https://ipfs.io',     // default
+  namePrefix: 'agentx-',
+  timeoutMs: 30_000,                // request timeout
 })
 
 // Upload JSON
@@ -143,41 +195,65 @@ const publicUrl = uploader.getUrl('QmXxx...')
 // → https://ipfs.io/ipfs/QmXxx...
 ```
 
-### 5. A2A Daemon — Multi-Agent Interop (v0.6.6)
+---
+
+## MCP Connector (Remote Tool Execution)
+
+```ts
+import { MCPConnector } from '@agentxv2/sdk/mcp'
+// or: import { MCPConnector } from '@agentxv2/sdk'
+
+// Connect to any MCP server
+const connector = new MCPConnector({
+  transport: 'http',                        // 'http' | 'sse' | 'stdio'
+  url: 'https://my-mcp.example.com/mcp',
+  authType: 'ecdsa',                        // optional: ecdsa signature auth
+  privateKey: '0x...',                      // required for ecdsa auth
+})
+
+// Discover available tools
+const tools = await connector.listTools()
+// → [{ name: 'get_balance', description: '...', inputSchema: {...} }, ...]
+
+// Execute a tool remotely
+const result = await connector.callTool('get_balance', {
+  address: '0x1234...',
+  chainId: 19505,
+})
+// → { token: 'ETH', balance: '1.5' }
+```
+
+---
+
+## A2A Daemon — Multi-Agent Interop
 
 ```ts
 import { A2ADaemon } from '@agentxv2/sdk/agent-loop'
-// or: import { A2ADaemon } from '@agentxv2/sdk'
 
-// Initialize A2A protocol (needs viem wallet client)
 const a2a = new A2AProtocol({
   contractAddress: '0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86',
   publicClient,
   walletClient,
 })
 
-// Start daemon — automatically processes incoming A2A tasks
+// Start daemon — auto-processes incoming A2A tasks
 const daemon = new A2ADaemon({
   agentId: 53,
   a2a,
-  gatewayUrl: 'http://43.156.99.215:3090',
-  pollIntervalMs: 15000,  // poll every 15 seconds
-  autoComplete: true,     // auto-call completeTask() on-chain
+  gatewayUrl: 'http://localhost:3090',
+  pollIntervalMs: 15000,
+  autoComplete: true,
 })
 
 daemon.on('taskCompleted', (result) => {
   console.log(`Task #${result.task.taskId} completed!`, result.txHash)
 })
 
-daemon.on('taskFailed', (result) => {
-  console.error(`Task #${result.task.taskId} failed:`, result.error)
-})
-
 daemon.start()
 // daemon.stop()
 ```
 
-**How it works:**
+**Flow:**
 ```
 Agent A → createTask(Agent B) on-chain
 Gateway Worker → detects → LLM processes → stores result
@@ -189,24 +265,32 @@ SDK A2A Daemon → polls Gateway → gets result → completeTask() on-chain
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     @agentxv2/sdk                         │
-├──────────┬──────────┬──────────┬───────────────────────┤
-│  Core    │  Agent   │ AgentLoop│  React                │
-│ crypto   │ Runner   │ executor │  useAgentRunner       │
-│ types    │ useAgent │ loop     │                       │
-├──────────┼──────────┼──────────┼───────────────────────┤
-│ Registry │ Subscrip │ A2A      │ Reputation            │
-│ register │ subscribe│ protocol │ giveFeedback          │
-│ query    │ verify   │          │                       │
-├──────────┼──────────┼──────────┼───────────────────────┤
-│ MCP      │ Config   │ Endpoint │ Configuration         │
-│ Connector│ Chains   │ MultiEP  │ KV Store              │
-│ LLM      │ Gateway  │ Factory  │ OpenAI Provider       │
-└──────────┴──────────┴──────────┴───────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                      @agentxv2/sdk                           │
+├──────────┬──────────┬──────────┬───────────────────────────┤
+│  Core    │  Agent   │ AgentLoop│  React                    │
+│ crypto   │ Runner   │ executor │  useAgentRunner           │
+│ types    │ useAgent │ loop     │                           │
+├──────────┼──────────┼──────────┼───────────────────────────┤
+│ Registry │ Subscrip │ A2A      │ Reputation                │
+│ register │ subscribe│ protocol │ giveFeedback              │
+│ query    │ verify   │ daemon   │                           │
+├──────────┼──────────┼──────────┼───────────────────────────┤
+│ MCP      │ IPFS     │ LLM      │ Config                    │
+│ Connector│ Uploader │ Factory  │ Chains                    │
+│          │          │ OpenAI   │                           │
+│          │          │ Gateway  │                           │
+├──────────┼──────────┼──────────┼───────────────────────────┤
+│ Endpoint │ConfigReg │ Payment  │ AgentWallet               │
+│ MultiEP  │ KV Store │ Gateway  │                           │
+└──────────┴──────────┴──────────┴───────────────────────────┘
 ```
 
+---
+
 ## API Reference
+
+### Main Exports
 
 | Export | Module | Description |
 |--------|--------|-------------|
@@ -220,13 +304,30 @@ SDK A2A Daemon → polls Gateway → gets result → completeTask() on-chain
 | `SubscriptionManager` | subscription | Subscribe (ETH/ERC20), verify, cancel, trial |
 | `AgentX402` | subscription | Auto-subscription gate + X402 payment |
 | `A2AProtocol` | a2a | Agent-to-Agent task delegation |
+| `A2ADaemon` | agent-loop | Background daemon for auto-processing A2A tasks |
 | `ReputationRegistry` | reputation | Feedback + reputation queries |
 | `ConfigurationRegistry` | configuration | On-chain KV configuration |
 | `MultiEndpointClient` | endpoint | Multi-endpoint routing |
 | `IPFSUploader` | ipfs | Upload to IPFS via Pinata or custom endpoint |
 | `publishAgent` | core | Full encrypt + IPFS upload + pack pipeline |
-| `A2ADaemon` | agent-loop | Background daemon that auto-processes incoming A2A tasks |
 | `KNOWN_CHAINS` | config | Pre-configured chain configs |
+
+### Crypto Exports (from `@agentxv2/sdk/core`)
+
+| Export | Description |
+|--------|-------------|
+| `aesEncrypt(plaintext, keyHex)` | AES-256-GCM encrypt → base64 |
+| `aesDecrypt(ciphertext, keyHex)` | AES-256-GCM decrypt |
+| `generateAesKey()` | Generate random 256-bit AES key (hex) |
+| `eciesEncrypt(dataHex, publicKey)` | ECIES encrypt with secp256k1 public key |
+| `eciesDecrypt(dataHex, privateKey)` | ECIES decrypt with secp256k1 private key |
+| `encryptPayload(payload, pubKey)` | One-shot: AES encrypt + ECIES wrap |
+| `decryptPayload(encrypted, privKey)` | One-shot: ECIES unwrap + AES decrypt |
+| `packAgentForPublish(payload, pubKey)` | Package agent for on-chain registration |
+| `publishAgent(config)` | Full pipeline: encrypt + IPFS upload |
+| `generateKeyPair()` | Generate secp256k1 key pair |
+| `getPublicKey(privateKey)` | Derive public key from private key |
+| `randomBytes(length)` | CSPRNG random bytes (cross-runtime) |
 
 ### Sub-path Imports
 
@@ -235,7 +336,7 @@ SDK A2A Daemon → polls Gateway → gets result → completeTask() on-chain
 | `@agentxv2/sdk` | All modules (main entry) |
 | `@agentxv2/sdk/core` | Types, crypto (AES-256-GCM + ECIES) |
 | `@agentxv2/sdk/react` | `useAgentRunner` React hook |
-| `@agentxv2/sdk/agent-loop` | AgentLoop, executor, tool builder |
+| `@agentxv2/sdk/agent-loop` | AgentLoop, executor, tool builder, A2A daemon |
 | `@agentxv2/sdk/llm` | OpenAIProvider, GatewayProvider, factory |
 | `@agentxv2/sdk/endpoint` | MultiEndpointClient |
 | `@agentxv2/sdk/configuration` | ConfigurationClient |
@@ -247,14 +348,14 @@ SDK A2A Daemon → polls Gateway → gets result → completeTask() on-chain
 
 ```
 Publisher creates Agent:
-  AgentPrivatePayload → AES-256-GCM encrypt → IPFS (CID)
-  AES key → on-chain NFT metadata
+  AgentPayload → AES-256-GCM encrypt → IPFS (CID)
+  AES key → ECIES wrap → on-chain NFT metadata
   Mint Agent NFT via IdentityRegistry
 
 Subscriber uses Agent:
   Verify subscription (SubscriptionManager)
   Fetch encrypted payload from IPFS
-  Read aes_key_hex from on-chain NFT
+  Read ECIES-wrapped key from on-chain NFT
   Decrypt → { prompt, skills, mcp }
   skills[n].execute() → Open (local) or MCP (remote with ECDSA auth)
 ```
@@ -267,8 +368,6 @@ Subscriber uses Agent:
 |---------|----------|-----|-----------|
 | **OxaChain L1** | **19505** | `https://rpc-oxa.0xainet.top` | OXA |
 | Sepolia (Testnet) | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` | ETH |
-
-Auto-detected via `KNOWN_CHAINS[chainId]`.
 
 ---
 
@@ -298,17 +397,34 @@ Auto-detected via `KNOWN_CHAINS[chainId]`.
 
 ---
 
+## Gateway Integration
+
+For multi-tenant SaaS deployments, the Gateway package (`@agentxv2/gateway`) provides:
+
+```
+npm install @agentxv2/gateway@0.1.1
+```
+
+Features: wallet-based auth (EIP-191 + JWT), rate limiting (IP + tenant), LLM proxy (OpenAI/DeepSeek), MCP server, A2A background worker, admin dashboard API, PostgreSQL + Redis persistence.
+
+Configuration: 26 environment variables — see `gateway/.env.example`.
+
+---
+
 ## Version History
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.6.7** | 2026-07-28 | Code review: 22 fixes across contracts/gateway/frontend/sdk; Redis-backed auth; unified error handler; i18n agent dashboard; barrel exports; custom errors in SubscriptionManager; ValidationRegistry interface fix; TokenPriceOracle de-hardcoded |
 | **0.6.6** | 2026-07-22 | A2A Worker + Daemon multi-agent interop, A2A tenant isolation, i18n EN/繁體中文, completeTask ABI fix, getAgentTasks |
-| **0.6.5** | 2026-07-21 | Admin dashboard, A2A L1 redeploy (0x7F42...), DeepSeek platform key, auth case-insensitive fix |
+| **0.6.5** | 2026-07-21 | Admin dashboard, A2A L1 redeploy, DeepSeek platform key, auth case-insensitive fix |
 | **0.6.4** | 2026-07-20 | IPFSUploader (Pinata + custom endpoint), publishAgent pipeline, IPFS platform tools |
 | 0.6.3 | 2026-07-19 | Production deploy, wallet auto-switch to OxaChain L1, MCP dual-chain fixes |
 | 0.6.1 | 2026-07-15 | AgentLoop ReAct, OpenAIProvider, GatewayProvider, ToolExecutor |
 | 0.5.4 | 2026-07-14 | MultiEndpointClient, ConfigurationClient, OxaChain L1 dual-chain |
 | 0.2.0 | 2026-07-13 | AgentRunner, SubscriptionManager v3, A2A Protocol, MCP Connector |
+
+---
 
 ## License
 
