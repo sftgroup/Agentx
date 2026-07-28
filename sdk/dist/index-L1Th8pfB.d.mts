@@ -1,8 +1,8 @@
-import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, O as OpenAIToolDef } from './types-CFQjaO86.js';
-import { R as RunnableSkill, b as AgentRunner } from './agent-runner-DFUWHCzi.js';
+import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, O as OpenAIToolDef } from './types-C3FgyPBh.mjs';
+import { R as RunnableSkill, b as AgentRunner } from './agent-runner-BTiZ6St-.mjs';
 import { Address, PublicClient, WalletClient, Hash } from 'viem';
-import { c as A2AAgentCard, e as A2ATask, l as AgentSubscription } from './types-CCl4P8IB.js';
-import { IPFSUploader } from './ipfs/index.js';
+import { c as A2AAgentCard, e as A2ATask, l as AgentSubscription } from './types-CCl4P8IB.mjs';
+import { IPFSUploader } from './ipfs/index.mjs';
 import { EventEmitter } from 'events';
 
 declare class AgentLoop {
@@ -237,6 +237,7 @@ interface PlatformToolContext {
 }
 declare function buildPlatformTools(available?: ('identity' | 'subscription' | 'a2a' | 'reputation' | 'configuration' | 'endpoint' | 'gateway' | 'ipfs')[]): PlatformToolDef[];
 declare function getAllPlatformToolNames(): string[];
+
 declare function executePlatformTool(toolName: string, args: Record<string, unknown>, ctx: PlatformToolContext): Promise<unknown>;
 /**
  * Merge platform tools into an AgentLoop's skill list.

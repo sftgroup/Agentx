@@ -1,5 +1,35 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.6.7 → v0.6.8
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Platform Tools Fix** | Fixed broken import paths in `platform-tools/` after module split (definitions.ts, executor.ts, index.ts). All 8 entry points now build correctly (CJS + ESM + DTS). |
+| **Frontend Modularization** | 3 God Components split into 14 focused files: AgentCardManager (5 files), AgentRegistration (4 files), RevenueDisplay (5 files). No SDK API changes. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.6.8
+```
+
+### Breaking Changes
+
+None. All v0.6.7 APIs remain fully compatible. This is a patch release with only internal build fixes.
+
+### Technical Details
+
+The platform-tools module was previously split into `platform-tools/definitions.ts` and `platform-tools/executor.ts` with a `platform-tools/index.ts` barrel. However, the sibling `platform-tools.ts` re-export file created a name collision with the directory, causing DTS generation to fail. The fix:
+
+- `agent-loop/index.ts`: Import from `./platform-tools/index` instead of `./platform-tools`
+- `agent-loop/platform-tools.ts`: Re-export `./platform-tools/index` explicitly  
+- `platform-tools/definitions.ts`: Fixed import paths (added `../` prefix for correct depth)
+- `platform-tools/executor.ts`: Fixed import paths + added missing `RunnableSkill` and `buildPlatformTools` imports
+
+---
+
 ## v0.6.3 → v0.6.4
 
 ### What's New

@@ -1372,7 +1372,7 @@ var AgentLoop = class {
   }
 };
 
-// src/agent-loop/platform-tools.ts
+// src/agent-loop/platform-tools/definitions.ts
 function required(keys) {
   return keys;
 }
@@ -1813,6 +1813,8 @@ function buildPlatformTools(available) {
 function getAllPlatformToolNames() {
   return buildPlatformTools().map((t) => t.function.name);
 }
+
+// src/agent-loop/platform-tools/executor.ts
 async function executePlatformTool(toolName, args, ctx) {
   try {
     switch (toolName) {

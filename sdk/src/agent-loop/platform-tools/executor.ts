@@ -1,4 +1,6 @@
 import type { PlatformToolDef, PlatformToolContext } from "./definitions"
+import { buildPlatformTools } from "./definitions"
+import type { RunnableSkill } from "../../agent/agent-runner"
 
 // ── Tool Executor ───────────────────────────────────────────────────────────
 
@@ -168,7 +170,7 @@ export async function executePlatformTool(
       }
       case 'agentx_ipfs_upload_encrypted': {
         if (!ctx.ipfsUploader) throw new Error('IPFSUploader not configured')
-        const { generateAesKey, encryptPayload } = await import('../core/crypto')
+        const { generateAesKey, encryptPayload } = await import('../../core/crypto')
         const privatePayload = {
           prompt: args.prompt as string,
           skills: args.skillsJson ? JSON.parse(args.skillsJson as string) : [],
