@@ -1,6 +1,6 @@
 # AgentX MCP Server
 
-> v0.6.7 · Production: `http://43.156.99.215:3090/mcp` · Standard MCP JSON-RPC 2.0
+> v0.6.8 · Production: `http://43.156.99.215:3090/mcp` · Standard MCP JSON-RPC 2.0
 
 ---
 
@@ -340,7 +340,7 @@ curl -X POST http://43.156.99.215:3090/mcp \
 The MCP server is built into the Gateway. Install and run:
 
 ```bash
-npm install @agentxv2/gateway@0.1.1
+npm install @agentxv2/gateway@0.1.2
 
 # Configure 26 environment variables (see gateway/.env.example)
 cp gateway/.env.example .env

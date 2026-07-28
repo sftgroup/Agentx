@@ -19,12 +19,12 @@
 //   7. Gateway API         — chat / tenant / history
 // ---------------------------------------------------------------------------
 
-import type { RunnableSkill } from '../agent/agent-runner'
-import type { AgentRunner } from '../agent/agent-runner'
-import type { A2AProtocol } from '../a2a/a2a'
-import type { SubscriptionManager } from '../subscription/subscription'
-import type { AgentRegistry } from '../registry/agent-registry'
-import type { IPFSUploader } from '../ipfs/ipfs-uploader'
+import type { RunnableSkill } from '../../agent/agent-runner'
+import type { AgentRunner } from '../../agent/agent-runner'
+import type { A2AProtocol } from '../../a2a/a2a'
+import type { SubscriptionManager } from '../../subscription/subscription'
+import type { AgentRegistry } from '../../registry/agent-registry'
+import type { IPFSUploader } from '../../ipfs/ipfs-uploader'
 
 // ── Tool Definition Types ──────────────────────────────────────────────────
 

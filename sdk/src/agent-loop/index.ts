@@ -10,8 +10,8 @@ export {
   executePlatformTool,
   wrapPlatformToolsAsSkills,
   getAllPlatformToolNames,
-} from './platform-tools'
-export type { PlatformToolDef, PlatformToolContext } from './platform-tools'
+} from './platform-tools/index'
+export type { PlatformToolDef, PlatformToolContext } from './platform-tools/index'
 export { A2ADaemon } from './a2a-daemon'
 export type { A2ADaemonConfig, A2ATaskResult } from './a2a-daemon'
 export type {
