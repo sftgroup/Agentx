@@ -2,7 +2,7 @@
 // Docker container-based code execution for untrusted agent tooling.
 // Phase 6 — optional, requires Docker daemon access.
 
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 import { config } from '../config'
 
 export interface SandboxRequest {
@@ -39,33 +39,31 @@ export class SandboxService {
     const containerName = `agentx-sandbox-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
     try {
-      // Write code to temp inline
-      const code = req.code
       const interpreter = this.resolveInterpreter(req.language)
 
-      // Run in Docker container with strict limits
-      const cmd = [
-        'docker', 'run', '--rm',
+      // Run in Docker container with strict limits (execFileSync for shell-injection safety)
+      const args = [
+        'run', '--rm',
         '--name', containerName,
-        '--network', 'none',           // no network access
+        '--network', 'none',
         '--memory', `${memory}m`,
         '--cpus', '1',
         '--read-only',
         '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m',
         '--stop-timeout', '5',
         image,
-        interpreter, '-c', code,
-      ].join(' ')
+        interpreter, '-c', req.code,
+      ]
 
-      const stdout = execSync(cmd, {
+      const stdout = execFileSync('docker', args, {
         timeout: timeout * 1000,
-        maxBuffer: 1024 * 1024,       // 1MB stdout limit
+        maxBuffer: 1024 * 1024,
         encoding: 'utf-8',
         env: { PATH: '/usr/local/bin:/usr/bin:/bin' },
       })
 
       return {
-        stdout: stdout.slice(0, 10000),   // cap output at 10KB
+        stdout: stdout.slice(0, 10000),
         stderr: '',
         exitCode: 0,
         durationMs: Date.now() - startTime,

@@ -12,26 +12,22 @@
 //   [Memory Store]
 // ---------------------------------------------------------------------------
 
-import type { RunnableSkill } from '../agent/agent-runner'
 import type {
   AgentLoopConfig,
   AgentLoopResult,
-  ChatStreamEvent,
   LLMMessage,
   LLMToolCall,
   ToolCallRecord,
 } from './types'
-import type { TraceEvent } from '../traces/types'
 import { buildTools, buildSystemPrompt } from './tool-builder'
 import { ToolExecutor } from './executor'
+import { ContextCompactor } from './context-compactor'
+import { FactExtractor } from './fact-extractor'
+import { LoopTraceEmitter } from './trace-emitter'
 
 const DEFAULT_MAX_ITERATIONS = 5
 const DEFAULT_TIMEOUT_MS = 120_000
 const DEFAULT_MODEL = 'gpt-4o'
-
-function generateCallId(): string {
-  return `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-}
 
 export class AgentLoop {
   private config: AgentLoopConfig
@@ -41,6 +37,10 @@ export class AgentLoop {
   private aborted = false
   private abortController: AbortController | null = null
   private sessionId = ''
+
+  private readonly compactor: ContextCompactor
+  private readonly factExtractor: FactExtractor
+  private readonly tracer: LoopTraceEmitter
 
   constructor(config: AgentLoopConfig) {
     this.config = {
@@ -52,6 +52,17 @@ export class AgentLoop {
     this.executor = new ToolExecutor({ skills: config.ctx.skills })
     this.tools = buildTools(config.ctx.skills)
     this.systemPrompt = buildSystemPrompt(config.ctx.prompt, config.ctx.skills)
+
+    // Extracted sub-engines — accept model overrides from config
+    this.compactor = new ContextCompactor(
+      config.llmProvider,
+      config.compactModel,
+    )
+    this.factExtractor = new FactExtractor(
+      config.llmProvider,
+      config.factExtractionModel,
+    )
+    this.tracer = new LoopTraceEmitter(config.trace)
   }
 
   abort(): void {
@@ -81,23 +92,8 @@ export class AgentLoop {
     const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     this.sessionId = sessionId
 
-    // [NEW] Memory recall — inject remembered facts into system prompt
-    if (this.config.memory?.enabled && this.config.ctx.subscriberAddress && this.config.ctx.agentId) {
-      try {
-        const facts = await this.config.memory.provider.recall({
-          subscriberAddress: this.config.ctx.subscriberAddress,
-          agentId: this.config.ctx.agentId,
-          query: userMessage,
-          limit: this.config.memory.recallLimit ?? 5,
-        })
-        if (facts.length > 0 && messages[0]) {
-          const memoryContext = '\n\n## Relevant Memory\n' + facts.map(f => `- ${f.fact}`).join('\n')
-          messages[0].content = (messages[0].content || '') + memoryContext
-        }
-      } catch (err) {
-        console.warn('[AgentLoop] Memory recall failed:', (err as Error).message)
-      }
-    }
+    // Memory recall
+    await this.recallMemory(messages, userMessage)
 
     this.aborted = false
     this.abortController = new AbortController()
@@ -117,9 +113,9 @@ export class AgentLoop {
           this.config.onThinking(`Thinking... (round ${iterations}/${this.config.maxIterations!})`)
         }
 
-        // [NEW] Context compaction — check budget before each iteration
-        if (this.config.contextBudget && this.estimateTokens(messages) > this.config.contextBudget) {
-          messages = await this.compactMessages(messages)
+        // Context compaction
+        if (this.config.contextBudget && this.compactor.estimateTokens(messages) > this.config.contextBudget) {
+          messages = await this.compactor.compact(messages)
         }
 
         const iterationResult = await this.runIteration(messages)
@@ -181,25 +177,11 @@ export class AgentLoop {
       usage: totalUsage,
     }
 
-    // [NEW] Memory store — extract and store facts on session end
-    if (this.config.memory?.enabled && this.config.memory.storeOnSessionEnd !== false
-        && this.config.ctx.subscriberAddress && this.config.ctx.agentId) {
-      try {
-        const facts = await this.extractFacts(userMessage, result.finalText)
-        for (const fact of facts) {
-          await this.config.memory.provider.store({
-            subscriberAddress: this.config.ctx.subscriberAddress,
-            agentId: this.config.ctx.agentId,
-            fact,
-          })
-        }
-      } catch (err) {
-        console.warn('[AgentLoop] Memory store failed:', (err as Error).message)
-      }
-    }
+    // Memory store on session end
+    await this.storeMemory(userMessage, result.finalText)
 
-    // [NEW] Trace emit — session complete
-    this.emitTrace({
+    // Trace emit — session complete
+    this.tracer.emit({
       tenantId: this.config.ctx.subscriberAddress || 'unknown',
       agentId: this.config.ctx.agentId,
       sessionId: this.sessionId,
@@ -218,6 +200,47 @@ export class AgentLoop {
 
     return result
   }
+
+  // ── Private: Memory ─────────────────────────────────────────────────────
+
+  private async recallMemory(messages: LLMMessage[], userMessage: string): Promise<void> {
+    if (!this.config.memory?.enabled || !this.config.ctx.subscriberAddress || !this.config.ctx.agentId) return
+
+    try {
+      const facts = await this.config.memory.provider.recall({
+        subscriberAddress: this.config.ctx.subscriberAddress,
+        agentId: this.config.ctx.agentId,
+        query: userMessage,
+        limit: this.config.memory.recallLimit ?? 5,
+      })
+      if (facts.length > 0 && messages[0]) {
+        const memoryContext = '\n\n## Relevant Memory\n' + facts.map(f => `- ${f.fact}`).join('\n')
+        messages[0].content = (messages[0].content || '') + memoryContext
+      }
+    } catch (err) {
+      console.warn('[AgentLoop] Memory recall failed:', (err as Error).message)
+    }
+  }
+
+  private async storeMemory(userMessage: string, assistantResponse: string): Promise<void> {
+    if (!this.config.memory?.enabled || this.config.memory.storeOnSessionEnd === false
+        || !this.config.ctx.subscriberAddress || !this.config.ctx.agentId) return
+
+    try {
+      const facts = await this.factExtractor.extract(userMessage, assistantResponse)
+      for (const fact of facts) {
+        await this.config.memory.provider.store({
+          subscriberAddress: this.config.ctx.subscriberAddress,
+          agentId: this.config.ctx.agentId,
+          fact,
+        })
+      }
+    } catch (err) {
+      console.warn('[AgentLoop] Memory store failed:', (err as Error).message)
+    }
+  }
+
+  // ── Private: Iteration ──────────────────────────────────────────────────
 
   private async runIteration(
     messages: LLMMessage[],
@@ -305,8 +328,7 @@ export class AgentLoop {
         if (this.config.onToolCall) {
           this.config.onToolCall({ callId: ptc.callId, name: ptc.name, arguments: ptc.arguments })
         }
-        // [NEW] Trace emit
-        this.emitTrace({
+        this.tracer.emit({
           tenantId: this.config.ctx.subscriberAddress || 'unknown',
           agentId: this.config.ctx.agentId,
           sessionId: this.sessionId,
@@ -328,8 +350,7 @@ export class AgentLoop {
           durationMs: record.durationMs,
         })
       }
-      // [NEW] Trace emit
-      this.emitTrace({
+      this.tracer.emit({
         tenantId: this.config.ctx.subscriberAddress || 'unknown',
         agentId: this.config.ctx.agentId,
         sessionId: this.sessionId,
@@ -339,91 +360,5 @@ export class AgentLoop {
     }
 
     return { text, toolCalls: llmToolCalls, toolCallRecords, usage }
-  }
-
-  // ── Context Engineering ──────────────────────────────────────────────────
-
-  /** Rough token estimation: 1 token ≈ 4 characters */
-  private estimateTokens(messages: LLMMessage[]): number {
-    let total = 0
-    for (const msg of messages) {
-      total += JSON.stringify(msg).length
-    }
-    return Math.ceil(total / 4)
-  }
-
-  /** Compact messages: keep system prompt + last 2 turns, summarize the rest */
-  private async compactMessages(messages: LLMMessage[]): Promise<LLMMessage[]> {
-    if (messages.length <= 5) return messages  // not enough to compact
-
-    const system = messages.filter(m => m.role === 'system')
-    const nonSystem = messages.filter(m => m.role !== 'system')
-    const keepCount = Math.min(4, nonSystem.length)
-    const keepMessages = nonSystem.slice(-keepCount)
-    const compactTarget = nonSystem.slice(0, nonSystem.length - keepCount)
-
-    if (compactTarget.length === 0) return messages
-
-    try {
-      const stream = this.config.llmProvider.chatStream({
-        model: 'gpt-4o-mini',
-        messages: [{
-          role: 'user',
-          content: `Summarize concisely (keep all facts/decisions):\n${compactTarget.map(m => `${m.role}: ${m.content}`).join('\n')}`
-        }],
-        maxTokens: 500,
-        temperature: 0.3,
-      })
-
-      let summary = ''
-      for await (const event of stream) {
-        if (event.type === 'text_delta') summary += event.content
-      }
-
-      return [...system, { role: 'system', content: `[Summary]: ${summary}` }, ...keepMessages]
-    } catch {
-      return messages  // compaction failed → return original
-    }
-  }
-
-  // ── Memory Extraction ───────────────────────────────────────────────────
-
-  /** Extract simple facts from the conversation for memory storage */
-
-  // ── Trace Helper ──────────────────────────────────────────────────────────
-
-  private emitTrace(event: Omit<TraceEvent, 'timestamp'>): void {
-    if (!this.config.trace?.enabled) return
-    try {
-      this.config.trace.emitter.emit({ ...event, timestamp: Date.now() })
-    } catch {
-      // Trace emit should never throw — silently ignore
-    }
-  }
-
-  // ── Memory Extraction ───────────────────────────────────────────────────
-
-  /** Extract simple facts from the conversation for memory storage */
-  private async extractFacts(userMessage: string, assistantResponse: string): Promise<string[]> {
-    try {
-      const stream = this.config.llmProvider.chatStream({
-        model: 'gpt-4o-mini',
-        messages: [{
-          role: 'user',
-          content: `Extract 1-3 key facts/preferences. One per line, <100 chars each. No other text.\nUser: ${userMessage}\nAssistant: ${assistantResponse.slice(0, 500)}\nFacts:`
-        }],
-        maxTokens: 200,
-        temperature: 0.3,
-      })
-
-      let text = ''
-      for await (const event of stream) {
-        if (event.type === 'text_delta') text += event.content
-      }
-
-      return text.split('\n').map(s => s.replace(/^[\d\-•. ]+/, '').trim()).filter(Boolean)
-    } catch {
-      return []
-    }
   }
 }

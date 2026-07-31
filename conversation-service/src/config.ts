@@ -13,6 +13,13 @@ export const config = {
 
   openaiApiKey: process.env.OPENAI_API_KEY || '',
 
+  // Embedding configuration (for pgvector memory)
+  embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-ada-002',
+  embeddingApiUrl: process.env.EMBEDDING_API_URL || 'https://api.openai.com/v1/embeddings',
+
+  // Context compaction
+  compactModel: process.env.COMPACT_MODEL || 'gpt-4o-mini',
+
   // Blockchain RPC (for fetching agent data)
   rpcUrl: process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
   rpcUrlOxaChain: process.env.RPC_URL_OXACHAIN || 'https://rpc-oxa.0xainet.top',

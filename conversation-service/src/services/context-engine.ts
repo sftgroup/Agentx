@@ -2,8 +2,15 @@
 // Compacts conversation messages when approaching token budget
 
 import type { LLMMessage, LLMProvider } from '@agentxv2/sdk/agent-loop'
+import { config } from '../config'
 
 export class ContextEngine {
+  /** LLM model for summarization (default: gpt-4o-mini) */
+  private readonly compactModel: string
+
+  constructor(compactModel?: string) {
+    this.compactModel = compactModel || config.compactModel || 'gpt-4o-mini'
+  }
   /**
    * Estimate token count of messages array (rough approximation: 1 token ≈ 4 chars).
    */
@@ -51,7 +58,7 @@ Summary:`,
 
     try {
       const stream = llmProvider.chatStream({
-        model: 'gpt-4o-mini',
+        model: this.compactModel,
         messages: [summaryPrompt],
         maxTokens: 500,
         temperature: 0.3,

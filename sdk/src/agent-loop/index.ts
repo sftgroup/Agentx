@@ -4,6 +4,9 @@
 
 export { AgentLoop } from './loop'
 export { ToolExecutor } from './executor'
+export { ContextCompactor } from './context-compactor'
+export { FactExtractor } from './fact-extractor'
+export { LoopTraceEmitter } from './trace-emitter'
 export { buildTools, buildSystemPrompt } from './tool-builder'
 export {
   buildPlatformTools,
