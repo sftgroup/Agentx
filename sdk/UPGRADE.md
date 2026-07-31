@@ -1,5 +1,81 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.6.8 → v0.6.9
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **AgentLoop Memory** | Cross-session memory with `memory: { enabled: true }` config. Stores/recalls facts via MemoryProvider interface. |
+| **Context Engineering** | Token budget management via `contextBudget` config. Auto-summarizes old conversation turns when exceeded. |
+| **Observability** | TraceEmitter interface — structured trace events for tool_call, tool_result, session_complete. Noop fallback when disabled. |
+| **Browser Control Skill** | `@agentxv2/sdk/skills` — `executeBrowserAction()`, `extractAccessibleDOM()` for browser-based agent actions. |
+| **New Sub-path Exports** | `@agentxv2/sdk/memory`, `@agentxv2/sdk/traces`, `@agentxv2/sdk/skills` |
+| **Conversation Service** | New independent microservice (`@agentxv2/conversation`) for AgentLoop execution with pgvector memory |
+| **Skills Marketplace** | Gateway endpoints for skill CRUD (public GET, JWT POST, admin review) |
+| **Agent-as-MCP** | JSON-RPC 2.0 endpoint `POST /mcp/agent/:id` exports any AgentX agent as an MCP server |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.6.9
+```
+
+### 1. Enable Memory in AgentLoop
+
+```ts
+const loop = new AgentLoop({
+  ctx,
+  llmProvider: provider,
+  memory: {
+    enabled: true,
+    provider: new HttpMemoryProvider({ baseUrl: 'http://localhost:8100' }),
+    storeOnSessionEnd: true,
+  },
+})
+```
+
+### 2. Enable Trace Observability
+
+```ts
+import { HttpTraceEmitter } from '@agentxv2/sdk/traces'
+
+const loop = new AgentLoop({
+  ctx,
+  llmProvider: provider,
+  trace: {
+    enabled: true,
+    emitter: new HttpTraceEmitter({ endpoint: 'http://localhost:8100/traces' }),
+  },
+})
+```
+
+### 3. Context Budget (auto-compaction)
+
+```ts
+const loop = new AgentLoop({
+  ctx,
+  llmProvider: provider,
+  contextBudget: 8000,  // auto-summarize when token budget exceeded
+})
+```
+
+### Breaking Changes
+
+None. All v0.6.8 APIs remain fully compatible.
+
+### New API Routes (Gateway)
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/v1/agent/runs` | POST | SSE-streamed Agent conversation (proxied to Conversation Service) |
+| `/api/v1/agent/skills` | GET/POST | Skills marketplace CRUD |
+| `/mcp/agent/:agentId` | POST | JSON-RPC 2.0 agent-as-MCP export |
+| `/api/v1/traces/sessions` | GET | List trace sessions |
+| `/api/v1/traces/session/:sessionId` | GET | Session trace details |
+
+---
+
 ## v0.6.7 → v0.6.8
 
 ### What's New
