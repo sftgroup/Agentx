@@ -42,15 +42,30 @@ interface AgentSkills {
   tenantId: string  // agent owner wallet
 }
 
-async function loadAgentSkills(agentId: number): Promise<AgentSkills | null> {
-  try {
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl)
-    const identityRegistry = new ethers.Contract(
+// Cached provider and contract — created once, reused globally
+let cachedProvider: ethers.JsonRpcProvider | null = null
+let cachedContract: ethers.Contract | null = null
+
+function getProvider(): ethers.JsonRpcProvider {
+  if (!cachedProvider) cachedProvider = new ethers.JsonRpcProvider(config.rpcUrl)
+  return cachedProvider
+}
+
+function getIdentityContract(): ethers.Contract {
+  if (!cachedContract) {
+    cachedContract = new ethers.Contract(
       config.identityRegistry,
       ['function tokenURI(uint256) view returns (string)',
        'function ownerOf(uint256) view returns (address)'],
-      provider
+      getProvider()
     )
+  }
+  return cachedContract
+}
+
+async function loadAgentSkills(agentId: number): Promise<AgentSkills | null> {
+  try {
+    const identityRegistry = getIdentityContract()
 
     const exists = await identityRegistry.ownerOf(agentId).catch(() => null)
     if (!exists) return null

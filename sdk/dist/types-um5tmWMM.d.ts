@@ -1,6 +1,6 @@
-import { R as RunnableSkill } from './agent-runner-BTiZ6St-.mjs';
-import { MemoryConfig } from './memory/index.mjs';
-import { TraceConfig } from './traces/index.mjs';
+import { R as RunnableSkill } from './agent-runner-DFUWHCzi.js';
+import { MemoryConfig } from './memory/index.js';
+import { TraceConfig } from './traces/index.js';
 
 interface LLMMessage {
     role: 'system' | 'user' | 'assistant' | 'tool';
@@ -68,6 +68,10 @@ interface AgentLoopConfig {
     contextBudget?: number;
     /** Trace configuration — enables structured observability (default: disabled) */
     trace?: TraceConfig;
+    /** LLM model for context compaction summaries (default: gpt-4o-mini) */
+    compactModel?: string;
+    /** LLM model for fact extraction (default: gpt-4o-mini) */
+    factExtractionModel?: string;
     onTextDelta?: (delta: string) => void;
     onToolCall?: (call: ToolCallStart) => void;
     onToolResult?: (result: ToolCallResult) => void;

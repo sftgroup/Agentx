@@ -1,5 +1,6 @@
-import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, O as OpenAIToolDef } from './types-BSEGpx9N.mjs';
+import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, c as LLMProvider, L as LLMMessage, O as OpenAIToolDef } from './types-ByCFDqPw.mjs';
 import { R as RunnableSkill, b as AgentRunner } from './agent-runner-BTiZ6St-.mjs';
+import { TraceConfig, TraceEvent } from './traces/index.mjs';
 import { Address, PublicClient, WalletClient, Hash } from 'viem';
 import { c as A2AAgentCard, e as A2ATask, l as AgentSubscription } from './types-CCl4P8IB.mjs';
 import { IPFSUploader } from './ipfs/index.mjs';
@@ -13,21 +14,18 @@ declare class AgentLoop {
     private aborted;
     private abortController;
     private sessionId;
+    private readonly compactor;
+    private readonly factExtractor;
+    private readonly tracer;
     constructor(config: AgentLoopConfig);
     abort(): void;
     run(userMessage: string, history?: {
         role: 'user' | 'assistant';
         content: string;
     }[]): Promise<AgentLoopResult>;
+    private recallMemory;
+    private storeMemory;
     private runIteration;
-    /** Rough token estimation: 1 token ≈ 4 characters */
-    private estimateTokens;
-    /** Compact messages: keep system prompt + last 2 turns, summarize the rest */
-    private compactMessages;
-    /** Extract simple facts from the conversation for memory storage */
-    private emitTrace;
-    /** Extract simple facts from the conversation for memory storage */
-    private extractFacts;
 }
 
 interface ExecuteOptions {
@@ -47,6 +45,33 @@ declare class ToolExecutor {
     hasTool(name: string): boolean;
     getToolNames(): string[];
     private normalizeResult;
+}
+
+declare class ContextCompactor {
+    private readonly llmProvider;
+    private readonly compactModel;
+    constructor(llmProvider: LLMProvider, compactModel?: string);
+    /** Rough token estimation: 1 token ≈ 4 characters */
+    estimateTokens(messages: LLMMessage[]): number;
+    /**
+     * Compact messages: keep system prompt + last 2 turns, summarize the rest.
+     * Returns original array if not enough messages or compaction fails.
+     */
+    compact(messages: LLMMessage[]): Promise<LLMMessage[]>;
+}
+
+declare class FactExtractor {
+    private readonly llmProvider;
+    private readonly factModel;
+    constructor(llmProvider: LLMProvider, factModel?: string);
+    /** Extract simple facts from the conversation for memory storage */
+    extract(userMessage: string, assistantResponse: string): Promise<string[]>;
+}
+
+declare class LoopTraceEmitter {
+    private readonly config;
+    constructor(config?: TraceConfig);
+    emit(event: Omit<TraceEvent, 'timestamp'>): void;
 }
 
 declare function buildTools(skills: RunnableSkill[]): OpenAIToolDef[];
@@ -305,4 +330,4 @@ declare class A2ADaemon extends EventEmitter {
     private processPendingTask;
 }
 
-export { type A2AConfig as A, type PlanDetail as P, type SubscriptionConfig as S, ToolExecutor as T, A2ADaemon as a, type A2ADaemonConfig as b, A2AProtocol as c, type A2ATaskResult as d, AgentLoop as e, AgentRegistry as f, type AgentRegistryConfig as g, type PlatformToolContext as h, type PlatformToolDef as i, type SubscriptionDetail as j, SubscriptionManager as k, buildPlatformTools as l, buildSystemPrompt as m, buildTools as n, cidFromURI as o, executePlatformTool as p, getAllPlatformToolNames as q, guardSubscription as r, wrapPlatformToolsAsSkills as w };
+export { type A2AConfig as A, ContextCompactor as C, FactExtractor as F, LoopTraceEmitter as L, type PlanDetail as P, type SubscriptionConfig as S, ToolExecutor as T, A2ADaemon as a, type A2ADaemonConfig as b, A2AProtocol as c, type A2ATaskResult as d, AgentLoop as e, AgentRegistry as f, type AgentRegistryConfig as g, type PlatformToolContext as h, type PlatformToolDef as i, type SubscriptionDetail as j, SubscriptionManager as k, buildPlatformTools as l, buildSystemPrompt as m, buildTools as n, cidFromURI as o, executePlatformTool as p, getAllPlatformToolNames as q, guardSubscription as r, wrapPlatformToolsAsSkills as w };

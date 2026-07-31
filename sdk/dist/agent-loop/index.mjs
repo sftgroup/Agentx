@@ -391,6 +391,105 @@ var ToolExecutor = class {
   }
 };
 
+// src/agent-loop/context-compactor.ts
+var ContextCompactor = class {
+  constructor(llmProvider, compactModel = "gpt-4o-mini") {
+    this.llmProvider = llmProvider;
+    this.compactModel = compactModel;
+  }
+  llmProvider;
+  compactModel;
+  /** Rough token estimation: 1 token ≈ 4 characters */
+  estimateTokens(messages) {
+    let total = 0;
+    for (const msg of messages) {
+      total += JSON.stringify(msg).length;
+    }
+    return Math.ceil(total / 4);
+  }
+  /**
+   * Compact messages: keep system prompt + last 2 turns, summarize the rest.
+   * Returns original array if not enough messages or compaction fails.
+   */
+  async compact(messages) {
+    if (messages.length <= 5) return messages;
+    const system = messages.filter((m) => m.role === "system");
+    const nonSystem = messages.filter((m) => m.role !== "system");
+    const keepCount = Math.min(4, nonSystem.length);
+    const keepMessages = nonSystem.slice(-keepCount);
+    const compactTarget = nonSystem.slice(0, nonSystem.length - keepCount);
+    if (compactTarget.length === 0) return messages;
+    try {
+      const stream = this.llmProvider.chatStream({
+        model: this.compactModel,
+        messages: [{
+          role: "user",
+          content: `Summarize concisely (keep all facts/decisions):
+${compactTarget.map((m) => `${m.role}: ${m.content}`).join("\n")}`
+        }],
+        maxTokens: 500,
+        temperature: 0.3
+      });
+      let summary = "";
+      for await (const event of stream) {
+        if (event.type === "text_delta") summary += event.content;
+      }
+      return [...system, { role: "system", content: `[Summary]: ${summary}` }, ...keepMessages];
+    } catch {
+      return messages;
+    }
+  }
+};
+
+// src/agent-loop/fact-extractor.ts
+var FactExtractor = class {
+  constructor(llmProvider, factModel = "gpt-4o-mini") {
+    this.llmProvider = llmProvider;
+    this.factModel = factModel;
+  }
+  llmProvider;
+  factModel;
+  /** Extract simple facts from the conversation for memory storage */
+  async extract(userMessage, assistantResponse) {
+    try {
+      const stream = this.llmProvider.chatStream({
+        model: this.factModel,
+        messages: [{
+          role: "user",
+          content: `Extract 1-3 key facts/preferences. One per line, <100 chars each. No other text.
+User: ${userMessage}
+Assistant: ${assistantResponse.slice(0, 500)}
+Facts:`
+        }],
+        maxTokens: 200,
+        temperature: 0.3
+      });
+      let text = "";
+      for await (const event of stream) {
+        if (event.type === "text_delta") text += event.content;
+      }
+      return text.split("\n").map((s) => s.replace(/^[\d\-•. ]+/, "").trim()).filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+};
+
+// src/agent-loop/trace-emitter.ts
+var LoopTraceEmitter = class {
+  config;
+  constructor(config) {
+    this.config = config;
+  }
+  emit(event) {
+    if (!this.config?.enabled) return;
+    try {
+      this.config.emitter.emit({ ...event, timestamp: Date.now() });
+    } catch {
+    }
+  }
+};
+
 // src/agent-loop/loop.ts
 var DEFAULT_MAX_ITERATIONS = 5;
 var DEFAULT_TIMEOUT_MS = 12e4;
@@ -403,6 +502,9 @@ var AgentLoop = class {
   aborted = false;
   abortController = null;
   sessionId = "";
+  compactor;
+  factExtractor;
+  tracer;
   constructor(config) {
     this.config = {
       ...config,
@@ -412,6 +514,15 @@ var AgentLoop = class {
     this.executor = new ToolExecutor({ skills: config.ctx.skills });
     this.tools = buildTools(config.ctx.skills);
     this.systemPrompt = buildSystemPrompt(config.ctx.prompt, config.ctx.skills);
+    this.compactor = new ContextCompactor(
+      config.llmProvider,
+      config.compactModel
+    );
+    this.factExtractor = new FactExtractor(
+      config.llmProvider,
+      config.factExtractionModel
+    );
+    this.tracer = new LoopTraceEmitter(config.trace);
   }
   abort() {
     this.aborted = true;
@@ -433,22 +544,7 @@ var AgentLoop = class {
     ];
     const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     this.sessionId = sessionId;
-    if (this.config.memory?.enabled && this.config.ctx.subscriberAddress && this.config.ctx.agentId) {
-      try {
-        const facts = await this.config.memory.provider.recall({
-          subscriberAddress: this.config.ctx.subscriberAddress,
-          agentId: this.config.ctx.agentId,
-          query: userMessage,
-          limit: this.config.memory.recallLimit ?? 5
-        });
-        if (facts.length > 0 && messages[0]) {
-          const memoryContext = "\n\n## Relevant Memory\n" + facts.map((f) => `- ${f.fact}`).join("\n");
-          messages[0].content = (messages[0].content || "") + memoryContext;
-        }
-      } catch (err) {
-        console.warn("[AgentLoop] Memory recall failed:", err.message);
-      }
-    }
+    await this.recallMemory(messages, userMessage);
     this.aborted = false;
     this.abortController = new AbortController();
     try {
@@ -463,8 +559,8 @@ var AgentLoop = class {
         if (this.config.onThinking && iterations > 1) {
           this.config.onThinking(`Thinking... (round ${iterations}/${this.config.maxIterations})`);
         }
-        if (this.config.contextBudget && this.estimateTokens(messages) > this.config.contextBudget) {
-          messages = await this.compactMessages(messages);
+        if (this.config.contextBudget && this.compactor.estimateTokens(messages) > this.config.contextBudget) {
+          messages = await this.compactor.compact(messages);
         }
         const iterationResult = await this.runIteration(messages);
         finalText += iterationResult.text;
@@ -515,21 +611,8 @@ var AgentLoop = class {
       totalDuration: Date.now() - startTime,
       usage: totalUsage
     };
-    if (this.config.memory?.enabled && this.config.memory.storeOnSessionEnd !== false && this.config.ctx.subscriberAddress && this.config.ctx.agentId) {
-      try {
-        const facts = await this.extractFacts(userMessage, result.finalText);
-        for (const fact of facts) {
-          await this.config.memory.provider.store({
-            subscriberAddress: this.config.ctx.subscriberAddress,
-            agentId: this.config.ctx.agentId,
-            fact
-          });
-        }
-      } catch (err) {
-        console.warn("[AgentLoop] Memory store failed:", err.message);
-      }
-    }
-    this.emitTrace({
+    await this.storeMemory(userMessage, result.finalText);
+    this.tracer.emit({
       tenantId: this.config.ctx.subscriberAddress || "unknown",
       agentId: this.config.ctx.agentId,
       sessionId: this.sessionId,
@@ -546,6 +629,40 @@ var AgentLoop = class {
     }
     return result;
   }
+  // ── Private: Memory ─────────────────────────────────────────────────────
+  async recallMemory(messages, userMessage) {
+    if (!this.config.memory?.enabled || !this.config.ctx.subscriberAddress || !this.config.ctx.agentId) return;
+    try {
+      const facts = await this.config.memory.provider.recall({
+        subscriberAddress: this.config.ctx.subscriberAddress,
+        agentId: this.config.ctx.agentId,
+        query: userMessage,
+        limit: this.config.memory.recallLimit ?? 5
+      });
+      if (facts.length > 0 && messages[0]) {
+        const memoryContext = "\n\n## Relevant Memory\n" + facts.map((f) => `- ${f.fact}`).join("\n");
+        messages[0].content = (messages[0].content || "") + memoryContext;
+      }
+    } catch (err) {
+      console.warn("[AgentLoop] Memory recall failed:", err.message);
+    }
+  }
+  async storeMemory(userMessage, assistantResponse) {
+    if (!this.config.memory?.enabled || this.config.memory.storeOnSessionEnd === false || !this.config.ctx.subscriberAddress || !this.config.ctx.agentId) return;
+    try {
+      const facts = await this.factExtractor.extract(userMessage, assistantResponse);
+      for (const fact of facts) {
+        await this.config.memory.provider.store({
+          subscriberAddress: this.config.ctx.subscriberAddress,
+          agentId: this.config.ctx.agentId,
+          fact
+        });
+      }
+    } catch (err) {
+      console.warn("[AgentLoop] Memory store failed:", err.message);
+    }
+  }
+  // ── Private: Iteration ──────────────────────────────────────────────────
   async runIteration(messages) {
     const model = this.config.ctx.model ?? DEFAULT_MODEL;
     const temperature = this.config.ctx.temperature ?? 0.7;
@@ -612,7 +729,7 @@ var AgentLoop = class {
         if (this.config.onToolCall) {
           this.config.onToolCall({ callId: ptc.callId, name: ptc.name, arguments: ptc.arguments });
         }
-        this.emitTrace({
+        this.tracer.emit({
           tenantId: this.config.ctx.subscriberAddress || "unknown",
           agentId: this.config.ctx.agentId,
           sessionId: this.sessionId,
@@ -632,7 +749,7 @@ var AgentLoop = class {
           durationMs: record.durationMs
         });
       }
-      this.emitTrace({
+      this.tracer.emit({
         tenantId: this.config.ctx.subscriberAddress || "unknown",
         agentId: this.config.ctx.agentId,
         sessionId: this.sessionId,
@@ -641,79 +758,6 @@ var AgentLoop = class {
       });
     }
     return { text, toolCalls: llmToolCalls, toolCallRecords, usage };
-  }
-  // ── Context Engineering ──────────────────────────────────────────────────
-  /** Rough token estimation: 1 token ≈ 4 characters */
-  estimateTokens(messages) {
-    let total = 0;
-    for (const msg of messages) {
-      total += JSON.stringify(msg).length;
-    }
-    return Math.ceil(total / 4);
-  }
-  /** Compact messages: keep system prompt + last 2 turns, summarize the rest */
-  async compactMessages(messages) {
-    if (messages.length <= 5) return messages;
-    const system = messages.filter((m) => m.role === "system");
-    const nonSystem = messages.filter((m) => m.role !== "system");
-    const keepCount = Math.min(4, nonSystem.length);
-    const keepMessages = nonSystem.slice(-keepCount);
-    const compactTarget = nonSystem.slice(0, nonSystem.length - keepCount);
-    if (compactTarget.length === 0) return messages;
-    try {
-      const stream = this.config.llmProvider.chatStream({
-        model: "gpt-4o-mini",
-        messages: [{
-          role: "user",
-          content: `Summarize concisely (keep all facts/decisions):
-${compactTarget.map((m) => `${m.role}: ${m.content}`).join("\n")}`
-        }],
-        maxTokens: 500,
-        temperature: 0.3
-      });
-      let summary = "";
-      for await (const event of stream) {
-        if (event.type === "text_delta") summary += event.content;
-      }
-      return [...system, { role: "system", content: `[Summary]: ${summary}` }, ...keepMessages];
-    } catch {
-      return messages;
-    }
-  }
-  // ── Memory Extraction ───────────────────────────────────────────────────
-  /** Extract simple facts from the conversation for memory storage */
-  // ── Trace Helper ──────────────────────────────────────────────────────────
-  emitTrace(event) {
-    if (!this.config.trace?.enabled) return;
-    try {
-      this.config.trace.emitter.emit({ ...event, timestamp: Date.now() });
-    } catch {
-    }
-  }
-  // ── Memory Extraction ───────────────────────────────────────────────────
-  /** Extract simple facts from the conversation for memory storage */
-  async extractFacts(userMessage, assistantResponse) {
-    try {
-      const stream = this.config.llmProvider.chatStream({
-        model: "gpt-4o-mini",
-        messages: [{
-          role: "user",
-          content: `Extract 1-3 key facts/preferences. One per line, <100 chars each. No other text.
-User: ${userMessage}
-Assistant: ${assistantResponse.slice(0, 500)}
-Facts:`
-        }],
-        maxTokens: 200,
-        temperature: 0.3
-      });
-      let text = "";
-      for await (const event of stream) {
-        if (event.type === "text_delta") text += event.content;
-      }
-      return text.split("\n").map((s) => s.replace(/^[\d\-•. ]+/, "").trim()).filter(Boolean);
-    } catch {
-      return [];
-    }
   }
 };
 
@@ -1483,6 +1527,9 @@ var A2ADaemon = class extends EventEmitter {
 export {
   A2ADaemon,
   AgentLoop,
+  ContextCompactor,
+  FactExtractor,
+  LoopTraceEmitter,
   ToolExecutor,
   buildPlatformTools,
   buildSystemPrompt,

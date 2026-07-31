@@ -103,7 +103,7 @@ app.post('/api/v1/agents-sync', async (_req, res, next) => {
 // ── Protected routes (auth + rate-limit only on known paths) ─────────────
 
 // Known protected API path prefixes (anything else under /api/v1 returns 404)
-const PROTECTED_PREFIXES = ['/chat/completions', '/chat/history', '/tenant/', '/agent/', '/traces/', '/skills']
+const PROTECTED_PREFIXES = ['/chat/completions', '/chat/history', '/tenant/', '/agent/', '/traces/']
 
 app.use('/api/v1', (req, _res, next) => {
   if (PROTECTED_PREFIXES.some(p => req.path.startsWith(p))) {

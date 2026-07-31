@@ -77,6 +77,12 @@ export interface AgentLoopConfig {
   /** Trace configuration — enables structured observability (default: disabled) */
   trace?: TraceConfig
 
+  /** LLM model for context compaction summaries (default: gpt-4o-mini) */
+  compactModel?: string
+
+  /** LLM model for fact extraction (default: gpt-4o-mini) */
+  factExtractionModel?: string
+
   onTextDelta?: (delta: string) => void
   onToolCall?: (call: ToolCallStart) => void
   onToolResult?: (result: ToolCallResult) => void
