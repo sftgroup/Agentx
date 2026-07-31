@@ -11,7 +11,7 @@ Agent = Prompt + Skills[] + MCP
 ## Installation
 
 ```bash
-npm install @agentxv2/sdk@0.6.8
+npm install @agentxv2/sdk@0.6.9
 ```
 
 ### Peer Dependencies
@@ -49,6 +49,9 @@ const loop = new AgentLoop({
   ctx,
   llmProvider: provider,
   maxIterations: 5,
+  contextBudget: 8000,           // NEW: auto-summarize when exceeding token budget
+  memory: { enabled: true },     // NEW: pgvector cross-session memory (default: disabled)
+  trace: { enabled: true },      // NEW: structured observability (default: disabled)
   onTextDelta: (delta) => appendAssistantMessage(delta),
   onToolCall: ({ name, arguments: args }) => showToolBubble(name, args),
   onToolResult: ({ name, result }) => updateToolBubble(name, result),
@@ -341,6 +344,9 @@ SDK A2A Daemon → polls Gateway → gets result → completeTask() on-chain
 | `@agentxv2/sdk/endpoint` | MultiEndpointClient |
 | `@agentxv2/sdk/configuration` | ConfigurationClient |
 | `@agentxv2/sdk/ipfs` | IPFSUploader (Pinata + custom endpoint upload) |
+| `@agentxv2/sdk/memory` | MemoryProvider interface + types (v0.6.9) |
+| `@agentxv2/sdk/traces` | TraceEmitter interface + types (v0.6.9) |
+| `@agentxv2/sdk/skills` | Browser control skill utilities (v0.6.9) |
 
 ---
 
@@ -415,6 +421,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.6.9** | 2026-08-01 | Microservice Agent Conversation — 6-Phase Optimization: Conversation Service (Memory + Context + Sandbox), Observability (TraceEmitter), Skills Marketplace, Agent-as-MCP Export, Browser Control Skill, 3 new sub-path exports (memory/traces/skills) |
 | **0.6.8** | 2026-07-28 | Fixed import paths in platform-tools (definitions.ts, executor.ts, index.ts) after module split; Frontend: 3 God Components modularized (AgentCardManager→5 files, AgentRegistration→4 files, RevenueDisplay→5 files) |
 | **0.6.7** | 2026-07-27 | Code review: 22 fixes across contracts/gateway/frontend/sdk; Redis-backed auth; unified error handler; i18n agent dashboard; barrel exports; custom errors in SubscriptionManager; ValidationRegistry interface fix; TokenPriceOracle de-hardcoded |
 | **0.6.6** | 2026-07-22 | A2A Worker + Daemon multi-agent interop, A2A tenant isolation, i18n EN/繁體中文, completeTask ABI fix, getAgentTasks |
