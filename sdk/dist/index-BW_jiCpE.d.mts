@@ -1,4 +1,4 @@
-import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, O as OpenAIToolDef } from './types-C3FgyPBh.mjs';
+import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, O as OpenAIToolDef } from './types-BSEGpx9N.mjs';
 import { R as RunnableSkill, b as AgentRunner } from './agent-runner-BTiZ6St-.mjs';
 import { Address, PublicClient, WalletClient, Hash } from 'viem';
 import { c as A2AAgentCard, e as A2ATask, l as AgentSubscription } from './types-CCl4P8IB.mjs';
@@ -12,6 +12,7 @@ declare class AgentLoop {
     private systemPrompt;
     private aborted;
     private abortController;
+    private sessionId;
     constructor(config: AgentLoopConfig);
     abort(): void;
     run(userMessage: string, history?: {
@@ -19,6 +20,14 @@ declare class AgentLoop {
         content: string;
     }[]): Promise<AgentLoopResult>;
     private runIteration;
+    /** Rough token estimation: 1 token ≈ 4 characters */
+    private estimateTokens;
+    /** Compact messages: keep system prompt + last 2 turns, summarize the rest */
+    private compactMessages;
+    /** Extract simple facts from the conversation for memory storage */
+    private emitTrace;
+    /** Extract simple facts from the conversation for memory storage */
+    private extractFacts;
 }
 
 interface ExecuteOptions {

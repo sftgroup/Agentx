@@ -616,12 +616,14 @@ __export(index_exports, {
   ConfigurationClient: () => ConfigurationClient,
   ConfigurationRegistry: () => ConfigurationRegistry,
   GatewayProvider: () => GatewayProvider,
+  HttpTraceEmitter: () => HttpTraceEmitter,
   IPFSFetcher: () => IPFSFetcher,
   IPFSUploader: () => IPFSUploader,
   KNOWN_CHAINS: () => KNOWN_CHAINS,
   MCPConnector: () => MCPConnector,
   MCP_VERSION: () => MCP_VERSION,
   MultiEndpointClient: () => MultiEndpointClient,
+  NoopTraceEmitter: () => NoopTraceEmitter,
   OpenAIProvider: () => OpenAIProvider,
   REGISTRY_VERSION: () => REGISTRY_VERSION,
   REPUTATION_VERSION: () => REPUTATION_VERSION,
@@ -643,7 +645,9 @@ __export(index_exports, {
   eciesDecrypt: () => eciesDecrypt,
   eciesEncrypt: () => eciesEncrypt,
   encryptPayload: () => encryptPayload,
+  executeBrowserAction: () => executeBrowserAction,
   executePlatformTool: () => executePlatformTool,
+  extractAccessibleDOM: () => extractAccessibleDOM,
   generateAesKey: () => generateAesKey,
   generateKeyPair: () => generateKeyPair,
   getAllPlatformToolNames: () => getAllPlatformToolNames,
@@ -1185,18 +1189,12 @@ var AgentLoop = class {
   systemPrompt;
   aborted = false;
   abortController = null;
+  sessionId = "";
   constructor(config) {
     this.config = {
-      ctx: config.ctx,
-      llmProvider: config.llmProvider,
+      ...config,
       maxIterations: config.maxIterations ?? DEFAULT_MAX_ITERATIONS,
-      timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-      onTextDelta: config.onTextDelta,
-      onToolCall: config.onToolCall,
-      onToolResult: config.onToolResult,
-      onThinking: config.onThinking,
-      onComplete: config.onComplete,
-      onError: config.onError
+      timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS
     };
     this.executor = new ToolExecutor({ skills: config.ctx.skills });
     this.tools = buildTools(config.ctx.skills);
@@ -1212,7 +1210,7 @@ var AgentLoop = class {
     const totalUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
     let finalText = "";
     let iterations = 0;
-    const messages = [
+    let messages = [
       { role: "system", content: this.systemPrompt },
       ...history.map((m) => ({
         role: m.role,
@@ -1220,6 +1218,24 @@ var AgentLoop = class {
       })),
       { role: "user", content: userMessage }
     ];
+    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    this.sessionId = sessionId;
+    if (this.config.memory?.enabled && this.config.ctx.subscriberAddress && this.config.ctx.agentId) {
+      try {
+        const facts = await this.config.memory.provider.recall({
+          subscriberAddress: this.config.ctx.subscriberAddress,
+          agentId: this.config.ctx.agentId,
+          query: userMessage,
+          limit: this.config.memory.recallLimit ?? 5
+        });
+        if (facts.length > 0 && messages[0]) {
+          const memoryContext = "\n\n## Relevant Memory\n" + facts.map((f) => `- ${f.fact}`).join("\n");
+          messages[0].content = (messages[0].content || "") + memoryContext;
+        }
+      } catch (err) {
+        console.warn("[AgentLoop] Memory recall failed:", err.message);
+      }
+    }
     this.aborted = false;
     this.abortController = new AbortController();
     try {
@@ -1233,6 +1249,9 @@ var AgentLoop = class {
         iterations++;
         if (this.config.onThinking && iterations > 1) {
           this.config.onThinking(`Thinking... (round ${iterations}/${this.config.maxIterations})`);
+        }
+        if (this.config.contextBudget && this.estimateTokens(messages) > this.config.contextBudget) {
+          messages = await this.compactMessages(messages);
         }
         const iterationResult = await this.runIteration(messages);
         finalText += iterationResult.text;
@@ -1283,6 +1302,32 @@ var AgentLoop = class {
       totalDuration: Date.now() - startTime,
       usage: totalUsage
     };
+    if (this.config.memory?.enabled && this.config.memory.storeOnSessionEnd !== false && this.config.ctx.subscriberAddress && this.config.ctx.agentId) {
+      try {
+        const facts = await this.extractFacts(userMessage, result.finalText);
+        for (const fact of facts) {
+          await this.config.memory.provider.store({
+            subscriberAddress: this.config.ctx.subscriberAddress,
+            agentId: this.config.ctx.agentId,
+            fact
+          });
+        }
+      } catch (err) {
+        console.warn("[AgentLoop] Memory store failed:", err.message);
+      }
+    }
+    this.emitTrace({
+      tenantId: this.config.ctx.subscriberAddress || "unknown",
+      agentId: this.config.ctx.agentId,
+      sessionId: this.sessionId,
+      type: "session_complete",
+      data: {
+        totalIterations: iterations,
+        totalDuration: Date.now() - startTime,
+        totalTokens: totalUsage.totalTokens,
+        toolCallCount: toolCalls.length
+      }
+    });
     if (this.config.onComplete) {
       this.config.onComplete(result);
     }
@@ -1354,6 +1399,13 @@ var AgentLoop = class {
         if (this.config.onToolCall) {
           this.config.onToolCall({ callId: ptc.callId, name: ptc.name, arguments: ptc.arguments });
         }
+        this.emitTrace({
+          tenantId: this.config.ctx.subscriberAddress || "unknown",
+          agentId: this.config.ctx.agentId,
+          sessionId: this.sessionId,
+          type: "tool_call",
+          data: { callId: ptc.callId, name: ptc.name, arguments: ptc.arguments }
+        });
       }
     }
     const toolCallRecords = await this.executor.executeBatch(parsedToolCalls);
@@ -1367,8 +1419,88 @@ var AgentLoop = class {
           durationMs: record.durationMs
         });
       }
+      this.emitTrace({
+        tenantId: this.config.ctx.subscriberAddress || "unknown",
+        agentId: this.config.ctx.agentId,
+        sessionId: this.sessionId,
+        type: "tool_result",
+        data: { callId: record.callId, name: record.name, error: record.error, durationMs: record.durationMs }
+      });
     }
     return { text, toolCalls: llmToolCalls, toolCallRecords, usage };
+  }
+  // ── Context Engineering ──────────────────────────────────────────────────
+  /** Rough token estimation: 1 token ≈ 4 characters */
+  estimateTokens(messages) {
+    let total = 0;
+    for (const msg of messages) {
+      total += JSON.stringify(msg).length;
+    }
+    return Math.ceil(total / 4);
+  }
+  /** Compact messages: keep system prompt + last 2 turns, summarize the rest */
+  async compactMessages(messages) {
+    if (messages.length <= 5) return messages;
+    const system = messages.filter((m) => m.role === "system");
+    const nonSystem = messages.filter((m) => m.role !== "system");
+    const keepCount = Math.min(4, nonSystem.length);
+    const keepMessages = nonSystem.slice(-keepCount);
+    const compactTarget = nonSystem.slice(0, nonSystem.length - keepCount);
+    if (compactTarget.length === 0) return messages;
+    try {
+      const stream = this.config.llmProvider.chatStream({
+        model: "gpt-4o-mini",
+        messages: [{
+          role: "user",
+          content: `Summarize concisely (keep all facts/decisions):
+${compactTarget.map((m) => `${m.role}: ${m.content}`).join("\n")}`
+        }],
+        maxTokens: 500,
+        temperature: 0.3
+      });
+      let summary = "";
+      for await (const event of stream) {
+        if (event.type === "text_delta") summary += event.content;
+      }
+      return [...system, { role: "system", content: `[Summary]: ${summary}` }, ...keepMessages];
+    } catch {
+      return messages;
+    }
+  }
+  // ── Memory Extraction ───────────────────────────────────────────────────
+  /** Extract simple facts from the conversation for memory storage */
+  // ── Trace Helper ──────────────────────────────────────────────────────────
+  emitTrace(event) {
+    if (!this.config.trace?.enabled) return;
+    try {
+      this.config.trace.emitter.emit({ ...event, timestamp: Date.now() });
+    } catch {
+    }
+  }
+  // ── Memory Extraction ───────────────────────────────────────────────────
+  /** Extract simple facts from the conversation for memory storage */
+  async extractFacts(userMessage, assistantResponse) {
+    try {
+      const stream = this.config.llmProvider.chatStream({
+        model: "gpt-4o-mini",
+        messages: [{
+          role: "user",
+          content: `Extract 1-3 key facts/preferences. One per line, <100 chars each. No other text.
+User: ${userMessage}
+Assistant: ${assistantResponse.slice(0, 500)}
+Facts:`
+        }],
+        maxTokens: 200,
+        temperature: 0.3
+      });
+      let text = "";
+      for await (const event of stream) {
+        if (event.type === "text_delta") text += event.content;
+      }
+      return text.split("\n").map((s) => s.replace(/^[\d\-•. ]+/, "").trim()).filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 };
 
@@ -4301,6 +4433,185 @@ function useAgentRunner(config) {
   const refetch = () => setRefetchKey((k) => k + 1);
   return { ctx, isLoading, error, refetch };
 }
+
+// src/traces/types.ts
+var NoopTraceEmitter = class {
+  emit(_event) {
+  }
+};
+var HttpTraceEmitter = class {
+  constructor(endpoint, authToken, flushIntervalMs = 5e3, maxBufferSize = 100) {
+    this.endpoint = endpoint;
+    this.authToken = authToken;
+    this.flushIntervalMs = flushIntervalMs;
+    this.maxBufferSize = maxBufferSize;
+  }
+  endpoint;
+  authToken;
+  flushIntervalMs;
+  maxBufferSize;
+  buffer = [];
+  timer = null;
+  emit(event) {
+    this.buffer.push(event);
+    if (this.buffer.length >= this.maxBufferSize) {
+      this.flush();
+      return;
+    }
+    if (!this.timer) {
+      this.timer = setTimeout(() => this.flush(), this.flushIntervalMs);
+    }
+  }
+  flush() {
+    if (this.buffer.length === 0) return;
+    const batch = this.buffer.splice(0);
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    fetch(this.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.authToken ? { "Authorization": `Bearer ${this.authToken}` } : {}
+      },
+      body: JSON.stringify({ events: batch })
+    }).catch(() => {
+    });
+  }
+};
+
+// src/skills/browser.ts
+function extractAccessibleDOM() {
+  if (typeof document === "undefined") {
+    return "Browser DOM not available (not running in browser)";
+  }
+  const interactiveTags = /* @__PURE__ */ new Set([
+    "A",
+    "BUTTON",
+    "INPUT",
+    "SELECT",
+    "TEXTAREA",
+    "FORM",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "H5",
+    "H6",
+    "P",
+    "SPAN",
+    "DIV",
+    "LI",
+    "TD",
+    "TH",
+    "LABEL"
+  ]);
+  const elements = [];
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_ELEMENT,
+    {
+      acceptNode: (node2) => {
+        if (!(node2 instanceof HTMLElement)) return NodeFilter.FILTER_REJECT;
+        if (!interactiveTags.has(node2.tagName)) return NodeFilter.FILTER_REJECT;
+        if (node2.offsetParent === null && node2.tagName !== "A") return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+  let node;
+  while (node = walker.nextNode()) {
+    const el = node;
+    const tag = el.tagName.toLowerCase();
+    const text = (el.textContent || "").trim().slice(0, 80);
+    const id = el.id ? `#${el.id}` : "";
+    const classes = el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+    const href = el.getAttribute("href");
+    const placeholder = el.getAttribute("placeholder");
+    const type = el.getAttribute("type");
+    let desc = `<${tag}${id}${classes}`;
+    if (href) desc += ` href="${href}"`;
+    if (placeholder) desc += ` placeholder="${placeholder}"`;
+    if (type) desc += ` type="${type}"`;
+    desc += ">";
+    if (text) desc += `${text}`;
+    desc += `</${tag}>`;
+    elements.push(desc);
+  }
+  return elements.join("\n").slice(0, 8e3);
+}
+function executeBrowserAction(action) {
+  if (typeof document === "undefined") {
+    return { success: false, error: "Not running in browser environment" };
+  }
+  try {
+    const el = findElement(action.selector, action.description);
+    if (!el && action.type !== "navigate" && action.type !== "extract") {
+      return { success: false, error: `Element not found: ${action.selector || action.description}` };
+    }
+    switch (action.type) {
+      case "click": {
+        el.click();
+        return { success: true, result: "Clicked" };
+      }
+      case "type": {
+        const input = el;
+        input.focus();
+        input.value = action.value || "";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        return { success: true, result: `Typed: ${action.value}` };
+      }
+      case "extract": {
+        if (action.selector) {
+          const content = el?.textContent || "";
+          return { success: true, result: content.slice(0, 5e3) };
+        }
+        return { success: true, result: extractAccessibleDOM() };
+      }
+      case "scroll": {
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+          window.scrollBy({ top: action.value ? parseInt(action.value) : 500, behavior: "smooth" });
+        }
+        return { success: true, result: "Scrolled" };
+      }
+      case "navigate": {
+        const url = action.value || action.selector;
+        if (!url) return { success: false, error: "No URL provided" };
+        window.location.href = url;
+        return { success: true, result: `Navigating to ${url}` };
+      }
+      default:
+        return { success: false, error: `Unknown action type: ${action.type}` };
+    }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+function findElement(selector, description) {
+  if (selector) {
+    try {
+      const el = document.querySelector(selector);
+      if (el) return el;
+    } catch {
+    }
+  }
+  const searchText = description || selector;
+  if (!searchText) return null;
+  const all = document.querySelectorAll('a, button, input, select, textarea, [role="button"]');
+  const lower = searchText.toLowerCase();
+  for (const el of all) {
+    const text = (el.textContent || "").toLowerCase();
+    const placeholder = (el.getAttribute("placeholder") || "").toLowerCase();
+    const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
+    if (text.includes(lower) || placeholder.includes(lower) || ariaLabel.includes(lower)) {
+      return el;
+    }
+  }
+  return null;
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   A2ADaemon,
@@ -4316,12 +4627,14 @@ function useAgentRunner(config) {
   ConfigurationClient,
   ConfigurationRegistry,
   GatewayProvider,
+  HttpTraceEmitter,
   IPFSFetcher,
   IPFSUploader,
   KNOWN_CHAINS,
   MCPConnector,
   MCP_VERSION,
   MultiEndpointClient,
+  NoopTraceEmitter,
   OpenAIProvider,
   REGISTRY_VERSION,
   REPUTATION_VERSION,
@@ -4343,7 +4656,9 @@ function useAgentRunner(config) {
   eciesDecrypt,
   eciesEncrypt,
   encryptPayload,
+  executeBrowserAction,
   executePlatformTool,
+  extractAccessibleDOM,
   generateAesKey,
   generateKeyPair,
   getAllPlatformToolNames,

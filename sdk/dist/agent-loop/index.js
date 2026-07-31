@@ -423,18 +423,12 @@ var AgentLoop = class {
   systemPrompt;
   aborted = false;
   abortController = null;
+  sessionId = "";
   constructor(config) {
     this.config = {
-      ctx: config.ctx,
-      llmProvider: config.llmProvider,
+      ...config,
       maxIterations: config.maxIterations ?? DEFAULT_MAX_ITERATIONS,
-      timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-      onTextDelta: config.onTextDelta,
-      onToolCall: config.onToolCall,
-      onToolResult: config.onToolResult,
-      onThinking: config.onThinking,
-      onComplete: config.onComplete,
-      onError: config.onError
+      timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS
     };
     this.executor = new ToolExecutor({ skills: config.ctx.skills });
     this.tools = buildTools(config.ctx.skills);
@@ -450,7 +444,7 @@ var AgentLoop = class {
     const totalUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
     let finalText = "";
     let iterations = 0;
-    const messages = [
+    let messages = [
       { role: "system", content: this.systemPrompt },
       ...history.map((m) => ({
         role: m.role,
@@ -458,6 +452,24 @@ var AgentLoop = class {
       })),
       { role: "user", content: userMessage }
     ];
+    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    this.sessionId = sessionId;
+    if (this.config.memory?.enabled && this.config.ctx.subscriberAddress && this.config.ctx.agentId) {
+      try {
+        const facts = await this.config.memory.provider.recall({
+          subscriberAddress: this.config.ctx.subscriberAddress,
+          agentId: this.config.ctx.agentId,
+          query: userMessage,
+          limit: this.config.memory.recallLimit ?? 5
+        });
+        if (facts.length > 0 && messages[0]) {
+          const memoryContext = "\n\n## Relevant Memory\n" + facts.map((f) => `- ${f.fact}`).join("\n");
+          messages[0].content = (messages[0].content || "") + memoryContext;
+        }
+      } catch (err) {
+        console.warn("[AgentLoop] Memory recall failed:", err.message);
+      }
+    }
     this.aborted = false;
     this.abortController = new AbortController();
     try {
@@ -471,6 +483,9 @@ var AgentLoop = class {
         iterations++;
         if (this.config.onThinking && iterations > 1) {
           this.config.onThinking(`Thinking... (round ${iterations}/${this.config.maxIterations})`);
+        }
+        if (this.config.contextBudget && this.estimateTokens(messages) > this.config.contextBudget) {
+          messages = await this.compactMessages(messages);
         }
         const iterationResult = await this.runIteration(messages);
         finalText += iterationResult.text;
@@ -521,6 +536,32 @@ var AgentLoop = class {
       totalDuration: Date.now() - startTime,
       usage: totalUsage
     };
+    if (this.config.memory?.enabled && this.config.memory.storeOnSessionEnd !== false && this.config.ctx.subscriberAddress && this.config.ctx.agentId) {
+      try {
+        const facts = await this.extractFacts(userMessage, result.finalText);
+        for (const fact of facts) {
+          await this.config.memory.provider.store({
+            subscriberAddress: this.config.ctx.subscriberAddress,
+            agentId: this.config.ctx.agentId,
+            fact
+          });
+        }
+      } catch (err) {
+        console.warn("[AgentLoop] Memory store failed:", err.message);
+      }
+    }
+    this.emitTrace({
+      tenantId: this.config.ctx.subscriberAddress || "unknown",
+      agentId: this.config.ctx.agentId,
+      sessionId: this.sessionId,
+      type: "session_complete",
+      data: {
+        totalIterations: iterations,
+        totalDuration: Date.now() - startTime,
+        totalTokens: totalUsage.totalTokens,
+        toolCallCount: toolCalls.length
+      }
+    });
     if (this.config.onComplete) {
       this.config.onComplete(result);
     }
@@ -592,6 +633,13 @@ var AgentLoop = class {
         if (this.config.onToolCall) {
           this.config.onToolCall({ callId: ptc.callId, name: ptc.name, arguments: ptc.arguments });
         }
+        this.emitTrace({
+          tenantId: this.config.ctx.subscriberAddress || "unknown",
+          agentId: this.config.ctx.agentId,
+          sessionId: this.sessionId,
+          type: "tool_call",
+          data: { callId: ptc.callId, name: ptc.name, arguments: ptc.arguments }
+        });
       }
     }
     const toolCallRecords = await this.executor.executeBatch(parsedToolCalls);
@@ -605,8 +653,88 @@ var AgentLoop = class {
           durationMs: record.durationMs
         });
       }
+      this.emitTrace({
+        tenantId: this.config.ctx.subscriberAddress || "unknown",
+        agentId: this.config.ctx.agentId,
+        sessionId: this.sessionId,
+        type: "tool_result",
+        data: { callId: record.callId, name: record.name, error: record.error, durationMs: record.durationMs }
+      });
     }
     return { text, toolCalls: llmToolCalls, toolCallRecords, usage };
+  }
+  // ── Context Engineering ──────────────────────────────────────────────────
+  /** Rough token estimation: 1 token ≈ 4 characters */
+  estimateTokens(messages) {
+    let total = 0;
+    for (const msg of messages) {
+      total += JSON.stringify(msg).length;
+    }
+    return Math.ceil(total / 4);
+  }
+  /** Compact messages: keep system prompt + last 2 turns, summarize the rest */
+  async compactMessages(messages) {
+    if (messages.length <= 5) return messages;
+    const system = messages.filter((m) => m.role === "system");
+    const nonSystem = messages.filter((m) => m.role !== "system");
+    const keepCount = Math.min(4, nonSystem.length);
+    const keepMessages = nonSystem.slice(-keepCount);
+    const compactTarget = nonSystem.slice(0, nonSystem.length - keepCount);
+    if (compactTarget.length === 0) return messages;
+    try {
+      const stream = this.config.llmProvider.chatStream({
+        model: "gpt-4o-mini",
+        messages: [{
+          role: "user",
+          content: `Summarize concisely (keep all facts/decisions):
+${compactTarget.map((m) => `${m.role}: ${m.content}`).join("\n")}`
+        }],
+        maxTokens: 500,
+        temperature: 0.3
+      });
+      let summary = "";
+      for await (const event of stream) {
+        if (event.type === "text_delta") summary += event.content;
+      }
+      return [...system, { role: "system", content: `[Summary]: ${summary}` }, ...keepMessages];
+    } catch {
+      return messages;
+    }
+  }
+  // ── Memory Extraction ───────────────────────────────────────────────────
+  /** Extract simple facts from the conversation for memory storage */
+  // ── Trace Helper ──────────────────────────────────────────────────────────
+  emitTrace(event) {
+    if (!this.config.trace?.enabled) return;
+    try {
+      this.config.trace.emitter.emit({ ...event, timestamp: Date.now() });
+    } catch {
+    }
+  }
+  // ── Memory Extraction ───────────────────────────────────────────────────
+  /** Extract simple facts from the conversation for memory storage */
+  async extractFacts(userMessage, assistantResponse) {
+    try {
+      const stream = this.config.llmProvider.chatStream({
+        model: "gpt-4o-mini",
+        messages: [{
+          role: "user",
+          content: `Extract 1-3 key facts/preferences. One per line, <100 chars each. No other text.
+User: ${userMessage}
+Assistant: ${assistantResponse.slice(0, 500)}
+Facts:`
+        }],
+        maxTokens: 200,
+        temperature: 0.3
+      });
+      let text = "";
+      for await (const event of stream) {
+        if (event.type === "text_delta") text += event.content;
+      }
+      return text.split("\n").map((s) => s.replace(/^[\d\-•. ]+/, "").trim()).filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 };
 
