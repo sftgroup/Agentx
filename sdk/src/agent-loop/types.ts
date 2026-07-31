@@ -6,6 +6,8 @@
 // ---------------------------------------------------------------------------
 
 import type { RunnableSkill } from '../agent/agent-runner'
+import type { MemoryConfig } from '../memory/types'
+import type { TraceConfig } from '../traces/types'
 
 // ── LLM Message ─────────────────────────────────────────────────────────────
 
@@ -65,6 +67,16 @@ export interface AgentLoopConfig {
   llmProvider: LLMProvider
   maxIterations?: number
   timeoutMs?: number
+
+  /** Memory configuration — enables cross-session memory (default: disabled) */
+  memory?: MemoryConfig
+
+  /** Maximum total tokens for messages array — triggers compaction when exceeded */
+  contextBudget?: number
+
+  /** Trace configuration — enables structured observability (default: disabled) */
+  trace?: TraceConfig
+
   onTextDelta?: (delta: string) => void
   onToolCall?: (call: ToolCallStart) => void
   onToolResult?: (result: ToolCallResult) => void
@@ -77,6 +89,8 @@ export interface LoopRunContext {
   agentId: number
   prompt: string
   skills: RunnableSkill[]
+  /** Wallet address of the current subscriber — used by Memory recall/store */
+  subscriberAddress?: string
   model?: string
   temperature?: number
   maxTokens?: number

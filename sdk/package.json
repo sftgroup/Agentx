@@ -1,6 +1,6 @@
 {
   "name": "@agentxv2/sdk",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "description": "AgentX — Decentralized AI Agent SDK with ReAct AgentLoop + Multi-Tenant LLM Providers",
   "main": "dist/index.js",
   "types": "dist/index.d.mts",
@@ -45,6 +45,21 @@
       "types": "./dist/ipfs/index.d.mts",
       "import": "./dist/ipfs/index.mjs",
       "require": "./dist/ipfs/index.js"
+    },
+    "./memory": {
+      "types": "./dist/memory/index.d.mts",
+      "import": "./dist/memory/index.mjs",
+      "require": "./dist/memory/index.js"
+    },
+    "./traces": {
+      "types": "./dist/traces/index.d.mts",
+      "import": "./dist/traces/index.mjs",
+      "require": "./dist/traces/index.js"
+    },
+    "./skills": {
+      "types": "./dist/skills/index.d.mts",
+      "import": "./dist/skills/index.mjs",
+      "require": "./dist/skills/index.js"
     }
   },
   "files": [
@@ -52,7 +67,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/core/index.ts src/react/index.ts src/endpoint/index.ts src/configuration/index.ts src/agent-loop/index.ts src/llm/index.ts src/ipfs/index.ts --format cjs,esm --dts --clean --sourcemap --splitting false --out-dir dist",
+    "build": "tsup src/index.ts src/core/index.ts src/react/index.ts src/endpoint/index.ts src/configuration/index.ts src/agent-loop/index.ts src/llm/index.ts src/ipfs/index.ts src/memory/index.ts src/traces/index.ts src/skills/index.ts --format cjs,esm --dts --clean --sourcemap --splitting false --out-dir dist",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

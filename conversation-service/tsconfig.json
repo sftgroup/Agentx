@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@agentxv2/sdk/memory": ["./node_modules/@agentxv2/sdk/dist/memory/index.d.ts"],
+      "@agentxv2/sdk/traces": ["./node_modules/@agentxv2/sdk/dist/traces/index.d.ts"],
+      "@agentxv2/sdk/skills": ["./node_modules/@agentxv2/sdk/dist/skills/index.d.ts"],
+      "@agentxv2/sdk/agent-loop": ["./node_modules/@agentxv2/sdk/dist/agent-loop/index.d.ts"],
+      "@agentxv2/sdk/react": ["./node_modules/@agentxv2/sdk/dist/react/index.d.ts"],
+      "@agentxv2/sdk/llm": ["./node_modules/@agentxv2/sdk/dist/llm/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

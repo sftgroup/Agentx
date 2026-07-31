@@ -30,6 +30,10 @@ export const config = {
   subscriptionManager: process.env.SUBSCRIPTION_MANAGER || '0xC15fE80b9d800abb72121F353a6ae6d6E9077E63',
   subscriptionManagerOxaChain: process.env.SUBSCRIPTION_MANAGER_OXACHAIN || '0x019AC9d945467478Dd371CDbD70cb2f325800E6B',
 
+  // Conversation Service (agent dialogue microservice)
+  conversationServiceUrl: process.env.CONVERSATION_SERVICE_URL || 'http://localhost:8100',
+  conversationServiceToken: process.env.CONVERSATION_SERVICE_TOKEN || 'change-me-in-production',
+
   a2aProtocol: process.env.A2A_PROTOCOL || '0x309C7447d89f3087A9924BB686d88df020F7e9cB',
   a2aProtocolOxaChain: process.env.A2A_PROTOCOL_OXACHAIN || '0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86',
 

@@ -17,6 +17,10 @@ import mcpRouter from './routes/mcp'
 import agentsRouter from './routes/agents'
 import a2aRouter from './routes/a2a'
 import adminRouter from './routes/admin'
+import agentRunsRouter from './routes/agent-runs'
+import tracesRouter from './routes/traces'
+import skillsRouter from './routes/skills'
+import agentMcpRouter from './routes/agent-mcp'
 
 const app = express()
 
@@ -61,6 +65,7 @@ app.get('/api/v1/health', async (_req, res) => {
 
 // ── MCP endpoint (public JSON-RPC 2.0) ────────────────────────────────────
 
+app.use('/mcp/agent', agentMcpRouter)  // Agent-specific MCP (must be before /mcp)
 app.use('/mcp', mcpRouter)
 
 // ── Admin API (protected by admin key, not wallet auth) ──────────────────
@@ -75,6 +80,10 @@ app.post('/api/v1/auth/verify', verifyChallenge)
 // ── Agents API (public, no auth needed) ────────────────────────────────────
 
 app.use('/api/v1/agents', agentsRouter)
+
+// ── Skills Marketplace (mixed: GET public, POST/PUT/DELETE protected) ──────
+
+app.use('/api/v1/skills', skillsRouter)
 
 // ── A2A Task Results API (public, SDK daemon queries this) ────────────────
 
@@ -94,7 +103,7 @@ app.post('/api/v1/agents-sync', async (_req, res, next) => {
 // ── Protected routes (auth + rate-limit only on known paths) ─────────────
 
 // Known protected API path prefixes (anything else under /api/v1 returns 404)
-const PROTECTED_PREFIXES = ['/chat/completions', '/chat/history', '/tenant/']
+const PROTECTED_PREFIXES = ['/chat/completions', '/chat/history', '/tenant/', '/agent/', '/traces/', '/skills']
 
 app.use('/api/v1', (req, _res, next) => {
   if (PROTECTED_PREFIXES.some(p => req.path.startsWith(p))) {
@@ -112,6 +121,8 @@ api.use(tenantRateLimiter)
 api.use(chatRouter)
 api.use('/tenant', tenantRouter)
 api.use('/chat', historyRouter)
+api.use('/agent', agentRunsRouter)
+api.use('/traces', tracesRouter)
 
 app.use('/api/v1', api)
 
