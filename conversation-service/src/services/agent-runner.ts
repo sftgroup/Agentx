@@ -18,6 +18,8 @@ export interface AgentRunRequest {
   history?: { role: 'user' | 'assistant'; content: string }[]
   /** Ephemeral API key from request header (X-Llm-Api-Key), takes highest priority */
   headerApiKey?: string
+  /** End-user ID for memory isolation within a tenant (X-End-User-Id) */
+  endUserId?: string
 }
 
 export interface AgentRunSSEEvent {
@@ -65,6 +67,7 @@ export class AgentRunnerService {
             agentId: request.agentId,
             query: request.message,
             limit: 5,
+            endUserId: request.endUserId,
           })
           if (facts.length > 0) {
             const memoryContext = '\n\n## User Memory\n' + facts.map(f => `- ${f.fact}`).join('\n')
@@ -122,6 +125,7 @@ export class AgentRunnerService {
               subscriberAddress: request.tenantAddress,
               agentId: request.agentId,
               fact,
+              endUserId: request.endUserId,
             })
           }
         } catch (err) {

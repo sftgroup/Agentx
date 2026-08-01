@@ -41,15 +41,17 @@ export class MemoryEngine implements MemoryProvider {
     subscriberAddress: string
     agentId: number
     fact: string
+    endUserId?: string
     metadata?: Record<string, string>
   }): Promise<void> {
     const embedding = await this.getEmbedding(params.fact)
+    const endUserId = params.endUserId || 'default'
 
     await this.db.query(
-      `INSERT INTO memories (subscriber, agent_id, fact, embedding, metadata)
-       VALUES ($1, $2, $3, $4::vector, $5)
-       ON CONFLICT (subscriber, agent_id, fact) DO NOTHING`,
-      [params.subscriberAddress, params.agentId, params.fact, embedding, JSON.stringify(params.metadata || {})]
+      `INSERT INTO memories (subscriber, agent_id, end_user_id, fact, embedding, metadata)
+       VALUES ($1, $2, $3, $4, $5::vector, $6)
+       ON CONFLICT (subscriber, agent_id, end_user_id, fact) DO NOTHING`,
+      [params.subscriberAddress, params.agentId, endUserId, params.fact, embedding, JSON.stringify(params.metadata || {})]
     )
   }
 
@@ -57,9 +59,11 @@ export class MemoryEngine implements MemoryProvider {
     subscriberAddress: string
     agentId: number
     query: string
+    endUserId?: string
     limit?: number
   }): Promise<MemoryFact[]> {
     const limit = params.limit || 5
+    const endUserId = params.endUserId || 'default'
 
     // Try vector similarity search first
     const queryVector = await this.getEmbedding(params.query)
@@ -68,10 +72,10 @@ export class MemoryEngine implements MemoryProvider {
         const result = await this.db.query(
           `SELECT fact, 1 - (embedding <=> $3::vector) AS score, created_at
            FROM memories
-           WHERE subscriber = $1 AND agent_id = $2
+           WHERE subscriber = $1 AND agent_id = $2 AND end_user_id = $4
            ORDER BY embedding <=> $3::vector
-           LIMIT $4`,
-          [params.subscriberAddress, params.agentId, queryVector, limit]
+           LIMIT $5`,
+          [params.subscriberAddress, params.agentId, queryVector, endUserId, limit]
         )
 
         return result.rows.map((r: any) => ({
@@ -88,10 +92,10 @@ export class MemoryEngine implements MemoryProvider {
     const result = await this.db.query(
       `SELECT fact, 0.5 AS score, created_at
        FROM memories
-       WHERE subscriber = $1 AND agent_id = $2
+       WHERE subscriber = $1 AND agent_id = $2 AND end_user_id = $3
        ORDER BY created_at DESC
-       LIMIT $3`,
-      [params.subscriberAddress, params.agentId, limit]
+       LIMIT $4`,
+      [params.subscriberAddress, params.agentId, endUserId, limit]
     )
 
     return result.rows.map((r: any) => ({

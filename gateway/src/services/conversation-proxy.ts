@@ -20,14 +20,19 @@ export class ConversationProxy {
     enableMemory?: boolean
     contextBudget?: number
     history?: { role: 'user' | 'assistant'; content: string }[]
+    endUserId?: string
   }): Promise<Response> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-Tenant-Address': params.tenantAddress,
+      'X-Internal-Token': this.internalToken,
+    }
+    if (params.endUserId) {
+      headers['X-End-User-Id'] = params.endUserId
+    }
     return fetch(`${this.serviceUrl}/runs`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Tenant-Address': params.tenantAddress,
-        'X-Internal-Token': this.internalToken,
-      },
+      headers,
       body: JSON.stringify({
         agentId: params.agentId,
         message: params.message,

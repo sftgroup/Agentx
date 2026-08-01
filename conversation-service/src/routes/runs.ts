@@ -22,6 +22,7 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
     const { agentId, message, enableMemory, contextBudget, history } = req.body
     const tenantAddress = req.headers['x-tenant-address'] as string || 'unknown'
     const headerApiKey = req.headers['x-llm-api-key'] as string || undefined
+    const endUserId = req.headers['x-end-user-id'] as string || undefined
 
     if (!agentId || !message) {
       return res.status(400).json({ error: 'agentId and message are required' })
@@ -44,6 +45,7 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
         contextBudget: contextBudget ? Number(contextBudget) : undefined,
         history: history || [],
         headerApiKey,
+        endUserId,
       })
 
       for await (const event of stream) {
