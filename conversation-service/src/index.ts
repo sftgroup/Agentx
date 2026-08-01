@@ -9,6 +9,8 @@ import { MemoryEngine } from './services/memory-engine'
 import { ContextEngine } from './services/context-engine'
 import { AgentRunnerService } from './services/agent-runner'
 import { TenantLLMResolver } from './services/tenant-llm-resolver'
+import { AgentContextLoader } from './services/agent-context-loader'
+import { ToolExecutor } from './services/tool-executor'
 import { createRunsRouter } from './routes/runs'
 import { createTenantsRouter } from './routes/tenants'
 
@@ -37,7 +39,9 @@ const db = getPool()
 const memoryEngine = new MemoryEngine(db)
 const contextEngine = new ContextEngine()
 const llmResolver = new TenantLLMResolver(db)
-const runner = new AgentRunnerService(memoryEngine, contextEngine, llmResolver)
+const toolExecutor = new ToolExecutor(config.gatewayUrl)
+const contextLoader = new AgentContextLoader(config.gatewayUrl, config.contextCacheTtlSec * 1000, toolExecutor)
+const runner = new AgentRunnerService(memoryEngine, contextEngine, llmResolver, contextLoader)
 
 // Routes
 app.use('/runs', createRunsRouter(runner))

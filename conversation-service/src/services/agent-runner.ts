@@ -1,13 +1,14 @@
 // AgentX Conversation Service — Agent Runner
-// Wraps AgentLoop execution with Memory + Context engines
+// Wraps AgentLoop execution with Memory + Context + Tool engines.
+// Generic — AgentX platform MCP tools are defined in agent metadata on Gateway side.
 
 import { v4 as uuidv4 } from 'uuid'
 import { AgentLoop } from '@agentxv2/sdk/agent-loop'
 import type { LLMProvider, LLMMessage } from '@agentxv2/sdk/agent-loop'
-import type { AgentRunContext } from '@agentxv2/sdk/react'
 import { MemoryEngine } from './memory-engine'
 import { ContextEngine } from './context-engine'
 import { TenantLLMResolver } from './tenant-llm-resolver'
+import { AgentContextLoader } from './agent-context-loader'
 
 export interface AgentRunRequest {
   agentId: number
@@ -16,9 +17,7 @@ export interface AgentRunRequest {
   enableMemory?: boolean
   contextBudget?: number
   history?: { role: 'user' | 'assistant'; content: string }[]
-  /** Ephemeral API key from request header (X-Llm-Api-Key), takes highest priority */
   headerApiKey?: string
-  /** End-user ID for memory isolation within a tenant (X-End-User-Id) */
   endUserId?: string
 }
 
@@ -38,6 +37,7 @@ export class AgentRunnerService {
     private readonly memoryEngine: MemoryEngine,
     private readonly contextEngine: ContextEngine,
     private readonly llmResolver: TenantLLMResolver,
+    private readonly contextLoader: AgentContextLoader,
   ) {}
 
   async *streamRun(request: AgentRunRequest): AsyncGenerator<AgentRunSSEEvent> {
@@ -45,20 +45,17 @@ export class AgentRunnerService {
     const startTime = Date.now()
 
     try {
-      // 1. Load agent context from chain
-      const ctx = await this.loadAgentContext(request.agentId)
+      // 1. Load agent context (prompt + skills) from Gateway
+      const loadedCtx = await this.contextLoader.load(request.agentId)
 
       // 2. Resolve LLM provider — tenant key > header key > AgentX key
       const llmProvider = await this.llmResolver.resolve(
-        ctx,
+        { agentId: request.agentId, prompt: loadedCtx.prompt, skills: [] },
         request.tenantAddress,
         request.headerApiKey,
       )
 
-      // 2. Build initial messages
-      let messages: LLMMessage[] = []
-
-      // 3. Memory recall
+      // 3. Memory recall (before AgentLoop)
       if (request.enableMemory) {
         yield { type: 'thinking', content: 'Recalling memory...' }
         try {
@@ -70,38 +67,33 @@ export class AgentRunnerService {
             endUserId: request.endUserId,
           })
           if (facts.length > 0) {
-            const memoryContext = '\n\n## User Memory\n' + facts.map(f => `- ${f.fact}`).join('\n')
-            ctx.prompt = (ctx.prompt || '') + memoryContext
+            loadedCtx.prompt += '\n\n## User Memory\n' + facts.map(f => `- ${f.fact}`).join('\n')
           }
         } catch (err) {
           console.error('[AgentRunner] Memory recall failed:', (err as Error).message)
         }
       }
 
-      // 4. Initialize AgentLoop
+      // 4. Initialize AgentLoop with loaded skills
       const loop = new AgentLoop({
-        ctx,
+        ctx: {
+          agentId: request.agentId,
+          prompt: loadedCtx.prompt,
+          skills: loadedCtx.skills as any, // RunnableSkill shape is compatible
+          subscriberAddress: request.tenantAddress,
+        },
         llmProvider,
-        maxIterations: 5,
+        maxIterations: 8,
         contextBudget: request.contextBudget,
-        onTextDelta: (delta) => {
-          // Will be handled by streamRun below
-        },
-        onToolCall: ({ name, arguments: args }) => {
-          // Will be handled by streamRun below
-        },
-        onToolResult: ({ name, result }) => {
-          // Will be handled by streamRun below
-        },
       })
 
-      // 5. Run AgentLoop and stream results
+      // 5. Run AgentLoop with streaming events
       const result = await loop.run(request.message, request.history)
 
       // Emit tool call records
       for (const tc of result.toolCalls) {
         yield { type: 'tool_call', toolName: tc.name, toolArgs: tc.arguments }
-        if (tc.result) {
+        if (tc.result !== undefined) {
           yield { type: 'tool_result', toolName: tc.name, toolResult: tc.result }
         }
       }
@@ -140,30 +132,7 @@ export class AgentRunnerService {
   }
 
   /**
-   * Load agent context from blockchain.
-   * In production, this decrypts the agent payload from on-chain data.
-   * Simplified implementation for Phase 1.
-   */
-  private async loadAgentContext(agentId: number): Promise<AgentRunContext> {
-    // TODO: Full implementation — fetch tokenURI from IdentityRegistry,
-    //       fetch encrypted payload from IPFS, decrypt with ECIES + AES.
-    //       For now, return a minimal context for the existing SDK AgentRunner to work.
-    return {
-      agentId,
-      prompt: '',
-      skills: [],
-      mcp: { type: '' },
-      subscriptionExpiry: 0,
-      model: undefined,
-      temperature: undefined,
-      maxTokens: undefined,
-      subscriberAddress: undefined,
-    } as AgentRunContext & { model?: string; temperature?: number; maxTokens?: number; subscriberAddress?: string }
-  }
-
-  /**
    * Extract key facts from conversation for memory storage.
-   * Uses a single cheap LLM call for summarization.
    */
   private async extractFacts(
     userMessage: string,
