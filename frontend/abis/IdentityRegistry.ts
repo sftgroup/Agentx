@@ -1,4 +1,4 @@
-export const IDENTITY_REGISTRY_ABI = const IDENTITY_REGISTRY_ABI = [
+export const IDENTITY_REGISTRY_ABI = [
   // 注册函数 - 三个重载版本
   {
     name: 'register',

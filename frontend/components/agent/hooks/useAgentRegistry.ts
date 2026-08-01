@@ -24,7 +24,6 @@ const IDENTITY_REGISTRY_ADDRESS = validateAddress(process.env.NEXT_PUBLIC_IDENTI
 
 // 完整的 ABI 定义，与智能合约完全匹配
 import { IDENTITY_REGISTRY_ABI } from '@/abis/IdentityRegistry'
- as const
 
 // TypeScript 接口定义
 interface UseAgentRegistryReturn {

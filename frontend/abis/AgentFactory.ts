@@ -1,4 +1,4 @@
-export const AGENT_FACTORY_ABI = const AGENT_FACTORY_ABI = [
+export const AGENT_FACTORY_ABI = [
   // 模板管理函数
   {
     name: 'createTemplate',

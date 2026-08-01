@@ -1,4 +1,4 @@
-export const PAYMENT_GATEWAY_ABI = const PAYMENT_GATEWAY_ABI = [
+export const PAYMENT_GATEWAY_ABI = [
   // 支付操作
   {
     name: 'createPayment',
