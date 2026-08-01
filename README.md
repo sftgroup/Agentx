@@ -134,8 +134,8 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 |---------|-----|
 | **Frontend** | `http://43.156.99.215:3100` |
 | **Admin Panel** | `http://43.156.99.215:3100/admin` |
-| **Gateway Health** | `http://43.156.99.215:3090/api/v1/health` |
-| **MCP Server** | `http://43.156.99.215:3090/mcp` |
+| **Gateway Health** | `http://43.159.60.46:3090/api/v1/health` |
+| **MCP Server** | `http://43.159.60.46:3090/mcp` |
 | **Conversation Service** | `http://43.159.60.46:8100` (deployed on new server) |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
