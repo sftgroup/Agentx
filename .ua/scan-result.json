@@ -1,12 +1,36 @@
 {
   "scriptCompleted": true,
-  "contentDigest": "d81cc1bb7052525f3740e6ebbbe3bee73c1700c4525e6fb09ab880d021a06234",
+  "contentDigest": "aebeb40340114521cf8490e1b148b9599eb8ae4acab692a2bff78cbc204c848f",
   "files": [
     {
       "path": ".gitmodules",
       "language": "unknown",
       "sizeLines": 6,
       "fileCategory": "code"
+    },
+    {
+      "path": ".ua/config.json",
+      "language": "json",
+      "sizeLines": 1,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".ua/knowledge-graph.json",
+      "language": "json",
+      "sizeLines": 24841,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".ua/meta.json",
+      "language": "json",
+      "sizeLines": 6,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".ua/scan-result.json",
+      "language": "json",
+      "sizeLines": 2190,
+      "fileCategory": "config"
     },
     {
       "path": "CODE_REVIEW_REPORT.md",
@@ -17,7 +41,7 @@
     {
       "path": "CONVERSATION_SERVICE.md",
       "language": "markdown",
-      "sizeLines": 354,
+      "sizeLines": 401,
       "fileCategory": "docs"
     },
     {
@@ -35,13 +59,13 @@
     {
       "path": "INTEGRATION.md",
       "language": "markdown",
-      "sizeLines": 560,
+      "sizeLines": 603,
       "fileCategory": "docs"
     },
     {
       "path": "MCP_SETUP.md",
       "language": "markdown",
-      "sizeLines": 393,
+      "sizeLines": 417,
       "fileCategory": "docs"
     },
     {
@@ -59,7 +83,7 @@
     {
       "path": "README.md",
       "language": "markdown",
-      "sizeLines": 210,
+      "sizeLines": 228,
       "fileCategory": "docs"
     },
     {
@@ -239,7 +263,7 @@
     {
       "path": "conversation-service/migrations/001_memory.sql",
       "language": "sql",
-      "sizeLines": 25,
+      "sizeLines": 26,
       "fileCategory": "data"
     },
     {
@@ -252,6 +276,12 @@
       "path": "conversation-service/migrations/003_tenant_llm_config.sql",
       "language": "sql",
       "sizeLines": 16,
+      "fileCategory": "data"
+    },
+    {
+      "path": "conversation-service/migrations/004_end_user_isolation.sql",
+      "language": "sql",
+      "sizeLines": 13,
       "fileCategory": "data"
     },
     {
@@ -269,7 +299,7 @@
     {
       "path": "conversation-service/src/index.ts",
       "language": "typescript",
-      "sizeLines": 58,
+      "sizeLines": 62,
       "fileCategory": "code"
     },
     {
@@ -293,19 +323,25 @@
     {
       "path": "conversation-service/src/routes/runs.ts",
       "language": "typescript",
-      "sizeLines": 61,
+      "sizeLines": 63,
       "fileCategory": "code"
     },
     {
       "path": "conversation-service/src/routes/tenants.ts",
       "language": "typescript",
-      "sizeLines": 67,
+      "sizeLines": 77,
+      "fileCategory": "code"
+    },
+    {
+      "path": "conversation-service/src/services/agent-context-loader.ts",
+      "language": "typescript",
+      "sizeLines": 184,
       "fileCategory": "code"
     },
     {
       "path": "conversation-service/src/services/agent-runner.ts",
       "language": "typescript",
-      "sizeLines": 198,
+      "sizeLines": 171,
       "fileCategory": "code"
     },
     {
@@ -317,7 +353,7 @@
     {
       "path": "conversation-service/src/services/memory-engine.ts",
       "language": "typescript",
-      "sizeLines": 103,
+      "sizeLines": 107,
       "fileCategory": "code"
     },
     {
@@ -330,6 +366,12 @@
       "path": "conversation-service/src/services/tenant-llm-resolver.ts",
       "language": "typescript",
       "sizeLines": 118,
+      "fileCategory": "code"
+    },
+    {
+      "path": "conversation-service/src/services/tool-executor.ts",
+      "language": "typescript",
+      "sizeLines": 75,
       "fileCategory": "code"
     },
     {
@@ -503,7 +545,7 @@
     {
       "path": "frontend/app/user/settings/page.tsx",
       "language": "typescript",
-      "sizeLines": 129,
+      "sizeLines": 262,
       "fileCategory": "code"
     },
     {
@@ -1032,6 +1074,12 @@
       "path": "gateway/db/migrations/003_a2a_results.sql",
       "language": "sql",
       "sizeLines": 23,
+      "fileCategory": "data"
+    },
+    {
+      "path": "gateway/db/migrations/004_tenant_platform_api_key.sql",
+      "language": "sql",
+      "sizeLines": 17,
       "fileCategory": "data"
     },
     {
@@ -1637,7 +1685,7 @@
     {
       "path": "gateway/src/index.ts",
       "language": "typescript",
-      "sizeLines": 154,
+      "sizeLines": 157,
       "fileCategory": "code"
     },
     {
@@ -1667,7 +1715,7 @@
     {
       "path": "gateway/src/middleware/auth.ts",
       "language": "typescript",
-      "sizeLines": 244,
+      "sizeLines": 335,
       "fileCategory": "code"
     },
     {
@@ -1697,13 +1745,13 @@
     {
       "path": "gateway/src/routes/agent-mcp.ts",
       "language": "typescript",
-      "sizeLines": 224,
+      "sizeLines": 283,
       "fileCategory": "code"
     },
     {
       "path": "gateway/src/routes/agent-runs.ts",
       "language": "typescript",
-      "sizeLines": 69,
+      "sizeLines": 71,
       "fileCategory": "code"
     },
     {
@@ -1763,7 +1811,7 @@
     {
       "path": "gateway/src/services/conversation-proxy.ts",
       "language": "typescript",
-      "sizeLines": 50,
+      "sizeLines": 55,
       "fileCategory": "code"
     },
     {
@@ -1805,7 +1853,7 @@
     {
       "path": "sdk/package.json",
       "language": "json",
-      "sizeLines": 110,
+      "sizeLines": 115,
       "fileCategory": "config"
     },
     {
@@ -1935,6 +1983,18 @@
       "fileCategory": "code"
     },
     {
+      "path": "sdk/src/conversation/client.ts",
+      "language": "typescript",
+      "sizeLines": 156,
+      "fileCategory": "code"
+    },
+    {
+      "path": "sdk/src/conversation/index.ts",
+      "language": "typescript",
+      "sizeLines": 3,
+      "fileCategory": "code"
+    },
+    {
       "path": "sdk/src/core/crypto.ts",
       "language": "typescript",
       "sizeLines": 449,
@@ -1967,7 +2027,7 @@
     {
       "path": "sdk/src/index.ts",
       "language": "typescript",
-      "sizeLines": 40,
+      "sizeLines": 41,
       "fileCategory": "code"
     },
     {
@@ -2157,30 +2217,30 @@
       "fileCategory": "docs"
     }
   ],
-  "totalFiles": 359,
+  "totalFiles": 369,
   "filteredByIgnore": 0,
   "estimatedComplexity": "large",
   "stats": {
-    "filesScanned": 359,
+    "filesScanned": 369,
     "byCategory": {
-      "code": 308,
+      "code": 312,
+      "config": 20,
       "docs": 19,
-      "config": 16,
       "infra": 1,
-      "data": 7,
+      "data": 9,
       "markup": 1,
       "script": 7
     },
     "byLanguage": {
       "unknown": 1,
+      "json": 15,
       "markdown": 19,
-      "json": 11,
       "toml": 1,
       "sol": 23,
       "config": 4,
       "dockerfile": 1,
-      "sql": 7,
-      "typescript": 188,
+      "sql": 9,
+      "typescript": 192,
       "css": 1,
       "shell": 7,
       "javascript": 7,
