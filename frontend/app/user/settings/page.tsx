@@ -1,9 +1,10 @@
 // app/user/settings/page.tsx — API Settings (Glassmorphism Dark)
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { Settings, Plus, Trash2, Edit, Check, X, Zap } from 'lucide-react'
+import { Settings, Plus, Trash2, Edit, Check, X, Zap, Key, Copy, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { useAccount, useWalletClient } from 'wagmi'
 
 interface AIConfig { id: string; name: string; provider: string; endpoint: string; apiKey: string; model: string; temperature: number; maxTokens: number; isActive: boolean }
 
@@ -40,6 +41,9 @@ export default function SettingsPage() {
           <button onClick={() => { setEditing(null); setShowForm(true) }} className="btn-primary text-sm py-2"><Plus className="w-4 h-4" /> Add Config</button>
         </div>
 
+        {/* ── AgentX Platform API Key ─────────────────────────────────── */}
+        <PlatformApiKey />
+
         {showForm && <ConfigForm editing={editing} onSave={save} onCancel={() => { setShowForm(false); setEditing(null) }} />}
 
         {configs.length === 0 ? (
@@ -72,6 +76,135 @@ export default function SettingsPage() {
         )}
       </div>
     </AppLayout>
+  )
+}
+
+function PlatformApiKey() {
+  const { address, isConnected } = useAccount()
+  const { data: walletClient } = useWalletClient()
+  const [apiKey, setApiKey] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showKey, setShowKey] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const gatewayUrl = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || ''
+
+  const fetchApiKey = useCallback(async () => {
+    if (!gatewayUrl || !isConnected || !address || !walletClient) return
+    setLoading(true)
+    setError(null)
+    try {
+      // Step 1: Auth via wallet signature
+      const challengeRes = await fetch(`${gatewayUrl}/api/v1/auth/challenge?address=${address}`)
+      const { challenge } = await challengeRes.json()
+      const signature = await walletClient.signMessage({
+        account: walletClient.account!,
+        message: challenge,
+      })
+      const verifyRes = await fetch(`${gatewayUrl}/api/v1/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wallet_address: address,
+          signature,
+          timestamp: Math.floor(Date.now() / 1000),
+          nonce: challenge.split(':').pop(),
+        }),
+      })
+      const verifyData = await verifyRes.json()
+      if (!verifyRes.ok) throw new Error(verifyData.error || 'Auth failed')
+
+      // Step 2: Fetch API key
+      const keyRes = await fetch(`${gatewayUrl}/api/v1/auth/api-key`, {
+        headers: { Authorization: `Bearer ${verifyData.access_token}` },
+      })
+      const keyData = await keyRes.json()
+      if (!keyRes.ok) throw new Error(keyData.error || 'Failed to fetch API key')
+
+      setApiKey(keyData.api_key)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load API key')
+    } finally {
+      setLoading(false)
+    }
+  }, [gatewayUrl, isConnected, address, walletClient])
+
+  useEffect(() => {
+    if (isConnected && !apiKey) fetchApiKey()
+  }, [isConnected, fetchApiKey, apiKey])
+
+  const copyToClipboard = async () => {
+    if (!apiKey) return
+    await navigator.clipboard.writeText(apiKey)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="glass-card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-accent-cyan/10 flex items-center justify-center"><Key className="w-5 h-5 text-accent-cyan" /></div>
+          <div>
+            <h2 className="font-semibold">Platform API Key</h2>
+            <p className="text-xs text-text-muted">Connect wallet to view your AgentX API key</p>
+          </div>
+        </div>
+        <p className="text-sm text-text-muted">Sign in with your wallet to access your API key for programmatic API calls.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="glass-card p-6 space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-accent-cyan/10 flex items-center justify-center"><Key className="w-5 h-5 text-accent-cyan" /></div>
+        <div>
+          <h2 className="font-semibold">Platform API Key</h2>
+          <p className="text-xs text-text-muted">Use this key to authenticate API requests without wallet signature</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-text-muted py-2">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading API key...
+        </div>
+      ) : error ? (
+        <div className="space-y-3">
+          <p className="text-sm text-red-400">{error}</p>
+          <button onClick={fetchApiKey} className="btn-secondary text-sm py-1.5">Retry</button>
+        </div>
+      ) : apiKey ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <code className="flex-1 px-3 py-2.5 bg-white/5 border border-white/5 rounded-lg text-sm font-mono select-all break-all">
+              {showKey ? apiKey : apiKey.slice(0, 12) + '•'.repeat(28)}
+            </code>
+            <button
+              onClick={() => setShowKey(!showKey)}
+              className="p-2 rounded-lg hover:bg-white/5 transition-colors text-text-muted"
+              title={showKey ? 'Hide' : 'Show'}
+            >
+              {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={copyToClipboard}
+              className="p-2 rounded-lg hover:bg-white/5 transition-colors text-text-muted"
+              title="Copy"
+            >
+              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
+          <div className="text-xs text-text-muted bg-white/3 rounded-lg p-3 space-y-1">
+            <p className="font-medium text-text-secondary mb-1">Usage</p>
+            <code className="block">curl -H "X-Api-Key: {apiKey.slice(0, 12)}..." {gatewayUrl}/api/v1/agent/runs</code>
+          </div>
+        </div>
+      ) : (
+        <button onClick={fetchApiKey} className="btn-primary text-sm py-2"><Key className="w-4 h-4" /> Generate API Key</button>
+      )}
+    </div>
   )
 }
 

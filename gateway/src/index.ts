@@ -7,7 +7,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { config } from './config'
-import { getChallenge, verifyChallenge, authMiddleware } from './middleware/auth'
+import { getChallenge, verifyChallenge, authMiddleware, getApiKey, apiKeyAuth } from './middleware/auth'
 import { tenantRateLimiter } from './middleware/rate-limiter'
 import { globalErrorHandler } from './middleware/error-handler'
 import chatRouter from './routes/chat'
@@ -103,7 +103,7 @@ app.post('/api/v1/agents-sync', async (_req, res, next) => {
 // ── Protected routes (auth + rate-limit only on known paths) ─────────────
 
 // Known protected API path prefixes (anything else under /api/v1 returns 404)
-const PROTECTED_PREFIXES = ['/chat/completions', '/tenant/', '/agent/', '/traces/']
+const PROTECTED_PREFIXES = ['/chat/completions', '/tenant/', '/agent/', '/traces/', '/auth/api-key']
 
 app.use('/api/v1', (req, _res, next) => {
   if (PROTECTED_PREFIXES.some(p => req.path.startsWith(p))) {
@@ -115,8 +115,11 @@ app.use('/api/v1', (req, _res, next) => {
 })
 
 const api = express.Router()
+api.use(apiKeyAuth)          // X-Api-Key alternative auth (passes through if no header)
 api.use(authMiddleware)
 api.use(tenantRateLimiter)
+
+api.get('/auth/api-key', getApiKey)
 
 api.use(chatRouter)
 api.use('/tenant', tenantRouter)

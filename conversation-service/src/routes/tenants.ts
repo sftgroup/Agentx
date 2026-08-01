@@ -4,11 +4,21 @@
 //
 // Authentication: X-Internal-Token (same as /runs)
 
-import { Router, Request, Response } from 'express'
+import { Router, Request, Response, NextFunction } from 'express'
 import type { TenantLLMResolver } from '../services/tenant-llm-resolver'
+import { config } from '../config'
 
 export function createTenantsRouter(resolver: TenantLLMResolver): Router {
   const router = Router()
+
+  // Internal token guard (same as /runs)
+  router.use((req: Request, res: Response, next: NextFunction) => {
+    const token = req.headers['x-internal-token'] as string
+    if (!token || token !== config.internalAuthToken) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+    next()
+  })
 
   // POST /tenants/:address/llm-key
   // Body: { apiKey: string, provider?: "openai"|"deepseek"|"custom", model?: string, endpointUrl?: string }
