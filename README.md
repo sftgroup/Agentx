@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.6.7 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100` · Last updated: 2026-07-28
+> SDK v0.7.0 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100` · Last updated: 2026-08-01
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -71,7 +71,7 @@ ERC-8004 Standard (planned):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.6.7
+npm install @agentxv2/sdk@0.7.0
 ```
 
 ```typescript
@@ -88,6 +88,23 @@ const loop = new AgentLoop({
 })
 
 await loop.run('Audit this contract for vulnerabilities')
+```
+
+### Hosted Conversation Service (v0.7.0)
+
+Run agents on our hosted Conversation Service from your own app — no chain sync, no IPFS, no local key management:
+
+```typescript
+import { ConversationClient } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({
+  gatewayUrl: 'http://43.159.60.46:3090',
+  apiKey: 'agentx_xxx',      // Tenant API Key (issued after registration)
+  endUserId: 'user_123',     // Optional: per end-user memory isolation
+})
+
+const result = await client.chat({ agentId: 42, message: '你好', enableMemory: true })
+// Streaming: for await (const event of client.stream({...})) { ... }
 ```
 
 ---
@@ -119,9 +136,10 @@ await loop.run('Audit this contract for vulnerabilities')
 | **Admin Panel** | `http://43.156.99.215:3100/admin` |
 | **Gateway Health** | `http://43.156.99.215:3090/api/v1/health` |
 | **MCP Server** | `http://43.156.99.215:3090/mcp` |
+| **Conversation Service** | `http://43.159.60.46:8100` (deployed on new server) |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.6.7` |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.7.0` |
 
 ---
 
