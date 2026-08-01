@@ -30,32 +30,6 @@
       "name": "config.ts"
     },
     {
-      "id": "file:fb9655da601e",
-      "type": "file",
-      "label": "index.ts",
-      "filePath": "gateway/src/index.ts",
-      "category": "code",
-      "language": "typescript",
-      "totalLines": 143,
-      "nonEmptyLines": 108,
-      "summary": "AgentX 网关入口/导出文件 index.ts，组装 Express 应用。包含0个函数、0个类、0个导出",
-      "tags": [
-        "api",
-        "express",
-        "gateway",
-        "ts"
-      ],
-      "metrics": {
-        "importCount": 11,
-        "exportCount": 0,
-        "functionCount": 0,
-        "classCount": 0
-      },
-      "exports": [],
-      "complexity": "moderate",
-      "name": "index.ts"
-    },
-    {
       "id": "file:d7b8f060e8e0",
       "type": "file",
       "label": "crypto.ts",
@@ -253,111 +227,6 @@
       ],
       "complexity": "moderate",
       "name": "adminAuth.ts"
-    },
-    {
-      "id": "file:eb268a0bb56d",
-      "type": "file",
-      "label": "auth.ts",
-      "filePath": "gateway/src/middleware/auth.ts",
-      "category": "code",
-      "language": "typescript",
-      "totalLines": 244,
-      "nonEmptyLines": 214,
-      "summary": "AgentX 网关中间件文件 auth.ts，处理认证、限流、错误等横切关注点。包含7个函数、0个类、3个导出",
-      "tags": [
-        "api",
-        "authmiddleware",
-        "challengekey",
-        "deletechallenge",
-        "express",
-        "gateway",
-        "getchallenge",
-        "loadchallenge",
-        "middleware",
-        "savechallenge",
-        "ts",
-        "verifychallenge"
-      ],
-      "metrics": {
-        "importCount": 3,
-        "exportCount": 3,
-        "functionCount": 7,
-        "classCount": 0
-      },
-      "exports": [
-        "getChallenge",
-        "verifyChallenge",
-        "authMiddleware"
-      ],
-      "complexity": "moderate",
-      "name": "auth.ts"
-    },
-    {
-      "id": "function:gateway/src/middleware/auth.ts:eb268a0bb56d:fn:getChallenge",
-      "type": "function",
-      "label": "getChallenge",
-      "filePath": "gateway/src/middleware/auth.ts",
-      "parentId": "eb268a0bb56d",
-      "startLine": 82,
-      "endLine": 96,
-      "lineCount": 15,
-      "isExported": true,
-      "params": [
-        "req",
-        "res"
-      ],
-      "summary": "文件 auth.ts 中的函数 getChallenge，第82-96行，共15行",
-      "tags": [
-        "getchallenge",
-        "function"
-      ],
-      "complexity": "moderate",
-      "name": "auth.ts"
-    },
-    {
-      "id": "function:gateway/src/middleware/auth.ts:eb268a0bb56d:fn:verifyChallenge",
-      "type": "function",
-      "label": "verifyChallenge",
-      "filePath": "gateway/src/middleware/auth.ts",
-      "parentId": "eb268a0bb56d",
-      "startLine": 98,
-      "endLine": 190,
-      "lineCount": 93,
-      "isExported": true,
-      "params": [
-        "req",
-        "res"
-      ],
-      "summary": "文件 auth.ts 中的函数 verifyChallenge，第98-190行，共93行",
-      "tags": [
-        "verifychallenge",
-        "function"
-      ],
-      "complexity": "moderate",
-      "name": "auth.ts"
-    },
-    {
-      "id": "function:gateway/src/middleware/auth.ts:eb268a0bb56d:fn:authMiddleware",
-      "type": "function",
-      "label": "authMiddleware",
-      "filePath": "gateway/src/middleware/auth.ts",
-      "parentId": "eb268a0bb56d",
-      "startLine": 192,
-      "endLine": 244,
-      "lineCount": 53,
-      "isExported": true,
-      "params": [
-        "req",
-        "res",
-        "next"
-      ],
-      "summary": "文件 auth.ts 中的函数 authMiddleware，第192-244行，共53行",
-      "tags": [
-        "authmiddleware",
-        "function"
-      ],
-      "complexity": "moderate",
-      "name": "auth.ts"
     },
     {
       "id": "file:61ac38efa378",
@@ -4402,70 +4271,6 @@
       ]
     },
     {
-      "id": "document:INTEGRATION.md",
-      "type": "document",
-      "label": "INTEGRATION.md",
-      "properties": {
-        "path": "INTEGRATION.md",
-        "language": "markdown",
-        "fileCategory": "docs",
-        "totalLines": 560,
-        "nonEmptyLines": 430,
-        "sectionCount": 36,
-        "topLevelSections": [
-          "Overview",
-          "Architecture",
-          "Contract Addresses",
-          "Method 1: SDK Integration",
-          "Method 2: Direct Contract Calls",
-          "Encryption Pipeline",
-          "Agent Composition",
-          "Subscription State Machine",
-          "Platform Fee",
-          "RPC Endpoint",
-          "Inline Frontend Hooks",
-          "Repository",
-          "FAQ"
-        ]
-      },
-      "complexity": "moderate",
-      "name": "document:INTEGRATION.md",
-      "summary": "document: document:INTEGRATION.md",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "document:MCP_SETUP.md",
-      "type": "document",
-      "label": "MCP_SETUP.md",
-      "properties": {
-        "path": "MCP_SETUP.md",
-        "language": "markdown",
-        "fileCategory": "docs",
-        "totalLines": 355,
-        "nonEmptyLines": 273,
-        "sectionCount": 26,
-        "topLevelSections": [
-          "Overview",
-          "Quick Start",
-          "All 29 Tools",
-          "Example Conversations",
-          "Dual-Chain Support",
-          "Smart Contract Addresses",
-          "Publisher MCP Servers",
-          "Authentication",
-          "Deployment"
-        ]
-      },
-      "complexity": "moderate",
-      "name": "document:MCP_SETUP.md",
-      "summary": "document: document:MCP_SETUP.md",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
       "id": "document:PROPOSAL.md",
       "type": "document",
       "label": "PROPOSAL.md",
@@ -4492,39 +4297,6 @@
       "complexity": "moderate",
       "name": "document:PROPOSAL.md",
       "summary": "document: document:PROPOSAL.md",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "document:README.md",
-      "type": "document",
-      "label": "README.md",
-      "properties": {
-        "path": "README.md",
-        "language": "markdown",
-        "fileCategory": "docs",
-        "totalLines": 210,
-        "nonEmptyLines": 158,
-        "sectionCount": 16,
-        "topLevelSections": [
-          "Project Structure",
-          "Architecture",
-          "Quick Start",
-          "Key Features",
-          "Production URLs",
-          "Configuration",
-          "Documentation",
-          "Smart Contracts",
-          "Chain Info",
-          "Knowledge Graph",
-          "Code Quality",
-          "License"
-        ]
-      },
-      "complexity": "moderate",
-      "name": "document:README.md",
-      "summary": "document: document:README.md",
       "tags": [
         "uncategorized"
       ]
@@ -4923,460 +4695,6 @@
       ]
     },
     {
-      "id": "document:sdk/README.md",
-      "type": "document",
-      "label": "README.md",
-      "properties": {
-        "path": "sdk/README.md",
-        "language": "markdown",
-        "fileCategory": "docs",
-        "totalLines": 431,
-        "nonEmptyLines": 335,
-        "functionCount": 0,
-        "classCount": 0,
-        "importCount": 0,
-        "exportCount": 0
-      },
-      "complexity": "moderate",
-      "name": "README.md",
-      "summary": "document: README.md",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#1",
-      "type": "section",
-      "label": "@agentxv2/sdk v0.6.7",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 1,
-        "line": 1
-      },
-      "complexity": "moderate",
-      "name": "README.md#1",
-      "summary": "section: README.md#1",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#11",
-      "type": "section",
-      "label": "Installation",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 11
-      },
-      "complexity": "moderate",
-      "name": "README.md#11",
-      "summary": "section: README.md#11",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#17",
-      "type": "section",
-      "label": "Peer Dependencies",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 17
-      },
-      "complexity": "moderate",
-      "name": "README.md#17",
-      "summary": "section: README.md#17",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#28",
-      "type": "section",
-      "label": "Quick Start",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 28
-      },
-      "complexity": "moderate",
-      "name": "README.md#28",
-      "summary": "section: README.md#28",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#30",
-      "type": "section",
-      "label": "1. Use an Agent with AgentLoop (ReAct autonomous tool calling)",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 30
-      },
-      "complexity": "moderate",
-      "name": "README.md#30",
-      "summary": "section: README.md#30",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#60",
-      "type": "section",
-      "label": "2. React Hook",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 60
-      },
-      "complexity": "moderate",
-      "name": "README.md#60",
-      "summary": "section: README.md#60",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#72",
-      "type": "section",
-      "label": "3. Publish an Agent (IPFSUploader + publishAgent pipeline)",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 72
-      },
-      "complexity": "moderate",
-      "name": "README.md#72",
-      "summary": "section: README.md#72",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#107",
-      "type": "section",
-      "label": "Encryption & Decryption (Core)",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 107
-      },
-      "complexity": "moderate",
-      "name": "README.md#107",
-      "summary": "section: README.md#107",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#111",
-      "type": "section",
-      "label": "Low-Level Crypto",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 111
-      },
-      "complexity": "moderate",
-      "name": "README.md#111",
-      "summary": "section: README.md#111",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#136",
-      "type": "section",
-      "label": "High-Level Payload Encryption",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 136
-      },
-      "complexity": "moderate",
-      "name": "README.md#136",
-      "summary": "section: README.md#136",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#157",
-      "type": "section",
-      "label": "Wire Format",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 157
-      },
-      "complexity": "moderate",
-      "name": "README.md#157",
-      "summary": "section: README.md#157",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#166",
-      "type": "section",
-      "label": "IPFS Upload",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 166
-      },
-      "complexity": "moderate",
-      "name": "README.md#166",
-      "summary": "section: README.md#166",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#200",
-      "type": "section",
-      "label": "MCP Connector (Remote Tool Execution)",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 200
-      },
-      "complexity": "moderate",
-      "name": "README.md#200",
-      "summary": "section: README.md#200",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#228",
-      "type": "section",
-      "label": "A2A Daemon — Multi-Agent Interop",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 228
-      },
-      "complexity": "moderate",
-      "name": "README.md#228",
-      "summary": "section: README.md#228",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#265",
-      "type": "section",
-      "label": "Architecture",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 265
-      },
-      "complexity": "moderate",
-      "name": "README.md#265",
-      "summary": "section: README.md#265",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#291",
-      "type": "section",
-      "label": "API Reference",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 291
-      },
-      "complexity": "moderate",
-      "name": "README.md#291",
-      "summary": "section: README.md#291",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#293",
-      "type": "section",
-      "label": "Main Exports",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 293
-      },
-      "complexity": "moderate",
-      "name": "README.md#293",
-      "summary": "section: README.md#293",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#315",
-      "type": "section",
-      "label": "Crypto Exports (from `@agentxv2/sdk/core`)",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 315
-      },
-      "complexity": "moderate",
-      "name": "README.md#315",
-      "summary": "section: README.md#315",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#332",
-      "type": "section",
-      "label": "Sub-path Imports",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 332
-      },
-      "complexity": "moderate",
-      "name": "README.md#332",
-      "summary": "section: README.md#332",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#347",
-      "type": "section",
-      "label": "Encryption Pipeline",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 347
-      },
-      "complexity": "moderate",
-      "name": "README.md#347",
-      "summary": "section: README.md#347",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#365",
-      "type": "section",
-      "label": "Supported Chains",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 365
-      },
-      "complexity": "moderate",
-      "name": "README.md#365",
-      "summary": "section: README.md#365",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#374",
-      "type": "section",
-      "label": "On-Chain Contracts",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 374
-      },
-      "complexity": "moderate",
-      "name": "README.md#374",
-      "summary": "section: README.md#374",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#376",
-      "type": "section",
-      "label": "OxaChain L1 (Mainnet)",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 376
-      },
-      "complexity": "moderate",
-      "name": "README.md#376",
-      "summary": "section: README.md#376",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#387",
-      "type": "section",
-      "label": "Sepolia (Testnet)",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 3,
-        "line": 387
-      },
-      "complexity": "moderate",
-      "name": "README.md#387",
-      "summary": "section: README.md#387",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#400",
-      "type": "section",
-      "label": "Gateway Integration",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 400
-      },
-      "complexity": "moderate",
-      "name": "README.md#400",
-      "summary": "section: README.md#400",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#414",
-      "type": "section",
-      "label": "Version History",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 414
-      },
-      "complexity": "moderate",
-      "name": "README.md#414",
-      "summary": "section: README.md#414",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/README.md#429",
-      "type": "section",
-      "label": "License",
-      "properties": {
-        "path": "sdk/README.md",
-        "level": 2,
-        "line": 429
-      },
-      "complexity": "moderate",
-      "name": "README.md#429",
-      "summary": "section: README.md#429",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
       "id": "document:sdk/UPGRADE.md",
       "type": "document",
       "label": "UPGRADE.md",
@@ -5538,268 +4856,6 @@
       "complexity": "moderate",
       "name": "UPGRADE.md#77",
       "summary": "section: UPGRADE.md#77",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "config:sdk/package.json",
-      "type": "config",
-      "label": "package.json",
-      "properties": {
-        "path": "sdk/package.json",
-        "language": "json",
-        "fileCategory": "config",
-        "totalLines": 95,
-        "nonEmptyLines": 95,
-        "functionCount": 0,
-        "classCount": 0,
-        "importCount": 0,
-        "exportCount": 0
-      },
-      "complexity": "moderate",
-      "name": "package.json",
-      "summary": "config: package.json",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#2",
-      "type": "section",
-      "label": "name",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 2
-      },
-      "complexity": "moderate",
-      "name": "package.json#2",
-      "summary": "section: package.json#2",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#3",
-      "type": "section",
-      "label": "version",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 3
-      },
-      "complexity": "moderate",
-      "name": "package.json#3",
-      "summary": "section: package.json#3",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#4",
-      "type": "section",
-      "label": "description",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 4
-      },
-      "complexity": "moderate",
-      "name": "package.json#4",
-      "summary": "section: package.json#4",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#5",
-      "type": "section",
-      "label": "main",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 5
-      },
-      "complexity": "moderate",
-      "name": "package.json#5",
-      "summary": "section: package.json#5",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#6",
-      "type": "section",
-      "label": "types",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 6
-      },
-      "complexity": "moderate",
-      "name": "package.json#6",
-      "summary": "section: package.json#6",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#7",
-      "type": "section",
-      "label": "module",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 7
-      },
-      "complexity": "moderate",
-      "name": "package.json#7",
-      "summary": "section: package.json#7",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#8",
-      "type": "section",
-      "label": "exports",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 8
-      },
-      "complexity": "moderate",
-      "name": "package.json#8",
-      "summary": "section: package.json#8",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#50",
-      "type": "section",
-      "label": "files",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 50
-      },
-      "complexity": "moderate",
-      "name": "package.json#50",
-      "summary": "section: package.json#50",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#54",
-      "type": "section",
-      "label": "scripts",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 54
-      },
-      "complexity": "moderate",
-      "name": "package.json#54",
-      "summary": "section: package.json#54",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#59",
-      "type": "section",
-      "label": "keywords",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 59
-      },
-      "complexity": "moderate",
-      "name": "package.json#59",
-      "summary": "section: package.json#59",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#69",
-      "type": "section",
-      "label": "license",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 69
-      },
-      "complexity": "moderate",
-      "name": "package.json#69",
-      "summary": "section: package.json#69",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#70",
-      "type": "section",
-      "label": "dependencies",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 70
-      },
-      "complexity": "moderate",
-      "name": "package.json#70",
-      "summary": "section: package.json#70",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#75",
-      "type": "section",
-      "label": "peerDependencies",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 75
-      },
-      "complexity": "moderate",
-      "name": "package.json#75",
-      "summary": "section: package.json#75",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#80",
-      "type": "section",
-      "label": "peerDependenciesMeta",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 80
-      },
-      "complexity": "moderate",
-      "name": "package.json#80",
-      "summary": "section: package.json#80",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:section:sdk/package.json#85",
-      "type": "section",
-      "label": "devDependencies",
-      "properties": {
-        "path": "sdk/package.json",
-        "level": 1,
-        "line": 85
-      },
-      "complexity": "moderate",
-      "name": "package.json#85",
-      "summary": "section: package.json#85",
       "tags": [
         "uncategorized"
       ]
@@ -9615,64 +8671,6 @@
       "complexity": "moderate",
       "name": "page.tsx:UserDashboard",
       "summary": "function: page.tsx:UserDashboard",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "file:frontend/app/user/settings/page.tsx",
-      "type": "file",
-      "label": "page.tsx",
-      "properties": {
-        "path": "frontend/app/user/settings/page.tsx",
-        "language": "typescript",
-        "fileCategory": "code",
-        "totalLines": 129,
-        "nonEmptyLines": 115,
-        "functionCount": 2,
-        "classCount": 0,
-        "importCount": 0,
-        "exportCount": 1
-      },
-      "complexity": "moderate",
-      "name": "page.tsx",
-      "summary": "file: page.tsx",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "function:frontend/app/user/settings/page.tsx:SettingsPage",
-      "type": "function",
-      "label": "SettingsPage",
-      "properties": {
-        "startLine": 15,
-        "endLine": 76,
-        "params": [],
-        "isExported": true
-      },
-      "complexity": "moderate",
-      "name": "page.tsx:SettingsPage",
-      "summary": "function: page.tsx:SettingsPage",
-      "tags": [
-        "uncategorized"
-      ]
-    },
-    {
-      "id": "function:frontend/app/user/settings/page.tsx:ConfigForm",
-      "type": "function",
-      "label": "ConfigForm",
-      "properties": {
-        "startLine": 78,
-        "endLine": 129,
-        "params": [
-          "{ editing, onSave, onCancel }"
-        ],
-        "isExported": false
-      },
-      "complexity": "moderate",
-      "name": "page.tsx:ConfigForm",
-      "summary": "function: page.tsx:ConfigForm",
       "tags": [
         "uncategorized"
       ]
@@ -16470,94 +15468,6 @@
       ]
     },
     {
-      "id": "file:conversation-service/src/index.ts",
-      "type": "file",
-      "label": "index.ts",
-      "filePath": "conversation-service/src/index.ts",
-      "summary": "AgentX 对话服务入口文件，初始化 Express 服务器，组装 MemoryEngine、ContextEngine、AgentRunnerService、TenantLLMResolver 等服务，并挂载 /runs 和 /tenants 路由。",
-      "tags": [
-        "entry-point",
-        "server",
-        "express",
-        "service-wiring"
-      ],
-      "complexity": "moderate",
-      "layer": "backend/entry",
-      "language": "typescript",
-      "sizeLines": 58,
-      "functions": [],
-      "classes": [],
-      "exports": [],
-      "imports": [
-        {
-          "source": "express",
-          "names": [
-            "default"
-          ]
-        },
-        {
-          "source": "cors",
-          "names": [
-            "default"
-          ]
-        },
-        {
-          "source": "helmet",
-          "names": [
-            "default"
-          ]
-        },
-        {
-          "source": "./config",
-          "names": [
-            "config"
-          ]
-        },
-        {
-          "source": "./lib/db",
-          "names": [
-            "getPool"
-          ]
-        },
-        {
-          "source": "./services/memory-engine",
-          "names": [
-            "MemoryEngine"
-          ]
-        },
-        {
-          "source": "./services/context-engine",
-          "names": [
-            "ContextEngine"
-          ]
-        },
-        {
-          "source": "./services/agent-runner",
-          "names": [
-            "AgentRunnerService"
-          ]
-        },
-        {
-          "source": "./services/tenant-llm-resolver",
-          "names": [
-            "TenantLLMResolver"
-          ]
-        },
-        {
-          "source": "./routes/runs",
-          "names": [
-            "createRunsRouter"
-          ]
-        },
-        {
-          "source": "./routes/tenants",
-          "names": [
-            "createTenantsRouter"
-          ]
-        }
-      ]
-    },
-    {
       "id": "file:conversation-service/src/lib/crypto.ts",
       "type": "file",
       "label": "crypto.ts",
@@ -16705,188 +15615,6 @@
       ]
     },
     {
-      "id": "file:conversation-service/src/routes/runs.ts",
-      "type": "file",
-      "label": "runs.ts",
-      "filePath": "conversation-service/src/routes/runs.ts",
-      "summary": "对话运行路由，提供 POST /runs 端点通过 SSE 流式返回 Agent 对话结果，使用 X-Internal-Token 鉴权。",
-      "tags": [
-        "route",
-        "sse",
-        "streaming",
-        "conversation"
-      ],
-      "complexity": "moderate",
-      "layer": "backend/route",
-      "language": "typescript",
-      "sizeLines": 61,
-      "functions": [
-        {
-          "name": "createRunsRouter",
-          "summary": "创建 Runs 路由，支持 SSE 流式对话、内部 token 鉴权",
-          "lineStart": 8
-        }
-      ],
-      "classes": [],
-      "exports": [
-        "createRunsRouter"
-      ],
-      "imports": [
-        {
-          "source": "express",
-          "names": [
-            "Router",
-            "Request",
-            "Response"
-          ]
-        },
-        {
-          "source": "../services/agent-runner",
-          "names": [
-            "AgentRunnerService"
-          ]
-        },
-        {
-          "source": "../config",
-          "names": [
-            "config"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "file:conversation-service/src/routes/tenants.ts",
-      "type": "file",
-      "label": "tenants.ts",
-      "filePath": "conversation-service/src/routes/tenants.ts",
-      "summary": "租户 LLM 配置路由，提供 POST/DELETE /tenants/:address/llm-key 端点用于管理租户自有 API 密钥。",
-      "tags": [
-        "route",
-        "tenant",
-        "llm-key",
-        "api-key-management"
-      ],
-      "complexity": "moderate",
-      "layer": "backend/route",
-      "language": "typescript",
-      "sizeLines": 67,
-      "functions": [
-        {
-          "name": "createTenantsRouter",
-          "summary": "创建租户路由，支持保存和删除租户 LLM API 密钥",
-          "lineStart": 10
-        }
-      ],
-      "classes": [],
-      "exports": [
-        "createTenantsRouter"
-      ],
-      "imports": [
-        {
-          "source": "express",
-          "names": [
-            "Router",
-            "Request",
-            "Response"
-          ]
-        },
-        {
-          "source": "../services/tenant-llm-resolver",
-          "names": [
-            "TenantLLMResolver"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "file:conversation-service/src/services/agent-runner.ts",
-      "type": "file",
-      "label": "agent-runner.ts",
-      "filePath": "conversation-service/src/services/agent-runner.ts",
-      "summary": "Agent 运行服务，封装 AgentLoop 执行流程：从链上加载上下文 → 解析 LLM 提供者 → 记忆召回 → 运行 AgentLoop → 流式输出 SSE 事件 → 记忆存储。",
-      "tags": [
-        "agent",
-        "agent-loop",
-        "sse",
-        "streaming",
-        "memory",
-        "orchestration"
-      ],
-      "complexity": "complex",
-      "layer": "backend/service",
-      "language": "typescript",
-      "sizeLines": 198,
-      "functions": [
-        {
-          "name": "streamRun",
-          "summary": "流式执行 Agent 对话，依次完成 LLM 解析、记忆召回、AgentLoop 运行、结果流式输出和记忆持久化",
-          "lineStart": 41
-        },
-        {
-          "name": "loadAgentContext",
-          "summary": "从区块链加载 Agent 上下文（当前为简化占位实现）",
-          "lineStart": 143
-        },
-        {
-          "name": "extractFacts",
-          "summary": "通过 LLM 从对话中提取关键事实用于记忆存储",
-          "lineStart": 164
-        }
-      ],
-      "classes": [
-        {
-          "name": "AgentRunnerService",
-          "summary": "Agent 运行核心服务，编排 MemoryEngine、ContextEngine 和 TenantLLMResolver 完成对话生命周期",
-          "lineStart": 34
-        }
-      ],
-      "exports": [
-        "AgentRunnerService",
-        "AgentRunRequest",
-        "AgentRunSSEEvent"
-      ],
-      "imports": [
-        {
-          "source": "uuid",
-          "names": [
-            "v4"
-          ]
-        },
-        {
-          "source": "@agentxv2/sdk/agent-loop",
-          "names": [
-            "AgentLoop",
-            "LLMProvider",
-            "LLMMessage"
-          ]
-        },
-        {
-          "source": "@agentxv2/sdk/react",
-          "names": [
-            "AgentRunContext"
-          ]
-        },
-        {
-          "source": "./memory-engine",
-          "names": [
-            "MemoryEngine"
-          ]
-        },
-        {
-          "source": "./context-engine",
-          "names": [
-            "ContextEngine"
-          ]
-        },
-        {
-          "source": "./tenant-llm-resolver",
-          "names": [
-            "TenantLLMResolver"
-          ]
-        }
-      ]
-    },
-    {
       "id": "file:conversation-service/src/services/context-engine.ts",
       "type": "file",
       "label": "context-engine.ts",
@@ -16930,72 +15658,6 @@
           "names": [
             "LLMMessage",
             "LLMProvider"
-          ]
-        },
-        {
-          "source": "../config",
-          "names": [
-            "config"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "file:conversation-service/src/services/memory-engine.ts",
-      "type": "file",
-      "label": "memory-engine.ts",
-      "filePath": "conversation-service/src/services/memory-engine.ts",
-      "summary": "记忆引擎，基于 pgvector 实现语义记忆的存储与向量相似度召回，支持退化到时间排序的降级查询。",
-      "tags": [
-        "memory",
-        "pgvector",
-        "embedding",
-        "vector-search",
-        "semantic-recall"
-      ],
-      "complexity": "moderate",
-      "layer": "backend/service",
-      "language": "typescript",
-      "sizeLines": 103,
-      "functions": [
-        {
-          "name": "getEmbedding",
-          "summary": "通过配置的 Embedding API 生成文本向量",
-          "lineStart": 15
-        },
-        {
-          "name": "store",
-          "summary": "存储记忆事实及其向量嵌入到 pgvector",
-          "lineStart": 40
-        },
-        {
-          "name": "recall",
-          "summary": "基于向量相似度搜索召回相关记忆，失败时降级为时间排序查询",
-          "lineStart": 56
-        }
-      ],
-      "classes": [
-        {
-          "name": "MemoryEngine",
-          "summary": "基于 pgvector 的语义记忆引擎，实现 MemoryProvider 接口",
-          "lineStart": 9
-        }
-      ],
-      "exports": [
-        "MemoryEngine"
-      ],
-      "imports": [
-        {
-          "source": "pg",
-          "names": [
-            "Pool"
-          ]
-        },
-        {
-          "source": "@agentxv2/sdk/memory",
-          "names": [
-            "MemoryProvider",
-            "MemoryFact"
           ]
         },
         {
@@ -17383,14 +16045,6 @@
       "type": "page",
       "filePath": "frontend/app/user/dashboard/page.tsx",
       "summary": "用户综合仪表盘，展示订阅统计（活跃/过期）、我的 Agent 数量、链上注册 Agent 计数、收入和订阅明细列表。从 useUserSubscriptions 和 useAgentRegistry 获取数据，支持标签页切换筛选（活跃/过期/全部）。",
-      "complexity": "moderate"
-    },
-    {
-      "id": "file:b15_user_settings_page",
-      "label": "用户设置页 (SettingsPage)",
-      "type": "page",
-      "filePath": "frontend/app/user/settings/page.tsx",
-      "summary": "AI 模型配置管理页面，用户可增删改查自定义 LLM 提供商配置（OpenAI、DeepSeek 等），包括 API 密钥、端点 URL、模型名、温度和最大 Token 数。数据持久化在 localStorage 中，支持标记默认激活配置。用于 AgentLoop 离线模式。",
       "complexity": "moderate"
     },
     {
@@ -18794,131 +17448,6 @@
       ]
     },
     {
-      "id": "file:sdk/src/index.ts",
-      "type": "file",
-      "label": "index.ts",
-      "filePath": "sdk/src/index.ts",
-      "summary": "AgentX SDK 主入口文件，以 Agent = Prompt + Skills + MCP 为核心理念，统一导出所有子模块（core/agent/agent-loop/llm/registry/subscription/a2a/mcp/reputation/config/endpoint/configuration/ipfs/react/memory/traces/skills）。",
-      "tags": [
-        "entry",
-        "barrel-export",
-        "sdk"
-      ],
-      "complexity": "moderate",
-      "layer": "sdk-entry",
-      "language": "typescript",
-      "sizeLines": 40,
-      "functions": [],
-      "classes": [],
-      "exports": [
-        "*"
-      ],
-      "imports": [
-        {
-          "source": "./core",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./agent",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./agent-loop",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./llm",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./registry",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./subscription",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./a2a",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./mcp",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./reputation",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./config",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./endpoint",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./configuration",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./ipfs",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./react",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./memory",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./traces",
-          "names": [
-            "*"
-          ]
-        },
-        {
-          "source": "./skills",
-          "names": [
-            "*"
-          ]
-        }
-      ]
-    },
-    {
       "id": "file:sdk/src/ipfs/index.ts",
       "type": "file",
       "label": "index.ts",
@@ -19558,6 +18087,720 @@
           ]
         }
       ]
+    },
+    {
+      "id": "table:conversation-service/migrations/001_memory.sql:memories",
+      "type": "table",
+      "name": "memories",
+      "filePath": "conversation-service/migrations/001_memory.sql",
+      "summary": "为 AgentX 会话服务创建 memories 表，存储会话记忆（fact 文本 + pgvector 向量嵌入），以 subscriber、agent_id、end_user_id 三级维度实现租户/终端用户隔离，并通过唯一索引防止同一用户重复事实。",
+      "tags": [
+        "database",
+        "migration",
+        "memory-storage",
+        "pgvector"
+      ],
+      "complexity": "simple",
+      "languageNotes": "使用 PostgreSQL DO 块条件建表，依赖 pgvector 扩展支持向量语义检索。"
+    },
+    {
+      "id": "file:conversation-service/migrations/004_end_user_isolation.sql",
+      "type": "file",
+      "name": "004_end_user_isolation.sql",
+      "filePath": "conversation-service/migrations/004_end_user_isolation.sql",
+      "summary": "AgentX 会话服务迁移脚本，通过 ALTER TABLE 为 memories 表添加 end_user_id 列，实现租户内按终端用户隔离记忆，并重建包含 end_user_id 的查询索引与唯一约束。",
+      "tags": [
+        "database",
+        "migration",
+        "data-isolation",
+        "index"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:gateway/db/migrations/004_tenant_platform_api_key.sql",
+      "type": "file",
+      "name": "004_tenant_platform_api_key.sql",
+      "filePath": "gateway/db/migrations/004_tenant_platform_api_key.sql",
+      "summary": "AgentX Gateway 迁移脚本，为 tenants 表新增 api_key 列（使用 pgcrypto 随机生成），回填现有租户缺失的密钥，并创建排除 NULL 的唯一部分索引，作为钱包签名 JWT 之外的编程式访问凭证。",
+      "tags": [
+        "database",
+        "migration",
+        "api-key",
+        "security"
+      ],
+      "complexity": "simple",
+      "languageNotes": "使用 pgcrypto 的 gen_random_bytes 生成随机密钥，并以部分索引（WHERE api_key IS NOT NULL）保证唯一性。"
+    },
+    {
+      "id": "document:CONVERSATION_SERVICE.md",
+      "type": "document",
+      "name": "CONVERSATION_SERVICE.md",
+      "filePath": "CONVERSATION_SERVICE.md",
+      "summary": "AgentX Conversation Service（对话服务）的完整部署与使用指南，涵盖 PostgreSQL+pgvector 环境准备、数据库迁移、SSE 对话 API（POST /runs、tenant LLM key 管理、健康检查）、LLM Key 解析（Plan C）、数据库 schema（memories/traces/tenant_llm_configs）、Gateway 集成代理（conversation-proxy）、SDK 客户端（v0.7.0）以及 Docker/PM2 生产部署。",
+      "tags": [
+        "documentation",
+        "conversation-service",
+        "api",
+        "database",
+        "deployment"
+      ],
+      "complexity": "complex",
+      "languageNotes": "401 行 markdown，含 25 个章节，以 API 端点与数据库 schema 文档为主。"
+    },
+    {
+      "id": "document:INTEGRATION.md",
+      "type": "document",
+      "name": "INTEGRATION.md",
+      "filePath": "INTEGRATION.md",
+      "summary": "AgentX 平台的集成指南，介绍双链 6 个核心合约地址、SDK 集成方法（安装、Core API、React Hook、ETH/ERC20 订阅、IPFSUploader 发布 Agent、AgentX402 自动订阅）、Solidity 直接合约调用（IdentityRegistry 与 SubscriptionManager ABI）、加密管道、A2A Skills Agent 组合、订阅状态机与托管 Conversation Service。",
+      "tags": [
+        "documentation",
+        "integration",
+        "sdk",
+        "smart-contracts",
+        "a2a"
+      ],
+      "complexity": "complex",
+      "languageNotes": "603 行 markdown，含 37 个章节，覆盖 SDK 与合约两层集成路径。"
+    },
+    {
+      "id": "document:MCP_SETUP.md",
+      "type": "document",
+      "name": "MCP_SETUP.md",
+      "filePath": "MCP_SETUP.md",
+      "summary": "AgentX MCP Server 的配置与使用指南，包含 Claude Desktop/Cursor/VS Code 客户端快速配置、29 个 MCP 工具分类（六大合约 + Gateway API）、Agent-as-MCP 导出（v0.7.0）、SDK MCPConnector 客户端集成、双链支持、发布者 MCP Server（Closed Skills）、Gateway JWT 认证与部署说明。",
+      "tags": [
+        "documentation",
+        "mcp",
+        "tools",
+        "configuration",
+        "integration"
+      ],
+      "complexity": "complex",
+      "languageNotes": "417 行 markdown，含 27 个章节，聚焦 MCP 协议工具暴露与客户端接入。"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "AgentX 去中心化 AI Agent 平台的项目总览文档，介绍项目结构、架构、快速启动、托管 Conversation Service（v0.7.0）、核心特性、生产 URL、gateway/frontend 配置、文档索引、智能合约地址与双链信息。",
+      "tags": [
+        "documentation",
+        "entry-point",
+        "overview",
+        "architecture"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:sdk/package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "sdk/package.json",
+      "summary": "@agentxv2/sdk（v0.7.0）的 npm 包配置，声明 main/types/module 入口与多子路径 exports 映射（core、react、agent-loop、llm、endpoint、configuration、ipfs、memory、traces、skills、conversation），通过 tsup 从 src/ 各 index.ts 构建 CJS/ESM 双格式产物，依赖 noble 加密库，peer 依赖 react-query/react/wagmi。",
+      "tags": [
+        "configuration",
+        "npm",
+        "sdk",
+        "build-system"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "使用 exports 字段做多入口子路径导出，tsup 负责 CJS/ESM 双格式打包。"
+    },
+    {
+      "id": "file:conversation-service/src/index.ts",
+      "type": "file",
+      "name": "index.ts",
+      "filePath": "conversation-service/src/index.ts",
+      "summary": "Conversation Service 的入口文件：创建 Express 应用，初始化 MemoryEngine、AgentRunnerService、AgentContextLoader 等全部服务并完成依赖注入，挂载 /runs 与 /tenants 路由后启动 HTTP 服务。",
+      "tags": [
+        "entry-point",
+        "bootstrap",
+        "service",
+        "api"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "组合根模式：在入口处手动实例化所有服务并注入依赖，未使用依赖注入容器。"
+    },
+    {
+      "id": "file:conversation-service/src/routes/runs.ts",
+      "type": "file",
+      "name": "runs.ts",
+      "filePath": "conversation-service/src/routes/runs.ts",
+      "summary": "定义对话运行路由（POST /runs），以 SSE 流式输出 Agent 对话事件，通过 X-Internal-Token 做内部鉴权，并将请求转交 AgentRunnerService 处理。",
+      "tags": [
+        "api-handler",
+        "router",
+        "sse",
+        "streaming"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:conversation-service/src/routes/tenants.ts",
+      "type": "file",
+      "name": "tenants.ts",
+      "filePath": "conversation-service/src/routes/tenants.ts",
+      "summary": "定义租户 LLM 配置路由（POST/DELETE /tenants/:address/llm-key），支持租户保存或删除自己的 LLM API Key，并对 Ethereum 地址格式做正则校验。",
+      "tags": [
+        "api-handler",
+        "router",
+        "tenant",
+        "llm-key"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:conversation-service/src/services/agent-context-loader.ts",
+      "type": "file",
+      "name": "agent-context-loader.ts",
+      "filePath": "conversation-service/src/services/agent-context-loader.ts",
+      "summary": "从 Gateway 拉取 Agent 元数据与 skills 定义，构建包含 prompt 和 RunnableSkill 的可运行上下文，带 TTL 内存缓存；skill 执行支持 MCP 调用或 A2A 委托。",
+      "tags": [
+        "service",
+        "agent",
+        "context",
+        "cache",
+        "mcp"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:conversation-service/src/services/agent-runner.ts",
+      "type": "file",
+      "name": "agent-runner.ts",
+      "filePath": "conversation-service/src/services/agent-runner.ts",
+      "summary": "Agent 运行器：包装 AgentLoop，编排上下文加载、LLM Provider 解析、记忆召回与存储，并以 AsyncGenerator 产出 SSE 事件流，是对话服务的中枢编排器。",
+      "tags": [
+        "service",
+        "agent-loop",
+        "orchestration",
+        "streaming"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:conversation-service/src/services/memory-engine.ts",
+      "type": "file",
+      "name": "memory-engine.ts",
+      "filePath": "conversation-service/src/services/memory-engine.ts",
+      "summary": "基于 pgvector 的记忆引擎：通过 embedding API 将对话事实向量化后写入 memories 表，支持向量相似度召回及时间排序回退方案。",
+      "tags": [
+        "service",
+        "memory",
+        "pgvector",
+        "embedding"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "使用 PostgreSQL 的 vector 类型与 <=> 距离算子做向量相似度搜索，并带 SQL 回退查询。"
+    },
+    {
+      "id": "file:conversation-service/src/services/tool-executor.ts",
+      "type": "file",
+      "name": "tool-executor.ts",
+      "filePath": "conversation-service/src/services/tool-executor.ts",
+      "summary": "通用远程工具执行器：通过 MCP JSON-RPC 2.0 协议（tools/call）调用外部工具，带超时控制，并解析 MCP 返回内容为可读数据。",
+      "tags": [
+        "service",
+        "mcp",
+        "tool",
+        "http-client"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:conversation-service/src/routes/runs.ts:createRunsRouter",
+      "type": "function",
+      "name": "createRunsRouter",
+      "filePath": "conversation-service/src/routes/runs.ts",
+      "lineRange": [
+        8,
+        63
+      ],
+      "summary": "创建对话运行路由工厂：注入内部鉴权中间件，处理 POST /runs 请求并将参数转发给 AgentRunnerService，以 SSE 格式流式回写对话事件。",
+      "tags": [
+        "router",
+        "factory",
+        "api-handler",
+        "sse"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:conversation-service/src/routes/tenants.ts:createTenantsRouter",
+      "type": "function",
+      "name": "createTenantsRouter",
+      "filePath": "conversation-service/src/routes/tenants.ts",
+      "lineRange": [
+        11,
+        77
+      ],
+      "summary": "创建租户 LLM Key 管理路由工厂：包含内部鉴权中间件，提供保存（POST）与删除（DELETE）租户 LLM API Key 的接口，并校验 Ethereum 地址格式。",
+      "tags": [
+        "router",
+        "factory",
+        "api-handler",
+        "tenant"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:conversation-service/src/services/agent-context-loader.ts:AgentContextLoader",
+      "type": "class",
+      "name": "AgentContextLoader",
+      "filePath": "conversation-service/src/services/agent-context-loader.ts",
+      "lineRange": [
+        46,
+        184
+      ],
+      "summary": "负责加载并缓存 Agent 上下文：从 Gateway 拉取 Agent 元数据，解析 skills 为 RunnableSkill（MCP 执行或 A2A 委托），支持按 TTL 失效的缓存。",
+      "tags": [
+        "service",
+        "cache",
+        "agent",
+        "mcp"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:conversation-service/src/services/agent-runner.ts:AgentRunnerService",
+      "type": "class",
+      "name": "AgentRunnerService",
+      "filePath": "conversation-service/src/services/agent-runner.ts",
+      "lineRange": [
+        35,
+        171
+      ],
+      "summary": "对话运行中枢：streamRun 编排上下文加载、LLM Provider 解析、记忆召回与存储，驱动 AgentLoop 迭代并在会话结束后用 LLM 抽取事实写入记忆。",
+      "tags": [
+        "service",
+        "orchestration",
+        "agent-loop",
+        "streaming"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:conversation-service/src/services/memory-engine.ts:MemoryEngine",
+      "type": "class",
+      "name": "MemoryEngine",
+      "filePath": "conversation-service/src/services/memory-engine.ts",
+      "lineRange": [
+        9,
+        107
+      ],
+      "summary": "实现 MemoryProvider 接口的 pgvector 记忆引擎：store 将事实向量化写入 memories 表，recall 先尝试向量相似度检索，失败则回退为按时间倒序召回。",
+      "tags": [
+        "service",
+        "memory",
+        "pgvector",
+        "embedding"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:conversation-service/src/services/tool-executor.ts:ToolExecutor",
+      "type": "class",
+      "name": "ToolExecutor",
+      "filePath": "conversation-service/src/services/tool-executor.ts",
+      "lineRange": [
+        11,
+        65
+      ],
+      "summary": "MCP 工具执行器：以 JSON-RPC 2.0 的 tools/call 方法调用远程工具，带 30 秒超时，并将 MCP 返回的文本内容解析为结构化数据。",
+      "tags": [
+        "service",
+        "mcp",
+        "tool",
+        "http-client"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:frontend/app/user/settings/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "frontend/app/user/settings/page.tsx",
+      "summary": "用户设置页面（Next.js App Router 客户端组件），提供 LLM API 配置的管理（新增/编辑/删除/激活切换，localStorage 持久化）以及 AgentX 平台 API Key 的获取与展示。",
+      "tags": [
+        "component",
+        "settings",
+        "page",
+        "api-key"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Next.js 'use client' 页面，使用 wagmi 的 useAccount/useWalletClient 完成钱包签名认证后再从网关获取平台 API Key。"
+    },
+    {
+      "id": "function:frontend/app/user/settings/page.tsx:SettingsPage",
+      "type": "function",
+      "name": "SettingsPage",
+      "filePath": "frontend/app/user/settings/page.tsx",
+      "lineRange": [
+        16,
+        80
+      ],
+      "summary": "页面默认导出的主组件，管理 LLM API 配置列表（读写 localStorage、新增/编辑/删除/激活），并渲染 PlatformApiKey 与 ConfigForm 子组件。",
+      "tags": [
+        "component",
+        "settings",
+        "page"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/app/user/settings/page.tsx:PlatformApiKey",
+      "type": "function",
+      "name": "PlatformApiKey",
+      "filePath": "frontend/app/user/settings/page.tsx",
+      "lineRange": [
+        82,
+        209
+      ],
+      "summary": "平台 API Key 展示组件：通过钱包签名挑战（challenge/verify）流程完成认证后从网关获取 API Key，支持显示/隐藏与一键复制。",
+      "tags": [
+        "component",
+        "api-key",
+        "wallet-auth"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/app/user/settings/page.tsx:ConfigForm",
+      "type": "function",
+      "name": "ConfigForm",
+      "filePath": "frontend/app/user/settings/page.tsx",
+      "lineRange": [
+        211,
+        262
+      ],
+      "summary": "LLM 配置编辑表单组件，支持选择 provider（OpenAI/DeepSeek）并自动填充对应端点与模型列表后保存。",
+      "tags": [
+        "component",
+        "form",
+        "config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:gateway/src/index.ts",
+      "type": "file",
+      "name": "index.ts",
+      "filePath": "gateway/src/index.ts",
+      "summary": "AgentX 网关入口，组装 Express 应用：配置 helmet/cors/全局限流/JSON 解析，注册健康检查、MCP、Admin、Auth 等公开路由，并以 apiKeyAuth + authMiddleware + tenantRateLimiter 中间件保护 /api/v1 下的业务路由，最后启动 HTTP 服务与 A2A 后台 worker。",
+      "tags": [
+        "entry-point",
+        "server",
+        "express",
+        "api-handler"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:gateway/src/middleware/auth.ts",
+      "type": "file",
+      "name": "auth.ts",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "summary": "网关认证中间件模块：实现基于钱包签名挑战（challenge/verify）的 JWT 认证（authMiddleware）与 X-Api-Key 认证（apiKeyAuth），并提供 API Key 查询端点 getApiKey。",
+      "tags": [
+        "middleware",
+        "authentication",
+        "jwt",
+        "api-key"
+      ],
+      "complexity": "complex",
+      "languageNotes": "challenge 优先存 Redis（getRedis），不可用时回退到内存 Map；租户与配额信息通过 Postgres 查询挂载到 req.tenant。"
+    },
+    {
+      "id": "file:gateway/src/routes/agent-mcp.ts",
+      "type": "file",
+      "name": "agent-mcp.ts",
+      "filePath": "gateway/src/routes/agent-mcp.ts",
+      "summary": "Agent 专属 MCP 路由（/mcp/agent）：通过链上 IdentityRegistry 合约加载 agent 的 skills 并转换为 MCP tools，提供 MCP JSON-RPC 端点，同时支持以 HTTP 方式直接执行 skill。",
+      "tags": [
+        "api-handler",
+        "mcp",
+        "router",
+        "skills"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:gateway/src/routes/agent-runs.ts",
+      "type": "file",
+      "name": "agent-runs.ts",
+      "filePath": "gateway/src/routes/agent-runs.ts",
+      "summary": "Agent 运行记录路由（/api/v1/agent）：将 agent 运行请求代理转发到 conversation-service，并把执行进度以 SSE 流式返回给前端。",
+      "tags": [
+        "api-handler",
+        "sse",
+        "proxy",
+        "router"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:getChallenge",
+      "type": "function",
+      "name": "getChallenge",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [
+        82,
+        96
+      ],
+      "summary": "生成并返回钱包登录 challenge：随机 nonce 与过期时间，保存后返回给前端用于签名。",
+      "tags": [
+        "authentication",
+        "challenge",
+        "api-handler"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:verifyChallenge",
+      "type": "function",
+      "name": "verifyChallenge",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [
+        98,
+        205
+      ],
+      "summary": "校验钱包签名（ethers.verifyMessage）与 challenge 时效，验证租户状态后签发 JWT access token 并返回，必要时自动创建租户记录。",
+      "tags": [
+        "authentication",
+        "jwt",
+        "wallet-signature"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:authMiddleware",
+      "type": "function",
+      "name": "authMiddleware",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [
+        207,
+        265
+      ],
+      "summary": "JWT 认证中间件：解析 Bearer token 并校验签名，从数据库加载租户配额/计划信息挂载到 req.tenant，对停用租户返回 403。",
+      "tags": [
+        "middleware",
+        "authentication",
+        "jwt"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:getApiKey",
+      "type": "function",
+      "name": "getApiKey",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [
+        269,
+        287
+      ],
+      "summary": "认证后查询当前租户的 API Key 并返回给前端展示，对应 /api/v1/auth/api-key 端点。",
+      "tags": [
+        "api-handler",
+        "api-key",
+        "authentication"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:apiKeyAuth",
+      "type": "function",
+      "name": "apiKeyAuth",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [
+        291,
+        335
+      ],
+      "summary": "API Key 认证中间件：从 X-Api-Key 请求头取 key 校验租户状态与计划后挂载 req.tenant；未携带 key 时直接放行交由 authMiddleware 处理。",
+      "tags": [
+        "middleware",
+        "api-key",
+        "authentication"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:gateway/src/routes/agent-mcp.ts:skillToMCPTool",
+      "type": "function",
+      "name": "skillToMCPTool",
+      "filePath": "gateway/src/routes/agent-mcp.ts",
+      "lineRange": [
+        40,
+        51
+      ],
+      "summary": "将 skill 定义转换为 MCP tool 结构（name/description/inputSchema）。",
+      "tags": [
+        "mcp",
+        "utility",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/routes/agent-mcp.ts:getIdentityContract",
+      "type": "function",
+      "name": "getIdentityContract",
+      "filePath": "gateway/src/routes/agent-mcp.ts",
+      "lineRange": [
+        71,
+        81
+      ],
+      "summary": "根据配置返回 IdentityRegistry 合约实例（连接 provider 与合约地址）。",
+      "tags": [
+        "blockchain",
+        "ethers",
+        "contract"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/routes/agent-mcp.ts:loadAgentSkills",
+      "type": "function",
+      "name": "loadAgentSkills",
+      "filePath": "gateway/src/routes/agent-mcp.ts",
+      "lineRange": [
+        83,
+        116
+      ],
+      "summary": "通过 IdentityRegistry 合约查询 agent 的 tokenURI（ipfs:// 或 https://），拉取并规范化 skill 列表。",
+      "tags": [
+        "blockchain",
+        "skills",
+        "loader"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:gateway/src/routes/agent-mcp.ts:executeSkill",
+      "type": "function",
+      "name": "executeSkill",
+      "filePath": "gateway/src/routes/agent-mcp.ts",
+      "lineRange": [
+        229,
+        281
+      ],
+      "summary": "直接执行 agent skill：支持 HTTP 端点调用与 MCP 两种方式，携带超时（AbortSignal.timeout）与调用上下文，返回执行结果。",
+      "tags": [
+        "api-handler",
+        "mcp",
+        "skill-execution"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:gateway/src/services/conversation-proxy.ts",
+      "type": "file",
+      "name": "conversation-proxy.ts",
+      "filePath": "gateway/src/services/conversation-proxy.ts",
+      "summary": "Gateway 侧的对话服务代理模块，封装 ConversationProxy 类将对话请求转发到 Conversation Service 微服务，并通过单例工厂 getConversationProxy 提供全局共享实例。",
+      "tags": [
+        "service",
+        "proxy",
+        "singleton",
+        "gateway"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:gateway/src/services/conversation-proxy.ts:ConversationProxy",
+      "type": "class",
+      "name": "ConversationProxy",
+      "filePath": "gateway/src/services/conversation-proxy.ts",
+      "lineRange": [
+        6,
+        45
+      ],
+      "summary": "Gateway 转发到对话服务的代理类，streamRun 方法携带 X-Tenant-Address 与 X-Internal-Token 鉴权头，将 agent 对话请求转发至 Conversation Service 的 /runs 端点并透传 SSE 响应。",
+      "tags": [
+        "service",
+        "proxy",
+        "http-client",
+        "forwarding"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/services/conversation-proxy.ts:getConversationProxy",
+      "type": "function",
+      "name": "getConversationProxy",
+      "filePath": "gateway/src/services/conversation-proxy.ts",
+      "lineRange": [
+        50,
+        55
+      ],
+      "summary": "惰性创建并缓存 ConversationProxy 单例的工厂函数，首次调用时实例化，后续复用同一实例。",
+      "tags": [
+        "singleton",
+        "factory",
+        "lazy-init"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:sdk/src/conversation/client.ts",
+      "type": "file",
+      "name": "client.ts",
+      "filePath": "sdk/src/conversation/client.ts",
+      "summary": "SDK 的远程对话服务客户端，通过 X-Api-Key 鉴权并支持 SSE 流式解析，按 endUserId 实现租户内的用户记忆隔离，封装对 Gateway POST /api/v1/agent/runs 的调用。",
+      "tags": [
+        "client",
+        "sse",
+        "api-client",
+        "streaming"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:sdk/src/conversation/client.ts:ConversationClient",
+      "type": "class",
+      "name": "ConversationClient",
+      "filePath": "sdk/src/conversation/client.ts",
+      "lineRange": [
+        51,
+        156
+      ],
+      "summary": "远程对话客户端类，stream 方法以异步生成器按 SSE 事件流式产出 text/tool_call/done 等事件，chat 方法聚合流式事件为完整的对话结果。",
+      "tags": [
+        "client",
+        "sse",
+        "api-client",
+        "async-generator"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:sdk/src/conversation/index.ts",
+      "type": "file",
+      "name": "index.ts",
+      "filePath": "sdk/src/conversation/index.ts",
+      "summary": "conversation 模块的 barrel 入口文件，重新导出 ./client 的全部公开符号（ConversationClient 及相关类型）。",
+      "tags": [
+        "barrel",
+        "entry-point",
+        "re-export"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:sdk/src/index.ts",
+      "type": "file",
+      "name": "index.ts",
+      "filePath": "sdk/src/index.ts",
+      "summary": "SDK 主入口 barrel 文件，集中 re-export core、agent、registry、conversation 等全部子模块，对外暴露统一公共 API。",
+      "tags": [
+        "entry-point",
+        "barrel",
+        "re-export",
+        "public-api"
+      ],
+      "complexity": "simple"
     }
   ],
   "edges": [
@@ -19636,48 +18879,6 @@
       "target": "function:gateway/src/middleware/adminAuth.ts:cac7027d376d:fn:adminAuth",
       "type": "exports",
       "label": "导出 adminAuth",
-      "direction": "forward"
-    },
-    {
-      "source": "file:eb268a0bb56d",
-      "target": "function:gateway/src/middleware/auth.ts:eb268a0bb56d:fn:getChallenge",
-      "type": "contains",
-      "label": "auth.ts 包含 getChallenge",
-      "direction": "forward"
-    },
-    {
-      "source": "file:eb268a0bb56d",
-      "target": "function:gateway/src/middleware/auth.ts:eb268a0bb56d:fn:verifyChallenge",
-      "type": "contains",
-      "label": "auth.ts 包含 verifyChallenge",
-      "direction": "forward"
-    },
-    {
-      "source": "file:eb268a0bb56d",
-      "target": "function:gateway/src/middleware/auth.ts:eb268a0bb56d:fn:authMiddleware",
-      "type": "contains",
-      "label": "auth.ts 包含 authMiddleware",
-      "direction": "forward"
-    },
-    {
-      "source": "file:eb268a0bb56d",
-      "target": "function:gateway/src/middleware/auth.ts:eb268a0bb56d:fn:getChallenge",
-      "type": "exports",
-      "label": "导出 getChallenge",
-      "direction": "forward"
-    },
-    {
-      "source": "file:eb268a0bb56d",
-      "target": "function:gateway/src/middleware/auth.ts:eb268a0bb56d:fn:verifyChallenge",
-      "type": "exports",
-      "label": "导出 verifyChallenge",
-      "direction": "forward"
-    },
-    {
-      "source": "file:eb268a0bb56d",
-      "target": "function:gateway/src/middleware/auth.ts:eb268a0bb56d:fn:authMiddleware",
-      "type": "exports",
-      "label": "导出 authMiddleware",
       "direction": "forward"
     },
     {
@@ -19937,104 +19138,6 @@
       "target": "function:gateway/src/services/agent-indexer.ts:c5d364412063:fn:parseTokenURIToJSON",
       "type": "calls",
       "label": "syncAgents 调用 parseTokenURIToJSON",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:b67c6fce9bbf",
-      "type": "imports",
-      "label": "index.ts 导入 config.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:eb268a0bb56d",
-      "type": "imports",
-      "label": "index.ts 导入 auth.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:61ac38efa378",
-      "type": "imports",
-      "label": "index.ts 导入 error-handler.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:84b45be8b85a",
-      "type": "imports",
-      "label": "index.ts 导入 rate-limiter.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:421e055151c3",
-      "type": "imports",
-      "label": "index.ts 导入 a2a.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:9201a16209e2",
-      "type": "imports",
-      "label": "index.ts 导入 admin.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:4e89af4b7ef4",
-      "type": "imports",
-      "label": "index.ts 导入 agents.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:0b632556320e",
-      "type": "imports",
-      "label": "index.ts 导入 chat.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:7bb2a835e7b0",
-      "type": "imports",
-      "label": "index.ts 导入 history.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:710b08274650",
-      "type": "imports",
-      "label": "index.ts 导入 mcp.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:fb9655da601e",
-      "target": "file:57abdefe1b89",
-      "type": "imports",
-      "label": "index.ts 导入 tenant.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:eb268a0bb56d",
-      "target": "file:b67c6fce9bbf",
-      "type": "imports",
-      "label": "auth.ts 导入 config.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:eb268a0bb56d",
-      "target": "file:76cb31ac8888",
-      "type": "imports",
-      "label": "auth.ts 导入 db.ts",
-      "direction": "forward"
-    },
-    {
-      "source": "file:eb268a0bb56d",
-      "target": "file:84b45be8b85a",
-      "type": "imports",
-      "label": "auth.ts 导入 rate-limiter.ts",
       "direction": "forward"
     },
     {
@@ -21900,195 +21003,6 @@
       "direction": "forward"
     },
     {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#1",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#11",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#17",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#28",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#30",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#60",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#72",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#107",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#111",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#136",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#157",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#166",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#200",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#228",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#265",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#291",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#293",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#315",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#332",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#347",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#365",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#374",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#376",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#387",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#400",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#414",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "document:sdk/README.md",
-      "target": "file:section:sdk/README.md#429",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
       "source": "document:sdk/UPGRADE.md",
       "target": "file:section:sdk/UPGRADE.md#1",
       "type": "contains",
@@ -22147,111 +21061,6 @@
     {
       "source": "document:sdk/UPGRADE.md",
       "target": "file:section:sdk/UPGRADE.md#77",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#2",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#3",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#4",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#5",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#6",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#7",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#8",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#50",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#54",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#59",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#69",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#70",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#75",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#80",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "config:sdk/package.json",
-      "target": "file:section:sdk/package.json#85",
       "type": "contains",
       "label": "contains",
       "direction": "forward"
@@ -23510,20 +22319,6 @@
       "direction": "forward"
     },
     {
-      "source": "file:frontend/app/user/settings/page.tsx",
-      "target": "function:frontend/app/user/settings/page.tsx:SettingsPage",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
-      "source": "file:frontend/app/user/settings/page.tsx",
-      "target": "function:frontend/app/user/settings/page.tsx:ConfigForm",
-      "type": "contains",
-      "label": "contains",
-      "direction": "forward"
-    },
-    {
       "source": "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
       "target": "function:frontend/app/user/subscriptions/[subscriptionId]/page.tsx:SubscriptionDetailPage",
       "type": "contains",
@@ -23692,94 +22487,10 @@
       "direction": "forward"
     },
     {
-      "source": "file:conversation-service/src/index.ts",
-      "target": "file:conversation-service/src/lib/db.ts",
-      "type": "imports",
-      "label": "导入 getPool 初始化数据库连接池",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/index.ts",
-      "target": "file:conversation-service/src/services/memory-engine.ts",
-      "type": "imports",
-      "label": "导入 MemoryEngine 创建记忆引擎实例",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/index.ts",
-      "target": "file:conversation-service/src/services/context-engine.ts",
-      "type": "imports",
-      "label": "导入 ContextEngine 创建上下文压缩引擎",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/index.ts",
-      "target": "file:conversation-service/src/services/agent-runner.ts",
-      "type": "imports",
-      "label": "导入 AgentRunnerService 创建 Agent 运行服务",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/index.ts",
-      "target": "file:conversation-service/src/services/tenant-llm-resolver.ts",
-      "type": "imports",
-      "label": "导入 TenantLLMResolver 创建租户 LLM 解析器",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/index.ts",
-      "target": "file:conversation-service/src/routes/runs.ts",
-      "type": "imports",
-      "label": "导入 createRunsRouter 挂载 /runs 路由",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/index.ts",
-      "target": "file:conversation-service/src/routes/tenants.ts",
-      "type": "imports",
-      "label": "导入 createTenantsRouter 挂载 /tenants 路由",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/services/agent-runner.ts",
-      "target": "file:conversation-service/src/services/memory-engine.ts",
-      "type": "imports",
-      "label": "导入 MemoryEngine 用于记忆召回和存储",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/services/agent-runner.ts",
-      "target": "file:conversation-service/src/services/context-engine.ts",
-      "type": "imports",
-      "label": "导入 ContextEngine 用于上下文压缩",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/services/agent-runner.ts",
-      "target": "file:conversation-service/src/services/tenant-llm-resolver.ts",
-      "type": "imports",
-      "label": "导入 TenantLLMResolver 用于解析 LLM 提供者",
-      "direction": "forward"
-    },
-    {
       "source": "file:conversation-service/src/services/tenant-llm-resolver.ts",
       "target": "file:conversation-service/src/lib/crypto.ts",
       "type": "imports",
       "label": "导入 decryptSecret 解密租户 API 密钥；动态导入 encryptSecret 用于加密存储",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/routes/runs.ts",
-      "target": "file:conversation-service/src/services/agent-runner.ts",
-      "type": "imports",
-      "label": "导入 AgentRunnerService 调用 streamRun 执行 SSE 对话",
-      "direction": "forward"
-    },
-    {
-      "source": "file:conversation-service/src/routes/tenants.ts",
-      "target": "file:conversation-service/src/services/tenant-llm-resolver.ts",
-      "type": "imports",
-      "label": "导入 TenantLLMResolver 管理租户 LLM 密钥",
       "direction": "forward"
     },
     {
@@ -24033,12 +22744,6 @@
       "source": "file:b15_user_dashboard_page",
       "target": "file:b18_use_my_agent_ids",
       "relation": "imports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:b15_user_settings_page",
-      "target": "file:b17_app_layout",
-      "relation": "uses",
       "direction": "forward"
     },
     {
@@ -24657,76 +23362,6 @@
       "direction": "forward"
     },
     {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/core/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/agent/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/llm/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/mcp/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/memory/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/config/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/endpoint/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/configuration/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/ipfs/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
-      "source": "file:sdk/src/index.ts",
-      "target": "file:sdk/src/react/index.ts",
-      "type": "import",
-      "label": "re-exports",
-      "direction": "forward"
-    },
-    {
       "source": "file:sdk/src/ipfs/index.ts",
       "target": "file:sdk/src/ipfs/ipfs-uploader.ts",
       "type": "import",
@@ -24837,6 +23472,482 @@
       "type": "import",
       "label": "uses known chains",
       "direction": "forward"
+    },
+    {
+      "source": "file:conversation-service/migrations/004_end_user_isolation.sql",
+      "target": "table:conversation-service/migrations/001_memory.sql:memories",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "document:CONVERSATION_SERVICE.md",
+      "target": "file:gateway/src/services/conversation-proxy.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CONVERSATION_SERVICE.md",
+      "target": "file:conversation-service/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CONVERSATION_SERVICE.md",
+      "target": "file:sdk/src/conversation/client.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:INTEGRATION.md",
+      "target": "file:sdk/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:INTEGRATION.md",
+      "target": "file:conversation-service/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:MCP_SETUP.md",
+      "target": "file:gateway/src/routes/agent-mcp.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:MCP_SETUP.md",
+      "target": "file:sdk/src/mcp/connector.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:gateway/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:sdk/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:conversation-service/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "document:INTEGRATION.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "document:MCP_SETUP.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "document:CONVERSATION_SERVICE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "config:sdk/package.json",
+      "target": "file:sdk/src/index.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:conversation-service/src/routes/runs.ts",
+      "target": "function:conversation-service/src/routes/runs.ts:createRunsRouter",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:conversation-service/src/routes/runs.ts",
+      "target": "function:conversation-service/src/routes/runs.ts:createRunsRouter",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:conversation-service/src/routes/tenants.ts",
+      "target": "function:conversation-service/src/routes/tenants.ts:createTenantsRouter",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:conversation-service/src/routes/tenants.ts",
+      "target": "function:conversation-service/src/routes/tenants.ts:createTenantsRouter",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:conversation-service/src/services/agent-context-loader.ts",
+      "target": "class:conversation-service/src/services/agent-context-loader.ts:AgentContextLoader",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:conversation-service/src/services/agent-context-loader.ts",
+      "target": "class:conversation-service/src/services/agent-context-loader.ts:AgentContextLoader",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:conversation-service/src/services/agent-runner.ts",
+      "target": "class:conversation-service/src/services/agent-runner.ts:AgentRunnerService",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:conversation-service/src/services/agent-runner.ts",
+      "target": "class:conversation-service/src/services/agent-runner.ts:AgentRunnerService",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:conversation-service/src/services/memory-engine.ts",
+      "target": "class:conversation-service/src/services/memory-engine.ts:MemoryEngine",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:conversation-service/src/services/memory-engine.ts",
+      "target": "class:conversation-service/src/services/memory-engine.ts:MemoryEngine",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:conversation-service/src/services/tool-executor.ts",
+      "target": "class:conversation-service/src/services/tool-executor.ts:ToolExecutor",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:conversation-service/src/services/tool-executor.ts",
+      "target": "class:conversation-service/src/services/tool-executor.ts:ToolExecutor",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:conversation-service/src/routes/runs.ts:createRunsRouter",
+      "target": "class:conversation-service/src/services/agent-runner.ts:AgentRunnerService",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:conversation-service/src/services/agent-runner.ts:AgentRunnerService",
+      "target": "class:conversation-service/src/services/agent-context-loader.ts:AgentContextLoader",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:conversation-service/src/services/agent-runner.ts:AgentRunnerService",
+      "target": "class:conversation-service/src/services/memory-engine.ts:MemoryEngine",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:conversation-service/src/services/agent-context-loader.ts:AgentContextLoader",
+      "target": "class:conversation-service/src/services/tool-executor.ts:ToolExecutor",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:conversation-service/src/index.ts",
+      "target": "class:conversation-service/src/services/agent-runner.ts:AgentRunnerService",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:conversation-service/src/index.ts",
+      "target": "class:conversation-service/src/services/agent-context-loader.ts:AgentContextLoader",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:conversation-service/src/index.ts",
+      "target": "class:conversation-service/src/services/memory-engine.ts:MemoryEngine",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:conversation-service/src/index.ts",
+      "target": "class:conversation-service/src/services/tool-executor.ts:ToolExecutor",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:conversation-service/src/index.ts",
+      "target": "function:conversation-service/src/routes/runs.ts:createRunsRouter",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:conversation-service/src/index.ts",
+      "target": "function:conversation-service/src/routes/tenants.ts:createTenantsRouter",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/settings/page.tsx",
+      "target": "function:frontend/app/user/settings/page.tsx:SettingsPage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/user/settings/page.tsx",
+      "target": "function:frontend/app/user/settings/page.tsx:PlatformApiKey",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/user/settings/page.tsx",
+      "target": "function:frontend/app/user/settings/page.tsx:ConfigForm",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/user/settings/page.tsx",
+      "target": "function:frontend/app/user/settings/page.tsx:SettingsPage",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:frontend/app/user/settings/page.tsx:SettingsPage",
+      "target": "function:frontend/app/user/settings/page.tsx:PlatformApiKey",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:frontend/app/user/settings/page.tsx:SettingsPage",
+      "target": "function:frontend/app/user/settings/page.tsx:ConfigForm",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/index.ts",
+      "target": "file:gateway/src/middleware/auth.ts",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/index.ts",
+      "target": "file:gateway/src/routes/agent-mcp.ts",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/index.ts",
+      "target": "file:gateway/src/routes/agent-runs.ts",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:getChallenge",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:verifyChallenge",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:authMiddleware",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:getApiKey",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:apiKeyAuth",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:getChallenge",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:verifyChallenge",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:authMiddleware",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:getApiKey",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:apiKeyAuth",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/routes/agent-mcp.ts",
+      "target": "function:gateway/src/routes/agent-mcp.ts:skillToMCPTool",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/routes/agent-mcp.ts",
+      "target": "function:gateway/src/routes/agent-mcp.ts:getIdentityContract",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/routes/agent-mcp.ts",
+      "target": "function:gateway/src/routes/agent-mcp.ts:loadAgentSkills",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/routes/agent-mcp.ts",
+      "target": "function:gateway/src/routes/agent-mcp.ts:executeSkill",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/services/conversation-proxy.ts",
+      "target": "class:gateway/src/services/conversation-proxy.ts:ConversationProxy",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/services/conversation-proxy.ts",
+      "target": "function:gateway/src/services/conversation-proxy.ts:getConversationProxy",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/services/conversation-proxy.ts",
+      "target": "class:gateway/src/services/conversation-proxy.ts:ConversationProxy",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/services/conversation-proxy.ts",
+      "target": "function:gateway/src/services/conversation-proxy.ts:getConversationProxy",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:sdk/src/conversation/client.ts",
+      "target": "class:sdk/src/conversation/client.ts:ConversationClient",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:sdk/src/conversation/client.ts",
+      "target": "class:sdk/src/conversation/client.ts:ConversationClient",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:sdk/src/index.ts",
+      "target": "file:sdk/src/conversation/index.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:sdk/src/conversation/index.ts",
+      "target": "file:sdk/src/conversation/client.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
     }
   ]
 }
