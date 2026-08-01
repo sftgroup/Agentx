@@ -1,9 +1,13 @@
 // AgentX Gateway — Agent MCP Route
 // Exposes individual Agent skills as MCP tools at /mcp/agent/:id
 // Existing /mcp endpoint (29 platform tools) is unchanged.
+//
+// tools/call executes the skill DIRECTLY (no LLM re-decision):
+//   - skill.execution.type === 'mcp'   → POST to skill's own MCP endpoint
+//   - skill.execution.type === 'http'  → POST to skill's HTTP endpoint
+//   - otherwise                        → error (open skill, no remote executor)
 
 import { Router, Request, Response } from 'express'
-import { getConversationProxy } from '../services/conversation-proxy'
 import { config } from '../config'
 import { ethers } from 'ethers'
 
@@ -17,19 +21,31 @@ interface MCPToolDef {
   inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] }
 }
 
+interface RawSkill {
+  name: string
+  description?: string
+  inputSchema?: { type: 'object'; properties: Record<string, unknown>; required?: string[] }
+  execution?: {
+    type?: 'mcp' | 'http'
+    endpoint?: string
+    toolName?: string
+    [k: string]: unknown
+  }
+}
+
 /**
  * Convert a raw agent skill definition to MCP tool format.
  * Skills are stored in agent payload as: { name, description, inputSchema, ... }
  */
-function skillToMCPTool(skill: Record<string, unknown>): MCPToolDef {
-  const inputSchema = (skill.inputSchema as Record<string, unknown>) || { type: 'object', properties: {} }
+function skillToMCPTool(skill: RawSkill): MCPToolDef {
+  const inputSchema = skill.inputSchema || { type: 'object', properties: {} }
   return {
-    name: (skill.name as string) || 'unnamed_skill',
-    description: (skill.description as string) || `Execute ${skill.name} skill`,
+    name: skill.name || 'unnamed_skill',
+    description: skill.description || `Execute ${skill.name} skill`,
     inputSchema: {
       type: 'object',
-      properties: (inputSchema.properties as Record<string, unknown>) || {},
-      required: (inputSchema.required as string[]) || [],
+      properties: inputSchema.properties || {},
+      required: inputSchema.required || [],
     },
   }
 }
@@ -39,6 +55,7 @@ function skillToMCPTool(skill: Record<string, unknown>): MCPToolDef {
 interface AgentSkills {
   agentId: number
   skills: MCPToolDef[]
+  rawSkills: RawSkill[]
   tenantId: string  // agent owner wallet
 }
 
@@ -84,10 +101,14 @@ async function loadAgentSkills(agentId: number): Promise<AgentSkills | null> {
     }
 
     // Skills are stored in metadata.attributes or metadata.skills
-    const rawSkills = metadata.skills || metadata.attributes?.skills || []
-    const skills = Array.isArray(rawSkills) ? rawSkills.map(skillToMCPTool) : []
+    const rawSkills: RawSkill[] = Array.isArray(metadata.skills)
+      ? metadata.skills
+      : Array.isArray(metadata.attributes?.skills)
+        ? metadata.attributes.skills
+        : []
+    const skills = rawSkills.map(skillToMCPTool)
 
-    return { agentId, skills, tenantId: exists }
+    return { agentId, skills, rawSkills, tenantId: exists }
   } catch (err) {
     console.error(`[Agent-MCP] Failed to load agent ${agentId}:`, (err as Error).message)
     return null
@@ -142,57 +163,33 @@ router.post('/:agentId', async (req: Request, res: Response) => {
           return
         }
 
-        // Forward to Conversation Service
-        const proxy = getConversationProxy()
-        const upstream = await proxy.streamRun({
-          agentId,
-          message: `Execute tool: ${toolName}\nArguments: ${JSON.stringify(toolArgs)}`,
-          tenantAddress: (req as any).user?.address || 'mcp-caller',
-          enableMemory: false,
-        })
-
-        if (!upstream.ok) {
-          res.json({ jsonrpc: '2.0', id, error: { code: -32603, message: 'Conversation service error' } })
+        // Load agent to find the skill definition (with execution config)
+        const agent = await loadAgentSkills(agentId)
+        if (!agent) {
+          res.json({ jsonrpc: '2.0', id, error: { code: -32602, message: `Agent ${agentId} not found` } })
           return
         }
 
-        // Read SSE stream and collect result
-        const reader = upstream.body?.getReader()
-        if (!reader) {
-          res.json({ jsonrpc: '2.0', id, result: { content: [] } })
+        const skill = agent.rawSkills.find(s => s.name === toolName)
+        if (!skill) {
+          res.json({ jsonrpc: '2.0', id, error: { code: -32602, message: `Tool "${toolName}" not found on agent ${agentId}` } })
           return
         }
 
-        const decoder = new TextDecoder()
-        let resultText = ''
+        // Execute the skill directly — no LLM re-decision
+        let resultText: string
         try {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            const chunk = decoder.decode(value, { stream: true })
-            // Parse SSE events and collect text/tool_result
-            for (const line of chunk.split('\n')) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const event = JSON.parse(line.slice(6))
-                  if (event.type === 'text') resultText += event.content
-                  if (event.type === 'tool_result') resultText += JSON.stringify(event.toolResult)
-                  if (event.type === 'done') {
-                    // Final result
-                  }
-                } catch {}
-              }
-            }
-          }
-        } finally {
-          reader.releaseLock()
+          resultText = await executeSkill(skill, toolArgs)
+        } catch (err) {
+          res.json({ jsonrpc: '2.0', id, error: { code: -32603, message: (err as Error).message } })
+          return
         }
 
         res.json({
           jsonrpc: '2.0',
           id,
           result: {
-            content: [{ type: 'text', text: resultText || 'Tool executed successfully' }],
+            content: [{ type: 'text', text: resultText }],
           },
         })
         return
@@ -220,5 +217,67 @@ router.post('/:agentId', async (req: Request, res: Response) => {
     res.json({ jsonrpc: '2.0', id: id ?? null, error: { code: -32603, message } })
   }
 })
+
+// ── Direct skill execution ────────────────────────────────────────────────
+
+/**
+ * Execute a skill directly (no LLM re-decision).
+ *   - execution.type === 'mcp'  → POST JSON-RPC tools/call to skill's endpoint
+ *   - execution.type === 'http' → POST to skill's HTTP endpoint
+ *   - otherwise                 → fall back to Conversation Service AgentLoop
+ */
+async function executeSkill(skill: RawSkill, toolArgs: Record<string, unknown>): Promise<string> {
+  const exec = skill.execution
+
+  if (exec?.type === 'mcp' && exec.endpoint) {
+    const toolName = exec.toolName || skill.name
+    const res = await fetch(exec.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'tools/call',
+        params: { name: toolName, arguments: toolArgs },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    })
+
+    if (!res.ok) {
+      throw new Error(`Skill "${skill.name}" failed (HTTP ${res.status})`)
+    }
+
+    const data = await res.json() as {
+      result?: { content?: { type: string; text?: string }[] }
+      error?: { message: string }
+    }
+    if (data.error) {
+      throw new Error(data.error.message)
+    }
+
+    const content = data.result?.content
+    if (content?.[0]?.type === 'text' && content[0].text) {
+      return content[0].text
+    }
+    return JSON.stringify(data.result ?? data)
+  }
+
+  if (exec?.type === 'http' && exec.endpoint) {
+    const res = await fetch(exec.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(toolArgs),
+      signal: AbortSignal.timeout(30_000),
+    })
+
+    if (!res.ok) {
+      throw new Error(`Skill "${skill.name}" failed (HTTP ${res.status})`)
+    }
+    return await res.text()
+  }
+
+  // No execution config — open skill has no remote executor
+  throw new Error(`Skill "${skill.name}" has no execution config (execution.type must be "mcp" or "http")`)
+}
 
 export default router
