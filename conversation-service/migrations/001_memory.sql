@@ -10,16 +10,17 @@ BEGIN
       id BIGSERIAL PRIMARY KEY,
       subscriber VARCHAR(42) NOT NULL,
       agent_id INTEGER NOT NULL,
+      end_user_id VARCHAR(64) NOT NULL DEFAULT 'default',
       fact TEXT NOT NULL,
       embedding vector(1536),
       metadata JSONB DEFAULT '{}',
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
-    -- Tenant isolation: fast lookup by (subscriber, agent_id)
-    CREATE INDEX idx_memories_subscriber_agent ON memories (subscriber, agent_id);
+    -- Tenant + end-user isolation: fast lookup
+    CREATE INDEX idx_memories_subscriber_agent_user ON memories (subscriber, agent_id, end_user_id);
 
-    -- Unique constraint to prevent duplicate facts per subscriber×agent
-    CREATE UNIQUE INDEX idx_memories_unique_fact ON memories (subscriber, agent_id, fact);
+    -- Unique constraint to prevent duplicate facts per subscriber×agent×end_user
+    CREATE UNIQUE INDEX idx_memories_unique_fact ON memories (subscriber, agent_id, end_user_id, fact);
   END IF;
 END $$;

@@ -10,6 +10,7 @@ const router = Router()
 router.post('/runs', async (req: Request, res: Response) => {
   const { agentId, message, enableMemory, contextBudget, history } = req.body
   const tenantAddress = (req as any).user?.address || (req as any).user?.tenantId || 'unknown'
+  const endUserId = req.headers['x-end-user-id'] as string || undefined
 
   if (!agentId || !message) {
     return res.status(400).json({ error: 'agentId and message are required' })
@@ -24,6 +25,7 @@ router.post('/runs', async (req: Request, res: Response) => {
       enableMemory: Boolean(enableMemory),
       contextBudget: contextBudget ? Number(contextBudget) : undefined,
       history,
+      endUserId,
     })
 
     if (!upstream.ok) {
