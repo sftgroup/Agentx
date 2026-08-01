@@ -12,6 +12,7 @@ export { C as ChainConfig, a as ConfigRegistryOpts, b as ConfigurationRegistry, 
 export { MemoryConfig, MemoryFact, MemoryProvider } from './memory/index.mjs';
 export { HttpTraceEmitter, NoopTraceEmitter, TraceConfig, TraceEmitter, TraceEvent } from './traces/index.mjs';
 export { BrowserAction, BrowserActionResult, executeBrowserAction, extractAccessibleDOM } from './skills/index.mjs';
+export { ConversationChatParams, ConversationChatResult, ConversationClient, ConversationClientConfig, ConversationSSEEvent } from './conversation/index.mjs';
 import { Address, PublicClient, WalletClient, Hash } from 'viem';
 export { bytesToHex, hexToBytes } from '@noble/ciphers/utils.js';
 import 'events';
