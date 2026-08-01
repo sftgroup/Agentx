@@ -1,6 +1,6 @@
 # AgentX MCP Server
 
-> v0.6.8 · Production: `http://43.156.99.215:3090/mcp` · Standard MCP JSON-RPC 2.0
+> v0.6.9 · Platform: `POST /mcp` (29 tools) · Agent Export: `POST /mcp/agent/:id` · Standard MCP JSON-RPC 2.0
 
 ---
 
@@ -149,6 +149,44 @@ curl -s -X POST http://43.156.99.215:3090/mcp \
 
 > **READ** tools execute immediately and return JSON data.  
 > **WRITE** tools return a transaction payload that the MCP client must sign and submit on-chain.
+
+---
+
+## Agent-as-MCP Export (v0.6.9)
+
+Any AgentX agent can be exported as its own MCP server at `POST /mcp/agent/:id`. The agent's skills become MCP tools:
+
+```bash
+# List tools for Agent #42
+curl -s -X POST http://localhost:3090/mcp/agent/42 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+
+# Call a tool exposed by Agent #42
+curl -s -X POST http://localhost:3090/mcp/agent/42 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"audit","arguments":{"code":"..."}}}'
+```
+
+**Method** | **Description**
+`tools/list` | Returns agent's skills as MCP tool definitions
+`tools/call` | Executes a skill via the Conversation Service
+`initialize` | MCP handshake
+
+**Backend flow:** Gateway → Conversation Service → AgentLoop (ReAct) → Stream result
+
+This allows any AgentX agent to serve as a drop-in MCP server for Claude Desktop, Cursor, or custom MCP clients.
+
+**Claude Desktop config for Agent #42:**
+```json
+{
+  "mcpServers": {
+    "agentx-agent-42": {
+      "url": "http://43.159.60.46:3090/mcp/agent/42"
+    }
+  }
+}
+```
 
 ---
 
