@@ -20,6 +20,12 @@ export const config = {
   // Context compaction
   compactModel: process.env.COMPACT_MODEL || 'gpt-4o-mini',
 
+  // Encryption key for tenant API keys at rest (64 hex chars = 32 bytes)
+  masterEncryptionKey: process.env.MASTER_ENCRYPTION_KEY || '',
+
+  // AgentX Gateway URL (fallback when no tenant/agent key)
+  gatewayUrl: process.env.GATEWAY_URL || 'http://localhost:3090',
+
   // Blockchain RPC (for fetching agent data)
   rpcUrl: process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
   rpcUrlOxaChain: process.env.RPC_URL_OXACHAIN || 'https://rpc-oxa.0xainet.top',

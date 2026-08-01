@@ -11,9 +11,9 @@
 
 import type { Pool } from 'pg'
 import type { LLMProvider, LoopRunContext } from '@agentxv2/sdk/agent-loop'
-import { OpenAIProvider } from '@agentxv2/sdk/llm'
+import { OpenAIProvider, GatewayProvider } from '@agentxv2/sdk/llm'
 import { config } from '../config'
-import { decryptSecret } from './crypto'
+import { decryptSecret } from '../lib/crypto'
 
 interface TenantLlmRecord {
   tenant_address: string
@@ -55,7 +55,6 @@ export class TenantLLMResolver {
         return new OpenAIProvider({
           apiKey: decrypted,
           model: record.model || ctx.model || 'gpt-4o',
-          baseURL: record.endpoint_url || undefined,
         })
       }
     } catch (err) {
@@ -71,7 +70,7 @@ export class TenantLLMResolver {
     }
 
     // 4. Last resort: internal Gateway
-    return new (await import('@agentxv2/sdk/llm')).GatewayProvider({
+    return new GatewayProvider({
       gatewayUrl: config.gatewayUrl,
       accessToken: '',
       keySource: 'platform',
@@ -97,7 +96,7 @@ export class TenantLLMResolver {
     model?: string,
     endpointUrl?: string,
   ): Promise<void> {
-    const { encryptSecret } = await import('./crypto')
+    const { encryptSecret } = await import('../lib/crypto')
     const encrypted = encryptSecret(apiKey)
 
     await this.db.query(
