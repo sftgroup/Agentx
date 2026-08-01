@@ -8,8 +8,9 @@ import { getPool } from './lib/db'
 import { MemoryEngine } from './services/memory-engine'
 import { ContextEngine } from './services/context-engine'
 import { AgentRunnerService } from './services/agent-runner'
-import { LLMResolver } from './lib/llm-resolver'
+import { TenantLLMResolver } from './services/tenant-llm-resolver'
 import { createRunsRouter } from './routes/runs'
+import { createTenantsRouter } from './routes/tenants'
 
 const app = express()
 
@@ -35,11 +36,12 @@ app.get('/health', (_req, res) => {
 const db = getPool()
 const memoryEngine = new MemoryEngine(db)
 const contextEngine = new ContextEngine()
-const llmResolver = new LLMResolver()
+const llmResolver = new TenantLLMResolver(db)
 const runner = new AgentRunnerService(memoryEngine, contextEngine, llmResolver)
 
 // Routes
 app.use('/runs', createRunsRouter(runner))
+app.use('/tenants', createTenantsRouter(llmResolver))
 
 // 404 handler
 app.use((_req, res) => {
@@ -52,4 +54,5 @@ app.use((_req, res) => {
 app.listen(config.port, () => {
   console.log(`[Conversation Service] Running on port ${config.port}`)
   console.log(`[Conversation Service] Environment: ${config.nodeEnv}`)
+  console.log(`[Conversation Service] LLM mode: Hybrid (Tenant Key → AgentX Key)`)
 })

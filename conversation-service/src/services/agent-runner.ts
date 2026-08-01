@@ -7,7 +7,7 @@ import type { LLMProvider, LLMMessage } from '@agentxv2/sdk/agent-loop'
 import type { AgentRunContext } from '@agentxv2/sdk/react'
 import { MemoryEngine } from './memory-engine'
 import { ContextEngine } from './context-engine'
-import { LLMResolver } from '../lib/llm-resolver'
+import { TenantLLMResolver } from './tenant-llm-resolver'
 
 export interface AgentRunRequest {
   agentId: number
@@ -16,6 +16,8 @@ export interface AgentRunRequest {
   enableMemory?: boolean
   contextBudget?: number
   history?: { role: 'user' | 'assistant'; content: string }[]
+  /** Ephemeral API key from request header (X-Llm-Api-Key), takes highest priority */
+  headerApiKey?: string
 }
 
 export interface AgentRunSSEEvent {
@@ -33,7 +35,7 @@ export class AgentRunnerService {
   constructor(
     private readonly memoryEngine: MemoryEngine,
     private readonly contextEngine: ContextEngine,
-    private readonly llmResolver: LLMResolver,
+    private readonly llmResolver: TenantLLMResolver,
   ) {}
 
   async *streamRun(request: AgentRunRequest): AsyncGenerator<AgentRunSSEEvent> {
@@ -41,9 +43,15 @@ export class AgentRunnerService {
     const startTime = Date.now()
 
     try {
-      // 1. Load agent context from chain (simplified — in production, fetch from blockchain)
+      // 1. Load agent context from chain
       const ctx = await this.loadAgentContext(request.agentId)
-      const llmProvider = this.llmResolver.resolve(ctx)
+
+      // 2. Resolve LLM provider — tenant key > header key > AgentX key
+      const llmProvider = await this.llmResolver.resolve(
+        ctx,
+        request.tenantAddress,
+        request.headerApiKey,
+      )
 
       // 2. Build initial messages
       let messages: LLMMessage[] = []

@@ -1,4 +1,4 @@
-// app/user/chat/[agentId]/page.tsx — Chat with Agent (AgentLoop + Multi-Tenant SaaS)
+// app/user/chat/[agentId]/page.tsx — Chat with Agent (SSE Streaming + AgentLoop fallback)
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -9,25 +9,13 @@ import { ToolCallBubble } from '@/components/chat/ToolCallBubble'
 import { useAccount } from 'wagmi'
 import { useAgentDetail } from '@/hooks/aimarket/useAgentRegistry'
 import { useAgentRunner } from '@agentxv2/sdk/react'
-import { AgentLoop, GatewayProvider, OpenAIProvider, createLLMProvider } from '@agentxv2/sdk'
+import { AgentLoop, GatewayProvider, OpenAIProvider } from '@agentxv2/sdk'
 import type { AgentRunContext, RunnableSkill, ToolCallStart, ToolCallResult, AgentLoopResult } from '@agentxv2/sdk'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
 import type { GatewayContext } from '@/hooks/useGatewayAuth'
+import { useAgentChat, type ChatMessage } from '@/hooks/useAgentChat'
 import { Send, Brain, AlertCircle, Sparkles, ArrowLeft, Loader2, Trash2, Square, Wrench } from 'lucide-react'
 import Link from 'next/link'
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant' | 'tool_call' | 'tool_result'
-  content: string
-  timestamp: number
-  toolName?: string
-  toolInput?: Record<string, unknown>
-  toolResult?: unknown
-  toolError?: string
-  toolStatus?: 'pending' | 'done' | 'error'
-  toolDurationMs?: number
-}
 
 interface ModelOption {
   id: string
@@ -48,52 +36,59 @@ export default function ChatPage() {
 
   const gatewayUrl = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || ''
 
-  const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState<ModelOption | null>(null)
   const [modelOptions, setModelOptions] = useState<ModelOption[]>([])
   const [showModelSelector, setShowModelSelector] = useState(false)
-  const [thinkingText, setThinkingText] = useState<string>('')
+  const [useSseStreaming, setUseSseStreaming] = useState(true) // SSE via Gateway (primary) or AgentLoop (fallback)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const loopRef = useRef<AgentLoop | null>(null)
-  const assistantMessageIdRef = useRef<string>('')
+  const assistantRef = useRef('')
 
   const { data: agent, isLoading: isLoadingAgent } = useAgentDetail(agentId)
   const { ctx, isLoading: isLoadingCtx, error: ctxError } = useAgentRunner({ agentId })
   const { isAuthenticated: isGatewayAuth, context: gatewayCtx } = useGatewayAuth(gatewayUrl)
 
-  // ── Chat history persistence ─────────────────────────────────────────
+  // SSE streaming hook
+  const {
+    messages: sseMessages,
+    thinkingText: sseThinking,
+    isStreaming: isSseStreaming,
+    sendMessage: sendSseMessage,
+    stopStreaming: stopSse,
+    clearMessages: clearSseMessages,
+    setMessages: setSseMessages,
+  } = useAgentChat()
 
+  // ── Chat history persistence ─────────────────────────────────────────
   useEffect(() => {
     try {
       const saved = localStorage.getItem(historyKey)
-      if (saved) setMessages(JSON.parse(saved))
+      if (saved && useSseStreaming) setSseMessages(JSON.parse(saved) as ChatMessage[])
     } catch { /* ignore */ }
-  }, [historyKey])
+  }, [historyKey, useSseStreaming])
 
   useEffect(() => {
-    if (messages.length > 0) {
+    if (sseMessages.length > 0 && useSseStreaming) {
       try {
-        localStorage.setItem(historyKey, JSON.stringify(messages.slice(-100)))
+        localStorage.setItem(historyKey, JSON.stringify(sseMessages.slice(-100)))
       } catch { /* ignore */ }
     }
-  }, [messages, historyKey])
+  }, [sseMessages, historyKey, useSseStreaming])
 
   const clearHistory = useCallback(() => {
-    setMessages([])
+    clearSseMessages()
     localStorage.removeItem(historyKey)
-  }, [historyKey])
+  }, [historyKey, clearSseMessages])
 
   // ── Auto-scroll ──────────────────────────────────────────────────────
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, thinkingText])
+  }, [sseMessages, sseThinking])
 
   // ── Build model options from gateway or localStorage ─────────────────
-
   useEffect(() => {
     if (gatewayUrl && gatewayCtx) {
       const options: ModelOption[] = []
@@ -133,112 +128,100 @@ export default function ChatPage() {
         }[]
         if (savedConfigs.length > 0) {
           const active = savedConfigs.find(c => c.isActive) || savedConfigs[0]
-          setModelOptions([{
+          const opts = [{
             id: active.id,
             provider: active.provider,
             model: active.model,
             label: active.name,
-            source: 'tenant_owned',
-          }])
-          setSelectedModel({
-            id: active.id,
-            provider: active.provider,
-            model: active.model,
-            label: active.name,
-            source: 'tenant_owned',
-          })
+            source: 'tenant_owned' as const,
+          }]
+          setModelOptions(opts)
+          setSelectedModel(opts[0]!)
+          setUseSseStreaming(false)
         }
       } catch { /* ignore */ }
     }
   }, [gatewayUrl, gatewayCtx])
 
-  // ── Send message with AgentLoop ──────────────────────────────────────
-
+  // ── Send message ──────────────────────────────────────────────────────
   const handleSendMessage = useCallback(async () => {
-    if (!inputMessage.trim() || isLoading || !ctx) return
-    if (!selectedModel && !gatewayUrl) return
+    if (!inputMessage.trim() || isLoading) return
+    if (!ctx && !useSseStreaming) return
+    if (!selectedModel && !useSseStreaming) return
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputMessage,
-      timestamp: Date.now(),
-    }
-    setMessages(prev => [...prev, userMsg])
     const userInput = inputMessage
     setInputMessage('')
     setIsLoading(true)
-    setThinkingText('')
-
-    assistantMessageIdRef.current = ''
 
     try {
-      let llmProvider
+      // Primary: SSE streaming via Gateway
+      if (useSseStreaming && gatewayUrl && gatewayCtx) {
+        const history = sseMessages.slice(-20)
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
-      if (gatewayUrl && gatewayCtx) {
-        llmProvider = new GatewayProvider({
+        await sendSseMessage(userInput, {
+          agentId,
           gatewayUrl,
           accessToken: gatewayCtx.accessToken,
-          keySource: selectedModel?.source === 'platform' ? 'platform' : 'tenant_owned',
-          tenantKeyId: selectedModel?.tenantKeyId,
-          model: selectedModel?.model,
+          llmApiKey: selectedModel?.source === 'tenant_owned' ? undefined : undefined,
+          enableMemory: true,
+          onComplete: (usage) => {
+            // Optional: track usage
+          },
+        }, history)
+        return
+      }
+
+      // Fallback: direct AgentLoop (offline / no Gateway)
+      if (!ctx) return
+
+      let llmProvider
+      const savedConfigs = JSON.parse(localStorage.getItem('aiConfigs') || '[]') as {
+        id: string; endpoint: string; apiKey: string; model: string; temperature: number; maxTokens: number; isActive: boolean
+      }[]
+      const active = savedConfigs.find((c: any) => c.isActive) || savedConfigs[0]
+      if (active) {
+        llmProvider = new OpenAIProvider({
+          apiKey: active.apiKey,
+          endpoint: active.endpoint,
+          model: active.model,
+          temperature: active.temperature,
+          maxTokens: active.maxTokens,
         })
-      } else {
-        const savedConfigs = JSON.parse(localStorage.getItem('aiConfigs') || '[]') as {
-          id: string; endpoint: string; apiKey: string; model: string; temperature: number; maxTokens: number; isActive: boolean
-        }[]
-        const active = savedConfigs.find(c => c.isActive) || savedConfigs[0]
-        if (active) {
-          llmProvider = new OpenAIProvider({
-            apiKey: active.apiKey,
-            endpoint: active.endpoint,
-            model: active.model,
-            temperature: active.temperature,
-            maxTokens: active.maxTokens,
-          })
-        }
       }
 
       if (!llmProvider) {
-        setMessages(prev => [...prev, {
+        setSseMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: 'No AI model configured. Please add an API key in Settings.',
           timestamp: Date.now(),
         }])
-        setIsLoading(false)
         return
       }
 
-      const loopCtx = {
-        agentId: ctx.agentId,
-        prompt: ctx.prompt,
-        skills: ctx.skills,
-        model: selectedModel?.model,
-      }
-
       const loop = new AgentLoop({
-        ctx: loopCtx,
+        ctx: { agentId: ctx.agentId, prompt: ctx.prompt, skills: ctx.skills, model: selectedModel?.model },
         llmProvider,
         maxIterations: 5,
-        timeoutMs: 120_000,
 
         onTextDelta: (delta) => {
-          setMessages(prev => {
+          setSseMessages(prev => {
             const last = prev[prev.length - 1]
-            if (last?.role === 'assistant' && last.id === assistantMessageIdRef.current) {
+            if (last?.role === 'assistant' && last.id === assistantRef.current) {
               const updated = [...prev]
               updated[updated.length - 1] = { ...last, content: last.content + delta }
               return updated
             }
-            const id = (Date.now() + Math.random()).toString()
-            assistantMessageIdRef.current = id
+            const id = `asst-${Date.now()}`
+            assistantRef.current = id
             return [...prev, { id, role: 'assistant', content: delta, timestamp: Date.now() }]
           })
         },
 
         onToolCall: (call: ToolCallStart) => {
-          setMessages(prev => [...prev, {
+          setSseMessages(prev => [...prev, {
             id: `${call.callId}-call`,
             role: 'tool_call',
             content: `Calling ${call.name}...`,
@@ -250,7 +233,7 @@ export default function ChatPage() {
         },
 
         onToolResult: (result: ToolCallResult) => {
-          setMessages(prev => {
+          setSseMessages(prev => {
             const updated = [...prev]
             const idx = updated.findIndex(m => m.id === `${result.callId}-call`)
             if (idx !== -1) {
@@ -268,33 +251,24 @@ export default function ChatPage() {
           })
         },
 
-        onThinking: (msg: string) => {
-          setThinkingText(msg)
-        },
-
-        onComplete: (_result: AgentLoopResult) => {
-        },
-
         onError: (error: Error) => {
-          setMessages(prev => [...prev, {
+          setSseMessages(prev => [...prev, {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
-            content: `Loop error: ${error.message}`,
+            content: `Error: ${error.message}`,
             timestamp: Date.now(),
           }])
         },
       })
 
       loopRef.current = loop
+      const history = sseMessages.slice(-20)
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
-      const historyForLoop = messages.slice(-20).map(m => ({
-        role: m.role === 'user' ? 'user' as const : 'assistant' as const,
-        content: m.content,
-      }))
-
-      await loop.run(userInput, historyForLoop)
+      await loop.run(userInput, history)
     } catch (error) {
-      setMessages(prev => [...prev, {
+      setSseMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -302,18 +276,17 @@ export default function ChatPage() {
       }])
     } finally {
       setIsLoading(false)
-      setThinkingText('')
       loopRef.current = null
     }
-  }, [inputMessage, isLoading, ctx, selectedModel, gatewayUrl, gatewayCtx, messages])
+  }, [inputMessage, isLoading, ctx, selectedModel, gatewayUrl, gatewayCtx, sseMessages, useSseStreaming, agentId, sendSseMessage])
 
   const handleStop = useCallback(() => {
-    loopRef.current?.abort()
-  }, [])
+    if (useSseStreaming) stopSse()
+    else loopRef.current?.abort()
+  }, [useSseStreaming, stopSse])
 
   // ── Render helpers ───────────────────────────────────────────────────
-
-  const renderMessage = (msg: Message) => {
+  const renderMessage = (msg: ChatMessage) => {
     if (msg.role === 'tool_call' || msg.role === 'tool_result') {
       return (
         <ToolCallBubble
@@ -346,8 +319,11 @@ export default function ChatPage() {
     ? (selectedModel.label || selectedModel.model)
     : 'Select model'
 
-  // ── Loading states ───────────────────────────────────────────────────
+  const isLoadingState = isLoading || isSseStreaming
+  const currentThinking = sseThinking
+  const displayMessages = sseMessages
 
+  // ── Loading states ───────────────────────────────────────────────────
   if (isLoadingAgent) {
     return (
       <AppLayout>
@@ -392,12 +368,12 @@ export default function ChatPage() {
                     : agent?.metadata?.name || `Agent #${agentId}`}
                 </h1>
                 <p className="text-xs text-text-muted truncate">
-                  {ctx ? '🔐 E2E Encrypted' : isLoadingCtx ? 'Decrypting...' : agent?.metadata?.description}
+                  {useSseStreaming ? '⚡ SSE Streaming' : ctx ? '🔐 E2E Encrypted (Direct)' : isLoadingCtx ? 'Decrypting...' : agent?.metadata?.description}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {messages.length > 0 && (
+              {displayMessages.length > 0 && (
                 <button onClick={clearHistory} className="btn-secondary text-xs py-1.5 px-2" title="Clear history">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -411,7 +387,7 @@ export default function ChatPage() {
                   </button>
                   {showModelSelector && (
                     <div className="absolute top-full right-0 mt-2 glass-card p-2 w-72 z-50 max-h-80 overflow-y-auto">
-                      {gatewayUrl && modelOptions.some(m => m.source === 'platform') && (
+                      {modelOptions.some(m => m.source === 'platform') && (
                         <>
                           <div className="text-xs font-medium text-text-muted px-2 py-1">Platform Models</div>
                           {modelOptions.filter(m => m.source === 'platform').map(m => (
@@ -442,7 +418,7 @@ export default function ChatPage() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.length === 0 ? (
+            {displayMessages.length === 0 ? (
               <div className="text-center py-20">
                 <div className="w-16 h-16 rounded-2xl bg-accent-purple/10 flex items-center justify-center mx-auto mb-4">
                   <Brain className="w-8 h-8 text-accent-purple" />
@@ -469,18 +445,18 @@ export default function ChatPage() {
                 )}
               </div>
             ) : (
-              messages.map(msg => renderMessage(msg))
+              displayMessages.map(msg => renderMessage(msg))
             )}
-            {isLoading && !thinkingText && (
+            {isLoadingState && !currentThinking && (
               <div className="flex justify-start">
                 <div className="rounded-2xl px-4 py-3 bg-white/5 border border-white/5 text-text-muted text-sm flex items-center gap-2">
                   <Brain className="w-4 h-4 animate-pulse" /> Thinking...
                 </div>
               </div>
             )}
-            {thinkingText && (
+            {currentThinking && (
               <div className="flex justify-center">
-                <span className="text-xs text-text-muted bg-white/5 rounded-full px-3 py-1">{thinkingText}</span>
+                <span className="text-xs text-text-muted bg-white/5 rounded-full px-3 py-1">{currentThinking}</span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -491,36 +467,41 @@ export default function ChatPage() {
             <div className="flex gap-3">
               <input type="text" value={inputMessage} onChange={e => setInputMessage(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                placeholder={selectedModel ? 'Type your message...' : 'Select a model to start chatting...'}
+                placeholder={useSseStreaming ? 'Type your message... (⚡ SSE Streaming)' : selectedModel ? 'Type your message...' : 'Select a model to start chatting...'}
                 className="flex-1 px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-sm focus:outline-none focus:border-accent-purple/40 focus:bg-white/8 transition-colors placeholder:text-text-muted"
-                disabled={isLoading || (!selectedModel && !gatewayUrl)} />
-              {isLoading ? (
+                disabled={isLoadingState || (!selectedModel && !useSseStreaming)} />
+              {isLoadingState ? (
                 <button onClick={handleStop}
                   className="px-5 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl transition-colors">
                   <Square className="w-4 h-4" />
                 </button>
               ) : (
-                <button onClick={handleSendMessage} disabled={!inputMessage.trim() || !selectedModel}
+                <button onClick={handleSendMessage} disabled={!inputMessage.trim() || (useSseStreaming ? false : !selectedModel)}
                   className="px-5 py-3 bg-accent-purple hover:bg-accent-purple/90 disabled:opacity-30 text-white rounded-xl transition-colors">
                   <Send className="w-4 h-4" />
                 </button>
               )}
             </div>
             <div className="mt-2 flex items-center justify-between text-xs text-text-muted">
-              {selectedModel ? (
+              {useSseStreaming ? (
+                <span className="flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                  SSE Streaming · Memory enabled
+                </span>
+              ) : selectedModel ? (
                 <span className="flex items-center gap-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
                   {selectedModel.source === 'platform' ? 'Platform' : 'Own Key'} · {selectedModel.model}
                 </span>
               ) : <span>Select a model above</span>}
               <span className="flex items-center gap-3">
-                {messages.length > 0 && <span>{messages.length} messages</span>}
+                {displayMessages.length > 0 && <span>{displayMessages.length} messages</span>}
                 {isGatewayAuth && gatewayCtx?.plan && (
                   <span className="text-accent-cyan">
                     {gatewayCtx.usageToday.total_tokens.toLocaleString()} / {(gatewayCtx.plan.quota_daily || 0).toLocaleString()} tokens
                   </span>
                 )}
-                {ctx && <span className="text-accent-purple">🔐 E2E</span>}
+                {ctx && !useSseStreaming && <span className="text-accent-purple">🔐 E2E</span>}
               </span>
             </div>
           </div>
