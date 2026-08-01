@@ -42,7 +42,7 @@ Add to `claude_desktop_config.json`:
 {
   "mcpServers": {
     "agentx": {
-      "url": "http://43.156.99.215:3090/mcp"
+      "url": "http://43.159.60.46:3090/mcp"
     }
   }
 }
@@ -57,24 +57,24 @@ In Cursor Settings → MCP → Add new MCP Server:
 ```
 Name: agentx
 Type: HTTP
-URL:  http://43.156.99.215:3090/mcp
+URL:  http://43.159.60.46:3090/mcp
 ```
 
 ### curl (Manual Test)
 
 ```bash
 # List all tools
-curl -s -X POST http://43.156.99.215:3090/mcp \
+curl -s -X POST http://43.159.60.46:3090/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 # Call a tool (read-only)
-curl -s -X POST http://43.156.99.215:3090/mcp \
+curl -s -X POST http://43.159.60.46:3090/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"agentx_reputation_get","arguments":{"agentId":1}}}'
 
 # Health check
-curl -s -X POST http://43.156.99.215:3090/mcp \
+curl -s -X POST http://43.159.60.46:3090/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"agentx_gateway_health","arguments":{}}}'
 ```
@@ -236,7 +236,7 @@ Claude: [calls agentx_subscription_check]
 
 ```typescript
 // Any MCP client can use the standard JSON-RPC 2.0 protocol
-const res = await fetch('http://43.156.99.215:3090/mcp', {
+const res = await fetch('http://43.159.60.46:3090/mcp', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -263,7 +263,7 @@ import { MCPConnector } from '@agentxv2/sdk'
 
 const mcp = new MCPConnector({
   transport: 'http',
-  url: 'http://43.156.99.215:3090/mcp',
+  url: 'http://43.159.60.46:3090/mcp',
 })
 
 // List all 29 platform tools
@@ -378,16 +378,16 @@ The AgentX MCP server does not require authentication for read-only tools. For w
 
 ```bash
 # 1. Get challenge
-curl http://43.156.99.215:3090/api/v1/auth/challenge?address=0x...
+curl http://43.159.60.46:3090/api/v1/auth/challenge?address=0x...
 
 # 2. Sign the challenge with your wallet
 # 3. Verify and get JWT
-curl -X POST http://43.156.99.215:3090/api/v1/auth/verify \
+curl -X POST http://43.159.60.46:3090/api/v1/auth/verify \
   -H "Content-Type: application/json" \
   -d '{"wallet_address":"0x...","signature":"0x...","timestamp":...,"nonce":"..."}'
 
 # 4. Use JWT in MCP requests
-curl -X POST http://43.156.99.215:3090/mcp \
+curl -X POST http://43.159.60.46:3090/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <jwt>" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",...}'
