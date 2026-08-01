@@ -150,7 +150,10 @@ Executes an AgentLoop conversation and streams results via Server-Sent Events.
 X-Internal-Token: agentx-conv-internal-token-2026
 X-Tenant-Address: 0x...
 X-Llm-Api-Key: sk-...     # Optional: tenant's own key (Plan C)
+X-End-User-Id: user_123  # Optional: per end-user memory isolation
 ```
+
+> **End-user isolation:** When a tenant serves many end users, pass `X-End-User-Id` on every request. Long-term memory is then scoped to `(tenant + agent + end_user)` instead of `(tenant + agent)`. Users without this header share the `default` bucket. The caller is still responsible for maintaining per-user `history[]` short-term context.
 
 **Request Body:**
 ```json
@@ -303,6 +306,50 @@ upstream.body?.pipeTo(res)
 CONVERSATION_SERVICE_URL=http://127.0.0.1:8100
 CONVERSATION_SERVICE_TOKEN=agentx-conv-internal-token-2026
 ```
+
+---
+
+## SDK Client (v0.7.0)
+
+Tenants can call the hosted Conversation Service from their own app via `@agentxv2/sdk`'s new `ConversationClient` — no manual SSE parsing needed:
+
+```bash
+npm install @agentxv2/sdk@0.7.0
+```
+
+```typescript
+import { ConversationClient } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({
+  gatewayUrl: 'http://43.159.60.46:3090',
+  apiKey: 'agentx_abc123...',      // Tenant API Key (issued after registration)
+  endUserId: 'user_123',           // Optional: per end-user memory isolation
+  llmApiKey: 'sk-...',             // Optional: override LLM key (Plan C)
+})
+
+// One-shot chat (collects full result)
+const result = await client.chat({
+  agentId: 42,
+  message: 'Analyze this contract',
+  history: [...],                  // Caller maintains per-user short-term context
+  enableMemory: true,
+})
+
+// Streaming (SSE events as they arrive)
+for await (const event of client.stream({
+  agentId: 42,
+  message: 'Hello',
+  enableMemory: true,
+})) {
+  switch (event.type) {
+    case 'text':       console.log(event.content); break
+    case 'tool_call':  console.log('calling', event.toolName); break
+    case 'done':       console.log('usage:', event.usage); break
+  }
+}
+```
+
+**Auth:** the client sends `X-Api-Key: agentx_...` automatically. If you pass `llmApiKey`, it is forwarded as `X-Llm-Api-Key` so your own LLM key is used instead of the tenant's stored key.
 
 ---
 

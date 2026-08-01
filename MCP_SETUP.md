@@ -1,6 +1,6 @@
 # AgentX MCP Server
 
-> v0.6.9 · Platform: `POST /mcp` (29 tools) · Agent Export: `POST /mcp/agent/:id` · Standard MCP JSON-RPC 2.0
+> v0.7.0 · Platform: `POST /mcp` (29 tools) · Agent Export: `POST /mcp/agent/:id` · Standard MCP JSON-RPC 2.0
 
 ---
 
@@ -152,7 +152,7 @@ curl -s -X POST http://43.156.99.215:3090/mcp \
 
 ---
 
-## Agent-as-MCP Export (v0.6.9)
+## Agent-as-MCP Export (v0.7.0)
 
 Any AgentX agent can be exported as its own MCP server at `POST /mcp/agent/:id`. The agent's skills become MCP tools:
 
@@ -170,10 +170,34 @@ curl -s -X POST http://localhost:3090/mcp/agent/42 \
 
 **Method** | **Description**
 `tools/list` | Returns agent's skills as MCP tool definitions
-`tools/call` | Executes a skill via the Conversation Service
+`tools/call` | Executes the skill directly (no LLM re-decision)
 `initialize` | MCP handshake
 
-**Backend flow:** Gateway → Conversation Service → AgentLoop (ReAct) → Stream result
+**Direct skill execution (v0.7.0):** `tools/call` executes the skill's own executor instead of sending it through the AgentLoop again. How a skill executes depends on its `execution` config:
+
+| `execution.type` | Behavior |
+|---|---|
+| `mcp` | POST JSON-RPC `tools/call` to `execution.endpoint` |
+| `http` | POST arguments to `execution.endpoint` |
+| *(none)* | Error — open skills have no remote executor |
+
+```json
+{
+  "name": "audit",
+  "description": "Proprietary smart contract audit",
+  "execution": {
+    "type": "mcp",
+    "endpoint": "https://my-private-mcp.example.com/mcp",
+    "toolName": "audit"
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": { "contractCode": { "type": "string" } }
+  }
+}
+```
+
+**Backend flow:** Gateway reads skill `execution` config → POSTs directly to the skill's endpoint → returns result.
 
 This allows any AgentX agent to serve as a drop-in MCP server for Claude Desktop, Cursor, or custom MCP clients.
 
