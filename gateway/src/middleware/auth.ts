@@ -131,7 +131,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
   let tenant: TenantContext | null = null
 
   const existing = await pool.query(
-    `SELECT t.id, t.wallet_address, t.status,
+    `SELECT t.id, t.wallet_address, t.status, t.api_key,
             t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
             p.id as plan_id, p.slug as plan_slug
      FROM tenants t
@@ -146,6 +146,12 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
       res.status(403).json({ error: 'Account suspended' })
       return
     }
+    // Backfill api_key for legacy tenants
+    let apiKey = row.api_key
+    if (!apiKey) {
+      apiKey = 'agentx_' + crypto.randomBytes(16).toString('hex')
+      await pool.query(`UPDATE tenants SET api_key = $1 WHERE id = $2`, [apiKey, row.id])
+    }
     tenant = {
       id: row.id,
       walletAddress: row.wallet_address,
@@ -157,15 +163,17 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
       maxConcurrent: row.max_concurrent,
       status: row.status,
     }
+    ;(tenant as any).apiKey = apiKey
   } else {
     const freePlan = await pool.query(`SELECT id FROM plans WHERE slug = 'free' LIMIT 1`)
     const planId = freePlan.rows[0]?.id || null
+    const apiKey = 'agentx_' + crypto.randomBytes(16).toString('hex')
 
     const inserted = await pool.query(
-      `INSERT INTO tenants (wallet_address, plan_id, quota_daily, rate_limit_rpm, max_concurrent)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO tenants (wallet_address, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id`,
-      [address, planId, 0, 5, 1]
+      [address, planId, 0, 5, 1, apiKey]
     )
     tenant = {
       id: inserted.rows[0].id,
@@ -178,6 +186,8 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
       maxConcurrent: 1,
       status: 'active',
     }
+    // Return api_key on first registration only
+    ;(tenant as any).apiKey = apiKey
   }
 
   const token = jwt.sign(
@@ -186,10 +196,21 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
     { expiresIn: config.sessionTtlSec }
   )
 
-  res.json({ access_token: token, expires_in: config.sessionTtlSec, tenant })
+  res.json({
+    access_token: token,
+    expires_in: config.sessionTtlSec,
+    tenant,
+    api_key: (tenant as any).apiKey,
+  })
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+  // Already authenticated via X-Api-Key
+  if (req.tenant) {
+    next()
+    return
+  }
+
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Missing or invalid Authorization header' })
@@ -218,6 +239,76 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     .then(r => {
       if (r.rows.length === 0) {
         res.status(401).json({ error: 'Tenant not found' })
+        return
+      }
+      const row = r.rows[0]
+      if (row.status === 'suspended') {
+        res.status(403).json({ error: 'Account suspended' })
+        return
+      }
+      req.tenant = {
+        id: row.id,
+        walletAddress: row.wallet_address,
+        planId: row.plan_id || '',
+        planSlug: row.plan_slug || 'free',
+        quotaDaily: row.quota_daily,
+        quotaUsed: row.quota_used,
+        rateLimitRpm: row.rate_limit_rpm,
+        maxConcurrent: row.max_concurrent,
+        status: row.status,
+      }
+      next()
+    })
+    .catch(err => {
+      next(err)
+    })
+}
+
+// ── API Key retrieval ──────────────────────────────────────────────────
+
+export async function getApiKey(req: Request, res: Response): Promise<void> {
+  if (!req.tenant) {
+    res.status(401).json({ error: 'Authentication required' })
+    return
+  }
+
+  const pool = getPool()
+  const result = await pool.query(
+    `SELECT api_key FROM tenants WHERE id = $1`,
+    [req.tenant.id]
+  )
+
+  if (result.rows.length === 0 || !result.rows[0].api_key) {
+    res.status(404).json({ error: 'API key not found' })
+    return
+  }
+
+  res.json({ api_key: result.rows[0].api_key })
+}
+
+// ── X-Api-Key authentication (alternative to JWT) ──────────────────────
+
+export function apiKeyAuth(req: Request, res: Response, next: NextFunction): void {
+  const apiKey = req.headers['x-api-key'] as string
+  if (!apiKey) {
+    // No API key header → let JWT auth handle it
+    next()
+    return
+  }
+
+  const pool = getPool()
+  pool.query(
+    `SELECT t.id, t.wallet_address, t.status,
+            t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
+            p.id as plan_id, p.slug as plan_slug
+     FROM tenants t
+     LEFT JOIN plans p ON t.plan_id = p.id
+     WHERE t.api_key = $1`,
+    [apiKey]
+  )
+    .then(r => {
+      if (r.rows.length === 0) {
+        res.status(401).json({ error: 'Invalid API key' })
         return
       }
       const row = r.rows[0]

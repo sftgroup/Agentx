@@ -35,3 +35,4 @@ package.json
 .ua/.trash-*/
 .ua/batches/
 .ua/logs/
+conversation-service/dist/
