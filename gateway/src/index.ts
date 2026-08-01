@@ -12,7 +12,7 @@ import { tenantRateLimiter } from './middleware/rate-limiter'
 import { globalErrorHandler } from './middleware/error-handler'
 import chatRouter from './routes/chat'
 import tenantRouter from './routes/tenant'
-import historyRouter from './routes/history'
+// historyRouter deprecated — conversation management moved to conversation-service microservice
 import mcpRouter from './routes/mcp'
 import agentsRouter from './routes/agents'
 import a2aRouter from './routes/a2a'
@@ -103,7 +103,7 @@ app.post('/api/v1/agents-sync', async (_req, res, next) => {
 // ── Protected routes (auth + rate-limit only on known paths) ─────────────
 
 // Known protected API path prefixes (anything else under /api/v1 returns 404)
-const PROTECTED_PREFIXES = ['/chat/completions', '/chat/history', '/tenant/', '/agent/', '/traces/']
+const PROTECTED_PREFIXES = ['/chat/completions', '/tenant/', '/agent/', '/traces/']
 
 app.use('/api/v1', (req, _res, next) => {
   if (PROTECTED_PREFIXES.some(p => req.path.startsWith(p))) {
@@ -120,7 +120,7 @@ api.use(tenantRateLimiter)
 
 api.use(chatRouter)
 api.use('/tenant', tenantRouter)
-api.use('/chat', historyRouter)
+// /chat/history deprecated — use conversation-service instead
 api.use('/agent', agentRunsRouter)
 api.use('/traces', tracesRouter)
 

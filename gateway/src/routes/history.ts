@@ -1,5 +1,8 @@
 // ---------------------------------------------------------------------------
 // AgentX Gateway — Chat History Routes
+// DEPRECATED: Conversation management has been extracted to the
+// conversation-service microservice (43.159.60.46:8100).
+// This file is kept for reference only. Route mount removed from index.ts.
 // ---------------------------------------------------------------------------
 
 import { Router, Request, Response } from 'express'
