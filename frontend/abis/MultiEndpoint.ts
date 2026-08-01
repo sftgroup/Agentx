@@ -1,4 +1,4 @@
-export const MULTI_ENDPOINT_ABI = const MULTI_ENDPOINT_ABI = [
+export const MULTI_ENDPOINT_ABI = [
   // 端点管理函数
   {
     name: 'createEndpoint',

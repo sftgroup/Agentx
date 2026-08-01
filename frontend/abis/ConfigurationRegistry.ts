@@ -1,4 +1,4 @@
-export const CONFIGURATION_REGISTRY_ABI = const CONFIGURATION_REGISTRY_ABI = [
+export const CONFIGURATION_REGISTRY_ABI = [
   // 配置管理函数
   {
     name: 'setConfig',
