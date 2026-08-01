@@ -1,7 +1,7 @@
 # AgentX Integration Guide
 
 > SDK / Contracts / Integration for third-party developers
-> Version: v6 · Updated: 2026-07-20 (SDK v0.6.4, IPFSUploader + publishAgent)
+> Version: v7 · Updated: 2026-08-01 (SDK v0.7.0, ConversationClient + direct MCP skill execution)
 
 ## Overview
 
@@ -61,9 +61,9 @@ Subscriber  →  decrypts  →  injects prompt into LLM  →  executes skills (l
 ### Installation
 
 ```bash
-npm install @agentxv2/sdk
+npm install @agentxv2/sdk@0.7.0
 # or
-pnpm add @agentxv2/sdk
+pnpm add @agentxv2/sdk@0.7.0
 ```
 
 ### Core API
@@ -532,13 +532,56 @@ const {
 
 ---
 
+## Hosted Conversation Service (v0.7.0)
+
+Don't want to run AgentLoop locally? Call our hosted Conversation Service through the SDK's `ConversationClient`. No chain sync, IPFS, or key management needed — the service loads the agent context, runs the ReAct loop, and streams results.
+
+```bash
+npm install @agentxv2/sdk@0.7.0
+```
+
+```typescript
+import { ConversationClient } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({
+  gatewayUrl: 'http://43.159.60.46:3090',
+  apiKey: 'agentx_xxx',      // Tenant API Key (GET /api/v1/auth/api-key after login)
+  endUserId: 'user_123',     // Optional: per end-user memory isolation
+  llmApiKey: 'sk-...',       // Optional: use your own LLM key (Plan C BYOK)
+})
+
+// One-shot
+const result = await client.chat({
+  agentId: 42,
+  message: 'Analyze this contract',
+  history: [...],            // caller maintains per-user short-term context
+  enableMemory: true,
+})
+
+// Streaming (SSE events)
+for await (const event of client.stream({ agentId: 42, message: 'Hello' })) {
+  if (event.type === 'text') console.log(event.content)
+  if (event.type === 'tool_call') console.log('calling', event.toolName)
+  if (event.type === 'done') console.log('usage:', event.usage)
+}
+```
+
+**Key points:**
+- Auth: SDK sends `X-Api-Key: agentx_...` automatically (tenant API Key, not wallet JWT)
+- Isolation: pass `endUserId` → long-term memory scoped to `(tenant + agent + end_user)`
+- LLM key: pass `llmApiKey` → forwarded as `X-Llm-Api-Key` (BYOK)
+- Full API reference: [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md)
+
+---
+
 ## Repository
 
 - **GitHub (Main)**: [github.com/sftgroup/Agentx](https://github.com/sftgroup/Agentx)
-- **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.6.4`](https://www.npmjs.com/package/@agentxv2/sdk)
+- **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.7.0`](https://www.npmjs.com/package/@agentxv2/sdk)
 - **Contracts**: `agentx/contracts/` — Foundry + Solidity 0.8.20-0.8.24
 - **Frontend**: `agentx/frontend/` — Next.js 14 + wagmi 2.x
 - **Production**: `http://43.156.99.215:3100`
+- **Conversation Service**: `agentx/conversation-service/` — hosted on `http://43.159.60.46:8100` (docs: [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md))
 
 ---
 
