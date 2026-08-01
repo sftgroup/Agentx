@@ -21,6 +21,7 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
   router.post('/', async (req: Request, res: Response) => {
     const { agentId, message, enableMemory, contextBudget, history } = req.body
     const tenantAddress = req.headers['x-tenant-address'] as string || 'unknown'
+    const headerApiKey = req.headers['x-llm-api-key'] as string || undefined
 
     if (!agentId || !message) {
       return res.status(400).json({ error: 'agentId and message are required' })
@@ -31,7 +32,7 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',   // disable nginx buffering
+      'X-Accel-Buffering': 'no',
     })
 
     try {
@@ -42,6 +43,7 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
         enableMemory: Boolean(enableMemory),
         contextBudget: contextBudget ? Number(contextBudget) : undefined,
         history: history || [],
+        headerApiKey,
       })
 
       for await (const event of stream) {

@@ -6,7 +6,7 @@ import { useAgentRegistry } from '@/hooks/aimarket/useAgentRegistry'
 import { useAgentSearch } from '@/hooks/aimarket/useAgentSearch'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Brain, Search, Sparkles, Tag, ArrowRight, Star, Filter, X, ChevronDown } from 'lucide-react'
+import { Brain, Search, Sparkles, Tag, ArrowRight, Star, Filter, X, ChevronDown, Wrench } from 'lucide-react'
 import Link from 'next/link'
 
 export default function MarketplacePage() {
@@ -36,6 +36,12 @@ export default function MarketplacePage() {
       <div className="max-w-7xl mx-auto py-8 px-6 space-y-8">
         {/* Hero */}
         <div className="text-center py-8">
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <Link href="/marketplace/skills"
+              className="btn-secondary text-sm flex items-center gap-2">
+              <Wrench className="w-4 h-4" /> Skills Marketplace
+            </Link>
+          </div>
           <h1 className="heading-lg mb-3">{t('marketplace.title')} <span className="gradient-text">{t('marketplace.titleHighlight')}</span></h1>
           <p className="body text-text-secondary max-w-lg mx-auto">
             {t('marketplace.desc')}
