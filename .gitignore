@@ -29,5 +29,9 @@ e2e_*.js
 package-lock.json
 package.json
 
-# Knowledge Graph (generated)
-.ua/
+# Knowledge Graph — track core files, ignore intermediates
+.ua/intermediate/
+.ua/tmp/
+.ua/.trash-*/
+.ua/batches/
+.ua/logs/
