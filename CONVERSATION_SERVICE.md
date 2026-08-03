@@ -398,6 +398,27 @@ for await (const event of client.stream({
 
 ---
 
+## Authentication & Security
+
+### Two call paths, two auth layers
+
+| Call path | Endpoint | Authentication | Used by |
+|-----------|----------|----------------|---------|
+| **Public (recommended)** | `POST {gateway}:3090/api/v1/agent/runs` | `Authorization: Bearer <JWT>` (wallet login) **or** `X-Api-Key: agentx_...` (tenant API key) — enforced by Gateway `apiKeyAuth` + `authMiddleware` | SDK `ConversationClient`, frontend, external apps |
+| **Internal** | `POST {conversation}:8100/runs` | `X-Internal-Token` (must equal service `INTERNAL_AUTH_TOKEN`) | Gateway `ConversationProxy` only |
+
+`/health` is public (no auth). `/tenants/:address/llm-key` requires `X-Internal-Token` (same as `/runs`).
+
+### Security notes
+
+1. **`X-Internal-Token` is a single shared secret** — if leaked, anyone with direct access to `:8100` can run conversations (consuming your platform LLM key). Use a strong random value (min 32 chars) and rotate if compromised.
+2. **Restrict `:8100` to the Gateway** — bind/allowlist port 8100 so only the Gateway host can reach it (see Production Checklist). External traffic must go through `:3090`, keeping the auth boundary at the Gateway.
+3. **`X-Tenant-Address` is caller-supplied** — on the Gateway path this header is filled from the verified tenant identity (trusted). On the direct `:8100` path the service does not verify the address, so direct access must only happen on a trusted network.
+4. **Inline mode (prompt/skills) is covered by the same auth** — when called via the Gateway it is protected by JWT/`X-Api-Key`; when called directly it requires `X-Internal-Token`.
+5. **Endpoint access is delegated to the caller** — skill `execution.endpoint` (MCP/HTTP) is provided by the caller and reached directly by the service; the service never proxies those credentials, so the caller's tool auth stays under the caller's control.
+
+---
+
 ## Docker Deployment
 
 The service includes a `Dockerfile` for containerized deployment:
