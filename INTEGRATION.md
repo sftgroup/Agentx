@@ -1,7 +1,7 @@
 # AgentX Integration Guide
 
 > SDK / Contracts / Integration for third-party developers
-> Version: v7 · Updated: 2026-08-04 (SDK v0.7.3, stateless BYOK key+endpoint)
+> Version: v7 · Updated: 2026-08-04 (SDK v0.7.4, stateless BYOK key+endpoint+model)
 
 ## Overview
 
@@ -532,12 +532,12 @@ const {
 
 ---
 
-## Hosted Conversation Service (v0.7.3)
+## Hosted Conversation Service (v0.7.4)
 
 Don't want to run AgentLoop locally? Call our hosted Conversation Service through the SDK's `ConversationClient`. No chain sync, IPFS, or key management needed — the service loads the agent context, runs the ReAct loop, and streams results.
 
 ```bash
-npm install @agentxv2/sdk@0.7.3
+npm install @agentxv2/sdk@0.7.4
 ```
 
 ```typescript
@@ -549,6 +549,7 @@ const client = new ConversationClient({
   endUserId: 'user_123',     // Optional: per end-user memory isolation
   llmApiKey: 'sk-...',       // Optional: stateless BYOK — your own LLM key (highest priority)
   llmEndpoint: 'https://api.deepseek.com/v1',  // Optional: endpoint for llmApiKey (default OpenAI)
+  llmModel: 'deepseek-chat', // Optional: model for llmApiKey (default gpt-4o)
 })
 
 // One-shot
@@ -596,7 +597,7 @@ const ragResult = await client.chat({
 **Key points:**
 - Auth: SDK sends `X-Api-Key: agentx_...` automatically (tenant API Key, not wallet JWT)
 - Isolation: pass `endUserId` → long-term memory scoped to `(tenant + agent + end_user)`
-- LLM key: pass `llmApiKey` + `llmEndpoint` → forwarded as `X-Llm-Api-Key` / `X-Llm-Endpoint` (stateless BYOK — your key, your provider; nothing stored on AgentX side)
+- LLM key: pass `llmApiKey` + `llmEndpoint` + `llmModel` → forwarded as `X-Llm-Api-Key` / `X-Llm-Endpoint` / `X-Llm-Model` (stateless BYOK — your key, your provider, your model; nothing stored on AgentX side)
 - Inline mode: omit `agentId`, pass `prompt` + `skills` → no AgentX registration needed; skills run via `execution.type` (`mcp` / `http` / `a2a`)
 - Tool endpoint auth: your RAG MCP/HTTP `execution.endpoint` stays under your control — secure it with your own auth; the service only forwards the call (30s timeout), it never proxies your tool credentials
 - Full API reference: [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md)

@@ -24,6 +24,8 @@ export class ConversationProxy {
     headerApiKey?: string
     /** Stateless BYOK: caller's LLM endpoint (e.g. DeepSeek) */
     headerEndpoint?: string
+    /** Stateless BYOK: caller's LLM model (e.g. deepseek-chat) */
+    headerModel?: string
     prompt?: string
     skills?: unknown[]
   }): Promise<Response> {
@@ -40,6 +42,9 @@ export class ConversationProxy {
     }
     if (params.headerEndpoint) {
       headers['X-Llm-Endpoint'] = params.headerEndpoint
+    }
+    if (params.headerModel) {
+      headers['X-Llm-Model'] = params.headerModel
     }
     return fetch(`${this.serviceUrl}/runs`, {
       method: 'POST',

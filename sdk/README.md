@@ -228,9 +228,9 @@ const result = await connector.callTool('get_balance', {
 
 ---
 
-## ConversationClient (v0.7.3) — Remote Conversation Service
+## ConversationClient (v0.7.4) — Remote Conversation Service
 
-Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auto-sends `X-Api-Key` (tenant API key), `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` + `X-Llm-Endpoint` (stateless BYOK override — your own key AND endpoint, e.g. DeepSeek).
+Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auto-sends `X-Api-Key` (tenant API key), `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` + `X-Llm-Endpoint` + `X-Llm-Model` (stateless BYOK override — your own key AND endpoint AND model, e.g. DeepSeek).
 
 ```ts
 import { ConversationClient } from '@agentxv2/sdk/conversation'
@@ -241,6 +241,7 @@ const client = new ConversationClient({
   endUserId: 'user-123',                        // optional: per-end-user memory isolation
   llmApiKey: 'sk-...',                          // optional: BYOK — your own LLM key (highest priority)
   llmEndpoint: 'https://api.deepseek.com/v1',   // optional: endpoint for llmApiKey (default OpenAI)
+  llmModel: 'deepseek-chat',                    // optional: model for llmApiKey (default gpt-4o)
   timeoutMs: 120_000,                           // optional: stream timeout (default 120s)
 })
 
@@ -485,6 +486,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.7.4** | 2026-08-04 | `ConversationClient` adds `llmModel` (forwarded as `X-Llm-Model`) — BYOK now covers key + endpoint + model (e.g. `deepseek-chat`) |
 | **0.7.3** | 2026-08-04 | Stateless BYOK: `ConversationClient` adds `llmEndpoint` (forwarded as `X-Llm-Endpoint`) so callers supply their own LLM key + endpoint (e.g. DeepSeek) per request — no AgentX-side key storage needed |
 | **0.7.2** | 2026-08-03 | Clarification interruption: `ConversationSSEEvent` adds `clarification` + `question`; `chat()` returns `result.clarification` when the service interrupts an ambiguous request |
 | **0.7.1** | 2026-08-03 | ConversationClient inline mode: `prompt` + `skills` params (inject MCP/HTTP tools e.g. RAG), `agentId` now optional; Gateway forwards `X-Llm-Api-Key` |

@@ -150,6 +150,7 @@ X-Internal-Token: agentx-conv-internal-token-2026
 X-Tenant-Address: 0x...
 X-Llm-Api-Key: sk-...       # Optional: stateless BYOK — caller's own key (Plan C)
 X-Llm-Endpoint: https://api.deepseek.com/v1  # Optional: endpoint for X-Llm-Api-Key (default OpenAI)
+X-Llm-Model: deepseek-chat  # Optional: model for X-Llm-Api-Key (default gpt-4o)
 X-End-User-Id: user_123  # Optional: per end-user memory isolation
 ```
 
@@ -279,7 +280,7 @@ The service supports hybrid LLM key resolution, allowing tenants to choose betwe
 
 ```
 Priority chain:
-  1. X-Llm-Api-Key + X-Llm-Endpoint header → Tenant's stateless BYOK (per-request, not stored)
+  1. X-Llm-Api-Key + X-Llm-Endpoint + X-Llm-Model header → Tenant's stateless BYOK (per-request, not stored)
   2. tenant_llm_configs DB   → Tenant's persistent key (encrypted at rest, endpoint_url supported)
   3. OPENAI_API_KEY env      → AgentX official key (platform default)
   4. GATEWAY_URL             → AgentX Gateway as last-resort LLM proxy
@@ -374,6 +375,7 @@ const client = new ConversationClient({
   endUserId: 'user_123',           // Optional: per end-user memory isolation
   llmApiKey: 'sk-...',             // Optional: stateless BYOK — caller's own LLM key
   llmEndpoint: 'https://api.deepseek.com/v1', // Optional: endpoint for llmApiKey (default OpenAI)
+  llmModel: 'deepseek-chat',       // Optional: model for llmApiKey (default gpt-4o)
 })
 
 // One-shot chat (collects full result)
@@ -398,7 +400,7 @@ for await (const event of client.stream({
 }
 ```
 
-**Auth:** the client sends `X-Api-Key: agentx_...` automatically. If you pass `llmApiKey`, it is forwarded as `X-Llm-Api-Key`; with `llmEndpoint` it is forwarded as `X-Llm-Endpoint` — so callers can fully BYOK (key + endpoint, e.g. DeepSeek) without any AgentX-side configuration.
+**Auth:** the client sends `X-Api-Key: agentx_...` automatically. If you pass `llmApiKey`, it is forwarded as `X-Llm-Api-Key`; with `llmEndpoint` it is forwarded as `X-Llm-Endpoint`; with `llmModel` as `X-Llm-Model` — so callers can fully BYOK (key + endpoint + model, e.g. DeepSeek) without any AgentX-side configuration.
 
 ---
 

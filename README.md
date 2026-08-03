@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.7.3 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-04
+> SDK v0.7.4 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-04
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -74,7 +74,7 @@ ERC-8004 Standard (planned):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.7.3
+npm install @agentxv2/sdk@0.7.4
 ```
 
 ```typescript
@@ -93,7 +93,7 @@ const loop = new AgentLoop({
 await loop.run('Audit this contract for vulnerabilities')
 ```
 
-### Hosted Conversation Service (v0.7.3)
+### Hosted Conversation Service (v0.7.4)
 
 Run agents on our hosted Conversation Service from your own app — no chain sync, no IPFS, no local key management:
 
@@ -106,6 +106,7 @@ const client = new ConversationClient({
   endUserId: 'user_123',     // Optional: per end-user memory isolation
   llmApiKey: 'sk-...',       // Optional: stateless BYOK — your own LLM key (highest priority)
   llmEndpoint: 'https://api.deepseek.com/v1',  // Optional: endpoint for llmApiKey (default OpenAI)
+  llmModel: 'deepseek-chat', // Optional: model for llmApiKey (default gpt-4o)
 })
 
 const result = await client.chat({ agentId: 42, message: '你好', enableMemory: true })
@@ -148,7 +149,7 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | **Conversation Service** | `http://43.159.60.46:8100` |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.7.3` |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.7.4` |
 
 ---
 

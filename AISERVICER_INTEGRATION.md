@@ -44,8 +44,9 @@ AGENTX_CONVERSATION_API_KEY=<由 AgentX 提供，agentx_ 开头>
 | `X-End-User-Id` | 可选 | 端用户 ID，用于记忆隔离（多用户场景必传） |
 | `X-Llm-Api-Key` | 可选 | **无状态 BYOK**：调用方自持 LLM Key（优先级最高，不落库） |
 | `X-Llm-Endpoint` | 可选 | 与 `X-Llm-Api-Key` 配套的自定义 LLM 端点（如 DeepSeek `https://api.deepseek.com/v1`；缺省 OpenAI） |
+| `X-Llm-Model` | 可选 | 与 `X-Llm-Api-Key` 配套的模型名（如 `deepseek-chat`；缺省 `gpt-4o`） |
 
-> **无状态 BYOK**：只需在请求头带上调用方自己的 `X-Llm-Api-Key`（+ 非 OpenAI 时带 `X-Llm-Endpoint`），对话服务直接透传使用，**无需在 AgentX 侧配置或托管任何 Key**。每个请求独立，可自由切换供应商。
+> **无状态 BYOK**：只需在请求头带上调用方自己的 `X-Llm-Api-Key`（+ 非 OpenAI 时带 `X-Llm-Endpoint` 与 `X-Llm-Model`），对话服务直接透传使用，**无需在 AgentX 侧配置或托管任何 Key**。每个请求独立，可自由切换供应商。
 
 ### 请求体
 
@@ -96,6 +97,7 @@ AGENTX_CONVERSATION_API_KEY=<由 AgentX 提供，agentx_ 开头>
 | `X-Tenant-Address` | 租户标识（0x 地址） |
 | `X-Llm-Api-Key` | 可选：无状态 BYOK，自带 LLM Key |
 | `X-Llm-Endpoint` | 可选：与 `X-Llm-Api-Key` 配套的 LLM 端点（缺省 OpenAI） |
+| `X-Llm-Model` | 可选：与 `X-Llm-Api-Key` 配套的模型名（缺省 `gpt-4o`） |
 | `X-End-User-Id` | 可选：端用户记忆隔离 |
 
 请求体与方式 B 相同（`agentId` 或 inline `prompt`/`skills` 二选一）。
@@ -184,6 +186,7 @@ curl -N -X POST <GATEWAY_BASE_URL>/api/v1/agent/runs \
   -H "X-Api-Key: <AGENTX_CONVERSATION_API_KEY>" \
   -H "X-Llm-Api-Key: <AISERVICER_DEEPSEEK_API_KEY>" \
   -H "X-Llm-Endpoint: https://api.deepseek.com/v1" \
+  -H "X-Llm-Model: deepseek-chat" \
   -H "Content-Type: application/json" \
   -d '{
     "message": "你好，介绍一下你自己",
@@ -192,10 +195,10 @@ curl -N -X POST <GATEWAY_BASE_URL>/api/v1/agent/runs \
   }'
 ```
 
-### 9.2 SDK（v0.7.3）
+### 9.2 SDK（v0.7.4）
 
 ```bash
-npm install @agentxv2/sdk@0.7.3
+npm install @agentxv2/sdk@0.7.4
 ```
 
 ```ts
@@ -204,9 +207,10 @@ import { ConversationClient } from '@agentxv2/sdk/conversation'
 const client = new ConversationClient({
   gatewayUrl: '<GATEWAY_BASE_URL>',
   apiKey: '<AGENTX_CONVERSATION_API_KEY>',
-  // 无状态 BYOK：aiservicer 自己的 DeepSeek Key + 端点，AgentX 侧零配置
+  // 无状态 BYOK：aiservicer 自己的 DeepSeek Key + 端点 + 模型，AgentX 侧零配置
   llmApiKey: '<AISERVICER_DEEPSEEK_API_KEY>',
   llmEndpoint: 'https://api.deepseek.com/v1',
+  llmModel: 'deepseek-chat',
   endUserId: 'user-123',   // 多用户场景必传，用于记忆隔离
 })
 
@@ -232,4 +236,4 @@ curl -i -X POST <GATEWAY_BASE_URL>/api/v1/agent/runs \
   -d '{}'
 ```
 
-> 完整服务端协议见仓库 [CONVERSATION_SERVICE.md](CONVERSATION_SERVICE.md)，SDK 用法见 [INTEGRATION.md](INTEGRATION.md)（`ConversationClient`，v0.7.3）。
+> 完整服务端协议见仓库 [CONVERSATION_SERVICE.md](CONVERSATION_SERVICE.md)，SDK 用法见 [INTEGRATION.md](INTEGRATION.md)（`ConversationClient`，v0.7.4）。

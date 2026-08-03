@@ -23,6 +23,7 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
     const tenantAddress = req.headers['x-tenant-address'] as string || 'unknown'
     const headerApiKey = req.headers['x-llm-api-key'] as string || undefined
     const llmEndpoint = req.headers['x-llm-endpoint'] as string || undefined
+    const llmModel = req.headers['x-llm-model'] as string || undefined
     const endUserId = req.headers['x-end-user-id'] as string || undefined
 
     if (!message) {
@@ -54,6 +55,7 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
         history: history || [],
         headerApiKey,
         llmEndpoint,
+        llmModel,
         endUserId,
         prompt: typeof prompt === 'string' ? prompt : undefined,
         skills,
