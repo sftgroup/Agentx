@@ -1,5 +1,39 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.6.9 → v0.7.0
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **ConversationClient** | `@agentxv2/sdk/conversation` — remote Conversation Service client. SSE streaming via Gateway `POST /api/v1/agent/runs`; auto-sends `X-Api-Key`, `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` (BYOK). |
+| **Direct MCP Skill Execution** | Gateway Agent-as-MCP `tools/call` executes the agent's skill directly (`execution.type`: `mcp` / `http`) instead of a second LLM pass. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.7.0
+```
+
+### 1. Use ConversationClient
+
+```ts
+import { ConversationClient } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({
+  gatewayUrl: 'https://gateway.example.com',
+  apiKey: 'agentx_...',
+  endUserId: 'user-123',   // optional: per-end-user memory isolation
+})
+const result = await client.chat({ agentId: 42, message: 'Hello' })
+```
+
+### Breaking Changes
+
+None. v0.7.0 is purely additive (new `conversation` module + Gateway-side behavior change). All v0.6.9 APIs remain fully compatible.
+
+---
+
 ## v0.6.8 → v0.6.9
 
 ### What's New

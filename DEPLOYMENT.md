@@ -1,10 +1,10 @@
 # AgentX Deployment Guide
 
-> Production: `43.156.99.215` (Full-Stack) · Last updated: 2026-07-24
+> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-02
 
 ---
 
-## Production Server: 43.156.99.215
+## Production Server: 43.159.60.46
 
 | Spec | Value |
 |------|-------|
@@ -19,12 +19,11 @@
 ### Port Layout
 
 ```
-43.156.99.215
+43.159.60.46
 ├── :3100 → Next.js Frontend (standalone, calls Gateway API for agent data)
 ├── :3090 → Express Gateway (wallet auth / rate-limit / LLM proxy / MCP / Agents API)
-├── :5432 → PostgreSQL (localhost only, agentx_gateway DB)
-├── :18545 → OxaChain L1 Geth Node (Clique PoA)
-└── :3000 → Reserved (root indexer service)
+├── :8100 → Conversation Service (agent dialogue microservice, SSE)
+└── :5432 → PostgreSQL (localhost only, agentx_gateway DB)
 ```
 
 ### Firewall — Ports to Open
@@ -38,9 +37,9 @@ sudo ufw allow 18545/tcp  # OxaChain RPC (REQUIRED for browser wallet RPC calls)
 ### SSH Access
 
 ```bash
-# Direct: ssh ubuntu@43.156.99.215
+# Direct: ssh ubuntu@43.159.60.46
 # Via jump host:
-ssh -J ubuntu@43.156.78.59 -i agentx_new_prod.pem ubuntu@43.156.99.215
+ssh -J ubuntu@43.156.78.59 -i agentx_new_prod.pem ubuntu@43.159.60.46
 ```
 
 ---
@@ -72,9 +71,9 @@ PORT=3100 HOSTNAME=0.0.0.0 nohup node server.js > /tmp/fe.log 2>&1 &
 ### `.env.production` (key values)
 
 ```
-NEXT_PUBLIC_APP_URL=http://43.156.99.215:3100
-NEXT_PUBLIC_SITE_URL=http://43.156.99.215:3100
-NEXT_PUBLIC_AGENTX_GATEWAY_URL=http://43.156.99.215:3090
+NEXT_PUBLIC_APP_URL=http://43.159.60.46:3100
+NEXT_PUBLIC_SITE_URL=http://43.159.60.46:3100
+NEXT_PUBLIC_AGENTX_GATEWAY_URL=http://43.159.60.46:3090
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=19505
 NEXT_PUBLIC_OXACHAIN_RPC_URL=https://rpc-oxa.0xainet.top
 NEXT_PUBLIC_OXACHAIN_EXPLORER=https://explorer-oxa.0xainet.top
@@ -125,7 +124,7 @@ MASTER_ENCRYPTION_KEY=agentx-master-encryption-key-32b
 ADMIN_KEY=agentx-admin-key-2026
 SESSION_TTL_SEC=86400
 FREE_PLAN_ID=
-CORS_ORIGIN=http://43.156.99.215:3100
+CORS_ORIGIN=http://43.159.60.46:3100
 RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
 RPC_URL_OXACHAIN=http://localhost:18545
 CHAIN_ID=11155111
@@ -272,9 +271,55 @@ psql -h localhost -U agentx -d agentx_gateway -f db/migrations/003_a2a_results.s
 ### Health Check
 
 ```bash
-curl -s http://43.156.99.215:3090/api/v1/a2a/worker-status
+curl -s http://43.159.60.46:3090/api/v1/a2a/worker-status
 # → {"running":true,"totalOrchestrated":0,"taskCounts":{"completed":1,...}}
 ```
+
+---
+
+## 2.7 Conversation Service (v0.7.0)
+
+Agent dialogue microservice — multi-tenant AgentLoop execution engine (Memory + Context + Skills). Hosted on `43.159.60.46:8100`, called by Gateway via `ConversationProxy` (`POST /api/v1/agent/runs` → SSE pipe).
+
+### Deploy
+
+```bash
+cd /home/ubuntu/agentx-conversation
+
+npm install
+npm run build
+
+# Restart
+sudo fuser -k 8100/tcp
+nohup node dist/index.js > /tmp/conv.log 2>&1 &
+```
+
+### `.env` (key values)
+
+```
+PORT=8100
+DATABASE_URL=postgresql://agentx:AgentX2024!Gateway@localhost:5432/agentx_conversation
+INTERNAL_AUTH_TOKEN=<same value as gateway CONVERSATION_SERVICE_TOKEN>
+GATEWAY_URL=http://localhost:3090
+OPENAI_API_KEY=sk-...                # platform fallback LLM key
+MASTER_ENCRYPTION_KEY=<64-hex>       # required for tenant LLM key encryption (openssl rand -hex 32)
+CONTEXT_CACHE_TTL_SEC=300
+```
+
+### Migrations (pgvector required)
+
+```bash
+for f in migrations/*.sql; do psql -h localhost -U agentx -d agentx_conversation -f "$f"; done
+```
+
+### Gateway `.env` — connect
+
+```
+CONVERSATION_SERVICE_URL=http://localhost:8100
+CONVERSATION_SERVICE_TOKEN=<same value as conversation INTERNAL_AUTH_TOKEN>
+```
+
+> Full API / SSE protocol / memory isolation: see [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md).
 
 ---
 
@@ -341,21 +386,24 @@ forge script script/DeployOxaChainFull.s.sol \
 
 ```bash
 # Frontend
-curl -sI http://43.156.99.215:3100/ | head -1
+curl -sI http://43.159.60.46:3100/ | head -1
 
 # Gateway
-curl -s http://43.156.99.215:3090/api/v1/health
+curl -s http://43.159.60.46:3090/api/v1/health
 
 # Agents API
-curl -s http://43.156.99.215:3090/api/v1/agents | jq '.total'
+curl -s http://43.159.60.46:3090/api/v1/agents | jq '.total'
 
 # MCP
-curl -s -X POST http://43.156.99.215:3090/mcp \
+curl -s -X POST http://43.159.60.46:3090/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
 # A2A Worker
-curl -s http://43.156.99.215:3090/api/v1/a2a/worker-status
+curl -s http://43.159.60.46:3090/api/v1/a2a/worker-status
+
+# Conversation Service
+curl -s http://43.159.60.46:8100/health
 
 # OxaChain RPC
 curl -s -X POST https://rpc-oxa.0xainet.top \
@@ -363,7 +411,7 @@ curl -s -X POST https://rpc-oxa.0xainet.top \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
 
 # Processes
-ss -tlnp | grep -E '3100|3090|18545'
+ss -tlnp | grep -E '3100|3090|8100'
 ```
 
 ---
@@ -395,7 +443,14 @@ npm version patch
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.6.6` · Git tag: `v0.6.6`
+Current: `@agentxv2/sdk@0.7.0` · Git tag: `v0.7.0`
+
+### SDK v0.7.0 New Features
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| **ConversationClient** | `@agentxv2/sdk/conversation` | Remote Conversation Service client: SSE streaming via Gateway `POST /api/v1/agent/runs`, auto-sends `X-Api-Key` / `X-End-User-Id` / `X-Llm-Api-Key` |
+| **Direct MCP Skill Execution** | Gateway `/mcp/agent/:id` | `tools/call` executes the agent's skill directly (execution.type mcp/http), no LLM second-pass |
 
 ### SDK v0.6.6 New Features
 
@@ -443,7 +498,7 @@ IPFS_GATEWAY_URL=https://ipfs.io
 ## 8. Admin Dashboard
 
 ### Access
-`http://43.156.99.215:3100/admin`
+`http://43.159.60.46:3100/admin`
 
 ### Admin Key
 Set `ADMIN_KEY` in Gateway `.env`:
@@ -468,7 +523,7 @@ Auth: `Authorization: Bearer <ADMIN_KEY>` or `X-Admin-Key: <ADMIN_KEY>`
 ### Platform LLM Key Setup (DeepSeek example)
 
 ```bash
-curl -X POST http://43.156.99.215:3090/api/v1/admin/platform-keys \
+curl -X POST http://43.159.60.46:3090/api/v1/admin/platform-keys \
   -H 'X-Admin-Key: agentx-admin-key-2026' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -502,6 +557,7 @@ Creates tables: `plans`, `tenants`, `platform_api_keys`, `tenant_api_keys`, `usa
 
 | Server | Role | Status |
 |--------|------|--------|
+| `43.156.99.215` | Previous Full-Stack (FE :3100 + GW :3090) | Gateway/Conversation migrated to `43.159.60.46` (frontend :3100 still reachable) |
 | `43.156.225.164` | Old Production | Migrated |
 | `43.156.78.59:8080` | Test Frontend | Stale |
 | `101.33.109.117:3090` | Old Gateway | Retired |
