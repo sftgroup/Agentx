@@ -1,5 +1,25 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.7.4 → v0.7.5
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **AgentLoop respects provider model** | `AgentLoop` no longer forces `ctx.model ?? 'gpt-4o'` on every LLM call. Model priority is now `ctx.model` → `provider.model` → `gpt-4o`. Any provider configured with a non-default model (e.g. BYOK DeepSeek `deepseek-v4-pro`) now works inside the loop. |
+
+**Why this matters**: previously a provider built with `model: 'deepseek-v4-pro'` still sent `gpt-4o` to the model API inside the loop (the loop's `request.model` always won), so non-OpenAI providers errored with `you passed gpt-4o`. This also silently broke the Conversation Service tenant DB model config.
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.7.5
+```
+
+No breaking changes — explicit `ctx.model` still takes precedence; only the fallback behavior changed.
+
+---
+
 ## v0.7.3 → v0.7.4
 
 ### What's New

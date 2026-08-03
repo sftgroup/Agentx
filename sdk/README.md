@@ -1,4 +1,4 @@
-# @agentxv2/sdk v0.7.1
+# @agentxv2/sdk v0.7.5
 
 **Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools.
 
@@ -228,7 +228,7 @@ const result = await connector.callTool('get_balance', {
 
 ---
 
-## ConversationClient (v0.7.4) — Remote Conversation Service
+## ConversationClient (v0.7.5) — Remote Conversation Service
 
 Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auto-sends `X-Api-Key` (tenant API key), `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` + `X-Llm-Endpoint` + `X-Llm-Model` (stateless BYOK override — your own key AND endpoint AND model, e.g. DeepSeek).
 

@@ -195,10 +195,10 @@ curl -N -X POST <GATEWAY_BASE_URL>/api/v1/agent/runs \
   }'
 ```
 
-### 9.2 SDK（v0.7.4）
+### 9.2 SDK（v0.7.5）
 
 ```bash
-npm install @agentxv2/sdk@0.7.4
+npm install @agentxv2/sdk@0.7.5
 ```
 
 ```ts
@@ -210,7 +210,7 @@ const client = new ConversationClient({
   // 无状态 BYOK：aiservicer 自己的 DeepSeek Key + 端点 + 模型，AgentX 侧零配置
   llmApiKey: '<AISERVICER_DEEPSEEK_API_KEY>',
   llmEndpoint: 'https://api.deepseek.com/v1',
-  llmModel: 'deepseek-chat',
+  llmModel: 'deepseek-v4-pro',  // DeepSeek 接受的模型名（deepseek-v4-pro / deepseek-v4-flash）
   endUserId: 'user-123',   // 多用户场景必传，用于记忆隔离
 })
 
@@ -236,4 +236,4 @@ curl -i -X POST <GATEWAY_BASE_URL>/api/v1/agent/runs \
   -d '{}'
 ```
 
-> 完整服务端协议见仓库 [CONVERSATION_SERVICE.md](CONVERSATION_SERVICE.md)，SDK 用法见 [INTEGRATION.md](INTEGRATION.md)（`ConversationClient`，v0.7.4）。
+> 完整服务端协议见仓库 [CONVERSATION_SERVICE.md](CONVERSATION_SERVICE.md)，SDK 用法见 [INTEGRATION.md](INTEGRATION.md)（`ConversationClient`，v0.7.5）。
