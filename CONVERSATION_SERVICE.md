@@ -148,7 +148,8 @@ Executes an AgentLoop conversation and streams results via Server-Sent Events.
 ```
 X-Internal-Token: agentx-conv-internal-token-2026
 X-Tenant-Address: 0x...
-X-Llm-Api-Key: sk-...     # Optional: tenant's own key (Plan C)
+X-Llm-Api-Key: sk-...       # Optional: stateless BYOK — caller's own key (Plan C)
+X-Llm-Endpoint: https://api.deepseek.com/v1  # Optional: endpoint for X-Llm-Api-Key (default OpenAI)
 X-End-User-Id: user_123  # Optional: per end-user memory isolation
 ```
 
@@ -278,8 +279,8 @@ The service supports hybrid LLM key resolution, allowing tenants to choose betwe
 
 ```
 Priority chain:
-  1. X-Llm-Api-Key header   → Tenant's ephemeral key (per-request, not stored)
-  2. tenant_llm_configs DB   → Tenant's persistent key (encrypted at rest)
+  1. X-Llm-Api-Key + X-Llm-Endpoint header → Tenant's stateless BYOK (per-request, not stored)
+  2. tenant_llm_configs DB   → Tenant's persistent key (encrypted at rest, endpoint_url supported)
   3. OPENAI_API_KEY env      → AgentX official key (platform default)
   4. GATEWAY_URL             → AgentX Gateway as last-resort LLM proxy
 ```
@@ -371,7 +372,8 @@ const client = new ConversationClient({
   gatewayUrl: 'http://43.159.60.46:3090',
   apiKey: 'agentx_abc123...',      // Tenant API Key (issued after registration)
   endUserId: 'user_123',           // Optional: per end-user memory isolation
-  llmApiKey: 'sk-...',             // Optional: override LLM key (Plan C)
+  llmApiKey: 'sk-...',             // Optional: stateless BYOK — caller's own LLM key
+  llmEndpoint: 'https://api.deepseek.com/v1', // Optional: endpoint for llmApiKey (default OpenAI)
 })
 
 // One-shot chat (collects full result)
@@ -396,7 +398,7 @@ for await (const event of client.stream({
 }
 ```
 
-**Auth:** the client sends `X-Api-Key: agentx_...` automatically. If you pass `llmApiKey`, it is forwarded as `X-Llm-Api-Key` so your own LLM key is used instead of the tenant's stored key.
+**Auth:** the client sends `X-Api-Key: agentx_...` automatically. If you pass `llmApiKey`, it is forwarded as `X-Llm-Api-Key`; with `llmEndpoint` it is forwarded as `X-Llm-Endpoint` — so callers can fully BYOK (key + endpoint, e.g. DeepSeek) without any AgentX-side configuration.
 
 ---
 

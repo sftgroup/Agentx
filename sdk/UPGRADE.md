@@ -1,5 +1,36 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.7.2 → v0.7.3
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Stateless BYOK (key + endpoint)** | `ConversationClient` adds `llmEndpoint` — forwarded as `X-Llm-Endpoint` alongside `X-Llm-Api-Key`. Callers now supply their own LLM key **and** endpoint (e.g. DeepSeek `https://api.deepseek.com/v1`) per request, with zero AgentX-side configuration or key storage. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.7.3
+```
+
+### Use Your Own LLM Key + Endpoint (DeepSeek example)
+
+```ts
+const client = new ConversationClient({
+  gatewayUrl: 'https://gateway.example.com',
+  apiKey: 'agentx_...',
+  llmApiKey: 'sk-deepseek-...',
+  llmEndpoint: 'https://api.deepseek.com/v1',   // NEW
+})
+
+const result = await client.chat({ message: 'hello' })
+```
+
+No breaking changes — existing calls behave as before.
+
+---
+
 ## v0.7.1 → v0.7.2
 
 ### What's New
