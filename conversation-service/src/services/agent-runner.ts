@@ -9,9 +9,10 @@ import { MemoryEngine } from './memory-engine'
 import { ContextEngine } from './context-engine'
 import { TenantLLMResolver } from './tenant-llm-resolver'
 import { AgentContextLoader } from './agent-context-loader'
+import type { AgentSkillDef } from './agent-context-loader'
 
 export interface AgentRunRequest {
-  agentId: number
+  agentId?: number
   message: string
   tenantAddress: string
   enableMemory?: boolean
@@ -19,6 +20,9 @@ export interface AgentRunRequest {
   history?: { role: 'user' | 'assistant'; content: string }[]
   headerApiKey?: string
   endUserId?: string
+  /** Inline mode: caller-supplied prompt + skills, bypasses Gateway agent lookup */
+  prompt?: string
+  skills?: AgentSkillDef[]
 }
 
 export interface AgentRunSSEEvent {
@@ -42,15 +46,19 @@ export class AgentRunnerService {
 
   async *streamRun(request: AgentRunRequest): AsyncGenerator<AgentRunSSEEvent> {
     const sessionId = uuidv4()
-    const startTime = Date.now()
+
+    const hasInline = request.prompt !== undefined || (request.skills && request.skills.length > 0)
 
     try {
-      // 1. Load agent context (prompt + skills) from Gateway
-      const loadedCtx = await this.contextLoader.load(request.agentId)
+      // 1. Load agent context — inline prompt/skills when provided, else from Gateway
+      const loadedCtx = hasInline
+        ? this.contextLoader.loadInline(request.prompt || '', request.skills)
+        : await this.contextLoader.load(request.agentId as number)
+      const runAgentId = hasInline ? 0 : (request.agentId as number)
 
       // 2. Resolve LLM provider — tenant key > header key > AgentX key
       const llmProvider = await this.llmResolver.resolve(
-        { agentId: request.agentId, prompt: loadedCtx.prompt, skills: [] },
+        { agentId: runAgentId, prompt: loadedCtx.prompt, skills: [] },
         request.tenantAddress,
         request.headerApiKey,
       )
@@ -61,7 +69,7 @@ export class AgentRunnerService {
         try {
           const facts = await this.memoryEngine.recall({
             subscriberAddress: request.tenantAddress,
-            agentId: request.agentId,
+            agentId: runAgentId,
             query: request.message,
             limit: 5,
             endUserId: request.endUserId,
@@ -77,7 +85,7 @@ export class AgentRunnerService {
       // 4. Initialize AgentLoop with loaded skills
       const loop = new AgentLoop({
         ctx: {
-          agentId: request.agentId,
+          agentId: runAgentId,
           prompt: loadedCtx.prompt,
           skills: loadedCtx.skills as any, // RunnableSkill shape is compatible
           subscriberAddress: request.tenantAddress,
@@ -115,7 +123,7 @@ export class AgentRunnerService {
           for (const fact of facts) {
             await this.memoryEngine.store({
               subscriberAddress: request.tenantAddress,
-              agentId: request.agentId,
+              agentId: runAgentId,
               fact,
               endUserId: request.endUserId,
             })

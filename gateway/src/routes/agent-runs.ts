@@ -8,24 +8,33 @@ const router = Router()
 
 // POST /api/v1/agent/runs — SSE streaming agent conversation
 router.post('/runs', async (req: Request, res: Response) => {
-  const { agentId, message, enableMemory, contextBudget, history } = req.body
+  const { agentId, message, enableMemory, contextBudget, history, prompt, skills } = req.body
   const tenantAddress = (req as any).user?.address || (req as any).user?.tenantId || 'unknown'
   const endUserId = req.headers['x-end-user-id'] as string || undefined
+  const headerApiKey = req.headers['x-llm-api-key'] as string || undefined
 
-  if (!agentId || !message) {
-    return res.status(400).json({ error: 'agentId and message are required' })
+  if (!message) {
+    return res.status(400).json({ error: 'message is required' })
+  }
+  const hasAgentId = agentId !== undefined && agentId !== null && agentId !== ''
+  const hasInline = typeof prompt === 'string' || (Array.isArray(skills) && skills.length > 0)
+  if (!hasAgentId && !hasInline) {
+    return res.status(400).json({ error: 'agentId or inline prompt/skills is required' })
   }
 
   try {
     const proxy = getConversationProxy()
     const upstream = await proxy.streamRun({
-      agentId: Number(agentId),
+      agentId: hasAgentId ? Number(agentId) : undefined,
       message: String(message),
       tenantAddress,
       enableMemory: Boolean(enableMemory),
       contextBudget: contextBudget ? Number(contextBudget) : undefined,
       history,
       endUserId,
+      headerApiKey,
+      prompt: typeof prompt === 'string' ? prompt : undefined,
+      skills,
     })
 
     if (!upstream.ok) {

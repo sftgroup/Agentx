@@ -564,12 +564,34 @@ for await (const event of client.stream({ agentId: 42, message: 'Hello' })) {
   if (event.type === 'tool_call') console.log('calling', event.toolName)
   if (event.type === 'done') console.log('usage:', event.usage)
 }
+
+// Inline mode — call without an AgentX agent, inject your own MCP/HTTP tools (e.g. RAG)
+const ragResult = await client.chat({
+  message: '根据知识库回答：AgentX 支持哪些链？',
+  prompt: '你是客服助手，回答前先调用 rag_query 检索知识库。',
+  skills: [{
+    name: 'rag_query',
+    description: 'Retrieve relevant chunks from the knowledge base',
+    inputSchema: {
+      type: 'object',
+      properties: { query: { type: 'string' }, topK: { type: 'number' } },
+      required: ['query'],
+    },
+    execution: {
+      type: 'mcp',
+      endpoint: 'https://your-rag-mcp.example.com/mcp',
+      toolName: 'rag_query',
+    },
+  }],
+  enableMemory: false,
+})
 ```
 
 **Key points:**
 - Auth: SDK sends `X-Api-Key: agentx_...` automatically (tenant API Key, not wallet JWT)
 - Isolation: pass `endUserId` → long-term memory scoped to `(tenant + agent + end_user)`
 - LLM key: pass `llmApiKey` → forwarded as `X-Llm-Api-Key` (BYOK)
+- Inline mode: omit `agentId`, pass `prompt` + `skills` → no AgentX registration needed; skills run via `execution.type` (`mcp` / `http` / `a2a`)
 - Full API reference: [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md)
 
 ---
@@ -580,7 +602,7 @@ for await (const event of client.stream({ agentId: 42, message: 'Hello' })) {
 - **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.7.0`](https://www.npmjs.com/package/@agentxv2/sdk)
 - **Contracts**: `agentx/contracts/` — Foundry + Solidity 0.8.20-0.8.24
 - **Frontend**: `agentx/frontend/` — Next.js 14 + wagmi 2.x
-- **Production**: `http://43.156.99.215:3100`
+- **Production**: `http://43.159.60.46:3100`
 - **Conversation Service**: `agentx/conversation-service/` — hosted on `http://43.159.60.46:8100` (docs: [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md))
 
 ---

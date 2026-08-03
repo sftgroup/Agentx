@@ -10,8 +10,22 @@ interface ConversationClientConfig {
     /** Abort timeout in ms for a single stream (default 120s) */
     timeoutMs?: number;
 }
+interface ConversationSkillDef {
+    name: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+    execution?: {
+        type: 'mcp' | 'http' | 'a2a';
+        endpoint?: string;
+        toolName?: string;
+        targetAgentId?: number;
+        skillFilter?: string[];
+        promptOverride?: string;
+    };
+}
 interface ConversationChatParams {
-    agentId: number;
+    /** AgentX agent id (omit when using inline prompt/skills mode) */
+    agentId?: number;
     message: string;
     /** Full conversation history — caller is responsible for per-end-user isolation */
     history?: {
@@ -20,6 +34,10 @@ interface ConversationChatParams {
     }[];
     enableMemory?: boolean;
     contextBudget?: number;
+    /** Inline mode: caller-supplied system prompt, bypasses Gateway agent lookup */
+    prompt?: string;
+    /** Inline mode: caller-supplied tools (MCP/HTTP), injected into the run */
+    skills?: ConversationSkillDef[];
 }
 interface ConversationSSEEvent {
     type: 'text' | 'tool_call' | 'tool_result' | 'thinking' | 'done' | 'error';
@@ -63,4 +81,4 @@ declare class ConversationClient {
     chat(params: ConversationChatParams): Promise<ConversationChatResult>;
 }
 
-export { type ConversationChatParams, type ConversationChatResult, ConversationClient, type ConversationClientConfig, type ConversationSSEEvent };
+export { type ConversationChatParams, type ConversationChatResult, ConversationClient, type ConversationClientConfig, type ConversationSSEEvent, type ConversationSkillDef };

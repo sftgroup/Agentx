@@ -19,13 +19,20 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
 
   // POST /runs — SSE streaming conversation
   router.post('/', async (req: Request, res: Response) => {
-    const { agentId, message, enableMemory, contextBudget, history } = req.body
+    const { agentId, message, enableMemory, contextBudget, history, prompt, skills } = req.body
     const tenantAddress = req.headers['x-tenant-address'] as string || 'unknown'
     const headerApiKey = req.headers['x-llm-api-key'] as string || undefined
     const endUserId = req.headers['x-end-user-id'] as string || undefined
 
-    if (!agentId || !message) {
-      return res.status(400).json({ error: 'agentId and message are required' })
+    if (!message) {
+      return res.status(400).json({ error: 'message is required' })
+    }
+
+    // Either an AgentX agentId or inline prompt/skills must be provided
+    const hasAgentId = agentId !== undefined && agentId !== null && agentId !== ''
+    const hasInline = typeof prompt === 'string' || (Array.isArray(skills) && skills.length > 0)
+    if (!hasAgentId && !hasInline) {
+      return res.status(400).json({ error: 'agentId or inline prompt/skills is required' })
     }
 
     // SSE headers
@@ -38,7 +45,7 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
 
     try {
       const stream = runner.streamRun({
-        agentId: Number(agentId),
+        agentId: hasAgentId ? Number(agentId) : undefined,
         message: String(message),
         tenantAddress,
         enableMemory: Boolean(enableMemory),
@@ -46,6 +53,8 @@ export function createRunsRouter(runner: AgentRunnerService): Router {
         history: history || [],
         headerApiKey,
         endUserId,
+        prompt: typeof prompt === 'string' ? prompt : undefined,
+        skills,
       })
 
       for await (const event of stream) {
