@@ -64,6 +64,11 @@
 - 修复硬编码：事实提取模型改用 `config.compactModel`
 - 抽取通用 `tryParseJson<T>`，消除 `parseClarificationJson` / `parseFactsJson` 冗余
 
+### 前端（agentx-frontend）— SDK 升级 + 生产配置恢复
+
+- SDK `^0.6.5 → ^0.7.5`（`#410685f`）：chat 页面的 AgentLoop fallback 获得 provider 模型修复与澄清打断支持；`next build` 验证通过。
+- `.env.production`：恢复为完整配置（合约地址 / RPC / Pinata / WalletConnect），`APP_URL` 与 `GATEWAY_URL` 指向新生产服务器 `43.159.60.46`；重新构建部署后前端真正指向新 Gateway。
+
 ---
 
 ## 文档（2026-08-04）
