@@ -22,6 +22,8 @@ export class ConversationProxy {
     history?: { role: 'user' | 'assistant'; content: string }[]
     endUserId?: string
     headerApiKey?: string
+    /** Stateless BYOK: caller's LLM endpoint (e.g. DeepSeek) */
+    headerEndpoint?: string
     prompt?: string
     skills?: unknown[]
   }): Promise<Response> {
@@ -35,6 +37,9 @@ export class ConversationProxy {
     }
     if (params.headerApiKey) {
       headers['X-Llm-Api-Key'] = params.headerApiKey
+    }
+    if (params.headerEndpoint) {
+      headers['X-Llm-Endpoint'] = params.headerEndpoint
     }
     return fetch(`${this.serviceUrl}/runs`, {
       method: 'POST',

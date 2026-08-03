@@ -38,12 +38,16 @@ export class TenantLLMResolver {
     ctx: LoopRunContext,
     tenantAddress: string,
     headerApiKey?: string,
+    headerEndpoint?: string,
   ): Promise<LLMProvider> {
-    // 1. Check request header for stateless API key (ephemeral, not stored)
+    // 1. Stateless BYOK request headers (ephemeral, not stored) — caller's own
+    //    key + endpoint, so no AgentX-side configuration is needed at all.
     if (headerApiKey) {
       return new OpenAIProvider({
         apiKey: headerApiKey,
         model: ctx.model || 'gpt-4o',
+        // Provider-specific endpoint (e.g. DeepSeek) — falls back to OpenAI default
+        endpoint: headerEndpoint || undefined,
       })
     }
 

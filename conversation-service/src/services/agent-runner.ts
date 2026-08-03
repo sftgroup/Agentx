@@ -19,6 +19,8 @@ export interface AgentRunRequest {
   contextBudget?: number
   history?: { role: 'user' | 'assistant'; content: string }[]
   headerApiKey?: string
+  /** Stateless BYOK: caller's LLM endpoint (e.g. DeepSeek) — used with headerApiKey */
+  llmEndpoint?: string
   endUserId?: string
   /** Inline mode: caller-supplied prompt + skills, bypasses Gateway agent lookup */
   prompt?: string
@@ -62,6 +64,7 @@ export class AgentRunnerService {
         { agentId: runAgentId, prompt: loadedCtx.prompt, skills: [] },
         request.tenantAddress,
         request.headerApiKey,
+        request.llmEndpoint,
       )
 
       // 2.5 Clarification gate — interrupt ambiguous requests before spending

@@ -42,7 +42,10 @@ AGENTX_CONVERSATION_API_KEY=<由 AgentX 提供，agentx_ 开头>
 | `X-Api-Key` | ✅ | 租户 API Key（方式 B 鉴权） |
 | `Content-Type` | ✅ | `application/json` |
 | `X-End-User-Id` | 可选 | 端用户 ID，用于记忆隔离（多用户场景必传） |
-| `X-Llm-Api-Key` | 可选 | 自带 LLM Key（BYOK，优先级最高） |
+| `X-Llm-Api-Key` | 可选 | **无状态 BYOK**：调用方自持 LLM Key（优先级最高，不落库） |
+| `X-Llm-Endpoint` | 可选 | 与 `X-Llm-Api-Key` 配套的自定义 LLM 端点（如 DeepSeek `https://api.deepseek.com/v1`；缺省 OpenAI） |
+
+> **无状态 BYOK**：只需在请求头带上调用方自己的 `X-Llm-Api-Key`（+ 非 OpenAI 时带 `X-Llm-Endpoint`），对话服务直接透传使用，**无需在 AgentX 侧配置或托管任何 Key**。每个请求独立，可自由切换供应商。
 
 ### 请求体
 
