@@ -55,6 +55,8 @@ export class TenantLLMResolver {
         return new OpenAIProvider({
           apiKey: decrypted,
           model: record.model || ctx.model || 'gpt-4o',
+          // Provider-specific endpoint (e.g. DeepSeek) — falls back to OpenAI default
+          endpoint: record.endpoint_url || undefined,
         })
       }
     } catch (err) {
