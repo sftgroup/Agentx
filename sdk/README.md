@@ -228,7 +228,7 @@ const result = await connector.callTool('get_balance', {
 
 ---
 
-## ConversationClient (v0.7.0) — Remote Conversation Service
+## ConversationClient (v0.7.2) — Remote Conversation Service
 
 Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auto-sends `X-Api-Key` (tenant API key), `X-End-User-Id` (end-user memory isolation) and `X-Llm-Api-Key` (BYOK override).
 
@@ -243,7 +243,7 @@ const client = new ConversationClient({
   timeoutMs: 120_000,                           // optional: stream timeout (default 120s)
 })
 
-// Stream events (thinking / tool_call / tool_result / text / done / error)
+// Stream events (thinking / tool_call / tool_result / text / clarification / done / error)
 for await (const event of client.stream({
   agentId: 42,
   message: 'Analyze this contract',
@@ -251,18 +251,25 @@ for await (const event of client.stream({
   history: [{ role: 'user', content: 'hi' }],
 })) {
   switch (event.type) {
-    case 'text':       appendDelta(event.content!); break
-    case 'tool_call':  showToolBubble(event.toolName!, event.toolArgs); break
-    case 'tool_result': updateToolBubble(event.toolName!, event.toolResult); break
-    case 'thinking':   setThinking(event.content!); break
-    case 'done':       onDone(event.usage); break
-    case 'error':      onError(event.error!); break
+    case 'text':           appendDelta(event.content!); break
+    case 'tool_call':      showToolBubble(event.toolName!, event.toolArgs); break
+    case 'tool_result':    updateToolBubble(event.toolName!, event.toolResult); break
+    case 'thinking':       setThinking(event.content!); break
+    case 'clarification':  askUser(event.question!); break  // request was ambiguous — prompt the user
+    case 'done':           onDone(event.usage); break
+    case 'error':          onError(event.error!); break
   }
 }
 
 // Or aggregate into a single result
 const result = await client.chat({ agentId: 42, message: 'Hello' })
 // → { text, toolCalls: [{ name, arguments, result }], usage, iterations }
+// When the service interrupts an ambiguous request, result.clarification carries
+// the clarifying question and no tools were run:
+if (result.clarification) {
+  const answer = await promptUser(result.clarification)
+  const retry = await client.chat({ agentId: 42, message: answer, history: [...prevHistory, ...] })
+}
 
 // Inline mode — no AgentX agent needed; inject your own MCP/HTTP tools (e.g. RAG)
 const ragResult = await client.chat({
@@ -477,6 +484,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.7.2** | 2026-08-03 | Clarification interruption: `ConversationSSEEvent` adds `clarification` + `question`; `chat()` returns `result.clarification` when the service interrupts an ambiguous request |
 | **0.7.1** | 2026-08-03 | ConversationClient inline mode: `prompt` + `skills` params (inject MCP/HTTP tools e.g. RAG), `agentId` now optional; Gateway forwards `X-Llm-Api-Key` |
 | **0.7.0** | 2026-08-01 | **ConversationClient** (`@agentxv2/sdk/conversation`) — remote Conversation Service client: SSE streaming via Gateway, auto `X-Api-Key` / `X-End-User-Id` / `X-Llm-Api-Key`; Gateway Agent-as-MCP `tools/call` now executes skills directly (no LLM second-pass) |
 | **0.6.9** | 2026-08-01 | Microservice Agent Conversation — 6-Phase Optimization: Conversation Service (Memory + Context + Sandbox), Observability (TraceEmitter), Skills Marketplace, Agent-as-MCP Export, Browser Control Skill, 3 new sub-path exports (memory/traces/skills) |
