@@ -592,6 +592,7 @@ const ragResult = await client.chat({
 - Isolation: pass `endUserId` → long-term memory scoped to `(tenant + agent + end_user)`
 - LLM key: pass `llmApiKey` → forwarded as `X-Llm-Api-Key` (BYOK)
 - Inline mode: omit `agentId`, pass `prompt` + `skills` → no AgentX registration needed; skills run via `execution.type` (`mcp` / `http` / `a2a`)
+- Tool endpoint auth: your RAG MCP/HTTP `execution.endpoint` stays under your control — secure it with your own auth; the service only forwards the call (30s timeout), it never proxies your tool credentials
 - Full API reference: [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md)
 
 ---
