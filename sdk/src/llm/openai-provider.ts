@@ -33,6 +33,11 @@ interface SSEData {
 export class OpenAIProvider implements LLMProvider {
   private config: Required<OpenAIProviderConfig>
 
+  /** Model the provider is configured with (used by AgentLoop when no explicit ctx.model) */
+  get model(): string | undefined {
+    return this.config.model
+  }
+
   constructor(config: OpenAIProviderConfig) {
     this.config = {
       endpoint: config.endpoint ?? DEFAULT_ENDPOINT,

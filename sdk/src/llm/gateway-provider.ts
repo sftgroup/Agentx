@@ -34,6 +34,11 @@ export class GatewayProvider implements LLMProvider {
   private config: Required<Omit<GatewayProviderConfig, 'model' | 'tenantKeyId'>>
     & Pick<GatewayProviderConfig, 'model' | 'tenantKeyId'>
 
+  /** Model the provider is configured with (used by AgentLoop when no explicit ctx.model) */
+  get model(): string | undefined {
+    return this.config.model
+  }
+
   constructor(config: GatewayProviderConfig) {
     this.config = {
       gatewayUrl: config.gatewayUrl.replace(/\/$/, ''),
