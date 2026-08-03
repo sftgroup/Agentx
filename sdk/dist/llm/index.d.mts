@@ -1,4 +1,4 @@
-import { c as LLMProvider, C as ChatRequest, b as ChatStreamEvent } from '../types-ByCFDqPw.mjs';
+import { c as LLMProvider, C as ChatRequest, b as ChatStreamEvent } from '../types-BcaAkzw6.mjs';
 import '../agent-runner-BTiZ6St-.mjs';
 import '../types-CCl4P8IB.mjs';
 import '../memory/index.mjs';
@@ -38,12 +38,16 @@ interface ProviderFactoryConfig {
 
 declare class OpenAIProvider implements LLMProvider {
     private config;
+    /** Model the provider is configured with (used by AgentLoop when no explicit ctx.model) */
+    get model(): string | undefined;
     constructor(config: OpenAIProviderConfig);
     chatStream(request: ChatRequest, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent>;
 }
 
 declare class GatewayProvider implements LLMProvider {
     private config;
+    /** Model the provider is configured with (used by AgentLoop when no explicit ctx.model) */
+    get model(): string | undefined;
     constructor(config: GatewayProviderConfig);
     chatStream(request: ChatRequest, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent>;
 }

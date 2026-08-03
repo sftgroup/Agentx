@@ -55,6 +55,8 @@ type ChatStreamEvent = {
     error: Error;
 };
 interface LLMProvider {
+    /** Default model the provider is configured with — used when the loop has no explicit model */
+    model?: string;
     chatStream(request: ChatRequest, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent>;
 }
 interface AgentLoopConfig {

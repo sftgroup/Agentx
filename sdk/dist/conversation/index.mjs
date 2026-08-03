@@ -16,6 +16,8 @@ var ConversationClient = class {
     };
     if (this.config.endUserId) headers["X-End-User-Id"] = this.config.endUserId;
     if (this.config.llmApiKey) headers["X-Llm-Api-Key"] = this.config.llmApiKey;
+    if (this.config.llmEndpoint) headers["X-Llm-Endpoint"] = this.config.llmEndpoint;
+    if (this.config.llmModel) headers["X-Llm-Model"] = this.config.llmModel;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 12e4);
     try {

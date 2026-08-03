@@ -7,6 +7,10 @@ interface ConversationClientConfig {
     endUserId?: string;
     /** LLM API Key override — uses the caller's key instead of the tenant's (optional) */
     llmApiKey?: string;
+    /** LLM endpoint override for the caller's key, e.g. DeepSeek https://api.deepseek.com/v1 (optional) */
+    llmEndpoint?: string;
+    /** LLM model override for the caller's key, e.g. deepseek-chat (optional; default gpt-4o) */
+    llmModel?: string;
     /** Abort timeout in ms for a single stream (default 120s) */
     timeoutMs?: number;
 }

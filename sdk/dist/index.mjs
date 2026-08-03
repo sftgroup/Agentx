@@ -1382,7 +1382,7 @@ var AgentLoop = class {
   }
   // ── Private: Iteration ──────────────────────────────────────────────────
   async runIteration(messages) {
-    const model = this.config.ctx.model ?? DEFAULT_MODEL;
+    const model = this.config.ctx.model ?? this.config.llmProvider.model ?? DEFAULT_MODEL;
     const temperature = this.config.ctx.temperature ?? 0.7;
     const maxTokens = this.config.ctx.maxTokens ?? 4096;
     const stream = this.config.llmProvider.chatStream(
@@ -2247,6 +2247,10 @@ var A2ADaemon = class extends EventEmitter {
 var DEFAULT_ENDPOINT = "https://api.openai.com/v1";
 var OpenAIProvider = class {
   config;
+  /** Model the provider is configured with (used by AgentLoop when no explicit ctx.model) */
+  get model() {
+    return this.config.model;
+  }
   constructor(config) {
     this.config = {
       endpoint: config.endpoint ?? DEFAULT_ENDPOINT,
@@ -2374,6 +2378,10 @@ var OpenAIProvider = class {
 // src/llm/gateway-provider.ts
 var GatewayProvider = class {
   config;
+  /** Model the provider is configured with (used by AgentLoop when no explicit ctx.model) */
+  get model() {
+    return this.config.model;
+  }
   constructor(config) {
     this.config = {
       gatewayUrl: config.gatewayUrl.replace(/\/$/, ""),
@@ -4606,6 +4614,8 @@ var ConversationClient = class {
     };
     if (this.config.endUserId) headers["X-End-User-Id"] = this.config.endUserId;
     if (this.config.llmApiKey) headers["X-Llm-Api-Key"] = this.config.llmApiKey;
+    if (this.config.llmEndpoint) headers["X-Llm-Endpoint"] = this.config.llmEndpoint;
+    if (this.config.llmModel) headers["X-Llm-Model"] = this.config.llmModel;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 12e4);
     try {

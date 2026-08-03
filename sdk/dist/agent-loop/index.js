@@ -688,7 +688,7 @@ var AgentLoop = class {
   }
   // ── Private: Iteration ──────────────────────────────────────────────────
   async runIteration(messages) {
-    const model = this.config.ctx.model ?? DEFAULT_MODEL;
+    const model = this.config.ctx.model ?? this.config.llmProvider.model ?? DEFAULT_MODEL;
     const temperature = this.config.ctx.temperature ?? 0.7;
     const maxTokens = this.config.ctx.maxTokens ?? 4096;
     const stream = this.config.llmProvider.chatStream(
