@@ -19,6 +19,8 @@ export interface ConversationClientConfig {
   llmApiKey?: string
   /** LLM endpoint override for the caller's key, e.g. DeepSeek https://api.deepseek.com/v1 (optional) */
   llmEndpoint?: string
+  /** LLM model override for the caller's key, e.g. deepseek-chat (optional; default gpt-4o) */
+  llmModel?: string
   /** Abort timeout in ms for a single stream (default 120s) */
   timeoutMs?: number
 }
@@ -91,6 +93,7 @@ export class ConversationClient {
     if (this.config.endUserId) headers['X-End-User-Id'] = this.config.endUserId
     if (this.config.llmApiKey) headers['X-Llm-Api-Key'] = this.config.llmApiKey
     if (this.config.llmEndpoint) headers['X-Llm-Endpoint'] = this.config.llmEndpoint
+    if (this.config.llmModel) headers['X-Llm-Model'] = this.config.llmModel
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 120_000)

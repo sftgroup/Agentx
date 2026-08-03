@@ -13,6 +13,7 @@ router.post('/runs', async (req: Request, res: Response) => {
   const endUserId = req.headers['x-end-user-id'] as string || undefined
   const headerApiKey = req.headers['x-llm-api-key'] as string || undefined
   const llmEndpoint = req.headers['x-llm-endpoint'] as string || undefined
+  const llmModel = req.headers['x-llm-model'] as string || undefined
 
   if (!message) {
     return res.status(400).json({ error: 'message is required' })
@@ -35,6 +36,7 @@ router.post('/runs', async (req: Request, res: Response) => {
       endUserId,
       headerApiKey,
       headerEndpoint: llmEndpoint,
+      headerModel: llmModel,
       prompt: typeof prompt === 'string' ? prompt : undefined,
       skills,
     })

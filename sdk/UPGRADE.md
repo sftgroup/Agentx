@@ -1,5 +1,37 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.7.3 → v0.7.4
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **BYOK model override** | `ConversationClient` adds `llmModel` — forwarded as `X-Llm-Model`. Combined with `llmApiKey` + `llmEndpoint`, callers now control key + endpoint + model per request (e.g. DeepSeek `deepseek-chat`). |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.7.4
+```
+
+### Example
+
+```ts
+const client = new ConversationClient({
+  gatewayUrl: 'https://gateway.example.com',
+  apiKey: 'agentx_...',
+  llmApiKey: 'sk-deepseek-...',
+  llmEndpoint: 'https://api.deepseek.com/v1',
+  llmModel: 'deepseek-chat',          // NEW
+})
+
+const result = await client.chat({ message: 'hello' })
+```
+
+No breaking changes — existing calls behave as before.
+
+---
+
 ## v0.7.2 → v0.7.3
 
 ### What's New
