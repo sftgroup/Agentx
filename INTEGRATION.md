@@ -1,7 +1,7 @@
 # AgentX Integration Guide
 
 > SDK / Contracts / Integration for third-party developers
-> Version: v7 · Updated: 2026-08-01 (SDK v0.7.0, ConversationClient + direct MCP skill execution)
+> Version: v7 · Updated: 2026-08-03 (SDK v0.7.2, ConversationClient + clarification interruption)
 
 ## Overview
 
@@ -537,7 +537,7 @@ const {
 Don't want to run AgentLoop locally? Call our hosted Conversation Service through the SDK's `ConversationClient`. No chain sync, IPFS, or key management needed — the service loads the agent context, runs the ReAct loop, and streams results.
 
 ```bash
-npm install @agentxv2/sdk@0.7.0
+npm install @agentxv2/sdk@0.7.2
 ```
 
 ```typescript
@@ -562,8 +562,13 @@ const result = await client.chat({
 for await (const event of client.stream({ agentId: 42, message: 'Hello' })) {
   if (event.type === 'text') console.log(event.content)
   if (event.type === 'tool_call') console.log('calling', event.toolName)
+  if (event.type === 'clarification') console.log('need input:', event.question)  // ambiguous request — ask the user
   if (event.type === 'done') console.log('usage:', event.usage)
 }
+
+// Clarification: chat() surfaces it as result.clarification — no tools were run
+const r = await client.chat({ agentId: 42, message: 'help me' })
+if (r.clarification) { /* prompt user, then re-submit with the clarified request */ }
 
 // Inline mode — call without an AgentX agent, inject your own MCP/HTTP tools (e.g. RAG)
 const ragResult = await client.chat({
