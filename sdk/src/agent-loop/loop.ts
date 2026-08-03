@@ -250,7 +250,7 @@ export class AgentLoop {
     toolCallRecords: ToolCallRecord[]
     usage: { promptTokens: number; completionTokens: number; totalTokens: number }
   }> {
-    const model = this.config.ctx.model ?? DEFAULT_MODEL
+    const model = this.config.ctx.model ?? this.config.llmProvider.model ?? DEFAULT_MODEL
     const temperature = this.config.ctx.temperature ?? 0.7
     const maxTokens = this.config.ctx.maxTokens ?? 4096
 

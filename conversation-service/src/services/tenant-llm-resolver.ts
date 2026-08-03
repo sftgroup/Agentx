@@ -41,16 +41,9 @@ export class TenantLLMResolver {
     headerEndpoint?: string,
     headerModel?: string,
   ): Promise<LLMProvider> {
-    // TEMP-DIAG: log what actually arrives at the resolver
-    console.info(
-      `[LLMResolver-DIAG] resolve(hasKey=${headerApiKey !== undefined}, hasEndpoint=${headerEndpoint !== undefined}, hasModel=${headerModel !== undefined}, modelVal=${headerModel ?? 'none'})`
-    )
     // 1. Stateless BYOK request headers (ephemeral, not stored) — caller's own
     //    key + endpoint + model, so no AgentX-side configuration is needed at all.
     if (headerApiKey) {
-      console.info(
-        `[LLMResolver-DIAG] BYOK branch: resolvedModel=${headerModel || ctx.model || 'gpt-4o'}`
-      )
       return new OpenAIProvider({
         apiKey: headerApiKey,
         model: headerModel || ctx.model || 'gpt-4o',
