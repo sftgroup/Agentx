@@ -263,6 +263,19 @@ for await (const event of client.stream({
 // Or aggregate into a single result
 const result = await client.chat({ agentId: 42, message: 'Hello' })
 // → { text, toolCalls: [{ name, arguments, result }], usage, iterations }
+
+// Inline mode — no AgentX agent needed; inject your own MCP/HTTP tools (e.g. RAG)
+const ragResult = await client.chat({
+  message: '根据知识库回答：AgentX 支持哪些链？',
+  prompt: '你是客服助手，回答前先调用 rag_query 检索知识库。',
+  skills: [{
+    name: 'rag_query',
+    description: 'Retrieve relevant chunks from the knowledge base',
+    inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+    execution: { type: 'mcp', endpoint: 'https://your-rag-mcp.example.com/mcp', toolName: 'rag_query' },
+  }],
+  enableMemory: false,
+})
 ```
 
 > Sub-path import: `@agentxv2/sdk/conversation`. Server-side API & headers documented in [`CONVERSATION_SERVICE.md`](../CONVERSATION_SERVICE.md).

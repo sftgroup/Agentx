@@ -14,13 +14,16 @@ export class ConversationProxy {
    * Gateway validates JWT/API Key → extracts tenant → forwards to Conversation Service.
    */
   async streamRun(params: {
-    agentId: number
+    agentId?: number
     message: string
     tenantAddress: string
     enableMemory?: boolean
     contextBudget?: number
     history?: { role: 'user' | 'assistant'; content: string }[]
     endUserId?: string
+    headerApiKey?: string
+    prompt?: string
+    skills?: unknown[]
   }): Promise<Response> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -29,6 +32,9 @@ export class ConversationProxy {
     }
     if (params.endUserId) {
       headers['X-End-User-Id'] = params.endUserId
+    }
+    if (params.headerApiKey) {
+      headers['X-Llm-Api-Key'] = params.headerApiKey
     }
     return fetch(`${this.serviceUrl}/runs`, {
       method: 'POST',
@@ -39,6 +45,8 @@ export class ConversationProxy {
         enableMemory: params.enableMemory,
         contextBudget: params.contextBudget,
         history: params.history,
+        prompt: params.prompt,
+        skills: params.skills,
       }),
     })
   }

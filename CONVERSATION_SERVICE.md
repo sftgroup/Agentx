@@ -180,6 +180,51 @@ X-End-User-Id: user_123  # Optional: per end-user memory isolation
 | `done` | Conversation complete (includes usage stats) |
 | `error` | Error message |
 
+---
+
+### Inline Mode — Call Without an AgentX Agent
+
+External apps that are **not** registered on AgentX can call the service directly by supplying `prompt` + `skills` in the request body. This bypasses the Gateway agent lookup entirely; the skill `execution` configs are applied as-is (MCP JSON-RPC or plain HTTP).
+
+**Request Body (inline):**
+```json
+{
+  "message": "What is the balance of 0x1234...?",
+  "prompt": "You are a blockchain assistant. Use the available tool to answer.",
+  "skills": [
+    {
+      "name": "get_balance",
+      "description": "Get token balance of an address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {"type": "string"},
+          "chainId": {"type": "number"}
+        },
+        "required": ["address"]
+      },
+      "execution": {
+        "type": "mcp",
+        "endpoint": "https://my-mcp.example.com/mcp",
+        "toolName": "get_balance"
+      }
+    }
+  ],
+  "enableMemory": false
+}
+```
+
+| `execution.type` | Behavior |
+|------------------|----------|
+| `mcp` | POST JSON-RPC `tools/call` to `execution.endpoint` (or `{gatewayUrl}/mcp` when omitted) |
+| `http` | POST the tool arguments as JSON to `execution.endpoint` |
+| `a2a` | Emits an a2a delegation descriptor (caller handles the target agent) |
+
+Notes:
+- Either `agentId` **or** `prompt`/`skills` must be provided (both are allowed; inline wins when present).
+- Inline runs use `agentId = 0` internally — long-term memory is still isolated by `X-Tenant-Address` + `X-End-User-Id`.
+- The `X-Llm-Api-Key` header (BYOK) applies to inline mode exactly as it does to agentId mode.
+
 **Example SSE stream:**
 ```
 data: {"type":"thinking","content":"Recalling memory..."}

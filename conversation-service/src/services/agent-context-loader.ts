@@ -20,7 +20,7 @@ interface AgentSkillDef {
   inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] }
   outputSchema?: Record<string, unknown>
   execution?: {
-    type: 'mcp' | 'a2a'
+    type: 'mcp' | 'http' | 'a2a'
     endpoint?: string
     toolName?: string
     targetAgentId?: number
@@ -28,6 +28,8 @@ interface AgentSkillDef {
     promptOverride?: string
   }
 }
+
+export type { AgentSkillDef }
 
 export interface RunnableSkill {
   name: string
@@ -67,6 +69,21 @@ export class AgentContextLoader {
   /** Invalidate cached context (e.g. after agent update) */
   invalidate(agentId: number): void {
     this.cache.delete(agentId)
+  }
+
+  /**
+   * Build context from caller-supplied prompt + skills (inline mode).
+   * Bypasses the Gateway lookup so external apps can call the service
+   * directly and inject their own MCP/HTTP tools. agentId defaults to 0
+   * (memory is still isolated by subscriber + endUserId).
+   */
+  loadInline(prompt: string, skills?: AgentSkillDef[]): LoadedAgentContext {
+    return {
+      agentId: 0,
+      prompt,
+      skills: (skills || []).map(s => this.wrapSkill(s)),
+      owner: '',
+    }
   }
 
   // ── Private ────────────────────────────────────────────────────────────
@@ -112,6 +129,23 @@ export class AgentContextLoader {
           return this.toolExecutor.executeMCP(endpoint, toolName, input)
         }
         return this.executeMCPDirect(endpoint, toolName, input)
+      }
+    } else if (exec?.type === 'http') {
+      const endpoint = exec.endpoint
+      executeFn = async (input) => {
+        if (!endpoint) {
+          throw new Error(`HTTP skill "${skill.name}" has no execution.endpoint`)
+        }
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+          signal: AbortSignal.timeout(30_000),
+        })
+        if (!res.ok) {
+          throw new Error(`HTTP skill "${skill.name}" failed: HTTP ${res.status}`)
+        }
+        return res.json()
       }
     } else if (exec?.type === 'a2a') {
       executeFn = async (input) => {

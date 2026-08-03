@@ -21,13 +21,32 @@ export interface ConversationClientConfig {
   timeoutMs?: number
 }
 
+export interface ConversationSkillDef {
+  name: string
+  description: string
+  inputSchema: Record<string, unknown>
+  execution?: {
+    type: 'mcp' | 'http' | 'a2a'
+    endpoint?: string
+    toolName?: string
+    targetAgentId?: number
+    skillFilter?: string[]
+    promptOverride?: string
+  }
+}
+
 export interface ConversationChatParams {
-  agentId: number
+  /** AgentX agent id (omit when using inline prompt/skills mode) */
+  agentId?: number
   message: string
   /** Full conversation history — caller is responsible for per-end-user isolation */
   history?: { role: 'user' | 'assistant'; content: string }[]
   enableMemory?: boolean
   contextBudget?: number
+  /** Inline mode: caller-supplied system prompt, bypasses Gateway agent lookup */
+  prompt?: string
+  /** Inline mode: caller-supplied tools (MCP/HTTP), injected into the run */
+  skills?: ConversationSkillDef[]
 }
 
 export interface ConversationSSEEvent {
