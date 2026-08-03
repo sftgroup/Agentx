@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.7.0 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.156.99.215:3100` · Last updated: 2026-08-01
+> SDK v0.7.3 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-04
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -20,6 +20,9 @@ Agentx/
 │   ├── src/             #   — routes/, middleware/, services/, lib/
 │   ├── db/migrations/   #   — PostgreSQL 迁移脚本
 │   └── deploy/          #   — 部署脚本 (⚠️ 已统一配置 → deploy_config.py)
+├── conversation-service/ # 多租户对话执行引擎（独立微服务）
+│   └── src/             #   — services/ (runner, memory, llm resolver, tool executor),
+│                        #     routes/ (runs SSE, tenants)
 ├── frontend/            # Next.js 14 前端
 │   ├── app/             #   — 15 个页面路由
 │   ├── components/      #   — layout, studio, wallet, chat, guard, providers
@@ -71,7 +74,7 @@ ERC-8004 Standard (planned):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.7.0
+npm install @agentxv2/sdk@0.7.3
 ```
 
 ```typescript
@@ -90,7 +93,7 @@ const loop = new AgentLoop({
 await loop.run('Audit this contract for vulnerabilities')
 ```
 
-### Hosted Conversation Service (v0.7.0)
+### Hosted Conversation Service (v0.7.3)
 
 Run agents on our hosted Conversation Service from your own app — no chain sync, no IPFS, no local key management:
 
@@ -101,10 +104,13 @@ const client = new ConversationClient({
   gatewayUrl: 'http://43.159.60.46:3090',
   apiKey: 'agentx_xxx',      // Tenant API Key (issued after registration)
   endUserId: 'user_123',     // Optional: per end-user memory isolation
+  llmApiKey: 'sk-...',       // Optional: stateless BYOK — your own LLM key (highest priority)
+  llmEndpoint: 'https://api.deepseek.com/v1',  // Optional: endpoint for llmApiKey (default OpenAI)
 })
 
 const result = await client.chat({ agentId: 42, message: '你好', enableMemory: true })
 // Streaming: for await (const event of client.stream({...})) { ... }
+// Inline mode: omit agentId, pass prompt + skills (MCP/HTTP/RAG) — no AgentX registration needed
 ```
 
 ---
@@ -117,6 +123,8 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | **E2E Encryption** | AES-256-GCM + ECIES for agent distribution |
 | **On-Chain Subscriptions** | ETH/ERC20 subscription with escrow trial, auto-expiry |
 | **Gateway SaaS** | Multi-tenant LLM proxy with EIP-191 wallet auth + JWT |
+| **Conversation Service** | Hosted multi-tenant conversation engine (SSE streaming, memory, clarification) |
+| **Stateless BYOK** | Callers supply their own LLM key + endpoint per request (`X-Llm-Api-Key` / `X-Llm-Endpoint`) — zero AgentX-side key storage |
 | **Dual-Mode LLM** | Platform quota (DeepSeek/OpenAI) + BYOK transparent proxy |
 | **Admin Dashboard** | Web UI for platform key/plan/tenant/usage management |
 | **MCP Remote Tools** | Publisher-hosted tools with ECDSA auth |
@@ -132,14 +140,15 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 
 | Service | URL |
 |---------|-----|
-| **Frontend** | `http://43.156.99.215:3100` |
-| **Admin Panel** | `http://43.156.99.215:3100/admin` |
+| **Frontend** | `http://43.159.60.46:3100` |
+| **Admin Panel** | `http://43.159.60.46:3100/admin` |
+| **Gateway** | `http://43.159.60.46:3090` |
 | **Gateway Health** | `http://43.159.60.46:3090/api/v1/health` |
 | **MCP Server** | `http://43.159.60.46:3090/mcp` |
-| **Conversation Service** | `http://43.159.60.46:8100` (deployed on new server) |
+| **Conversation Service** | `http://43.159.60.46:8100` |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.7.0` |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.7.3` |
 
 ---
 
@@ -164,10 +173,13 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | Doc | Content |
 |-----|---------|
 | [INTEGRATION.md](./INTEGRATION.md) | SDK / Gateway / Contract integration guide |
+| [CONVERSATION_SERVICE.md](./CONVERSATION_SERVICE.md) | Conversation Service server protocol (auth, SSE, BYOK, memory) |
+| [AISERVICER_INTEGRATION.md](./AISERVICER_INTEGRATION.md) | Sample: external project integration (aiservicer) — final BYOK form |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Full production deployment guide |
 | [SDK README](./sdk/README.md) | SDK API reference |
 | [CONTRACTS.md](./contracts/CONTRACTS.md) | Smart contract addresses + ABIs |
 | [MCP_SETUP.md](./MCP_SETUP.md) | MCP protocol configuration |
+| [REFACTORING_NOTES.md](./REFACTORING_NOTES.md) | 2026-08 refactor: decoupling + dead-code cleanup notes |
 | [CODE_REVIEW_REPORT.md](./CODE_REVIEW_REPORT.md) | Code review findings & fix tasklist (22 issues, all resolved) |
 
 ---

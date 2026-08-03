@@ -94,7 +94,8 @@ AGENTX_CONVERSATION_API_KEY=<由 AgentX 提供，agentx_ 开头>
 |--------|------|
 | `X-Internal-Token` | 方式 A 鉴权 |
 | `X-Tenant-Address` | 租户标识（0x 地址） |
-| `X-Llm-Api-Key` | 可选：自带 LLM Key |
+| `X-Llm-Api-Key` | 可选：无状态 BYOK，自带 LLM Key |
+| `X-Llm-Endpoint` | 可选：与 `X-Llm-Api-Key` 配套的 LLM 端点（缺省 OpenAI） |
 | `X-End-User-Id` | 可选：端用户记忆隔离 |
 
 请求体与方式 B 相同（`agentId` 或 inline `prompt`/`skills` 二选一）。
@@ -172,20 +173,63 @@ SSE 内错误以 `data: {"type":"error","error":"..."}` 呈现。
 
 ---
 
-## 9. 快速验证
+## 9. 快速开始（最终形态：无状态 BYOK）
+
+无需 AgentX 侧配置任何 Key —— aiservicer 每次请求自带自己的 DeepSeek Key + 端点即可：
+
+### 9.1 curl（方式 B，走 Gateway）
 
 ```bash
-# 方式 B（期望 400 而非 401 即鉴权通过）
+curl -N -X POST <GATEWAY_BASE_URL>/api/v1/agent/runs \
+  -H "X-Api-Key: <AGENTX_CONVERSATION_API_KEY>" \
+  -H "X-Llm-Api-Key: <AISERVICER_DEEPSEEK_API_KEY>" \
+  -H "X-Llm-Endpoint: https://api.deepseek.com/v1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "你好，介绍一下你自己",
+    "prompt": "你是 aiservicer 的客服助手。",
+    "enableMemory": false
+  }'
+```
+
+### 9.2 SDK（v0.7.3）
+
+```bash
+npm install @agentxv2/sdk@0.7.3
+```
+
+```ts
+import { ConversationClient } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({
+  gatewayUrl: '<GATEWAY_BASE_URL>',
+  apiKey: '<AGENTX_CONVERSATION_API_KEY>',
+  // 无状态 BYOK：aiservicer 自己的 DeepSeek Key + 端点，AgentX 侧零配置
+  llmApiKey: '<AISERVICER_DEEPSEEK_API_KEY>',
+  llmEndpoint: 'https://api.deepseek.com/v1',
+  endUserId: 'user-123',   // 多用户场景必传，用于记忆隔离
+})
+
+// 流式
+for await (const event of client.stream({ message: '你好', enableMemory: true })) {
+  if (event.type === 'text') console.log(event.content)
+  if (event.type === 'clarification') console.log('需要澄清：', event.question)
+  if (event.type === 'done') console.log('usage:', event.usage)
+}
+
+// 聚合
+const result = await client.chat({ message: '你好' })
+console.log(result.text)
+```
+
+### 9.3 鉴权自检
+
+```bash
+# 期望 400（缺少 message）而非 401 → 鉴权通过
 curl -i -X POST <GATEWAY_BASE_URL>/api/v1/agent/runs \
   -H "X-Api-Key: <AGENTX_CONVERSATION_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{}'
-
-# 方式 A
-curl -i -X POST <CONV_BASE_URL>/runs \
-  -H "X-Internal-Token: <AGENTX_CONVERSATION_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{}'
 ```
 
-> 完整服务端协议见仓库 [CONVERSATION_SERVICE.md](CONVERSATION_SERVICE.md)，SDK 用法见 [INTEGRATION.md](INTEGRATION.md)（`ConversationClient`，v0.7.2）。
+> 完整服务端协议见仓库 [CONVERSATION_SERVICE.md](CONVERSATION_SERVICE.md)，SDK 用法见 [INTEGRATION.md](INTEGRATION.md)（`ConversationClient`，v0.7.3）。
