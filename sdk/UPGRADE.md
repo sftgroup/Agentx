@@ -1,5 +1,35 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.7.1 → v0.7.2
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Clarification Interruption** | `ConversationSSEEvent` adds `clarification` + `question`; `chat()` returns `result.clarification` when the service interrupts an ambiguous request instead of running tools. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.7.2
+```
+
+### Handle Clarification
+
+```ts
+const result = await client.chat({ agentId: 42, message: 'help me' })
+if (result.clarification) {
+  // surface the question to the user, re-submit with clarified intent
+  showPrompt(result.clarification)
+} else {
+  console.log(result.text)
+}
+```
+
+No breaking changes — existing calls behave as before.
+
+---
+
 ## v0.6.9 → v0.7.0
 
 ### What's New

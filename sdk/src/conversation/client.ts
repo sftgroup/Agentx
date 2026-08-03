@@ -50,8 +50,10 @@ export interface ConversationChatParams {
 }
 
 export interface ConversationSSEEvent {
-  type: 'text' | 'tool_call' | 'tool_result' | 'thinking' | 'done' | 'error'
+  type: 'text' | 'tool_call' | 'tool_result' | 'thinking' | 'done' | 'error' | 'clarification'
   content?: string
+  /** Clarification question when the service decides the request needs disambiguation */
+  question?: string
   toolName?: string
   toolArgs?: Record<string, unknown>
   toolResult?: unknown
@@ -63,6 +65,8 @@ export interface ConversationSSEEvent {
 export interface ConversationChatResult {
   text: string
   toolCalls: { name: string; arguments: Record<string, unknown>; result?: unknown }[]
+  /** When set, the service asked the user to clarify instead of running the run */
+  clarification?: string
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
   iterations?: number
 }
@@ -163,6 +167,9 @@ export class ConversationClient {
           }
           break
         }
+        case 'clarification':
+          result.clarification = event.question ?? ''
+          break
         case 'done':
           result.usage = event.usage
           result.iterations = event.iterations

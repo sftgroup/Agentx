@@ -20,6 +20,14 @@ export const config = {
   // Context compaction
   compactModel: process.env.COMPACT_MODEL || 'gpt-4o-mini',
 
+  // Clarification interruption — pre-run gate that asks the user to disambiguate
+  // ambiguous requests instead of running tools on guesswork
+  clarificationEnabled: process.env.CLARIFICATION_ENABLED !== 'false',
+  clarificationModel: process.env.CLARIFICATION_MODEL || 'gpt-4o-mini',
+
+  // Memory: minimum confidence (0-1) for a fact to be stored
+  memoryConfidenceThreshold: parseFloat(process.env.MEMORY_CONFIDENCE_THRESHOLD || '0.5'),
+
   // Encryption key for tenant API keys at rest (64 hex chars = 32 bytes)
   masterEncryptionKey: process.env.MASTER_ENCRYPTION_KEY || '',
 
