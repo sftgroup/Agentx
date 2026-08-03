@@ -44,9 +44,4 @@ export const config = {
 
   // AgentRunner context cache
   contextCacheTtlSec: parseInt(process.env.CONTEXT_CACHE_TTL_SEC || '300', 10),
-
-  // Sandbox (Phase 6)
-  sandboxDockerImage: process.env.SANDBOX_DOCKER_IMAGE || 'node:20-alpine',
-  sandboxTimeoutSec: parseInt(process.env.SANDBOX_TIMEOUT_SEC || '30', 10),
-  sandboxMaxMemoryMb: parseInt(process.env.SANDBOX_MAX_MEMORY_MB || '256', 10),
 }

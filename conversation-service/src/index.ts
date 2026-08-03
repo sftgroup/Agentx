@@ -6,7 +6,6 @@ import helmet from 'helmet'
 import { config } from './config'
 import { getPool } from './lib/db'
 import { MemoryEngine } from './services/memory-engine'
-import { ContextEngine } from './services/context-engine'
 import { AgentRunnerService } from './services/agent-runner'
 import { TenantLLMResolver } from './services/tenant-llm-resolver'
 import { AgentContextLoader } from './services/agent-context-loader'
@@ -37,11 +36,10 @@ app.get('/health', (_req, res) => {
 // Initialize services
 const db = getPool()
 const memoryEngine = new MemoryEngine(db)
-const contextEngine = new ContextEngine()
 const llmResolver = new TenantLLMResolver(db)
 const toolExecutor = new ToolExecutor(config.gatewayUrl)
 const contextLoader = new AgentContextLoader(config.gatewayUrl, config.contextCacheTtlSec * 1000, toolExecutor)
-const runner = new AgentRunnerService(memoryEngine, contextEngine, llmResolver, contextLoader)
+const runner = new AgentRunnerService(memoryEngine, llmResolver, contextLoader)
 
 // Routes
 app.use('/runs', createRunsRouter(runner))
