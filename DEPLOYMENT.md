@@ -1,6 +1,7 @@
 # AgentX Deployment Guide
 
-> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-02
+> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-03
+> Server code: `~/Agentx` @ `d8d4db2` (main) · SDK published: `@agentxv2/sdk@0.7.1`
 
 ---
 
@@ -15,6 +16,10 @@
 | **npm** | 10.9.8 |
 | **PostgreSQL** | 14 |
 | **Swap** | 2 GB |
+| **Process manager** | pm2 (`agentx-gateway`, `agentx-conversation`, `agentx-frontend`) |
+
+> **Repo layout:** the server uses the monorepo at `/home/ubuntu/Agentx/` (uppercase A, not `agentx-*`).
+> pm2 launches `dist/index.js` from `gateway/` and `conversation-service/`. Update = `git pull --rebase` → rebuild → `pm2 restart`.
 
 ### Port Layout
 
@@ -46,10 +51,10 @@ ssh -J ubuntu@43.156.78.59 -i agentx_new_prod.pem ubuntu@43.159.60.46
 
 ## 1. Frontend Deploy
 
-### Path: `/home/ubuntu/agentx-frontend`
+### Path: `/home/ubuntu/Agentx/frontend` (pm2: `agentx-frontend`)
 
 ```bash
-cd /home/ubuntu/agentx-frontend
+cd /home/ubuntu/Agentx/frontend
 
 # Install deps
 npm install --legacy-peer-deps
@@ -62,10 +67,8 @@ npx next build
 cp -r .next/static .next/standalone/.next/static
 cp -r public .next/standalone/ 2>/dev/null  # public dir is optional
 
-# Kill old process & restart
-sudo fuser -k 3100/tcp
-cd .next/standalone
-PORT=3100 HOSTNAME=0.0.0.0 nohup node server.js > /tmp/fe.log 2>&1 &
+# Restart (pm2 manages the standalone server)
+pm2 restart agentx-frontend
 ```
 
 ### `.env.production` (key values)
@@ -96,20 +99,19 @@ After connecting wallet, `WalletConnect.tsx` automatically calls `switchChain({ 
 
 ## 2. Gateway Deploy
 
-### Path: `/home/ubuntu/agentx-gateway`
+### Path: `/home/ubuntu/Agentx/gateway` (pm2: `agentx-gateway`)
 
 ```bash
-cd /home/ubuntu/agentx-gateway
+cd /home/ubuntu/Agentx/gateway
 
-# Install deps
+# Install deps (if changed)
 npm install
 
-# Build TypeScript
-npx tsc
+# Build TypeScript → dist/
+npm run build
 
 # Restart
-sudo fuser -k 3090/tcp
-nohup node dist/index.js > /tmp/gw.log 2>&1 &
+pm2 restart agentx-gateway
 ```
 
 ### `.env` (all required variables)
@@ -277,22 +279,23 @@ curl -s http://43.159.60.46:3090/api/v1/a2a/worker-status
 
 ---
 
-## 2.7 Conversation Service (v0.7.0)
+## 2.7 Conversation Service (v0.7.1)
 
-Agent dialogue microservice — multi-tenant AgentLoop execution engine (Memory + Context + Skills). Hosted on `43.159.60.46:8100`, called by Gateway via `ConversationProxy` (`POST /api/v1/agent/runs` → SSE pipe).
+Agent dialogue microservice — multi-tenant AgentLoop execution engine (Memory + Context + Skills + inline MCP/HTTP tools). Hosted on `43.159.60.46:8100`, called by Gateway via `ConversationProxy` (`POST /api/v1/agent/runs` → SSE pipe).
 
-### Deploy
+### Deploy (pm2: `agentx-conversation`)
 
 ```bash
-cd /home/ubuntu/agentx-conversation
+cd /home/ubuntu/Agentx/conversation-service
 
 npm install
 npm run build
 
 # Restart
-sudo fuser -k 8100/tcp
-nohup node dist/index.js > /tmp/conv.log 2>&1 &
+pm2 restart agentx-conversation
 ```
+
+> **v0.7.1 inline mode:** `POST /runs` accepts `prompt` + `skills` (execution.type `mcp`/`http`/`a2a`) with no `agentId` — external apps can inject their own tools (e.g. RAG) without registering an AgentX agent. Gateway (`/api/v1/agent/runs`) forwards `prompt`/`skills` and `X-Llm-Api-Key`.
 
 ### `.env` (key values)
 
@@ -443,7 +446,14 @@ npm version patch
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.7.0` · Git tag: `v0.7.0`
+Current: `@agentxv2/sdk@0.7.1` · Git tag: `v0.7.1`
+
+### SDK v0.7.1 New Features
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| **Inline mode** | `@agentxv2/sdk/conversation` | `ConversationChatParams` gains optional `prompt` + `skills` (inject MCP/HTTP tools e.g. RAG); `agentId` now optional; Gateway forwards `X-Llm-Api-Key` |
+| **ConversationSkillDef** | `@agentxv2/sdk/conversation` | Type-safe skill definitions (name/description/inputSchema/execution) for inline runs |
 
 ### SDK v0.7.0 New Features
 
@@ -542,7 +552,7 @@ curl -X POST http://43.159.60.46:3090/api/v1/admin/platform-keys \
 ### Initial Setup
 
 ```bash
-cd /home/ubuntu/agentx-gateway
+cd /home/ubuntu/Agentx/gateway
 export PGPASSWORD='AgentX2024!Gateway'
 psql -h localhost -U agentx -d agentx_gateway -f db/migrations/001_init.sql
 psql -h localhost -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
