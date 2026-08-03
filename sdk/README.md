@@ -11,7 +11,7 @@ Agent = Prompt + Skills[] + MCP
 ## Installation
 
 ```bash
-npm install @agentxv2/sdk@0.6.9
+npm install @agentxv2/sdk@0.7.0
 ```
 
 ### Peer Dependencies
@@ -228,6 +228,47 @@ const result = await connector.callTool('get_balance', {
 
 ---
 
+## ConversationClient (v0.7.0) — Remote Conversation Service
+
+Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auto-sends `X-Api-Key` (tenant API key), `X-End-User-Id` (end-user memory isolation) and `X-Llm-Api-Key` (BYOK override).
+
+```ts
+import { ConversationClient } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({
+  gatewayUrl: 'https://gateway.example.com',   // Gateway base URL (not the conversation service directly)
+  apiKey: 'agentx_...',                         // tenant API key issued after registration
+  endUserId: 'user-123',                        // optional: per-end-user memory isolation
+  llmApiKey: 'sk-...',                          // optional: use caller's own LLM key (highest priority)
+  timeoutMs: 120_000,                           // optional: stream timeout (default 120s)
+})
+
+// Stream events (thinking / tool_call / tool_result / text / done / error)
+for await (const event of client.stream({
+  agentId: 42,
+  message: 'Analyze this contract',
+  enableMemory: true,
+  history: [{ role: 'user', content: 'hi' }],
+})) {
+  switch (event.type) {
+    case 'text':       appendDelta(event.content!); break
+    case 'tool_call':  showToolBubble(event.toolName!, event.toolArgs); break
+    case 'tool_result': updateToolBubble(event.toolName!, event.toolResult); break
+    case 'thinking':   setThinking(event.content!); break
+    case 'done':       onDone(event.usage); break
+    case 'error':      onError(event.error!); break
+  }
+}
+
+// Or aggregate into a single result
+const result = await client.chat({ agentId: 42, message: 'Hello' })
+// → { text, toolCalls: [{ name, arguments, result }], usage, iterations }
+```
+
+> Sub-path import: `@agentxv2/sdk/conversation`. Server-side API & headers documented in [`CONVERSATION_SERVICE.md`](../CONVERSATION_SERVICE.md).
+
+---
+
 ## A2A Daemon — Multi-Agent Interop
 
 ```ts
@@ -347,6 +388,7 @@ SDK A2A Daemon → polls Gateway → gets result → completeTask() on-chain
 | `@agentxv2/sdk/memory` | MemoryProvider interface + types (v0.6.9) |
 | `@agentxv2/sdk/traces` | TraceEmitter interface + types (v0.6.9) |
 | `@agentxv2/sdk/skills` | Browser control skill utilities (v0.6.9) |
+| `@agentxv2/sdk/conversation` | ConversationClient — remote Conversation Service client (v0.7.0) |
 
 ---
 
@@ -421,6 +463,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.7.0** | 2026-08-01 | **ConversationClient** (`@agentxv2/sdk/conversation`) — remote Conversation Service client: SSE streaming via Gateway, auto `X-Api-Key` / `X-End-User-Id` / `X-Llm-Api-Key`; Gateway Agent-as-MCP `tools/call` now executes skills directly (no LLM second-pass) |
 | **0.6.9** | 2026-08-01 | Microservice Agent Conversation — 6-Phase Optimization: Conversation Service (Memory + Context + Sandbox), Observability (TraceEmitter), Skills Marketplace, Agent-as-MCP Export, Browser Control Skill, 3 new sub-path exports (memory/traces/skills) |
 | **0.6.8** | 2026-07-28 | Fixed import paths in platform-tools (definitions.ts, executor.ts, index.ts) after module split; Frontend: 3 God Components modularized (AgentCardManager→5 files, AgentRegistration→4 files, RevenueDisplay→5 files) |
 | **0.6.7** | 2026-07-27 | Code review: 22 fixes across contracts/gateway/frontend/sdk; Redis-backed auth; unified error handler; i18n agent dashboard; barrel exports; custom errors in SubscriptionManager; ValidationRegistry interface fix; TokenPriceOracle de-hardcoded |
