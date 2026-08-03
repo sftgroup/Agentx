@@ -40,8 +40,10 @@ interface ConversationChatParams {
     skills?: ConversationSkillDef[];
 }
 interface ConversationSSEEvent {
-    type: 'text' | 'tool_call' | 'tool_result' | 'thinking' | 'done' | 'error';
+    type: 'text' | 'tool_call' | 'tool_result' | 'thinking' | 'done' | 'error' | 'clarification';
     content?: string;
+    /** Clarification question when the service decides the request needs disambiguation */
+    question?: string;
     toolName?: string;
     toolArgs?: Record<string, unknown>;
     toolResult?: unknown;
@@ -60,6 +62,8 @@ interface ConversationChatResult {
         arguments: Record<string, unknown>;
         result?: unknown;
     }[];
+    /** When set, the service asked the user to clarify instead of running the run */
+    clarification?: string;
     usage?: {
         promptTokens: number;
         completionTokens: number;

@@ -129,6 +129,9 @@ All values via environment variables. Copy `.env.example` to `.env`:
 | `EMBEDDING_MODEL` | `text-embedding-ada-002` | Model for memory embeddings |
 | `EMBEDDING_API_URL` | `https://api.openai.com/v1/embeddings` | Embedding API endpoint |
 | `COMPACT_MODEL` | `gpt-4o-mini` | LLM model for context summarization |
+| `MEMORY_CONFIDENCE_THRESHOLD` | `0.5` | Minimum confidence (0-1) for a fact to be stored in memory; lower-confidence facts are dropped |
+| `CLARIFICATION_ENABLED` | `true` | Run the pre-loop clarification gate; `false` disables it |
+| `CLARIFICATION_MODEL` | `gpt-4o-mini` | LLM model used by the clarification gate |
 | `GATEWAY_URL` | `http://localhost:3090` | AgentX Gateway URL (last-resort fallback) |
 | `MASTER_ENCRYPTION_KEY` | — | 64-char hex key for tenant API key encryption |
 | `RPC_URL` | Sepolia public RPC | Blockchain RPC for agent data |
@@ -177,8 +180,11 @@ X-End-User-Id: user_123  # Optional: per end-user memory isolation
 | `tool_call` | Agent is calling a tool |
 | `tool_result` | Tool execution result |
 | `thinking` | Agent status update |
+| `clarification` | Request interrupted — the service asks the user to disambiguate (carries `question`) |
 | `done` | Conversation complete (includes usage stats) |
 | `error` | Error message |
+
+**Clarification Interruption:** When `CLARIFICATION_ENABLED` (default `true`), the service runs a lightweight intent gate before the agent loop. If the user's request is genuinely ambiguous, it emits a `clarification` event with a `question` and ends the run — no tools are called and no memory is written. Callers should surface the question and re-submit with the clarified intent. The `chat()` helper returns it as `result.clarification`.
 
 ---
 

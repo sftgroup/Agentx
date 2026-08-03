@@ -112,6 +112,9 @@ var ConversationClient = class {
           }
           break;
         }
+        case "clarification":
+          result.clarification = event.question ?? "";
+          break;
         case "done":
           result.usage = event.usage;
           result.iterations = event.iterations;
