@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { AgentLoop } from '@agentxv2/sdk/agent-loop'
 import type { LLMProvider, LLMMessage } from '@agentxv2/sdk/agent-loop'
 import { MemoryEngine } from './memory-engine'
-import { ContextEngine } from './context-engine'
 import { TenantLLMResolver } from './tenant-llm-resolver'
 import { AgentContextLoader } from './agent-context-loader'
 import type { AgentSkillDef } from './agent-context-loader'
@@ -42,7 +41,6 @@ export interface AgentRunSSEEvent {
 export class AgentRunnerService {
   constructor(
     private readonly memoryEngine: MemoryEngine,
-    private readonly contextEngine: ContextEngine,
     private readonly llmResolver: TenantLLMResolver,
     private readonly contextLoader: AgentContextLoader,
   ) {}
@@ -209,17 +207,11 @@ ${systemPrompt.slice(0, 500)}`,
 
   /** Tolerant JSON parse for the clarification gate response. */
   private parseClarificationJson(raw: string): { needsClarification: boolean; question: string } | null {
-    const start = raw.indexOf('{')
-    const end = raw.lastIndexOf('}')
-    if (start === -1 || end <= start) return null
-    try {
-      const obj = JSON.parse(raw.slice(start, end + 1)) as { needsClarification?: unknown; question?: unknown }
-      return {
-        needsClarification: Boolean(obj.needsClarification),
-        question: String(obj.question ?? '').trim(),
-      }
-    } catch {
-      return null
+    const obj = this.tryParseJson<{ needsClarification?: unknown; question?: unknown }>(raw, '{', '}')
+    if (!obj) return null
+    return {
+      needsClarification: Boolean(obj.needsClarification),
+      question: String(obj.question ?? '').trim(),
     }
   }
 
@@ -251,7 +243,7 @@ Facts:`,
 
     try {
       const stream = llmProvider.chatStream({
-        model: 'gpt-4o-mini',
+        model: config.compactModel,
         messages: [prompt],
         maxTokens: 300,
         temperature: 0.3,
@@ -299,28 +291,18 @@ Facts:`,
     // Fallback confidence when the model returns plain lines instead of JSON
     const DEFAULT_CONFIDENCE = 0.6
 
-    const tryParse = (s: string): Array<{ fact: string; confidence: number }> => {
-      const start = s.indexOf('[')
-      const end = s.lastIndexOf(']')
-      if (start === -1 || end <= start) return []
-      try {
-        const items = JSON.parse(s.slice(start, end + 1)) as unknown[]
-        return items.map((it) => {
-          const obj = (it ?? {}) as Record<string, unknown>
-          const fact = String(obj.fact ?? obj.text ?? '').trim()
-          if (!fact) return null
-          const conf = typeof obj.confidence === 'number'
-            ? obj.confidence
-            : (typeof obj.score === 'number' ? obj.score : DEFAULT_CONFIDENCE)
-          return { fact, confidence: Math.max(0, Math.min(1, conf)) }
-        }).filter((x): x is { fact: string; confidence: number } => x !== null)
-      } catch {
-        return []
-      }
+    const items = this.tryParseJson<unknown[]>(raw, '[', ']')
+    if (items) {
+      return items.map((it) => {
+        const obj = (it ?? {}) as Record<string, unknown>
+        const fact = String(obj.fact ?? obj.text ?? '').trim()
+        if (!fact) return null
+        const conf = typeof obj.confidence === 'number'
+          ? obj.confidence
+          : (typeof obj.score === 'number' ? obj.score : DEFAULT_CONFIDENCE)
+        return { fact, confidence: Math.max(0, Math.min(1, conf)) }
+      }).filter((x): x is { fact: string; confidence: number } => x !== null)
     }
-
-    const json = tryParse(raw)
-    if (json.length > 0) return json
 
     // Fallback: plain lines, keep the old behavior with a default confidence
     console.warn('[MemoryFacts] LLM response was not JSON — using line-based fallback (default confidence 0.6)')
@@ -328,5 +310,17 @@ Facts:`,
       .map(s => s.replace(/^[\d\-•. ]+/, '').trim())
       .filter(Boolean)
       .map(fact => ({ fact: fact.slice(0, 200), confidence: DEFAULT_CONFIDENCE }))
+  }
+
+  /** Extract and parse a JSON value spanning a `[`/`{` ... `]`/`}` range. */
+  private tryParseJson<T>(raw: string, open: string, close: string): T | null {
+    const start = raw.indexOf(open)
+    const end = raw.lastIndexOf(close)
+    if (start === -1 || end <= start) return null
+    try {
+      return JSON.parse(raw.slice(start, end + 1)) as T
+    } catch {
+      return null
+    }
   }
 }

@@ -54,7 +54,6 @@ Frontend / MCP Client
 | Node.js | 20+ | Runtime |
 | PostgreSQL | 16+ | Primary database |
 | pgvector | 0.7+ | Vector similarity search |
-| Docker | 24+ | Code sandbox (Phase 6, optional) |
 
 ---
 
@@ -136,9 +135,6 @@ All values via environment variables. Copy `.env.example` to `.env`:
 | `MASTER_ENCRYPTION_KEY` | — | 64-char hex key for tenant API key encryption |
 | `RPC_URL` | Sepolia public RPC | Blockchain RPC for agent data |
 | `IDENTITY_REGISTRY` | Sepolia | IdentityRegistry contract address |
-| `SANDBOX_DOCKER_IMAGE` | `node:20-alpine` | Docker image for code sandbox |
-| `SANDBOX_TIMEOUT_SEC` | `30` | Sandbox execution timeout |
-| `SANDBOX_MAX_MEMORY_MB` | `256` | Sandbox max memory |
 
 ---
 
