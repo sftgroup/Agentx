@@ -44,9 +44,6 @@ export class TenantLLMResolver {
     // 1. Stateless BYOK request headers (ephemeral, not stored) — caller's own
     //    key + endpoint + model, so no AgentX-side configuration is needed at all.
     if (headerApiKey) {
-      console.info(
-        `[LLMResolver] BYOK resolve: hasKey=${!!headerApiKey} model=${headerModel || ctx.model || 'gpt-4o'} hasModelHeader=${headerModel !== undefined} endpoint=${headerEndpoint || 'openai-default'}`
-      )
       return new OpenAIProvider({
         apiKey: headerApiKey,
         model: headerModel || ctx.model || 'gpt-4o',
