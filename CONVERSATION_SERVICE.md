@@ -358,12 +358,12 @@ CONVERSATION_SERVICE_TOKEN=agentx-conv-internal-token-2026
 
 ---
 
-## SDK Client (v0.7.0)
+## SDK Client (v0.7.5)
 
-Tenants can call the hosted Conversation Service from their own app via `@agentxv2/sdk`'s new `ConversationClient` — no manual SSE parsing needed:
+Tenants can call the hosted Conversation Service from their own app via `@agentxv2/sdk`'s `ConversationClient` — no manual SSE parsing needed:
 
 ```bash
-npm install @agentxv2/sdk@0.7.0
+npm install @agentxv2/sdk@0.7.5
 ```
 
 ```typescript

@@ -1,7 +1,7 @@
 # AgentX Deployment Guide
 
-> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-03
-> Server code: `~/Agentx` @ `d8d4db2` (main) · SDK published: `@agentxv2/sdk@0.7.1`
+> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-04
+> Server code: `~/Agentx` @ `7efc505` (main) · SDK published: `@agentxv2/sdk@0.7.5`
 
 ---
 
@@ -446,7 +446,7 @@ npm version patch
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.7.1` · Git tag: `v0.7.1`
+Current: `@agentxv2/sdk@0.7.5`
 
 ### SDK v0.7.1 New Features
 

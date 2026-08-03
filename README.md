@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.7.4 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-04
+> SDK v0.7.5 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-04
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -93,7 +93,7 @@ const loop = new AgentLoop({
 await loop.run('Audit this contract for vulnerabilities')
 ```
 
-### Hosted Conversation Service (v0.7.4)
+### Hosted Conversation Service (v0.7.5)
 
 Run agents on our hosted Conversation Service from your own app — no chain sync, no IPFS, no local key management:
 
