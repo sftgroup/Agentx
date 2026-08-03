@@ -149,7 +149,8 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | **Conversation Service** | `http://43.159.60.46:8100` |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.7.4` |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.7.5` |
+| **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.7.5`, production :3100) |
 
 ---
 
