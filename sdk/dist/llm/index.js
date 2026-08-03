@@ -30,6 +30,10 @@ module.exports = __toCommonJS(llm_exports);
 var DEFAULT_ENDPOINT = "https://api.openai.com/v1";
 var OpenAIProvider = class {
   config;
+  /** Model the provider is configured with (used by AgentLoop when no explicit ctx.model) */
+  get model() {
+    return this.config.model;
+  }
   constructor(config) {
     this.config = {
       endpoint: config.endpoint ?? DEFAULT_ENDPOINT,
@@ -157,6 +161,10 @@ var OpenAIProvider = class {
 // src/llm/gateway-provider.ts
 var GatewayProvider = class {
   config;
+  /** Model the provider is configured with (used by AgentLoop when no explicit ctx.model) */
+  get model() {
+    return this.config.model;
+  }
   constructor(config) {
     this.config = {
       gatewayUrl: config.gatewayUrl.replace(/\/$/, ""),
