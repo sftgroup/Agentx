@@ -4735,11 +4735,33 @@ function decodeBase64(b64) {
   return new TextDecoder().decode(bytes);
 }
 function parseTokenURIJSON(tokenURI) {
-  if (!tokenURI) return null;
+  if (!tokenURI || tokenURI.startsWith("ipfs://")) return null;
   const match = tokenURI.match(/^data:application\/json;base64,(.+)$/i);
   if (!match) return null;
+  let b64 = match[1];
+  const lastDoubleEq = b64.lastIndexOf("==");
+  if (lastDoubleEq > 0 && lastDoubleEq < b64.length - 2) {
+    b64 = b64.substring(0, lastDoubleEq + 2);
+  }
   try {
-    return JSON.parse(decodeBase64(match[1]));
+    const decoded = decodeBase64(b64);
+    try {
+      return JSON.parse(decoded);
+    } catch {
+      let fixed = decoded;
+      const quoteCount = (fixed.match(/"/g) || []).length;
+      if (quoteCount % 2 !== 0) fixed += '"';
+      const openBraces = (fixed.match(/\{/g) || []).length;
+      const closeBraces = (fixed.match(/\}/g) || []).length;
+      for (let i = closeBraces; i < openBraces; i++) fixed += "}";
+      try {
+        return JSON.parse(fixed);
+      } catch {
+      }
+    }
+    const nameM = decoded.match(/"name"\s*:\s*"([^"]*)/);
+    if (nameM) return { name: nameM[1] };
+    return null;
   } catch {
     return null;
   }
@@ -4889,7 +4911,7 @@ var AgentRegistry = class {
     const caps = arr(parsed?.capabilities);
     const skills = arr(parsed?.skills);
     return {
-      name: str2(parsed?.name) || str2(attrs.name),
+      name: str2(parsed?.name) || str2(attrs.name) || `Agent ${agentId}`,
       description: str2(parsed?.description) || str2(attrs.description),
       encryptedPayloadCid: str2(attrs.encryptedPayloadCid),
       eciesEncryptedKey: str2(attrs.eciesEncryptedKey),

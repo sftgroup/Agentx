@@ -173,13 +173,43 @@ function decodeBase64(b64: string): string {
   return new TextDecoder().decode(bytes)
 }
 
-/** Parse base64 data-URI tokenURI → JSON metadata (null if not parseable). */
+/**
+ * Parse base64 data-URI tokenURI → JSON metadata (null if not parseable).
+ * Tolerant of contract bugs: trims trailing garbage after base64 padding,
+ * repairs unterminated JSON (unclosed quotes/braces), and falls back to a
+ * regex extraction of the name field. Mirrors gateway/src/services/agent-indexer.ts.
+ */
 function parseTokenURIJSON(tokenURI: string): Record<string, unknown> | null {
-  if (!tokenURI) return null
+  if (!tokenURI || tokenURI.startsWith('ipfs://')) return null
   const match = tokenURI.match(/^data:application\/json;base64,(.+)$/i)
   if (!match) return null
+
+  // Clean up malformed base64: trim everything after the last "==" padding.
+  let b64 = match[1]!
+  const lastDoubleEq = b64.lastIndexOf('==')
+  if (lastDoubleEq > 0 && lastDoubleEq < b64.length - 2) {
+    b64 = b64.substring(0, lastDoubleEq + 2)
+  }
+
   try {
-    return JSON.parse(decodeBase64(match[1]!))
+    const decoded = decodeBase64(b64)
+    // Try strict JSON parse first.
+    try {
+      return JSON.parse(decoded)
+    } catch {
+      // Unterminated JSON (contract bug): append missing closing quotes/braces.
+      let fixed = decoded
+      const quoteCount = (fixed.match(/"/g) || []).length
+      if (quoteCount % 2 !== 0) fixed += '"'
+      const openBraces = (fixed.match(/\{/g) || []).length
+      const closeBraces = (fixed.match(/\}/g) || []).length
+      for (let i = closeBraces; i < openBraces; i++) fixed += '}'
+      try { return JSON.parse(fixed) } catch { /* fall through */ }
+    }
+    // Regex fallback: extract the name field at least.
+    const nameM = decoded.match(/"name"\s*:\s*"([^"]*)/)
+    if (nameM) return { name: nameM[1] }
+    return null
   } catch {
     return null
   }
@@ -363,7 +393,7 @@ export class AgentRegistry {
     const skills = arr(parsed?.skills)
 
     return {
-      name: str(parsed?.name) || str(attrs.name),
+      name: str(parsed?.name) || str(attrs.name) || `Agent ${agentId}`,
       description: str(parsed?.description) || str(attrs.description),
       encryptedPayloadCid: str(attrs.encryptedPayloadCid),
       eciesEncryptedKey: str(attrs.eciesEncryptedKey),
