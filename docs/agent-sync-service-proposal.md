@@ -1,6 +1,6 @@
 # AgentX — 链上数据微服务需求
 
-> **给 AgentX 团队** | SDK v0.8.0 已发布, 需部署 `agent-sync` 独立微服务
+> **给 AgentX 团队** | 新增独立微服务 `agent-sync`，提供 REST API 暴露链上 Agent 数据
 
 ---
 
@@ -16,10 +16,13 @@ SDK v0.8.0 已完成以下接口 (✅):
 | subscription | `createPlan(params)` — 创建定价计划 | ✅ |
 | subscription | `subscribe(params)` — 订阅 | ✅ |
 | subscription | `createPlanAndSubscribe(params)` — 组合方法 | ✅ |
-| subscription | `getAgentPlans(agentId)` — 查询 Plan 列表 | ✅ |
 | events | `subscribeToEvents(options)` — 链上事件监听 | ✅ |
 
-**本阶段只需: 部署 `agent-sync` 微服务, 用 SDK 内部实现, 对外暴露 REST API。**
+> **REST 层（2026-08-04 已实现，按"增强现有 Gateway"决策，非独立微服务）**：
+> - `GET /api/v1/agents`（筛选/分页）、`/count`（含 `byCategory`，由扁平 `capabilities` 派生）、`/:id`（含 `subscriptionPlans[]`，事件驱动维护）— `gateway/src/routes/agents.ts`
+> - 同步：IdentityRegistry `Transfer` 事件增量 + 120s 全量兜底 + SubscriptionManager `PlanCreated` 事件维护 `subscription_plans` 表（迁移 `006_plans.sql`）
+> - `GET /api/v1/health` 返回 `services.{chain,database,lastSyncAt,syncedAgentCount}`
+> - 备注：链上无 category 概念，`byCategory` 以 capabilities 聚合 + `other`；`subscriptionPlans` 中 `price` 为 wei 十进制字符串；"按 agent 列计划"由 REST 提供，SDK 侧对应查询为 `getPlan(planId)`（合约无按 agent 枚举方法）
 
 ---
 
@@ -41,8 +44,8 @@ SDK v0.8.0 已完成以下接口 (✅):
         ┌───────────────────────────┘
         ▼
   ┌─────────────┐   ┌──────────────┐
-  │aihunter-saas │   │  其他消费者   │
-  │  MarketPage  │   │  MCP / SDK   │
+  │  外部服务    │   │  其他消费者   │
+  │  MarketPage │   │  MCP / SDK   │
   └─────────────┘   └──────────────┘
 ```
 
