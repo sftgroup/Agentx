@@ -93,9 +93,28 @@ router.get('/count', async (_req: Request, res: Response) => {
          COUNT(*) FILTER (WHERE is_active) AS active
        FROM agents`
     )
+    // Category counts are derived from the flat `capabilities` array — the only
+    // category dimension available on-chain (agents without capabilities → "other").
+    const { rows: catRows } = await pool.query(
+      `SELECT unnest(capabilities) AS category, COUNT(*) AS cnt
+       FROM agents
+       WHERE cardinality(capabilities) > 0
+       GROUP BY 1
+       ORDER BY cnt DESC`
+    )
+    const byCategory: Record<string, number> = {}
+    let categorized = 0
+    for (const r of catRows) {
+      byCategory[r.category] = Number(r.cnt)
+      categorized += Number(r.cnt)
+    }
+    const other = Math.max(0, Number(rows[0]?.total ?? 0) - categorized)
+    if (other > 0) byCategory.other = other
+
     res.json({
       total: parseInt(rows[0]?.total ?? '0', 10),
       active: parseInt(rows[0]?.active ?? '0', 10),
+      byCategory,
     })
   } catch (err: any) {
     console.error('[agents] count error:', err.message)
@@ -123,7 +142,24 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Agent not found' })
     }
 
-    res.json(rows[0])
+    // Subscription plans maintained by the event-driven plans indexer.
+    const { rows: planRows } = await pool.query(
+      `SELECT plan_id, agent_id, creator, price, period, pay_token, trial_days, active
+       FROM plans WHERE agent_id = $1 AND active = true
+       ORDER BY plan_id ASC`,
+      [id]
+    )
+    const subscriptionPlans = planRows.map((p) => ({
+      planId: Number(p.plan_id),
+      price: p.price,                    // wei, decimal string (avoids JS precision loss)
+      period: p.period,
+      payToken: p.pay_token,
+      isActive: p.active,
+      trialDays: Number(p.trial_days),
+      creator: p.creator,
+    }))
+
+    res.json({ ...rows[0], subscriptionPlans })
   } catch (err: any) {
     console.error('[agents] detail error:', err.message)
     res.status(500).json({ error: 'Failed to fetch agent' })

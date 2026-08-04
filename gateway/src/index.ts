@@ -6,7 +6,9 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
+import { ethers } from 'ethers'
 import { config } from './config'
+import { getPool } from './lib/db'
 import { getChallenge, verifyChallenge, authMiddleware, getApiKey, apiKeyAuth } from './middleware/auth'
 import { tenantRateLimiter } from './middleware/rate-limiter'
 import { globalErrorHandler } from './middleware/error-handler'
@@ -60,7 +62,28 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
 // ── Health check ──────────────────────────────────────────────────────────
 
 app.get('/api/v1/health', async (_req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() })
+  const services: Record<string, string | number | null> = {
+    chain: 'disconnected',
+    database: 'disconnected',
+    lastSyncAt: null,
+    syncedAgentCount: 0,
+  }
+
+  const [block, poolResult] = await Promise.allSettled([
+    new ethers.JsonRpcProvider(config.rpcUrlOxaChain).getBlockNumber(),
+    getPool().query('SELECT COUNT(*) AS total, MAX(synced_at) AS last_sync FROM agents'),
+  ])
+
+  if (block.status === 'fulfilled') services.chain = 'connected'
+  if (poolResult.status === 'fulfilled') {
+    services.database = 'connected'
+    const row = poolResult.value.rows[0] ?? {}
+    services.syncedAgentCount = Number(row.total ?? 0)
+    services.lastSyncAt = (row.last_sync as Date | null)?.toISOString?.() ?? null
+  }
+
+  const degraded = services.chain === 'disconnected' || services.database === 'disconnected'
+  res.status(degraded ? 503 : 200).json({ status: degraded ? 'degraded' : 'ok', services, time: new Date().toISOString() })
 })
 
 // ── MCP endpoint (public JSON-RPC 2.0) ────────────────────────────────────
@@ -156,8 +179,26 @@ app.listen(config.port, () => {
   })
 
   // Start agent sync event watcher (incremental on-chain updates)
-  import('./services/agent-indexer').then(({ startAgentSyncWatcher }) => {
+  import('./services/agent-indexer').then(({ startAgentSyncWatcher, startPlanSyncWatcher, syncPlanHistory, syncAgents }) => {
     startAgentSyncWatcher()
+    startPlanSyncWatcher()
+
+    // Backfill plans table from PlanCreated history (non-blocking)
+    syncPlanHistory().catch(err =>
+      console.error('[AgentX Gateway] Plan history sync failed:', err.message)
+    )
+
+    // Full-sync fallback timer (keeps agents table consistent if events are missed)
+    if (config.agentsSyncIntervalSec > 0) {
+      setInterval(() => {
+        syncAgents().then(({ synced, total }) => {
+          if (synced > 0) console.log(`[agent-indexer] Fallback full sync: ${synced}/${total}`)
+        }).catch(err =>
+          console.error('[agent-indexer] Fallback full sync failed:', err.message)
+        )
+      }, config.agentsSyncIntervalSec * 1000)
+      console.log(`[AgentX Gateway] Agent full-sync fallback every ${config.agentsSyncIntervalSec}s`)
+    }
   }).catch(err => {
     console.error('[AgentX Gateway] Failed to start agent sync watcher:', err.message)
   })
