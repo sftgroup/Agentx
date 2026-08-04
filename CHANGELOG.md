@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-08-05
+
+### Gateway v0.2.1 — SDK-based ChainDataReader + 实时链上读取 API
+
+**新特性**：将生产验证过的 SDK 链上读取逻辑（`examples/sdk-chain-read.ts`）封装为独立服务 `ChainDataReader`，新增公开实时 REST 端点（**直读链上，不经 DB 索引**，与 `/api/v1/agents` 索引层互补）。所有端点支持 `?chain=sepolia|oxachain`（默认 oxachain）。
+
+- **`GET /api/v1/chain/health`** — 实时链状态（当前块高 + 总 Agent 数）
+- **`GET /api/v1/chain/total`** — 总 Agent 数（等价 SDK `totalAgents()`）
+- **`GET /api/v1/chain/agents`** — 批量 Agent（`fromId`/`toId`/`activeOnly`/`capabilities` 筛选，等价 `getAllAgents()`）
+- **`GET /api/v1/chain/agents/:agentId`** — 单个 Agent 详情（exists + 结构化 metadata，等价 `getAgentMetadata()`）
+- **`GET /api/v1/chain/plans/:planId`** — 订阅套餐详情（`price` 为 wei 字符串，等价 `getPlan()`）
+- **`GET /api/v1/chain/check-subscription`** — 检查钱包对某 Agent 的订阅状态（`hasActiveSubscription`）
+- 复用 `@agentxv2/sdk`（容错 tokenURI 解析，与 indexer 行为一致）；SDK/MCP 协议**无任何变更**
+- 详细日志：统一 `[chain-data]` 前缀（pm2 logs 可 `grep "chain-data"`），覆盖每次读操作的入参/结果/耗时与错误分支
+- 依赖：gateway 新增 `@agentxv2/sdk ^0.8.1`、`viem ^2.55.0`（`wagmi` 为 SDK CJS 入口 peer）
+
+### SDK v0.8.1 — 容错 tokenURI 解析
+
+**优化**：`parseTokenURIJSON` 与 Gateway indexer 逐行对齐，提升畸形链上数据的容错能力。
+
+- base64 尾部垃圾清理（trim 掉最后一个 `==` padding 之后的内容）
+- Unterminated JSON 修复（奇数引号补 `"`、缺失闭括号补 `}`）
+- regex 兜底：仍失败时至少提取 `name` 字段
+- 显式处理 `ipfs://`（提前返回 null）；`getAgentMetadata` 的 name 回退 `Agent {id}` 与 `getAllAgents` 对齐
+
+---
+
 ## 2026-08-04
 
 ### SDK v0.8.0 — 链上数据能力
