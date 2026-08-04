@@ -1,123 +1,94 @@
 # AgentX — 链上数据微服务需求
 
-> **给 AgentX 团队** | 新增独立微服务 `agent-sync`，提供 REST API 暴露链上 Agent 数据
+> **给 AgentX 团队** | SDK v0.8.0 已发布, 需部署 `agent-sync` 独立微服务
 
 ---
 
-## 背景
+## 状态更新
 
-外部服务当前自建了一个 `chain-sync` 微服务，用裸 ethers.js 从 OxaChain 扫描 Agent 数据。
+SDK v0.8.0 已完成以下接口 (✅):
 
-问题：
-- 手工二分查找 + 手工 base64 解析 tokenURI，不感知 AgentX 合约结构
-- 无法筛选（activeOnly、capabilities），62 个 Agent 全入库
-- AgentX 与外部服务各维护一套链交互代码
+| 模块 | 接口 | 状态 |
+|------|------|:--:|
+| registry | `getAllAgents(options)` — 批量 + 筛选 + 分页 | ✅ |
+| registry | `totalAgents()` — 总数 | ✅ |
+| registry | `getAgentMetadata(agentId)` — 结构化元数据 | ✅ |
+| subscription | `createPlan(params)` — 创建定价计划 | ✅ |
+| subscription | `subscribe(params)` — 订阅 | ✅ |
+| subscription | `createPlanAndSubscribe(params)` — 组合方法 | ✅ |
+| subscription | `getAgentPlans(agentId)` — 查询 Plan 列表 | ✅ |
+| events | `subscribeToEvents(options)` — 链上事件监听 | ✅ |
 
-**方案**：将此微服务移入 AgentX，让 AgentX 成为链上 Agent 数据的唯一权威源。
+**本阶段只需: 部署 `agent-sync` 微服务, 用 SDK 内部实现, 对外暴露 REST API。**
 
 ---
 
 ## 架构
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    AgentX                            │
-│                                                     │
-│  ┌──────────┐   ┌──────────┐   ┌────────────────┐  │
-│  │ contracts│──→│   SDK    │──→│  agent-sync    │  │
-│  │          │   │          │   │  ┌──────────┐  │  │
-│  │ Identity │   │ getAll   │   │  │ internal  │  │  │
-│  │ Registry │   │ Agents() │   │  │  cache    │  │  │
-│  │ SubMgr   │   │          │   │  │ (Redis/PG)│  │  │
-│  └──────────┘   └──────────┘   │  └──────────┘  │  │
-│                                │  REST API      │  │
-│                                └───────┬────────┘  │
-│                                        │            │
-└────────────────────────────────────────┼────────────┘
-                                         │
-            ┌────────────────────────────┘
-            ▼
-     ┌─────────────┐     ┌──────────────┐
-     │  外部服务    │    │  其他消费者   │
-     │  frontend   │    │  (MCP, SDK)  │
-     └─────────────┘    └──────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                      AgentX                              │
+│                                                         │
+│  contracts ──→ SDK v0.8.0 ──→ agent-sync ──→ PostgreSQL │
+│                                   │                     │
+│                              REST API :3500              │
+│                              GET /api/agents              │
+│                              GET /api/agents/count        │
+│                              GET /api/agents/:id          │
+│                              GET /api/health              │
+└───────────────────────────────────┼─────────────────────┘
+                                    │
+        ┌───────────────────────────┘
+        ▼
+  ┌─────────────┐   ┌──────────────┐
+  │aihunter-saas │   │  其他消费者   │
+  │  MarketPage  │   │  MCP / SDK   │
+  └─────────────┘   └──────────────┘
 ```
 
 ---
 
-## REST API 设计
+## REST API
 
 ### `GET /api/agents`
 
-查询 Agent 列表。
-
-**Query Parameters:**
-
 | 参数 | 类型 | 默认 | 说明 |
 |------|------|------|------|
-| `activeOnly` | boolean | `false` | 只返回 `isActive=true` 的 Agent |
-| `capabilities` | string | — | 按能力筛选，逗号分隔，如 `trading,analysis` |
-| `fromId` | number | 1 | 起始 ID |
-| `toId` | number | — | 结束 ID（不传则到最大） |
-| `page` | number | 1 | 页码 |
-| `pageSize` | number | 50 | 每页数量 (max 100) |
+| `activeOnly` | bool | false | 仅活跃 Agent |
+| `capabilities` | string | — | 逗号分隔筛选 |
+| `page` | int | 1 | 页码 |
+| `pageSize` | int | 50 | 每页 (max 100) |
 
-**Response (200):**
+**Response:**
 
 ```json
 {
   "code": 200,
   "data": {
-    "agents": [
-      {
-        "agentId": 1,
-        "owner": "0xd38a9D9f3cF4723fe89e374486616705Aa7b8dAF",
-        "tokenURI": "data:application/json;base64,...",
-        "metadata": {
-          "name": "TestAgent1",
-          "description": "A test trading agent",
-          "capabilities": ["trading", "backtest"],
-          "skills": ["momentum", "arbitrage"],
-          "isActive": true
-        },
-        "createdAt": 1718000000
+    "agents": [{
+      "agentId": 1,
+      "owner": "0xd38a...",
+      "metadata": {
+        "name": "TradingBot",
+        "description": "Momentum strategy",
+        "capabilities": ["trading", "backtest"],
+        "skills": ["momentum"],
+        "isActive": true
       }
-    ],
+    }],
     "total": 62,
-    "page": 1,
-    "pageSize": 50
-  },
-  "message": "ok"
+    "page": 1
+  }
 }
 ```
 
 ### `GET /api/agents/count`
 
-返回 Agent 总数统计。
-
-**Response (200):**
-
 ```json
-{
-  "code": 200,
-  "data": {
-    "total": 62,
-    "active": 45,
-    "byCategory": {
-      "trading": 30,
-      "analysis": 10,
-      "defi": 5,
-      "other": 17
-    }
-  }
-}
+{ "code": 200, "data": { "total": 62, "active": 45 } }
 ```
 
-### `GET /api/agents/:agentId`
-
-查询单个 Agent 详情。
-
-**Response (200):**
+### `GET /api/agents/:id`
 
 ```json
 {
@@ -126,141 +97,112 @@
     "agentId": 1,
     "owner": "0xd38a...",
     "metadata": {
-      "name": "TestAgent1",
+      "name": "TradingBot",
       "description": "...",
       "encryptedPayloadCid": "Qm...",
-      "eciesEncryptedKey": "...",
-      "publicPayloadCid": "Qm...",
       "capabilities": ["trading"],
       "skills": ["momentum"],
       "isActive": true
     },
-    "subscriptionPlans": [
-      {
-        "planId": 1,
-        "price": "0.005",
-        "period": "monthly",
-        "payToken": "0x0000...",
-        "isActive": true
-      }
-    ]
-  }
-}
-```
-
-### `GET /api/health`
-
-```json
-{
-  "status": "ok",
-  "services": {
-    "chain": "connected",
-    "database": "connected",
-    "lastSyncAt": "2026-08-04T12:00:00Z",
-    "syncedAgentCount": 62
+    "subscriptionPlans": [{
+      "planId": 1, "price": "0.005", "period": "month", "isActive": true
+    }]
   }
 }
 ```
 
 ---
 
-## 内部实现
+## 内部实现 (基于 SDK v0.8.0)
 
-### 技术栈
+```typescript
+// agent-sync/src/syncer.ts
+import { IdentityRegistry } from '@agentxv2/sdk/registry'
+import { createPublicClient, http } from 'viem'
 
-| 组件 | 技术 |
-|------|------|
-| 运行时 | Node.js 22 + TypeScript |
-| 框架 | Fastify (与 AgentX gateway 一致) |
-| 链交互 | `@agentxv2/sdk` IdentityRegistry |
-| 缓存 | Redis (可选，减少链 RPC 调用) |
-| 数据库 | PostgreSQL (已有 AgentX 实例) |
-| 部署 | Docker 独立容器 |
+export class AgentSyncer {
+  private registry: IdentityRegistry
 
-### 核心同步逻辑
+  constructor() {
+    this.registry = new IdentityRegistry({
+      contractAddress: process.env.IDENTITY_REGISTRY_ADDRESS!,
+      publicClient: createPublicClient({
+        transport: http(process.env.RPC_URL!),
+      }),
+    })
+  }
 
+  async syncAll() {
+    const agents = await this.registry.getAllAgents({
+      activeOnly: false,
+      batchSize: 10,
+    })
+
+    for (const agent of agents) {
+      await db.upsert({
+        agent_id: agent.agentId,
+        owner: agent.owner,
+        name: agent.metadata.name,           // SDK 返回结构化数据
+        description: agent.metadata.description,
+        capabilities: agent.metadata.capabilities,
+        skills: agent.metadata.skills,
+        is_active: agent.metadata.isActive,
+      })
+    }
+  }
+}
+
+// 事件驱动增量同步
+import { subscribeToEvents } from '@agentxv2/sdk/events'
+
+subscribeToEvents(publicClient, {
+  identityRegistryAddress: process.env.IDENTITY_REGISTRY_ADDRESS!,
+  subscriptionManagerAddress: process.env.SUBSCRIPTION_MANAGER_ADDRESS!,
+  events: ['Transfer', 'AgentRegistered'],
+  onEvent: async (event) => {
+    if (event.type === 'AgentRegistered') {
+      const agent = await registry.getAgentMetadata(event.args.agentId)
+      await db.upsert(agent)
+    }
+  },
+})
 ```
-启动时:
-  1. 连接数据库 + Redis
-  2. 调用 SDK.IdentityRegistry.getAllAgents(activeOnly=false)
-  3. Upsert 到 agents 表
 
-运行时:
-  4. 监听 Transfer/Mint 事件 → 增量更新
-  5. 每 2 分钟兜底全量对比 → 清理已销毁 Agent
-  6. API 优先从 Redis 缓存返回，miss 时回源 SDK
+---
 
-结构:
-  src/
-  ├── index.ts          # Fastify server
-  ├── routes.ts         # REST endpoints
-  ├── syncer.ts         # SDK → DB sync engine
-  ├── cache.ts          # Redis cache layer
-  └── types.ts          # AgentSummary, etc.
-```
-
-### 数据库表
+## 数据库
 
 ```sql
 CREATE TABLE agents (
-  agent_id   INTEGER PRIMARY KEY,
-  owner      TEXT NOT NULL,
-  token_uri  TEXT,
-  name       TEXT,
-  description TEXT,
-  capabilities TEXT[],      -- ['trading', 'backtest']
-  skills     TEXT[],        -- ['momentum']
-  is_active  BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  agent_id     INTEGER PRIMARY KEY,
+  owner        TEXT NOT NULL,
+  name         TEXT,
+  description  TEXT,
+  capabilities TEXT[],
+  skills       TEXT[],
+  is_active    BOOLEAN DEFAULT true,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX idx_agents_active ON agents(is_active);
 CREATE INDEX idx_agents_capabilities ON agents USING GIN(capabilities);
 ```
 
-### docker-compose 新增
+---
+
+## Docker
 
 ```yaml
 agent-sync:
   build: ./services/agent-sync
   container_name: agentx-sync
   restart: unless-stopped
-  depends_on:
-    - postgres
-    - redis
+  depends_on: [postgres]
   environment:
-    NODE_ENV: production
     PORT: 3500
     DATABASE_URL: postgresql://...
-    REDIS_URL: redis://...
     RPC_URL: ${RPC_URL}
     IDENTITY_REGISTRY_ADDRESS: ${IDENTITY_REGISTRY_ADDRESS}
-  ports:
-    - "0.0.0.0:3500:3500"
+    SUBSCRIPTION_MANAGER_ADDRESS: ${SUBSCRIPTION_MANAGER_ADDRESS}
+  ports: ["0.0.0.0:3500:3500"]
 ```
-
----
-
-## 区别于已有 AgentX Gateway
-
-| | AgentX Gateway (现有) | agent-sync (新增) |
-|------|------|------|
-| 职责 | Agent 注册、发布、加密管线、订阅 | Agent 数据查询、列表、筛选 |
-| 数据源 | 直接读链 (实时) | DB 缓存 + SDK 读链 |
-| 调用方 | 前端用户操作 | 外部服务 / 第三方平台 |
-| 性能 | 实时但慢 (链 RPC) | 缓存快 (DB/Redis) |
-| 接口风格 | MCP / AgentX protocol | RESTful API |
-
----
-
-## 实施计划
-
-| 步骤 | 内容 | 预估 |
-|:--:|------|:--:|
-| 1 | 创建 `services/agent-sync/` 目录 + Dockerfile | 小 |
-| 2 | 实现 `syncer.ts`：SDK.getAllAgents → PG upsert | 中 |
-| 3 | 实现 `routes.ts`：REST API endpoints | 小 |
-| 4 | Redis 缓存层 | 小 |
-| 5 | docker-compose 集成 + 部署 | 小 |
-| 6 | 第三方服务接入 | 使用本文 REST API + SDK 对接 |
