@@ -8,6 +8,9 @@
 // GET    /api/v1/admin/tenants               — List tenants (paginated)
 // PATCH  /api/v1/admin/tenants/:id           — Update tenant plan/status
 // GET    /api/v1/admin/usage                 — Usage stats
+// GET    /api/v1/admin/system                — Service / DB / chain health
+// GET    /api/v1/admin/revenue               — On-chain fees + fiat + channel + x402
+// GET    /api/v1/admin/payments              — Stripe / x402 / channel config & state
 // ---------------------------------------------------------------------------
 
 import { Router, Request, Response } from 'express'
@@ -15,6 +18,8 @@ import { getPool } from '../lib/db'
 import { adminAuth } from '../middleware/adminAuth'
 import { encryptApiKey } from '../lib/crypto'
 import { config } from '../config'
+import { chainDataReader, log } from '../services/chain-data-reader'
+import { x402Available, priceWei } from '../services/x402'
 
 const router = Router()
 
@@ -212,6 +217,148 @@ router.get('/usage', async (_req: Request, res: Response) => {
       topTenants: topTenants.rows,
     })
   } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── System Status ──────────────────────────────────────────────────────────
+
+// Probe an HTTP service health endpoint (short timeout).
+async function probe(url: string): Promise<{ online: boolean; code: number | null; latencyMs: number }> {
+  const t0 = Date.now()
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(4000) })
+    return { online: r.ok, code: r.status, latencyMs: Date.now() - t0 }
+  } catch {
+    return { online: false, code: null, latencyMs: Date.now() - t0 }
+  }
+}
+
+router.get('/system', async (_req: Request, res: Response) => {
+  try {
+    const pool = getPool()
+    const [dbResult, agentsResult, plansResult] = await Promise.all([
+      pool.query('SELECT 1 AS ok'),
+      pool.query('SELECT COUNT(*) AS total, MAX(synced_at) AS last_sync FROM agents'),
+      pool.query('SELECT COUNT(*) AS total FROM subscription_plans'),
+    ])
+    const [sepoliaBlock, oxaBlock, convProbe, feProbe] = await Promise.all([
+      chainDataReader.getBlockNumber('sepolia').catch(() => null),
+      chainDataReader.getBlockNumber('oxachain').catch(() => null),
+      probe(`${config.conversationServiceUrl}/health`),
+      probe(process.env.FRONTEND_URL || 'http://127.0.0.1:3100'),
+    ])
+
+    res.json({
+      services: {
+        gateway: { online: true, uptimeSec: Math.floor(process.uptime()), memoryMB: Math.round(process.memoryUsage().rss / 1048576) },
+        conversation: convProbe,
+        frontend: feProbe,
+      },
+      database: {
+        connected: (dbResult.rowCount ?? 0) === 1,
+        agents: Number(agentsResult.rows[0]?.total ?? 0),
+        lastSyncAt: agentsResult.rows[0]?.last_sync ?? null,
+        plans: Number(plansResult.rows[0]?.total ?? 0),
+      },
+      chains: {
+        sepolia: { chainId: config.chainId, blockNumber: sepoliaBlock },
+        oxachain: { chainId: config.chainIdOxaChain, blockNumber: oxaBlock },
+      },
+      time: new Date().toISOString(),
+    })
+  } catch (err: any) {
+    log.error(`admin/system failed: ${err.message}`)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Revenue ────────────────────────────────────────────────────────────────
+
+router.get('/revenue', async (_req: Request, res: Response) => {
+  try {
+    const pool = getPool()
+    const [sepoliaFees, oxaFees, feeBps, fiatResult, channelResult, x402Payments, x402Balances] = await Promise.all([
+      chainDataReader.platformFeesCollected('sepolia').then(f => f.toString()).catch(() => null),
+      chainDataReader.platformFeesCollected('oxachain').then(f => f.toString()).catch(() => null),
+      chainDataReader.platformFeeBps('oxachain').catch(() => null),
+      pool.query(
+        `SELECT COUNT(*) AS payouts,
+                COALESCE(SUM(amount_cents), 0) AS total_cents,
+                COALESCE(SUM(platform_cut_cents), 0) AS platform_cut_cents,
+                COALESCE(SUM(amount_cents) FILTER (WHERE status = 'pending'), 0) AS pending_cents
+         FROM fiat_payouts`
+      ),
+      pool.query(
+        `SELECT COUNT(*) AS attributions,
+                COALESCE(SUM(a.amount_paid::numeric), 0) AS amount_paid_wei,
+                COALESCE(SUM(a.amount_paid::numeric * c.share_bps / 10000), 0) AS channel_share_wei,
+                COALESCE(SUM(a.amount_paid::numeric * c.share_bps / 10000) FILTER (WHERE a.settled), 0) AS settled_share_wei
+         FROM channel_attributions a
+         JOIN channels c ON c.id = a.channel_id`
+      ),
+      pool.query(
+        `SELECT COUNT(*) AS payments, COALESCE(SUM(amount_wei::numeric), 0) AS total_wei FROM x402_payments`
+      ),
+      pool.query(`SELECT COALESCE(SUM(balance_wei::numeric), 0) AS outstanding_wei FROM x402_balances`),
+    ])
+
+    res.json({
+      onChain: {
+        platformFeeBps: feeBps,
+        sepolia: { nativeFeesWei: sepoliaFees },
+        oxachain: { nativeFeesWei: oxaFees },
+      },
+      fiat: fiatResult.rows[0],
+      channel: channelResult.rows[0],
+      x402: { ...x402Payments.rows[0], ...x402Balances.rows[0] },
+      note: 'on-chain/x402 amounts in wei; fiat amounts in cents',
+    })
+  } catch (err: any) {
+    log.error(`admin/revenue failed: ${err.message}`)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Payment / Merchant Status ──────────────────────────────────────────────
+
+router.get('/payments', async (_req: Request, res: Response) => {
+  try {
+    const pool = getPool()
+    const [fiatSubs, channelList, x402Payments, planCount] = await Promise.all([
+      pool.query(
+        `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'active') AS active FROM fiat_subscriptions`
+      ),
+      pool.query(
+        `SELECT c.id, c.name, c.share_bps, c.wallet, c.active, COUNT(a.id) AS attributions
+         FROM channels c
+         LEFT JOIN channel_attributions a ON a.channel_id = c.id
+         GROUP BY c.id
+         ORDER BY c.id`
+      ),
+      pool.query(`SELECT COUNT(*) AS payments FROM x402_payments`),
+      pool.query(`SELECT COUNT(*) AS total FROM subscription_plans`),
+    ])
+
+    res.json({
+      stripe: {
+        configured: Boolean(config.stripeSecretKey && config.stripeWebhookSecret),
+        secretKeySet: Boolean(config.stripeSecretKey),
+        webhookSecretSet: Boolean(config.stripeWebhookSecret),
+        subscriptions: fiatSubs.rows[0],
+      },
+      x402: {
+        enabled: x402Available(),
+        payTo: config.x402PayTo,
+        priceWei: priceWei().toString(),
+        chain: config.x402Chain,
+        payments: Number(x402Payments.rows[0]?.payments ?? 0),
+      },
+      channels: channelList.rows,
+      onChain: { subscriptionPlans: Number(planCount.rows[0]?.total ?? 0) },
+    })
+  } catch (err: any) {
+    log.error(`admin/payments failed: ${err.message}`)
     res.status(500).json({ error: err.message })
   }
 })

@@ -3,11 +3,11 @@
 
 import { useState, useEffect } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { Key, Shield, Users, BarChart3, Plus, Trash2, Loader2, Check, X, RefreshCw } from 'lucide-react'
+import { Key, Shield, Users, BarChart3, Plus, Trash2, Loader2, Check, X, RefreshCw, Activity, Wallet, CreditCard } from 'lucide-react'
 
 const GATEWAY = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
 
-type Tab = 'keys' | 'plans' | 'tenants' | 'usage'
+type Tab = 'keys' | 'plans' | 'tenants' | 'usage' | 'system' | 'revenue' | 'payments'
 
 function getAdminHeaders(): Record<string, string> {
   const key = typeof window !== 'undefined' ? localStorage.getItem('agentx_admin_key') || '' : ''
@@ -70,6 +70,9 @@ export default function AdminPage() {
             { id: 'plans' as Tab, label: 'Plans', icon: Shield },
             { id: 'tenants' as Tab, label: 'Tenants', icon: Users },
             { id: 'usage' as Tab, label: 'Usage', icon: BarChart3 },
+            { id: 'system' as Tab, label: 'System', icon: Activity },
+            { id: 'revenue' as Tab, label: 'Revenue', icon: Wallet },
+            { id: 'payments' as Tab, label: 'Payments', icon: CreditCard },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${tab === t.id ? 'bg-white/10 text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}>
@@ -82,6 +85,9 @@ export default function AdminPage() {
         {tab === 'plans' && <PlansTab headers={getAdminHeaders()} />}
         {tab === 'tenants' && <TenantsTab headers={getAdminHeaders()} />}
         {tab === 'usage' && <UsageTab headers={getAdminHeaders()} />}
+        {tab === 'system' && <SystemTab headers={getAdminHeaders()} />}
+        {tab === 'revenue' && <RevenueTab headers={getAdminHeaders()} />}
+        {tab === 'payments' && <PaymentsTab headers={getAdminHeaders()} />}
       </div>
     </AppLayout>
   )
@@ -344,6 +350,240 @@ function UsageTab({ headers }: { headers: Record<string, string> }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+const fmtWei = (w?: string | number | null) =>
+  w === null || w === undefined ? '—' : Number(w) / 1e18 > 0 && Number(w) / 1e18 < 0.0001
+    ? (Number(w) / 1e18).toExponential(2)
+    : (Number(w) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 4 })
+const fmtCents = (c?: string | number | null) =>
+  c === null || c === undefined ? '—' : '$' + (Number(c) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
+const StatusDot = ({ ok }: { ok: boolean }) => <span className={`w-2 h-2 rounded-full inline-block ${ok ? 'bg-green-400' : 'bg-red-400'}`} />
+
+// ── System Status Tab ──────────────────────────────────────────────────────
+
+function SystemTab({ headers }: { headers: Record<string, string> }) {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchData = () => {
+    setLoading(true)
+    globalThis.fetch(`${GATEWAY}/api/v1/admin/system`, { headers })
+      .then(r => r.json()).then(setData).catch(() => { }).finally(() => setLoading(false))
+  }
+  useEffect(() => { fetchData() }, [])
+  if (loading) return <Loader2 className="w-6 h-6 animate-spin mx-auto text-text-muted" />
+
+  const s = data?.services || {}
+  return (
+    <div className="space-y-4">
+      {/* Services */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        {[
+          { name: 'Gateway', online: s.gateway?.online, detail: `${(s.gateway?.uptimeSec ?? 0) / 3600 | 0}h uptime · ${s.gateway?.memoryMB}MB` },
+          { name: 'Conversation', online: s.conversation?.online, detail: s.conversation?.code ? `HTTP ${s.conversation.code} · ${s.conversation.latencyMs}ms` : 'unreachable' },
+          { name: 'Frontend', online: s.frontend?.online, detail: s.frontend?.code ? `HTTP ${s.frontend.code} · ${s.frontend.latencyMs}ms` : 'unreachable' },
+        ].map(c => (
+          <div key={c.name} className="glass-card p-5">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-sm">{c.name}</span>
+              <StatusDot ok={c.online} />
+            </div>
+            <div className="text-xs text-text-muted mt-2">{c.detail}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Database */}
+      <div className="glass-card p-5">
+        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+          Database <StatusDot ok={data?.database?.connected} />
+        </h3>
+        <div className="grid grid-cols-3 gap-2 text-xs text-text-muted">
+          <div>Agents: <span className="text-text-primary">{data?.database?.agents?.toLocaleString()}</span></div>
+          <div>Plans: <span className="text-text-primary">{data?.database?.plans?.toLocaleString()}</span></div>
+          <div>Last sync: <span className="text-text-primary">{data?.database?.lastSyncAt ? new Date(data.database.lastSyncAt).toLocaleString() : '—'}</span></div>
+        </div>
+      </div>
+
+      {/* Chains */}
+      <div className="glass-card p-5">
+        <h3 className="font-semibold text-sm mb-3">Chains</h3>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {[['Sepolia', data?.chains?.sepolia], ['OxaChain L1', data?.chains?.oxachain]].map(([name, c]: any) => (
+            <div key={name} className="flex items-center justify-between rounded-lg bg-white/3 px-3 py-2">
+              <span className="text-text-muted">{name} (eip155:{c?.chainId})</span>
+              <span className="text-text-primary">{c?.blockNumber?.toLocaleString() ?? '—'}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex justify-between items-center">
+        <span className="text-xs text-text-muted">Checked at {data?.time ? new Date(data.time).toLocaleTimeString() : '—'}</span>
+        <button onClick={fetchData} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Refresh</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Revenue Tab ────────────────────────────────────────────────────────────
+
+function RevenueTab({ headers }: { headers: Record<string, string> }) {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchData = () => {
+    setLoading(true)
+    globalThis.fetch(`${GATEWAY}/api/v1/admin/revenue`, { headers })
+      .then(r => r.json()).then(setData).catch(() => { }).finally(() => setLoading(false))
+  }
+  useEffect(() => { fetchData() }, [])
+  if (loading) return <Loader2 className="w-6 h-6 animate-spin mx-auto text-text-muted" />
+
+  const oc = data?.onChain || {}
+  const fi = data?.fiat || {}
+  const ch = data?.channel || {}
+  const x4 = data?.x402 || {}
+
+  const cards = [
+    {
+      title: 'On-chain platform fees', sub: `platformFeeBps = ${oc.platformFeeBps ?? '—'}`,
+      rows: [
+        ['OxaChain L1 (native)', fmtWei(oc.oxachain?.nativeFeesWei)],
+        ['Sepolia (testnet)', fmtWei(oc.sepolia?.nativeFeesWei)],
+      ],
+    },
+    {
+      title: 'Fiat (Stripe)', sub: `${fi.payouts ?? 0} payouts`,
+      rows: [
+        ['Collected', fmtCents(fi.total_cents)],
+        ['Platform cut', fmtCents(fi.platform_cut_cents)],
+        ['Pending', fmtCents(fi.pending_cents)],
+      ],
+    },
+    {
+      title: 'Channel revenue share', sub: `${ch.attributions ?? 0} attributions`,
+      rows: [
+        ['Attributed volume', fmtWei(ch.amount_paid_wei)],
+        ['Channel share owed', fmtWei(ch.channel_share_wei)],
+        ['Settled', fmtWei(ch.settled_share_wei)],
+      ],
+    },
+    {
+      title: 'x402 micropayments', sub: `${x4.payments ?? 0} payments`,
+      rows: [
+        ['Received', fmtWei(x4.total_wei)],
+        ['Outstanding balance', fmtWei(x4.outstanding_wei)],
+      ],
+    },
+  ]
+
+  return (
+    <div className="space-y-4">
+      <div className="grid sm:grid-cols-2 gap-4">
+        {cards.map(c => (
+          <div key={c.title} className="glass-card p-5">
+            <h3 className="font-semibold text-sm">{c.title}</h3>
+            <div className="text-xs text-text-muted mb-3">{c.sub}</div>
+            <div className="space-y-1.5">
+              {c.rows.map(([k, v]) => (
+                <div key={k} className="flex justify-between text-xs">
+                  <span className="text-text-muted">{k}</span>
+                  <span className="text-text-primary font-medium">{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end">
+        <button onClick={fetchData} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Refresh</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Payment / Merchant Status Tab ──────────────────────────────────────────
+
+function PaymentsTab({ headers }: { headers: Record<string, string> }) {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchData = () => {
+    setLoading(true)
+    globalThis.fetch(`${GATEWAY}/api/v1/admin/payments`, { headers })
+      .then(r => r.json()).then(setData).catch(() => { }).finally(() => setLoading(false))
+  }
+  useEffect(() => { fetchData() }, [])
+  if (loading) return <Loader2 className="w-6 h-6 animate-spin mx-auto text-text-muted" />
+
+  const st = data?.stripe || {}
+  const x4 = data?.x402 || {}
+
+  return (
+    <div className="space-y-4">
+      {/* Stripe */}
+      <div className="glass-card p-5">
+        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">Stripe <StatusDot ok={st.configured} /></h3>
+        <div className="grid sm:grid-cols-4 gap-2 text-xs text-text-muted">
+          <div>Secret key: <StatusDot ok={st.secretKeySet} /></div>
+          <div>Webhook secret: <StatusDot ok={st.webhookSecretSet} /></div>
+          <div>Subscriptions: <span className="text-text-primary">{st.subscriptions?.total ?? 0}</span></div>
+          <div>Active: <span className="text-text-primary">{st.subscriptions?.active ?? 0}</span></div>
+        </div>
+        {!st.configured && <div className="text-xs text-amber-400/80 mt-2">Inactive — set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET to enable card subscriptions.</div>}
+      </div>
+
+      {/* x402 */}
+      <div className="glass-card p-5">
+        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">x402 <StatusDot ok={x4.enabled} /></h3>
+        <div className="grid sm:grid-cols-4 gap-2 text-xs text-text-muted">
+          <div>Enabled: <span className="text-text-primary">{String(x4.enabled)}</span></div>
+          <div>Price: <span className="text-text-primary font-mono">{x4.priceWei}</span> wei</div>
+          <div>Chain: <span className="text-text-primary">{x4.chain}</span></div>
+          <div>Payments: <span className="text-text-primary">{x4.payments ?? 0}</span></div>
+        </div>
+        <div className="text-xs text-text-muted mt-2 break-all">Pay-to: <span className="font-mono">{x4.payTo || 'not configured'}</span></div>
+        {!x4.enabled && <div className="text-xs text-amber-400/80 mt-1">Inactive — set X402_ENABLED=true + X402_PAY_TO to enable pay-per-request.</div>}
+      </div>
+
+      {/* Channels */}
+      <div className="glass-card p-5">
+        <h3 className="font-semibold text-sm mb-3">Channels</h3>
+        {(data?.channels?.length ?? 0) === 0 ? (
+          <div className="text-xs text-text-muted">No channels configured — insert into the `channels` table to enable referral attribution.</div>
+        ) : (
+          <div className="space-y-2">
+            {(data?.channels || []).map((c: any) => (
+              <div key={c.id} className="flex items-center justify-between rounded-lg bg-white/3 px-3 py-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-text-primary">{c.id}</span>
+                  <span className="text-text-muted">{c.name}</span>
+                  <StatusDot ok={c.active} />
+                </div>
+                <div className="flex items-center gap-4 text-text-muted">
+                  <span>{c.share_bps / 100}% share</span>
+                  <span>{c.attributions ?? 0} attributions</span>
+                  <span className="font-mono">{c.wallet?.substring(0, 10) || '—'}…</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* On-chain summary */}
+      <div className="glass-card p-5 flex items-center justify-between text-xs">
+        <span className="text-text-muted">On-chain subscription plans indexed</span>
+        <span className="text-text-primary font-medium">{data?.onChain?.subscriptionPlans ?? 0}</span>
+      </div>
+      <div className="flex justify-end">
+        <button onClick={fetchData} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Refresh</button>
       </div>
     </div>
   )

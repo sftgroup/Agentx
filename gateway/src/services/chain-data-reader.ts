@@ -25,6 +25,11 @@ import { config } from '../config'
 
 export type ChainKey = 'sepolia' | 'oxachain'
 
+/** Minimal ABI for raw viem reads the SDK does not wrap yet. */
+const PLATFORM_FEES_ABI = [
+  { name: 'platformFeesCollected', type: 'function', stateMutability: 'view', inputs: [{ name: 'token', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
+] as const
+
 interface ChainInfo {
   rpcUrl: string
   chainId: number
@@ -214,6 +219,23 @@ export class ChainDataReader {
     const fee = await this.getSubscription(chain).getPlatformFeeBps()
     log.info(`platformFeeBps(chain=${chain}) → ${fee}`)
     return fee
+  }
+
+  /**
+   * Cumulative platform fees held by the protocol for a token
+   * (address(0) = native ETH/OXA). Raw viem read — the SDK does not wrap
+   * `platformFeesCollected` yet.
+   */
+  async platformFeesCollected(chain: ChainKey, token: Address = '0x0000000000000000000000000000000000000000'): Promise<bigint> {
+    const info = this.resolve(chain)
+    const fees = await this.getPublicClient(chain).readContract({
+      address: info.subscriptionManager,
+      abi: PLATFORM_FEES_ABI,
+      functionName: 'platformFeesCollected',
+      args: [token],
+    })
+    log.info(`platformFeesCollected(chain=${chain}, token=${token}) → ${fees}`)
+    return fees
   }
 
   // ── Event stream ────────────────────────────────────────────────────────
