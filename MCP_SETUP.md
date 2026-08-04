@@ -32,6 +32,31 @@ Claude Desktop / Cursor / Any MCP Client
 
 ---
 
+## 客户端包（npm）
+
+Node 服务端集成推荐使用官方客户端包 **[`@agentxv2/mcp`](https://www.npmjs.com/package/@agentxv2/mcp)**（v0.1.0）——类型化封装全部 MCP 工具，一行接入：
+
+```bash
+npm install @agentxv2/mcp
+```
+
+```typescript
+import { McpClient } from '@agentxv2/mcp'
+
+const mcp = new McpClient({
+  gatewayUrl: 'http://43.159.60.46:3090',  // AgentX Gateway
+  defaultChain: 'oxachain',                 // 'sepolia' (默认) | 'oxachain'
+})
+
+const { agents, total } = await mcp.listAgents({ activeOnly: true })
+const plan = await mcp.getPlan(1)          // → { planId, agentId, price, period, ... }
+const op = await mcp.createPlan({ agentId: 2, price: '10000000000000000', period: 'month' })  // WRITE 描述
+```
+
+> 工具化调用列表（`initialize` / `listTools` / `callTool` + 类型化 Identity/Subscription 方法）见包内 README。仅支持原生 `fetch` 的 Node 18+ / 浏览器，无其他运行时依赖。
+
+---
+
 ## Quick Start
 
 ### Claude Desktop
