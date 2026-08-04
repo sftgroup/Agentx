@@ -117,7 +117,91 @@ AI Agent ──X-PAYMENT──► 校验链上付款 ──► 记账/额度 →
 
 ---
 
-## 6. 决策树
+## 6. 渠道分成（Referral / Affiliate）— 分成给引荐平台且可追溯
+
+**场景**：A 平台引导其用户订阅 AgentX 链上计划，AgentX 应把部分平台费分成给 A 平台（渠道费），且每笔分成可追溯、可对账。
+
+### 6.1 方案对比
+
+| | 方案 1：链上原生（改合约） | 方案 2：链下归因（推荐） |
+|---|---|---|
+| 做法 | `subscribe(planId, referrer)` + `channelFeesCollected[token][channel]` | DB 归因表 + 平台费让利 + 链上事件对账 |
+| 追溯 | 链上最强 | 链上事件哈希（txHash/blockNumber）+ DB 记录，可审计 |
+| 成本 | 新部署合约 + SDK/MCP/前端全链路升级 | 仅 Gateway 新增表 + 接口 |
+| 上线 | 重，现有合约已生产 | 轻，可立即实施 |
+
+**结论**：渠道归因本质是运营数据（谁带来的用户），链下记录 + 订阅事件溯源已满足"可追溯"；**推荐方案 2**。
+
+### 6.2 分成规则（平台费让利，不动 creator 收入）
+
+```
+链上自动（不变）：creator 97.5% + 平台 2.5%（platformFeeBps=250）
+渠道让利（链下）  ：平台从自己的 2.5% 中，按渠道 share_bps 分给 A 平台
+                   例：A 平台 share_bps=125 → A 得订阅额 ×1.25%，平台实得 ×1.25%
+```
+
+- **不削减 creator 收入**（creator 仍拿 97.5%）
+- 渠道费来自平台费，比例按渠道单独配置（`channels.share_bps`）
+
+### 6.3 归因与追溯设计（Gateway 新增）
+
+```
+A 平台 ──链接(带 ?ref=CHANNEL_ID)──► 用户 ──subscribe(planId)──► 链上 escrow
+                                        │
+                    前端上报 /api/v1/channel/attribute（subscriber, agentId, channelId）
+                                        │
+                    channel_attributions 表（UNIQUE(subscriber, agent_id, channel_id) 防重复）
+                                        │ 对账
+                    GET /api/v1/channel/report?channelId=&from=&to=
+                    → 每笔：subscriber / amountPaid / txHash / blockNumber / 应得分成
+```
+
+**表设计**（`007_channel_attributions.sql`，风格对齐 006）：
+
+```sql
+-- 渠道配置（分成比例/收款地址）
+CREATE TABLE IF NOT EXISTS channels (
+  id         VARCHAR(64) PRIMARY KEY,      -- A 平台标识
+  name       TEXT NOT NULL,
+  share_bps  INTEGER NOT NULL DEFAULT 0,   -- 平台费让利（相对订阅额，如 125 = 1.25%）
+  wallet     TEXT,                          -- 链上打款地址
+  active     BOOLEAN NOT NULL DEFAULT true
+);
+
+-- 订阅 → 渠道归因（可追溯：每行绑定链上事件）
+CREATE TABLE IF NOT EXISTS channel_attributions (
+  id            SERIAL PRIMARY KEY,
+  subscriber    TEXT NOT NULL,             -- 订阅钱包地址
+  agent_id      INTEGER NOT NULL,
+  plan_id       INTEGER,
+  channel_id    VARCHAR(64) NOT NULL REFERENCES channels(id),
+  source        TEXT,                       -- 链接/二维码/API 渠道来源
+  amount_paid   TEXT,                       -- wei 字符串（对齐 subscription_plans 风格）
+  tx_hash       TEXT,                       -- Subscribed 事件 txHash（链上溯源）
+  block_number  INTEGER,
+  expires_at    BIGINT,
+  settled       BOOLEAN NOT NULL DEFAULT false,  -- 是否已结算给渠道
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (subscriber, agent_id, channel_id)      -- 防重复归因
+);
+CREATE INDEX IF NOT EXISTS idx_channel_attributions_channel ON channel_attributions(channel_id);
+```
+
+**接口**（Gateway）：
+- `POST /api/v1/channel/attribute` — 前端订阅流程上报归因（subscriber, agentId, channelId, txHash）
+- `GET /api/v1/channel/report` — 渠道对账报表（该渠道全部归因订阅 + amountPaid + 应得分成 = `amountPaid × share_bps / 10000`）
+- 结算：AgentX 从 `platformFeesCollected` 提取后按报表链上打款渠道钱包，标记 `settled=true`
+
+**可选增强（自动对账）**：indexer 增加 Subscribed 事件 watcher，把订阅记录落 `subscription_events` 表，与归因表按 `(subscriber, agent_id)` join 自动核对金额/txHash——当前未落库，属增量建设。
+
+### 6.4 场景闭环
+
+- A 平台用户订阅 → 链上 escrow → `releaseFunds` 自动分成（creator + 平台）→ 平台按归因表让利给 A 平台
+- 追溯链路：`channel_attributions.tx_hash` → explorer 验证真实订阅 → 对账报表可审计
+
+---
+
+## 7. 决策树
 
 ```
 第三方要什么？
@@ -126,11 +210,14 @@ AI Agent ──X-PAYMENT──► 校验链上付款 ──► 记账/额度 →
 │     └─ 若第三方要求我们托管法币      → A1 法币订阅门卫（需 Gateway 开发）
 ├─ AI Agent 自主按次调用，稳定币计费   → B2 x402 桥接（第三方自开 402 端点）
 │     └─ 若要求我们原生 402            → A2 x402 按次通道（需 Gateway 开发）
-└─ 不确定                             → 先 B1/B3（零改动），需求明确后再评估 A1/A2
+├─ 引荐用户订阅，要渠道分成且可追溯    → §6 链下归因（channels + channel_attributions）
+│     └─ 若要链上原生 referrer         → 改合约（成本高，暂不建议）
+└─ 不确定                             → 先 B1/B3（零改动），需求明确后再评估
 ```
 
-## 7. 结论
+## 8. 结论
 
 - **平台分成在链上已全自动**（escrow + `platformFeeBps` 拆分），第三方集成不需要额外分成机制
 - **法币/x402 是结算层的可选扩展**，访问控制始终在 Gateway，可叠加、可共存、不影响链上订阅
 - **第三方集成的推荐路径**：B1 中间人模式（零改动）；原生法币（A1）仅在出现明确 C 端无钱包需求时实施
+- **渠道分成**：走 §6 链下归因（平台费让利 + DB 归因 + 链上事件对账），可追溯、可审计，不动 creator 收入
