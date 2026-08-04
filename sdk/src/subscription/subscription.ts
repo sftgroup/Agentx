@@ -5,8 +5,22 @@
 // Uses viem PublicClient / WalletClient (chain-agnostic).
 // ---------------------------------------------------------------------------
 
-import type { PublicClient, WalletClient, Address, Hash } from 'viem'
+import { decodeEventLog, parseAbiItem, toEventHash } from 'viem'
+import type { PublicClient, WalletClient, Address, Hash, Hex } from 'viem'
 import type { AgentSubscription } from '../core/types'
+
+export const ZERO_ADDRESS: Address = '0x0000000000000000000000000000000000000000'
+
+// ── Event ABI (for receipt parsing) ────────────────────────────────────────
+
+const PLAN_CREATED_EVENT = parseAbiItem(
+  'event PlanCreated(uint256 indexed planId, uint256 indexed agentId, uint256 price, string period, address payToken, uint256 trialDays)'
+)
+const SUBSCRIBED_EVENT = parseAbiItem(
+  'event Subscribed(uint256 indexed subscriptionId, address indexed subscriber, uint256 indexed agentId, uint256 expiresAt)'
+)
+const PLAN_CREATED_TOPIC = toEventHash(PLAN_CREATED_EVENT)
+const SUBSCRIBED_TOPIC = toEventHash(SUBSCRIBED_EVENT)
 
 // ── ABI Fragments (v2) ─────────────────────────────────────────────────────
 
@@ -182,6 +196,40 @@ export interface SubscriptionDetail {
   fundsReleased: boolean
 }
 
+// ── Period ─────────────────────────────────────────────────────────────────
+// On-chain `_periodToSeconds` only recognizes day/week/month/year; any other
+// string silently falls back to 30 days. Typed here so consumers cannot pass
+// e.g. 'monthly'/'yearly' and get a wrong expiry (see aihunter-saas incident).
+
+export const SUBSCRIPTION_PERIODS = ['day', 'week', 'month', 'year'] as const
+export type SubscriptionPeriod = (typeof SUBSCRIPTION_PERIODS)[number]
+
+export interface CreatePlanParams {
+  agentId: number
+  /** Price in wei (native token) or token units for ERC20 plans. */
+  price: bigint
+  /** Must be one of: day | week | month | year (contract-valid enum). */
+  period: SubscriptionPeriod
+  /** ERC20 pay token; default zero address = native token. */
+  payToken?: Address
+  /** Trial days (0–30). Default 0 = no trial. */
+  trialDays?: number
+}
+
+export interface CreatePlanResult {
+  planId: number
+  txHash: Hash
+}
+
+export interface SubscribeResult {
+  subscriptionId: number
+  txHash: Hash
+  subscriber: Address
+  agentId: number
+  /** Unix timestamp (seconds) when the subscription expires. */
+  expiresAt: number
+}
+
 // ── Subscription Manager ───────────────────────────────────────────────────
 
 export class SubscriptionManager {
@@ -237,25 +285,64 @@ export class SubscriptionManager {
     }
   }
 
-  // ── Subscribe ────────────────────────────────────────────────────────────
+  // ── Plans ────────────────────────────────────────────────────────────────
+
+  /**
+   * Create a subscription plan for an agent.
+   *
+   * @param params.period  Must be 'day' | 'week' | 'month' | 'year' — the only
+   *                       values the contract maps to real durations. Anything
+   *                       else silently becomes 30 days on-chain.
+   * @returns              { planId, txHash } (planId parsed from PlanCreated event)
+   */
+  async createPlan(params: CreatePlanParams): Promise<CreatePlanResult> {
+    const { agentId, price, period, payToken = ZERO_ADDRESS, trialDays = 0 } = params
+
+    if (!SUBSCRIPTION_PERIODS.includes(period)) {
+      throw new Error(
+        `Invalid period "${period}". Must be one of: ${SUBSCRIPTION_PERIODS.join(', ')}`
+      )
+    }
+    if (trialDays < 0 || trialDays > 30) {
+      throw new Error('trialDays must be between 0 and 30')
+    }
+
+    const [account] = await this.walletClient.getAddresses()
+    if (!account) throw new Error('Wallet not connected')
+
+    const { request } = await this.publicClient.simulateContract({
+      account,
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.createPlan],
+      functionName: 'createPlan',
+      args: [BigInt(agentId), price, period, payToken, BigInt(trialDays)],
+    })
+    const hash = await this.walletClient.writeContract(request)
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+
+    return { planId: this._parsePlanIdFromReceipt(receipt), txHash: hash }
+  }
 
   /**
    * Subscribe to a plan.
    * For ETH plans: pass valueWei = plan.price.
    * For ERC20 plans: auto-detects from plan.payToken, calls approve + subscribe.
    *                    User must have approved this contract for plan.price tokens.
+   *
+   * @returns SubscribeResult — subscriptionId/expiresAt/subscriber parsed from
+   *          the Subscribed event (no longer hardcoded to 0).
    */
   async subscribe(
     planId: number,
     opts?: { valueWei?: bigint; approveTokenFirst?: boolean }
-  ): Promise<{ subscriptionId: number; txHash: Hash }> {
+  ): Promise<SubscribeResult> {
     const [account] = await this.walletClient.getAddresses()
     if (!account) throw new Error('Wallet not connected')
 
     const plan = await this.getPlan(planId)
     if (!plan.active) throw new Error('Plan not active')
 
-    if (plan.payToken === '0x0000000000000000000000000000000000000000') {
+    if (plan.payToken === ZERO_ADDRESS) {
       // ── ETH ──
       const value = opts?.valueWei ?? plan.price
 
@@ -268,7 +355,8 @@ export class SubscriptionManager {
         value,
       })
       const hash = await this.walletClient.writeContract(request)
-      return { subscriptionId: 0, txHash: hash }
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+      return { txHash: hash, ...this._parseSubscribedFromReceipt(receipt) }
     } else {
       // ── ERC20 ──
       // Optionally approve first
@@ -299,8 +387,19 @@ export class SubscriptionManager {
         args: [BigInt(planId)],
       })
       const hash = await this.walletClient.writeContract(request)
-      return { subscriptionId: 0, txHash: hash }
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+      return { txHash: hash, ...this._parseSubscribedFromReceipt(receipt) }
     }
+  }
+
+  /**
+   * One-step createPlan + subscribe (two transactions).
+   * Saves the caller one round of plan lookup when the plan does not exist yet.
+   */
+  async createPlanAndSubscribe(params: CreatePlanParams): Promise<CreatePlanResult & SubscribeResult> {
+    const { planId } = await this.createPlan(params)
+    const subscribed = await this.subscribe(planId)
+    return { planId, ...subscribed }
   }
 
   /** Release escrowed funds to creator after trial window ends. */
@@ -395,6 +494,45 @@ export class SubscriptionManager {
       args: [user],
     })
     return (result as bigint[]).map(Number)
+  }
+
+  // ── Receipt parsing (event-driven, no hardcoded IDs) ─────────────────────
+
+  private _findEventLog(receipt: { logs: readonly unknown[] }, topic: Hex) {
+    return receipt.logs.find((l) => (l as { topics?: readonly unknown[] }).topics?.[0] === topic)
+  }
+
+  /** Parse planId from the PlanCreated event in a transaction receipt. */
+  private _parsePlanIdFromReceipt(receipt: { logs: readonly unknown[] }): number {
+    const log = this._findEventLog(receipt, PLAN_CREATED_TOPIC)
+    if (!log) {
+      throw new Error('PlanCreated event not found in transaction receipt')
+    }
+    const decoded = decodeEventLog({
+      abi: [PLAN_CREATED_EVENT],
+      data: (log as { data: Hex }).data,
+      topics: (log as { topics: [Hex, ...Hex[]] }).topics,
+    })
+    return Number(decoded.args.planId)
+  }
+
+  /** Parse subscriptionId/subscriber/agentId/expiresAt from the Subscribed event. */
+  private _parseSubscribedFromReceipt(receipt: { logs: readonly unknown[] }): Omit<SubscribeResult, 'txHash'> {
+    const log = this._findEventLog(receipt, SUBSCRIBED_TOPIC)
+    if (!log) {
+      throw new Error('Subscribed event not found in transaction receipt')
+    }
+    const decoded = decodeEventLog({
+      abi: [SUBSCRIBED_EVENT],
+      data: (log as { data: Hex }).data,
+      topics: (log as { topics: [Hex, ...Hex[]] }).topics,
+    })
+    return {
+      subscriptionId: Number(decoded.args.subscriptionId),
+      subscriber: decoded.args.subscriber as Address,
+      agentId: Number(decoded.args.agentId),
+      expiresAt: Number(decoded.args.expiresAt),
+    }
   }
 }
 

@@ -61,9 +61,9 @@ Subscriber  →  decrypts  →  injects prompt into LLM  →  executes skills (l
 ### Installation
 
 ```bash
-npm install @agentxv2/sdk@0.7.5
+npm install @agentxv2/sdk@0.8.0
 # or
-pnpm add @agentxv2/sdk@0.7.5
+pnpm add @agentxv2/sdk@0.8.0
 ```
 
 ### Core API
@@ -537,7 +537,7 @@ const {
 Don't want to run AgentLoop locally? Call our hosted Conversation Service through the SDK's `ConversationClient`. No chain sync, IPFS, or key management needed — the service loads the agent context, runs the ReAct loop, and streams results.
 
 ```bash
-npm install @agentxv2/sdk@0.7.5
+npm install @agentxv2/sdk@0.8.0
 ```
 
 ```typescript
@@ -549,7 +549,7 @@ const client = new ConversationClient({
   endUserId: 'user_123',     // Optional: per end-user memory isolation
   llmApiKey: 'sk-...',       // Optional: stateless BYOK — your own LLM key (highest priority)
   llmEndpoint: 'https://api.deepseek.com/v1',  // Optional: endpoint for llmApiKey (default OpenAI)
-  llmModel: 'deepseek-chat', // Optional: model for llmApiKey (default gpt-4o)
+  llmModel: 'deepseek-v4-pro', // Optional: model for llmApiKey (default gpt-4o)
 })
 
 // One-shot
@@ -607,7 +607,7 @@ const ragResult = await client.chat({
 ## Repository
 
 - **GitHub (Main)**: [github.com/sftgroup/Agentx](https://github.com/sftgroup/Agentx)
-- **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.7.5`](https://www.npmjs.com/package/@agentxv2/sdk)
+- **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.8.0`](https://www.npmjs.com/package/@agentxv2/sdk)
 - **Contracts**: `agentx/contracts/` — Foundry + Solidity 0.8.20-0.8.24
 - **Frontend**: `agentx/frontend/` — Next.js 14 + wagmi 2.x
 - **Production**: `http://43.159.60.46:3100`

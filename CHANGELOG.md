@@ -7,6 +7,25 @@
 
 ## 2026-08-04
 
+### SDK v0.8.0 — 链上数据能力（AIHunter-SaaS 集成）
+
+**新特性**：为 aihunter-saas 的 `chain-sync` / `subscribe` / `pricing` 三组件提供 SDK 统一封装，替代其裸 ethers.js + 手工 ABI 实现。
+
+- **IdentityRegistry 批量查询**：
+  - `getAllAgents(options?)` — 批量拉取 Agent（`fromId`/`toId`/`activeOnly`/`capabilities` 筛选，`batchSize` 分批），返回结构化 `AgentSummary`（name/description/capabilities/skills/isActive/createdAt）
+  - `totalAgents()` — 直接读取合约 `totalAgents()`，替代二分查找最大 ID
+  - `getAgentMetadata(agentId)` — 结构化元数据（链上 attributes + tokenURI JSON 合并解析）
+- **SubscriptionManager 写操作**：
+  - `createPlan()` — 返回 `planId`（从 `PlanCreated` 事件解析，不再手工 parseLog）；**period 类型化为 `day|week|month|year`**（严格对齐合约 `_periodToSeconds`，杜绝 `monthly/quarterly/yearly` 静默 30 天过期）
+  - `subscribe()` — 返回 `subscriptionId/expiresAt/subscriber`（从 `Subscribed` 事件解析，修复此前恒为 0）
+  - `createPlanAndSubscribe()` — 组合方法
+- **事件监听**：`subscribeToEvents()` — viem `watchContractEvent` 监听 `Transfer`/`AgentRegistered`/`PlanCreated`/`Subscribed`，返回 unsubscribe，将同步延迟从 2 分钟降到 15 秒级
+- **Gateway v0.2.0**：
+  - `GET /api/v1/agents` — 新增 `activeOnly`/`capabilities`/`fromId`/`toId` 筛选 + `page`/`pageSize` 分页
+  - `GET /api/v1/agents/count` — 总数 / active 数统计
+  - agent-indexer — 结构化 metadata（skills/is_active/agent_created_at）入库；`totalAgents()` 界定全量扫描；新增 `AgentRegistered`/`Transfer` 事件驱动增量同步（mint → upsert，burn → 删除）
+  - 新迁移 `005_agents_structured.sql`（is_active / skills / agent_created_at 列 + 索引）
+
 ### SDK v0.7.5 — AgentLoop 模型覆盖修复
 
 **修复**：`AgentLoop` 主循环原先强制发送 `ctx.model ?? 'gpt-4o'`，忽略 LLM Provider 自身配置的模型（`#517490b`）。
@@ -75,10 +94,10 @@
 
 | 文档 | 内容 |
 |------|------|
-| [README.md](README.md) | 项目门面：SDK v0.7.5、目录结构、BYOK 示例 |
+| [README.md](README.md) | 项目门面：SDK v0.8.0、目录结构、BYOK 示例 |
 | [CHANGELOG.md](CHANGELOG.md) | 本文件 |
 | [REFACTORING_NOTES.md](REFACTORING_NOTES.md) | 对话服务重构说明（死代码清理、硬编码修复） |
 | [AISERVICER_INTEGRATION.md](AISERVICER_INTEGRATION.md) | aiservicer 接入样例（完整 BYOK + DeepSeek） |
 | [CONVERSATION_SERVICE.md](CONVERSATION_SERVICE.md) | 对话服务协议：鉴权、BYOK、澄清、记忆 |
-| [INTEGRATION.md](INTEGRATION.md) | SDK 集成指南 v0.7.5 |
+| [INTEGRATION.md](INTEGRATION.md) | SDK 集成指南 v0.8.0 |
 | [sdk/UPGRADE.md](sdk/UPGRADE.md) | SDK 升级指南 |

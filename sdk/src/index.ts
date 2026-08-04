@@ -22,6 +22,7 @@
 // ---------------------------------------------------------------------------
 
 export * from './core'
+export * from './events'
 export * from './agent'
 export * from './agent-loop'
 export * from './llm'

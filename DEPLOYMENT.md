@@ -1,7 +1,7 @@
 # AgentX Deployment Guide
 
 > Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-04
-> Server code: `~/Agentx` @ `7efc505` (main) · SDK published: `@agentxv2/sdk@0.7.5`
+> Server code: `~/Agentx` @ `7efc505` (main) · SDK published: `@agentxv2/sdk@0.8.0`
 
 ---
 
@@ -446,7 +446,7 @@ npm version patch
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.7.5`
+Current: `@agentxv2/sdk@0.8.0`
 
 ### SDK v0.7.1 New Features
 
@@ -540,7 +540,7 @@ curl -X POST http://43.159.60.46:3090/api/v1/admin/platform-keys \
     "provider": "deepseek",
     "endpoint": "https://api.deepseek.com/v1",
     "api_key": "sk-...",
-    "models": ["deepseek-chat"],
+    "models": ["deepseek-v4-pro"],
     "plan_slugs": ["pro", "enterprise"]
   }'
 ```

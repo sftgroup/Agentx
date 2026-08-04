@@ -150,7 +150,7 @@ X-Internal-Token: agentx-conv-internal-token-2026
 X-Tenant-Address: 0x...
 X-Llm-Api-Key: sk-...       # Optional: stateless BYOK — caller's own key (Plan C)
 X-Llm-Endpoint: https://api.deepseek.com/v1  # Optional: endpoint for X-Llm-Api-Key (default OpenAI)
-X-Llm-Model: deepseek-chat  # Optional: model for X-Llm-Api-Key (default gpt-4o)
+X-Llm-Model: deepseek-v4-pro  # Optional: model for X-Llm-Api-Key (default gpt-4o)
 X-End-User-Id: user_123  # Optional: per end-user memory isolation
 ```
 
@@ -358,12 +358,12 @@ CONVERSATION_SERVICE_TOKEN=agentx-conv-internal-token-2026
 
 ---
 
-## SDK Client (v0.7.5)
+## SDK Client (v0.8.0)
 
 Tenants can call the hosted Conversation Service from their own app via `@agentxv2/sdk`'s `ConversationClient` — no manual SSE parsing needed:
 
 ```bash
-npm install @agentxv2/sdk@0.7.5
+npm install @agentxv2/sdk@0.8.0
 ```
 
 ```typescript
@@ -375,7 +375,7 @@ const client = new ConversationClient({
   endUserId: 'user_123',           // Optional: per end-user memory isolation
   llmApiKey: 'sk-...',             // Optional: stateless BYOK — caller's own LLM key
   llmEndpoint: 'https://api.deepseek.com/v1', // Optional: endpoint for llmApiKey (default OpenAI)
-  llmModel: 'deepseek-chat',       // Optional: model for llmApiKey (default gpt-4o)
+  llmModel: 'deepseek-v4-pro',       // Optional: model for llmApiKey (default gpt-4o)
 })
 
 // One-shot chat (collects full result)
