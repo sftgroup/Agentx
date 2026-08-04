@@ -1,12 +1,12 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.8.0 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-04
+> SDK v0.8.1 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-04
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
 **两种接入方式，按场景选择：**
 
-- **SDK** · [`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk) v0.8.0 — 直连区块链：链上读写、真实交易（订阅 / 创建套餐）、事件监听、加密、IPFS、对话 SSE。适合 **DApp 与深度集成**。
+- **SDK** · [`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk) v0.8.1 — 直连区块链：链上读写、真实交易（订阅 / 创建套餐）、事件监听、加密、IPFS、对话 SSE。适合 **DApp 与深度集成**。
 - **MCP 客户端** · [`@agentxv2/mcp`](https://www.npmjs.com/package/@agentxv2/mcp) v0.1.0 — 经 Gateway MCP 协议：32 个工具、AI Agent 工具化调用、零依赖、免链配置。适合 **快速接入与只读场景**。
 
 > 详细对比（能力 / 场景 / 选型决策树）：[docs/sdk-vs-mcp.md](docs/sdk-vs-mcp.md)
@@ -156,7 +156,7 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | **Conversation Service** | `http://43.159.60.46:8100` |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.8.0` |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.8.1` |
 | **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.8.0`, production :3100) |
 
 ---
