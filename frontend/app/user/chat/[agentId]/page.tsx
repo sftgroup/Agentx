@@ -42,6 +42,8 @@ export default function ChatPage() {
   const [modelOptions, setModelOptions] = useState<ModelOption[]>([])
   const [showModelSelector, setShowModelSelector] = useState(false)
   const [useSseStreaming, setUseSseStreaming] = useState(true) // SSE via Gateway (primary) or AgentLoop (fallback)
+  const [clarification, setClarification] = useState<string | null>(null) // pending clarifying question from Conversation Service
+  const [clarificationAnswer, setClarificationAnswer] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const loopRef = useRef<AgentLoop | null>(null)
@@ -169,6 +171,7 @@ export default function ChatPage() {
           onComplete: (usage) => {
             // Optional: track usage
           },
+          onClarification: (question) => setClarification(question),
         }, history)
         return
       }
@@ -284,6 +287,33 @@ export default function ChatPage() {
     if (useSseStreaming) stopSse()
     else loopRef.current?.abort()
   }, [useSseStreaming, stopSse])
+
+  // Re-send the user's answer to the clarification question as a follow-up.
+  // The Conversation Service restarts the run with the answer in context.
+  const handleClarificationSubmit = useCallback(async () => {
+    const question = clarification
+    const answer = clarificationAnswer.trim()
+    if (!question || !answer || !gatewayCtx) return
+    setClarification(null)
+    setClarificationAnswer('')
+    setIsLoading(true)
+    try {
+      const history = sseMessages.slice(-20)
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      await sendSseMessage(`${question}\n我的回答：${answer}`, {
+        agentId,
+        gatewayUrl,
+        accessToken: gatewayCtx.accessToken,
+        enableMemory: true,
+        onClarification: (q) => setClarification(q),
+      }, history)
+    } catch {
+      setClarification(question)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [clarification, clarificationAnswer, gatewayCtx, sseMessages, gatewayUrl, agentId, sendSseMessage])
 
   // ── Render helpers ───────────────────────────────────────────────────
   const renderMessage = (msg: ChatMessage) => {
@@ -457,6 +487,24 @@ export default function ChatPage() {
             {currentThinking && (
               <div className="flex justify-center">
                 <span className="text-xs text-text-muted bg-white/5 rounded-full px-3 py-1">{currentThinking}</span>
+              </div>
+            )}
+            {clarification && (
+              <div className="flex justify-start">
+                <div className="max-w-2xl rounded-2xl px-4 py-3 bg-accent-cyan/10 border border-accent-cyan/20">
+                  <div className="text-sm font-medium text-accent-cyan mb-1">Clarification needed</div>
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed mb-3">{clarification}</div>
+                  <div className="flex gap-2">
+                    <input value={clarificationAnswer} onChange={e => setClarificationAnswer(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleClarificationSubmit()}
+                      placeholder="Type your answer..."
+                      className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent-cyan/40 placeholder:text-text-muted" />
+                    <button onClick={handleClarificationSubmit} disabled={!clarificationAnswer.trim()}
+                      className="px-4 py-2 bg-accent-cyan/20 hover:bg-accent-cyan/30 text-accent-cyan rounded-lg text-sm transition-colors disabled:opacity-30">
+                      Answer
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
             <div ref={messagesEndRef} />
