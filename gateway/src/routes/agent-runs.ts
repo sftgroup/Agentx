@@ -3,11 +3,16 @@
 
 import { Router, Request, Response } from 'express'
 import { getConversationProxy } from '../services/conversation-proxy'
+import { x402Available, x402Guard } from '../services/x402'
 
 const router = Router()
 
 // POST /api/v1/agent/runs — SSE streaming agent conversation
-router.post('/runs', async (req: Request, res: Response) => {
+// When x402 is enabled, unsubscribed callers get HTTP 402 + payment headers.
+router.post('/runs', (req: Request, res: Response, next: () => void) => {
+  if (x402Available()) x402Guard(req, res, next)
+  else next()
+}, async (req: Request, res: Response) => {
   const { agentId, message, enableMemory, contextBudget, history, prompt, skills } = req.body
   const tenantAddress = (req as any).user?.address || (req as any).user?.tenantId || 'unknown'
   const endUserId = req.headers['x-end-user-id'] as string || undefined

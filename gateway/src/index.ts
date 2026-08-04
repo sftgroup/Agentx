@@ -18,6 +18,9 @@ import tenantRouter from './routes/tenant'
 import mcpRouter from './routes/mcp'
 import agentsRouter from './routes/agents'
 import chainRouter from './routes/chain'
+import channelRouter from './routes/channel'
+import fiatRouter from './routes/fiat'
+import x402Router from './routes/x402'
 import a2aRouter from './routes/a2a'
 import adminRouter from './routes/admin'
 import agentRunsRouter from './routes/agent-runs'
@@ -50,7 +53,7 @@ app.use(rateLimit({
 
 // ── Body parsing ──────────────────────────────────────────────────────────
 
-app.use(express.json({ limit: '1mb' }))
+app.use(express.json({ limit: '1mb', verify: (req: any, _res, buf) => { req.rawBody = buf } }))
 
 // Handle malformed JSON (return 400 instead of 500)
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -108,6 +111,18 @@ app.use('/api/v1/agents', agentsRouter)
 // ── Real-time Chain Data API (public, SDK-based live on-chain reads) ───────
 
 app.use('/api/v1/chain', chainRouter)
+
+// ── Channel attribution & revenue share (public) ───────────────────────────
+
+app.use('/api/v1/channel', channelRouter)
+
+// ── Fiat subscriptions (A1; inert without Stripe keys) ─────────────────────
+
+app.use('/api/v1/fiat', fiatRouter)
+
+// ── x402 pay-per-request (A2; inert unless enabled) ────────────────────────
+
+app.use('/api/v1/x402', x402Router)
 
 // ── Skills Marketplace (mixed: GET public, POST/PUT/DELETE protected) ──────
 

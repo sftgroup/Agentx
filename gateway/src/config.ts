@@ -59,4 +59,17 @@ export const config = {
 
   // A2A Worker wallet (for creating sub-tasks on-chain during multi-agent orchestration)
   a2aWorkerPrivateKey: process.env.A2A_WORKER_PRIVATE_KEY || '',
+
+  // ── Fiat subscriptions (A1) ──────────────────────────────────────────────
+  // Empty keys = feature disabled (endpoints respond 503 with a clear hint).
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+
+  // ── x402 pay-per-request (A2) ────────────────────────────────────────────
+  // Enabled when X402_ENABLED=true; pay-to wallet receives native-token
+  // micropayments; verify endpoints credit x402_balances.
+  x402Enabled: process.env.X402_ENABLED === 'true',
+  x402PayTo: process.env.X402_PAY_TO || '',
+  x402PriceWei: process.env.X402_PRICE_WEI || '1000000000000000', // 0.001 native by default
+  x402Chain: process.env.X402_CHAIN || 'oxachain',
 }
