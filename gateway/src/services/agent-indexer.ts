@@ -22,7 +22,8 @@ const IDENTITY_ABI = [
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 // Parse base64 data URI tokenURI → JSON metadata object
-function parseTokenURIToJSON(tokenURI: string): Record<string, unknown> | null {
+// Exported for reuse by the MCP server (single source of truth for tokenURI parsing).
+export function parseTokenURIToJSON(tokenURI: string): Record<string, unknown> | null {
   if (!tokenURI) return null
   if (tokenURI.startsWith('ipfs://')) return null
 
@@ -75,7 +76,9 @@ function parseCreatedAt(parsed: Record<string, unknown> | null): number {
   return 0
 }
 
-function extractMetadata(parsed: Record<string, unknown> | null, agentId: number) {
+// Normalize parsed tokenURI JSON into structured metadata.
+// Exported for reuse by the MCP server.
+export function extractMetadata(parsed: Record<string, unknown> | null, agentId: number) {
   return {
     name: str(parsed?.name) || `Agent ${agentId}`,
     description: str(parsed?.description),
