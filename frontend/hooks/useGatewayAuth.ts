@@ -100,7 +100,7 @@ export function useGatewayAuth(gatewayUrl?: string) {
         tenant: TenantInfo
       }
 
-      if (!verifyRes.ok) throw new Error((data as { error: string }).error)
+      if (!verifyRes.ok) throw new Error((data as unknown as { error: string }).error)
 
       tokenRef.current = data.access_token
 

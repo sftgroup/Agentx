@@ -3,7 +3,7 @@
 'use client'
 
 import { Brain, Zap, Server, ExternalLink, Edit, Plus, DollarSign, Coins } from 'lucide-react'
-import type { AgentCard, AgentSkill, A2ASkill } from '../../hooks/useA2AProtocol'
+import type { AgentCard, AgentSkill, A2ASkill } from '../hooks/useA2AProtocol'
 
 interface AgentCardListProps {
   selectedAgentId: number | null

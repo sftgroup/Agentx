@@ -195,7 +195,7 @@ export default function A2ATasksPage() {
             try {
               const r = await publicClient.readContract({
                 address: A2A_REGISTRY, abi: [A2A_ABI_TASK], functionName: 'getTask', args: [BigInt(id)],
-              }) as any[]
+              }) as unknown as any[]
               consecutiveMisses = 0
               if ((r[6] as string).toLowerCase() === address.toLowerCase()) {
                 taskIds.push(BigInt(id))

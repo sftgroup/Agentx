@@ -18,7 +18,7 @@ export interface AgentInfo {
   token_uri?: string
   metadata_json?: Record<string, unknown>
   // compatibility
-  metadata?: { name: string; description: string; tags: string[]; capabilities: string[]; pricing?: { type: string; amount: string } }
+  metadata?: { name: string; description: string; tags: string[]; capabilities: string[]; pricing?: { type: string; amount: string; currency?: string } }
   isLoaded: boolean
   hasError: boolean
   status: 'success' | 'no-metadata' | 'metadata-failed' | 'error'

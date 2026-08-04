@@ -7,6 +7,7 @@ import {
   PieChart, Users
 } from 'lucide-react'
 import type { RevenueStats, TopAgent, TokenEarnings } from './hooks/useRevenueDisplay'
+import { formatCurrency } from './hooks/useRevenueDisplay'
 
 interface GrowthResult {
   value: number

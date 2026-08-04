@@ -49,6 +49,8 @@ export interface SubscriptionPlan {
   planId: number; agentId: number; creator?: string
   name?: string; description?: string; price: bigint
   period?: string; active?: boolean; payToken?: string; trialDays?: number
+  /** v1 dashboard-only fields (not on-chain for v2 plans) */
+  token?: string; billingPeriod?: BillingPeriod; maxUsage?: number; createdAt?: number
 }
 export interface SubscriptionStats {
   totalSubscriptions: bigint; activeSubscriptions: bigint
@@ -114,7 +116,7 @@ export function useSubscription(): UseSubscriptionReturn {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [planSubs, setPlanSubs] = useState<Subscription[]>([])
   const [stats, setStats] = useState<SubscriptionStats|null>(null)
-  const [revenue, setRevenue] = useState<bigint>(0n)
+  const [revenue, setRevenue] = useState<bigint>(BigInt(0))
   const [lastSubscribeResult, setLastSubscribeResult] = useState<{
     subscriptionId: number; agentId: number; expiresAt: number; subscriber: string
   } | null>(null)
@@ -190,7 +192,7 @@ export function useSubscription(): UseSubscriptionReturn {
     if (!isConnected||!address) throw new Error('Wallet not connected')
     const periodStr = ['day','week','month','month','year'][period]||'month'
     try {
-      const h = await createAsync({ address:CONTRACT_ADDR, abi:ABI, functionName:'createPlan', args:[BigInt(agentId),BigInt(price),periodStr,'0x0000000000000000000000000000000000000000' as `0x${string}`,0n] })
+      const h = await createAsync({ address:CONTRACT_ADDR, abi:ABI, functionName:'createPlan', args:[BigInt(agentId),BigInt(price),periodStr,'0x0000000000000000000000000000000000000000' as `0x${string}`,BigInt(0)] })
       setTxHash(h); return h
     } catch(e) { setError(e as Error); return undefined }
   }, [isConnected,address,createAsync])
@@ -230,14 +232,14 @@ export function useSubscription(): UseSubscriptionReturn {
   }, [])
   const getPlanSubscriptions = useCallback(async (_:number) => { return [] as Subscription[] }, [])
   const getAgentSubscriptionStats = useCallback(async (_:number) => null as SubscriptionStats|null, [])
-  const getWithdrawableRevenue = useCallback(async (_:number) => 0n, [])
+  const getWithdrawableRevenue = useCallback(async (_:number) => BigInt(0), [])
 
   const getSubscription = useCallback(async (sid:number) => {
     if (!publicClient||!address) return null
     try {
       const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'getSubscriptionDetail', args:[BigInt(sid)] })
-      const [sId,s,aId,status,started,expires,period] = r as [bigint,string,bigint,number,bigint,bigint,string]
-      return { subscriptionId:Number(sId),agentId:Number(aId),subscriber:s,status,startDate:Number(started),endDate:Number(expires),period }
+      const [sId,s,aId,status,started,expires,period] = r as unknown as [bigint,string,bigint,number,bigint,bigint,string]
+      return { subscriptionId:Number(sId),agentId:Number(aId),subscriber:s,status,startDate:Number(started),endDate:Number(expires),period,totalPaid:BigInt(0),createdAt:0 }
     } catch { return null }
   }, [publicClient,address])
 
@@ -263,8 +265,8 @@ export function useSubscription(): UseSubscriptionReturn {
       for (const id of ids) {
         try {
           const d = await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'getSubscriptionDetail', args:[id] })
-          const [sid,s,aId,status,started,expires,period] = d as [bigint,string,bigint,number,bigint,bigint,string]
-          dets.push({ subscriptionId:Number(sid),agentId:Number(aId),subscriber:s,status,startDate:Number(started),endDate:Number(expires),period })
+          const [sid,s,aId,status,started,expires,period] = d as unknown as [bigint,string,bigint,number,bigint,bigint,string]
+          dets.push({ subscriptionId:Number(sid),agentId:Number(aId),subscriber:s,status,startDate:Number(started),endDate:Number(expires),period,totalPaid:BigInt(0),createdAt:0 })
         } catch { /* skip */ }
       }
       setSubs(dets); return dets

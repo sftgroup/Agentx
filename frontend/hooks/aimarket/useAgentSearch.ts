@@ -132,7 +132,7 @@ export function useAgentSearch(agents: AgentInfo[]): UseAgentSearchReturn {
     const types = new Set<'subscription' | 'pay_per_use'>()
     agents.forEach(agent => {
       if (agent.metadata?.pricing?.type) {
-        types.add(agent.metadata.pricing.type)
+        types.add(agent.metadata.pricing.type as 'subscription' | 'pay_per_use')
       }
     })
     return Array.from(types)

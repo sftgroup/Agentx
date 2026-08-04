@@ -58,7 +58,7 @@ export function ToolCallBubble({ toolName, input, result, error, status, duratio
               </pre>
             </div>
           )}
-          {result && (
+          {Boolean(result) && (
             <div>
               <div className="text-xs font-medium text-text-muted mb-1">Result</div>
               <pre className="text-xs p-2 rounded-lg bg-white/5 border border-white/5 overflow-x-auto max-h-48">
