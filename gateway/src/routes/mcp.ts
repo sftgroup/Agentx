@@ -471,7 +471,7 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
         const data = new ethers.Interface(SUB_ABI).encodeFunctionData('getPlan', [planId])
         const raw = await getProvider(ck).call({ to: chain.subscriptionManager, data })
         const decoded = abiCoder.decode(['uint256','uint256','address','uint256','string','bool','address','uint256'], raw)
-        return { planId: Number(decoded[0]), agentId: Number(decoded[1]), creator: decoded[2], price: Number(decoded[3]), period: decoded[4], active: decoded[5], payToken: decoded[6], trialDays: Number(decoded[7]), chain: chainLabel, chainId }
+        return { planId: Number(decoded[0]), agentId: Number(decoded[1]), creator: decoded[2], price: decoded[3].toString(), period: decoded[4], active: decoded[5], payToken: decoded[6], trialDays: Number(decoded[7]), chain: chainLabel, chainId }
       }
       case 'agentx_subscription_check': {
         // Accept both 'subscriberAddress' and 'subscriber' parameter names

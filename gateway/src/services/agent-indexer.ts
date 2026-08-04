@@ -19,6 +19,11 @@ const IDENTITY_ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
 ]
 
+const SUBSCRIPTION_ABI = [
+  'function getPlan(uint256 planId) view returns (uint256, uint256, address, uint256, string, bool, address, uint256)',
+  'event PlanCreated(uint256 indexed planId, uint256 indexed agentId, uint256 price, string period, address payToken, uint256 trialDays)',
+]
+
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 // Parse base64 data URI tokenURI → JSON metadata object
@@ -135,26 +140,35 @@ async function fetchAndUpsertAgent(agentId: number, contract: ethers.Contract): 
 
 // ── Full sync ───────────────────────────────────────────────────────────────
 
+let fullSyncRunning = false
+
 export async function syncAgents(): Promise<{ synced: number; total: number }> {
+  if (fullSyncRunning) return { synced: 0, total: 0 }  // re-entrancy guard (timer + manual trigger)
+
   const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
   const contract = new ethers.Contract(config.identityRegistryOxaChain, IDENTITY_ABI, provider)
 
   const total = Number(await contract.totalAgents().catch(() => 0))
   if (total <= 0) return { synced: 0, total: 0 }
 
+  fullSyncRunning = true
   const batchSize = config.agentsIndexBatchSize
   let synced = 0
 
-  for (let batchStart = 1; batchStart <= total; batchStart += batchSize) {
-    const batchIds: number[] = []
-    for (let i = batchStart; i < batchStart + batchSize && i <= total; i++) {
-      batchIds.push(i)
-    }
+  try {
+    for (let batchStart = 1; batchStart <= total; batchStart += batchSize) {
+      const batchIds: number[] = []
+      for (let i = batchStart; i < batchStart + batchSize && i <= total; i++) {
+        batchIds.push(i)
+      }
 
-    const results = await Promise.allSettled(
-      batchIds.map((id) => fetchAndUpsertAgent(id, contract))
-    )
-    synced += results.filter(r => r.status === 'fulfilled' && r.value).length
+      const results = await Promise.allSettled(
+        batchIds.map((id) => fetchAndUpsertAgent(id, contract))
+      )
+      synced += results.filter(r => r.status === 'fulfilled' && r.value).length
+    }
+  } finally {
+    fullSyncRunning = false
   }
 
   return { synced, total }
@@ -203,4 +217,70 @@ export function startAgentSyncWatcher(): void {
   })
 
   console.log('[agent-indexer] Event-driven sync watcher started')
+}
+
+// ── Plans sync (SubscriptionManager) ────────────────────────────────────────
+// The SubscriptionManager has no "list plans by agent" view, so we maintain a
+// plans table from PlanCreated events (same event-driven pattern as agents).
+
+/** Fetch one plan from chain and upsert it into the plans table. */
+async function fetchAndUpsertPlan(planId: number, contract: ethers.Contract): Promise<boolean> {
+  const pool = getPool()
+
+  const raw = await contract.getPlan(planId).catch(() => null)
+  if (!raw) return false
+  // ethers v6 tuple → [planId, agentId, creator, price, period, active, payToken, trialDays]
+  const [, agentId, creator, price, period, active, payToken, trialDays] = raw as [
+    bigint, bigint, string, bigint, string, boolean, string, bigint,
+  ]
+
+  await pool.query(
+    `INSERT INTO plans (plan_id, agent_id, creator, price, period, pay_token, trial_days, active, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+     ON CONFLICT (plan_id) DO UPDATE SET
+       agent_id = EXCLUDED.agent_id,
+       creator = EXCLUDED.creator,
+       price = EXCLUDED.price,
+       period = EXCLUDED.period,
+       pay_token = EXCLUDED.pay_token,
+       trial_days = EXCLUDED.trial_days,
+       active = EXCLUDED.active,
+       updated_at = NOW()`,
+    [planId, Number(agentId), creator, price.toString(), period, payToken, Number(trialDays), active]
+  )
+  return true
+}
+
+/** Backfill the plans table from PlanCreated history (runs once on boot). */
+export async function syncPlanHistory(): Promise<number> {
+  const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
+  const contract = new ethers.Contract(config.subscriptionManagerOxaChain, SUBSCRIPTION_ABI, provider)
+
+  const fromBlock = config.plansSyncFromBlock
+  const filter = contract.filters.PlanCreated()
+  const logs = (await contract.queryFilter(filter, fromBlock).catch(() => [])) as readonly ethers.EventLog[]
+  if (logs.length === 0) return 0
+
+  const results = await Promise.allSettled(
+    logs.map((log) => fetchAndUpsertPlan(Number(log.args.planId), contract))
+  )
+  const ok = results.filter(r => r.status === 'fulfilled' && r.value).length
+  console.log(`[agent-indexer] Plan history sync: ${ok}/${logs.length} plans (from block ${fromBlock})`)
+  return ok
+}
+
+/** Watch SubscriptionManager PlanCreated events → keep the plans table fresh. */
+export function startPlanSyncWatcher(): void {
+  const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
+  const contract = new ethers.Contract(config.subscriptionManagerOxaChain, SUBSCRIPTION_ABI, provider)
+
+  contract.on('PlanCreated', (planId: bigint | number) => {
+    fetchAndUpsertPlan(Number(planId), contract).then(ok => {
+      if (!ok) console.warn(`[agent-indexer] plan sync returned nothing for #${planId}`)
+    }).catch(err =>
+      console.error(`[agent-indexer] plan sync failed for #${planId}:`, err.message)
+    )
+  })
+
+  console.log('[agent-indexer] Plan sync watcher started')
 }

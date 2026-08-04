@@ -30,6 +30,14 @@ export const config = {
   // Agent indexer batching (number of IDs per RPC batch during full sync)
   agentsIndexBatchSize: parseInt(process.env.AGENTS_INDEX_BATCH_SIZE || '10', 10),
 
+  // Full-sync fallback interval (seconds) — keeps the agents table consistent
+  // even if the Transfer event watcher misses blocks. 0 disables the timer.
+  agentsSyncIntervalSec: parseInt(process.env.AGENTS_SYNC_INTERVAL_SEC || '120', 10),
+
+  // Block number to start scanning PlanCreated history from on boot
+  // (0 = scan from genesis; set to the SubscriptionManager deploy block to save RPC)
+  plansSyncFromBlock: parseInt(process.env.PLANS_SYNC_FROM_BLOCK || '0', 10),
+
   subscriptionManager: process.env.SUBSCRIPTION_MANAGER || '0xC15fE80b9d800abb72121F353a6ae6d6E9077E63',
   subscriptionManagerOxaChain: process.env.SUBSCRIPTION_MANAGER_OXACHAIN || '0x019AC9d945467478Dd371CDbD70cb2f325800E6B',
 
