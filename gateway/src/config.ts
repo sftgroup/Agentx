@@ -27,6 +27,9 @@ export const config = {
   identityRegistry: process.env.IDENTITY_REGISTRY || '0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F',
   identityRegistryOxaChain: process.env.IDENTITY_REGISTRY_OXACHAIN || '0xbf5F9db266c8c97E3334466C88597Eb758AfE212',
 
+  // Agent indexer batching (number of IDs per RPC batch during full sync)
+  agentsIndexBatchSize: parseInt(process.env.AGENTS_INDEX_BATCH_SIZE || '10', 10),
+
   subscriptionManager: process.env.SUBSCRIPTION_MANAGER || '0xC15fE80b9d800abb72121F353a6ae6d6E9077E63',
   subscriptionManagerOxaChain: process.env.SUBSCRIPTION_MANAGER_OXACHAIN || '0x019AC9d945467478Dd371CDbD70cb2f325800E6B',
 

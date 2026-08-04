@@ -1,6 +1,6 @@
-# @agentxv2/sdk v0.7.5
+# @agentxv2/sdk v0.8.0
 
-**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools.
+**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query.
 
 ```
 Agent = Prompt + Skills[] + MCP
@@ -228,7 +228,7 @@ const result = await connector.callTool('get_balance', {
 
 ---
 
-## ConversationClient (v0.7.5) — Remote Conversation Service
+## ConversationClient (v0.8.0) — Remote Conversation Service
 
 Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auto-sends `X-Api-Key` (tenant API key), `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` + `X-Llm-Endpoint` + `X-Llm-Model` (stateless BYOK override — your own key AND endpoint AND model, e.g. DeepSeek).
 
@@ -241,7 +241,7 @@ const client = new ConversationClient({
   endUserId: 'user-123',                        // optional: per-end-user memory isolation
   llmApiKey: 'sk-...',                          // optional: BYOK — your own LLM key (highest priority)
   llmEndpoint: 'https://api.deepseek.com/v1',   // optional: endpoint for llmApiKey (default OpenAI)
-  llmModel: 'deepseek-chat',                    // optional: model for llmApiKey (default gpt-4o)
+  llmModel: 'deepseek-v4-pro',                  // optional: model for llmApiKey (default gpt-4o)
   timeoutMs: 120_000,                           // optional: stream timeout (default 120s)
 })
 
@@ -289,6 +289,77 @@ const ragResult = await client.chat({
 
 > Auth: the `apiKey` set in the constructor is sent automatically as `X-Api-Key` (tenant API key) — the RAG example above needs no per-request credentials. Your RAG MCP/HTTP `execution.endpoint` stays under your control: secure it with your own auth, the service only forwards the call (30s timeout).
 > Sub-path import: `@agentxv2/sdk/conversation`. Server-side API & headers documented in [`CONVERSATION_SERVICE.md`](../CONVERSATION_SERVICE.md).
+
+---
+
+## On-Chain Data (v0.8.0) — Batch Query + Subscription Writes + Event Stream
+
+Built for services like aihunter-saas that previously hand-rolled ethers.js + manual ABI/parseLog code. All methods accept viem `PublicClient` / `WalletClient` (chain-agnostic).
+
+### IdentityRegistry — batch read
+
+```ts
+import { AgentRegistry } from '@agentxv2/sdk'
+
+const registry = new AgentRegistry({ contractAddress, publicClient, walletClient })
+
+const total = await registry.totalAgents()            // reads totalAgents() — replaces binary search
+
+const agents = await registry.getAllAgents({
+  fromId: 1,                  // default 1
+  // toId: 100,               // default: totalAgents()
+  activeOnly: true,           // default false — metadata.isActive === true
+  capabilities: ['trading'],  // AND filter on metadata.capabilities
+  batchSize: 10,              // RPC batching (default 10)
+})
+// → [{ agentId, owner, tokenURI, metadata: { name, description, capabilities, skills, isActive }, createdAt }]
+
+const meta = await registry.getAgentMetadata(1)
+// → { name, description, encryptedPayloadCid, eciesEncryptedKey, publicPayloadCid,
+//     capabilities, skills, isActive }
+```
+
+### SubscriptionManager — write + event-parsed results
+
+```ts
+import { SubscriptionManager } from '@agentxv2/sdk'
+
+const sm = new SubscriptionManager({ contractAddress, publicClient, walletClient })
+
+// period MUST be one of 'day' | 'week' | 'month' | 'year' — the only values the
+// contract maps to real durations. 'monthly'/'quarterly'/'yearly' silently become
+// 30 days on-chain, so they are rejected at runtime.
+const { planId, txHash } = await sm.createPlan({
+  agentId: 42,
+  price: 5000000000000000n,   // wei
+  period: 'month',
+  payToken: '0x0000...',      // default: native token
+  trialDays: 0,
+})
+
+const sub = await sm.subscribe(planId, { valueWei: 5000000000000000n })
+// → { subscriptionId, txHash, subscriber, agentId, expiresAt }  // parsed from Subscribed event
+
+const combined = await sm.createPlanAndSubscribe({ agentId: 42, price: 1n, period: 'day' })
+// → { planId, subscriptionId, txHash, subscriber, agentId, expiresAt }
+```
+
+### subscribeToEvents — event-driven sync (< 15s vs 2min polling)
+
+```ts
+import { subscribeToEvents } from '@agentxv2/sdk'
+
+const unwatch = await subscribeToEvents(publicClient, {
+  identityRegistryAddress,
+  subscriptionManagerAddress,
+  events: ['Transfer', 'AgentRegistered', 'PlanCreated', 'Subscribed'],
+  fromBlock: 123456,
+  onEvent: ({ type, args, txHash }) => {
+    if (type === 'AgentRegistered') syncAgent(Number(args.agentId))
+  },
+})
+// ... later: unwatch()
+```
 
 ---
 
@@ -369,6 +440,7 @@ SDK A2A Daemon → polls Gateway → gets result → completeTask() on-chain
 | `MCPConnector` | mcp | MCP tool discovery + remote execution |
 | `AgentRegistry` | registry | Register and query agents on-chain |
 | `SubscriptionManager` | subscription | Subscribe (ETH/ERC20), verify, cancel, trial |
+| `subscribeToEvents` | events | Contract event stream (Transfer/AgentRegistered/PlanCreated/Subscribed) |
 | `AgentX402` | subscription | Auto-subscription gate + X402 payment |
 | `A2AProtocol` | a2a | Agent-to-Agent task delegation |
 | `A2ADaemon` | agent-loop | Background daemon for auto-processing A2A tasks |
@@ -486,7 +558,9 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
-| **0.7.4** | 2026-08-04 | `ConversationClient` adds `llmModel` (forwarded as `X-Llm-Model`) — BYOK now covers key + endpoint + model (e.g. `deepseek-chat`) |
+| **0.8.0** | 2026-08-04 | Chain-data capabilities for aihunter-saas: `getAllAgents()` / `totalAgents()` / `getAgentMetadata()` on IdentityRegistry; `createPlan()` (typed period `day|week|month|year`) / `subscribe()` (event-parsed result) / `createPlanAndSubscribe()`; `subscribeToEvents()` event stream |
+| **0.7.5** | 2026-08-04 | Fix AgentLoop forcing `ctx.model ?? 'gpt-4o'` over provider model — priority now `ctx.model ?? provider.model ?? default` |
+| **0.7.4** | 2026-08-04 | `ConversationClient` adds `llmModel` (forwarded as `X-Llm-Model`) — BYOK now covers key + endpoint + model (e.g. `deepseek-v4-pro`) |
 | **0.7.3** | 2026-08-04 | Stateless BYOK: `ConversationClient` adds `llmEndpoint` (forwarded as `X-Llm-Endpoint`) so callers supply their own LLM key + endpoint (e.g. DeepSeek) per request — no AgentX-side key storage needed |
 | **0.7.2** | 2026-08-03 | Clarification interruption: `ConversationSSEEvent` adds `clarification` + `question`; `chat()` returns `result.clarification` when the service interrupts an ambiguous request |
 | **0.7.1** | 2026-08-03 | ConversationClient inline mode: `prompt` + `skills` params (inject MCP/HTTP tools e.g. RAG), `agentId` now optional; Gateway forwards `X-Llm-Api-Key` |

@@ -85,6 +85,20 @@ const IDENTITY_REGISTRY_ABI = {
     stateMutability: 'view' as const,
     type: 'function' as const,
   },
+  totalAgents: {
+    inputs: [] as const,
+    name: 'totalAgents' as const,
+    outputs: [{ name: '', type: 'uint256' }] as const,
+    stateMutability: 'view' as const,
+    type: 'function' as const,
+  },
+  getAgentOwner: {
+    inputs: [{ name: 'agentId', type: 'uint256' }] as const,
+    name: 'getAgentOwner' as const,
+    outputs: [{ name: '', type: 'address' }] as const,
+    stateMutability: 'view' as const,
+    type: 'function' as const,
+  },
 } as const
 
 // ── Registry Config ────────────────────────────────────────────────────────
@@ -96,6 +110,90 @@ export interface AgentRegistryConfig {
   publicClient: PublicClient
   /** viem WalletClient for write calls */
   walletClient: WalletClient
+}
+
+// ── Structured Metadata Types ───────────────────────────────────────────────
+
+/** Public, human-readable subset of on-chain agent metadata. */
+export interface AgentSummaryMetadata {
+  name: string
+  description: string
+  capabilities: string[]
+  skills: string[]
+  /** Marketplace-visible availability; tokenURI JSON may override the default true. */
+  isActive: boolean
+}
+
+/** Lightweight agent record returned by getAllAgents(). */
+export interface AgentSummary {
+  agentId: number
+  owner: string
+  tokenURI: string
+  metadata: AgentSummaryMetadata
+  /** Unix timestamp (seconds); 0 when the tokenURI metadata has no createdAt. */
+  createdAt: number
+}
+
+export interface GetAllAgentsOptions {
+  /** First agent ID to scan (default: 1). */
+  fromId?: number
+  /** Last agent ID to scan (default: totalAgents()). */
+  toId?: number
+  /** Only return agents whose metadata.isActive === true (default: false). */
+  activeOnly?: boolean
+  /** Only return agents whose capabilities include ALL of these (AND). */
+  capabilities?: string[]
+  /** RPC batching size (default: 10). */
+  batchSize?: number
+}
+
+/** Full structured metadata for one agent (on-chain keys + tokenURI JSON). */
+export interface StructuredAgentMetadata {
+  name: string
+  description: string
+  encryptedPayloadCid: string
+  eciesEncryptedKey: string
+  publicPayloadCid: string
+  capabilities: string[]
+  skills: string[]
+  isActive: boolean
+}
+
+// ── tokenURI parsing helpers ────────────────────────────────────────────────
+
+const ZERO_ADDRESS: Address = '0x0000000000000000000000000000000000000000'
+
+/** Decode base64 in both Node and browser environments. */
+function decodeBase64(b64: string): string {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(b64, 'base64').toString('utf-8')
+  }
+  const bin = atob(b64)
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
+  return new TextDecoder().decode(bytes)
+}
+
+/** Parse base64 data-URI tokenURI → JSON metadata (null if not parseable). */
+function parseTokenURIJSON(tokenURI: string): Record<string, unknown> | null {
+  if (!tokenURI) return null
+  const match = tokenURI.match(/^data:application\/json;base64,(.+)$/i)
+  if (!match) return null
+  try {
+    return JSON.parse(decodeBase64(match[1]!))
+  } catch {
+    return null
+  }
+}
+
+/** Extract createdAt (unix seconds) from tokenURI JSON metadata. */
+function parseCreatedAt(parsed: Record<string, unknown> | null): number {
+  const v = parsed?.created_at ?? parsed?.createdAt
+  if (typeof v === 'number') return Math.floor(v)
+  if (typeof v === 'string') {
+    const t = Date.parse(v)
+    if (!Number.isNaN(t)) return Math.floor(t / 1000)
+  }
+  return 0
 }
 
 // ── Agent Registry ─────────────────────────────────────────────────────────
@@ -237,6 +335,108 @@ export class AgentRegistry {
       attrs[item.key] = hexToString(item.value as `0x${string}`)
     }
     return attrs
+  }
+
+  /** Total number of registered agents (monotonic max agent ID). */
+  async totalAgents(): Promise<number> {
+    const result = await this.publicClient.readContract({
+      address: this.address,
+      abi: [IDENTITY_REGISTRY_ABI.totalAgents],
+      functionName: 'totalAgents',
+    })
+    return Number(result as bigint)
+  }
+
+  /**
+   * Structured metadata for one agent.
+   * Combines on-chain attributes (encryptedPayloadCid / eciesEncryptedKey /
+   * publicPayloadCid) with the tokenURI JSON (name/description/capabilities/skills).
+   * `isActive` defaults to on-chain existence, overridable via tokenURI JSON.
+   */
+  async getAgentMetadata(agentId: number): Promise<StructuredAgentMetadata> {
+    const attrs = await this.getAttributes(agentId)
+    const parsed = parseTokenURIJSON(await this.tokenURI(agentId))
+
+    const str = (v: unknown) => (typeof v === 'string' ? v : '')
+    const arr = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
+    const caps = arr(parsed?.capabilities)
+    const skills = arr(parsed?.skills)
+
+    return {
+      name: str(parsed?.name) || str(attrs.name),
+      description: str(parsed?.description) || str(attrs.description),
+      encryptedPayloadCid: str(attrs.encryptedPayloadCid),
+      eciesEncryptedKey: str(attrs.eciesEncryptedKey),
+      publicPayloadCid: str(attrs.publicPayloadCid),
+      capabilities: caps.length ? caps : arr(attrs.capabilities),
+      skills: skills.length ? skills : arr(attrs.skills),
+      isActive:
+        typeof parsed?.isActive === 'boolean'
+          ? parsed.isActive
+          : typeof parsed?.is_active === 'boolean'
+            ? parsed.is_active
+            : await this.agentExists(agentId),
+    }
+  }
+
+  /**
+   * Batch-read all agents in a contiguous ID range with optional filters.
+   * Replaces the manual binary-search + per-ID ownerOf loop used by chain-sync.
+   */
+  async getAllAgents(options: GetAllAgentsOptions = {}): Promise<AgentSummary[]> {
+    const { fromId = 1, batchSize = 10, activeOnly = false, capabilities } = options
+    const toId = options.toId ?? (await this.totalAgents())
+    if (toId < fromId || toId <= 0) return []
+
+    const agents: AgentSummary[] = []
+    for (let start = fromId; start <= toId; start += batchSize) {
+      const end = Math.min(start + batchSize - 1, toId)
+      const ids: number[] = []
+      for (let id = start; id <= end; id++) ids.push(id)
+
+      const results = await Promise.all(
+        ids.map(async (agentId) => {
+          try {
+            const [owner, tokenURI] = await Promise.all([
+              this.publicClient.readContract({
+                address: this.address,
+                abi: [IDENTITY_REGISTRY_ABI.getAgentOwner],
+                functionName: 'getAgentOwner',
+                args: [BigInt(agentId)],
+              }),
+              this.tokenURI(agentId),
+            ])
+            if (!owner || owner === ZERO_ADDRESS || !tokenURI) return null
+
+            const parsed = parseTokenURIJSON(tokenURI)
+            const metadata: AgentSummaryMetadata = {
+              name: (parsed?.name as string) || `Agent ${agentId}`,
+              description: (parsed?.description as string) || '',
+              capabilities: Array.isArray(parsed?.capabilities) ? parsed.capabilities.map(String) : [],
+              skills: Array.isArray(parsed?.skills) ? parsed.skills.map(String) : [],
+              isActive:
+                typeof parsed?.isActive === 'boolean'
+                  ? parsed.isActive
+                  : typeof parsed?.is_active === 'boolean'
+                    ? parsed.is_active
+                    : true,
+            }
+
+            if (activeOnly && !metadata.isActive) return null
+            if (capabilities?.length && !capabilities.every((c) => metadata.capabilities.includes(c))) return null
+
+            return { agentId, owner: owner as string, tokenURI, metadata, createdAt: parseCreatedAt(parsed) }
+          } catch {
+            return null
+          }
+        })
+      )
+
+      for (const r of results) {
+        if (r) agents.push(r)
+      }
+    }
+    return agents
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────

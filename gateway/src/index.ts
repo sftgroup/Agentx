@@ -154,4 +154,11 @@ app.listen(config.port, () => {
   }).catch(err => {
     console.error('[AgentX Gateway] Failed to start A2A Worker:', err.message)
   })
+
+  // Start agent sync event watcher (incremental on-chain updates)
+  import('./services/agent-indexer').then(({ startAgentSyncWatcher }) => {
+    startAgentSyncWatcher()
+  }).catch(err => {
+    console.error('[AgentX Gateway] Failed to start agent sync watcher:', err.message)
+  })
 })

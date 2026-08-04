@@ -2,7 +2,13 @@
 // Agent registration, query, and IPFS fetching.
 
 export { AgentRegistry, cidFromURI } from './agent-registry'
-export type { AgentRegistryConfig } from './agent-registry'
+export type {
+  AgentRegistryConfig,
+  AgentSummary,
+  AgentSummaryMetadata,
+  GetAllAgentsOptions,
+  StructuredAgentMetadata,
+} from './agent-registry'
 
 export { IPFSFetcher, defaultIPFSFetcher } from './ipfs-fetcher'
 export type { IPFSFetcherConfig } from './ipfs-fetcher'
