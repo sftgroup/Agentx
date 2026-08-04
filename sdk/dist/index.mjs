@@ -4932,16 +4932,20 @@ var SUBSCRIPTION_ABI_V2 = {
   getPlan: {
     inputs: [{ name: "planId", type: "uint256" }],
     name: "getPlan",
-    outputs: [
-      { name: "planId", type: "uint256" },
-      { name: "agentId", type: "uint256" },
-      { name: "creator", type: "address" },
-      { name: "price", type: "uint256" },
-      { name: "period", type: "string" },
-      { name: "active", type: "bool" },
-      { name: "payToken", type: "address" },
-      { name: "trialDays", type: "uint256" }
-    ],
+    // Contract returns `SubscriptionPlan memory` (struct → dynamic tuple encoding).
+    outputs: [{
+      type: "tuple",
+      components: [
+        { name: "planId", type: "uint256" },
+        { name: "agentId", type: "uint256" },
+        { name: "creator", type: "address" },
+        { name: "price", type: "uint256" },
+        { name: "period", type: "string" },
+        { name: "active", type: "bool" },
+        { name: "payToken", type: "address" },
+        { name: "trialDays", type: "uint256" }
+      ]
+    }],
     stateMutability: "view",
     type: "function"
   },
@@ -5086,16 +5090,16 @@ var SubscriptionManager = class {
       functionName: "getPlan",
       args: [BigInt(planId)]
     });
-    const [pid, aid, creator, price, period, active, payToken, trialDays] = result;
+    const r = result;
     return {
-      planId: Number(pid),
-      agentId: Number(aid),
-      creator,
-      price,
-      period,
-      active,
-      payToken,
-      trialDays: Number(trialDays)
+      planId: Number(r.planId),
+      agentId: Number(r.agentId),
+      creator: r.creator,
+      price: r.price,
+      period: r.period,
+      active: r.active,
+      payToken: r.payToken,
+      trialDays: Number(r.trialDays)
     };
   }
   // ── Plans ────────────────────────────────────────────────────────────────

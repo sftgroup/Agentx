@@ -20,7 +20,8 @@ const IDENTITY_ABI = [
 ]
 
 const SUBSCRIPTION_ABI = [
-  'function getPlan(uint256 planId) view returns (uint256, uint256, address, uint256, string, bool, address, uint256)',
+  // Contract returns `SubscriptionPlan memory` (struct) — tuple encoding.
+  'function getPlan(uint256 planId) view returns ((uint256,uint256,address,uint256,string,bool,address,uint256))',
   'event PlanCreated(uint256 indexed planId, uint256 indexed agentId, uint256 price, string period, address payToken, uint256 trialDays)',
 ]
 

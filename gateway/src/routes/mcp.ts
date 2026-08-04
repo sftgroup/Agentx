@@ -465,13 +465,14 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
 
       // ── Subscription ──────────────────────────────
       case 'agentx_subscription_plans': {
-        // raw eth_call to avoid ethers.js v6 struct-decoding bug with bool+string mix
+        // Contract returns `SubscriptionPlan memory` (struct) → decode as tuple.
         const planId = Number(args.planId)
         const abiCoder = ethers.AbiCoder.defaultAbiCoder()
         const data = new ethers.Interface(SUB_ABI).encodeFunctionData('getPlan', [planId])
         const raw = await getProvider(ck).call({ to: chain.subscriptionManager, data })
-        const decoded = abiCoder.decode(['uint256','uint256','address','uint256','string','bool','address','uint256'], raw)
-        return { planId: Number(decoded[0]), agentId: Number(decoded[1]), creator: decoded[2], price: decoded[3].toString(), period: decoded[4], active: decoded[5], payToken: decoded[6], trialDays: Number(decoded[7]), chain: chainLabel, chainId }
+        const decoded = abiCoder.decode(['(uint256,uint256,address,uint256,string,bool,address,uint256)'], raw)
+        const t = decoded[0] as [bigint, bigint, string, bigint, string, boolean, string, bigint]
+        return { planId: Number(t[0]), agentId: Number(t[1]), creator: t[2], price: t[3].toString(), period: t[4], active: t[5], payToken: t[6], trialDays: Number(t[7]), chain: chainLabel, chainId }
       }
       case 'agentx_subscription_check': {
         // Accept both 'subscriberAddress' and 'subscriber' parameter names

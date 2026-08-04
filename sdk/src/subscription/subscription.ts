@@ -53,16 +53,20 @@ const SUBSCRIPTION_ABI_V2 = {
   getPlan: {
     inputs: [{ name: 'planId', type: 'uint256' }] as const,
     name: 'getPlan' as const,
-    outputs: [
-      { name: 'planId', type: 'uint256' },
-      { name: 'agentId', type: 'uint256' },
-      { name: 'creator', type: 'address' },
-      { name: 'price', type: 'uint256' },
-      { name: 'period', type: 'string' },
-      { name: 'active', type: 'bool' },
-      { name: 'payToken', type: 'address' },
-      { name: 'trialDays', type: 'uint256' },
-    ] as const,
+    // Contract returns `SubscriptionPlan memory` (struct → dynamic tuple encoding).
+    outputs: [{
+      type: 'tuple' as const,
+      components: [
+        { name: 'planId', type: 'uint256' } as const,
+        { name: 'agentId', type: 'uint256' } as const,
+        { name: 'creator', type: 'address' } as const,
+        { name: 'price', type: 'uint256' } as const,
+        { name: 'period', type: 'string' } as const,
+        { name: 'active', type: 'bool' } as const,
+        { name: 'payToken', type: 'address' } as const,
+        { name: 'trialDays', type: 'uint256' } as const,
+      ],
+    }] as const,
     stateMutability: 'view' as const, type: 'function' as const,
   },
   // Subscribe
@@ -276,12 +280,16 @@ export class SubscriptionManager {
       functionName: 'getPlan',
       args: [BigInt(planId)],
     })
-    const [pid, aid, creator, price, period, active, payToken, trialDays] =
-      result as [bigint, bigint, string, bigint, string, boolean, string, bigint]
+    // Contract returns a struct — viem decodes it to a named object
+    // (older viem versions returned a tuple; the object form is current).
+    const r = result as unknown as {
+      planId: bigint; agentId: bigint; creator: string; price: bigint;
+      period: string; active: boolean; payToken: string; trialDays: bigint
+    }
     return {
-      planId: Number(pid), agentId: Number(aid),
-      creator: creator as Address, price, period, active,
-      payToken: payToken as Address, trialDays: Number(trialDays),
+      planId: Number(r.planId), agentId: Number(r.agentId),
+      creator: r.creator as Address, price: r.price, period: r.period, active: r.active,
+      payToken: r.payToken as Address, trialDays: Number(r.trialDays),
     }
   }
 
