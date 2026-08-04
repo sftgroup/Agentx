@@ -150,18 +150,20 @@ A2A_WORKER_PRIVATE_KEY=0x...
 ```
 
 ---
-## 2.5 Agents API & Indexer (v0.6.5)
+## 2.5 Agents API & Indexer (v0.2.0+)
 
 The Gateway serves an **agent metadata index** via `GET /api/v1/agents` (public, no auth).  
-Agents are synced from the IdentityRegistry contract (OxaChain L1) into the `agents` PostgreSQL table.
+Agents are synced from the IdentityRegistry contract (OxaChain L1) into the `agents` PostgreSQL table, and subscription plans from the SubscriptionManager `PlanCreated` events into `subscription_plans`.
 
 ### Initial Setup
 
 ```bash
-# Create the agents table
+# Create the agents + subscription_plans tables
 psql -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
+psql -U agentx -d agentx_gateway -f db/migrations/005_agents_structured.sql
+psql -U agentx -d agentx_gateway -f db/migrations/006_plans.sql
 
-# Sync agents from chain to DB
+# Sync agents from chain to DB (plans backfill runs automatically on boot)
 curl -X POST http://localhost:3090/api/v1/agents-sync
 ```
 
@@ -169,21 +171,25 @@ curl -X POST http://localhost:3090/api/v1/agents-sync
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/v1/agents` | No | List all agents (JSON) |
-| `GET` | `/api/v1/agents/:id` | No | Single agent detail |
-| `POST` | `/api/v1/agents-sync` | No | Trigger chain→DB sync |
+| `GET` | `/api/v1/agents` | No | List agents — filters `activeOnly`, `capabilities` (comma-separated), `fromId`, `toId`; pagination `page`/`pageSize` (max 100) |
+| `GET` | `/api/v1/agents/count` | No | `{ total, active, byCategory }` (byCategory derived from `capabilities` + `other`) |
+| `GET` | `/api/v1/agents/:id` | No | Single agent detail incl. `subscriptionPlans[]` (wei decimal-string price) |
+| `POST` | `/api/v1/agents-sync` | No | Trigger full chain→DB sync |
+| `GET` | `/api/v1/health` | No | `{ status, services: { chain, database, lastSyncAt, syncedAgentCount } }` |
 
 ### Agent Indexer Features
 
-- Reads `tokenURI(uint256)` + `ownerOf(uint256)` from IdentityRegistry
+- Reads `tokenURI(uint256)` + `getAgentOwner(uint256)` from IdentityRegistry
 - Handles IPFS CIDs, base64 data URIs, and malformed/corrupt base64 (auto-repair)
-- Stops after 8 consecutive empty tokenURIs (gap detection)
-- Upserts into `agents` table (`ON CONFLICT DO UPDATE`)
+- Upserts into `agents` table (`ON CONFLICT DO UPDATE`), structured metadata (`skills`, `is_active`, `agent_created_at`)
+- **Event-driven incremental sync**: `Transfer` events (mint/transfer/burn) + `PlanCreated` events (plans table)
+- **Full-sync fallback timer**: `AGENTS_SYNC_INTERVAL_SEC` (default 120s, 0 disables), re-entrancy guarded
+- **Plans backfill on boot**: scans `PlanCreated` history from `PLANS_SYNC_FROM_BLOCK` (default 0)
 
-### Cron Sync (recommended)
+### Cron Sync (optional — event watcher + fallback timer usually suffice)
 
 ```bash
-# Sync every 5 minutes
+# Sync every 5 minutes (redundant with the built-in fallback timer)
 */5 * * * * curl -s -X POST http://localhost:3090/api/v1/agents-sync > /dev/null
 ```
 
