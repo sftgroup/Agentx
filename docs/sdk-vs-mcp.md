@@ -59,7 +59,7 @@ const { planId, txHash } = await subscription.createPlan({ agentId: 1, price: 1n
 const unwatch = await subscribeToEvents(publicClient, { events: ['Transfer'], onEvent: (e) => {} })
 ```
 
-### 用 MCP（AI Agent 工具化 / 快速接入 / 不想碰链配置）
+### 用 MCP 客户端 — 快速接入与只读场景（经 Gateway）
 
 - **AI Agent / LLM 工具调用**：让 Agent 通过 `tools/list` 动态发现 32 个工具，自然语言驱动读取链上数据
 - **第三方服务快速接入**：一行 `new McpClient({ gatewayUrl })`，无需 RPC/合约地址/链配置
@@ -83,12 +83,13 @@ const op = await mcp.createPlan({ agentId: 2, price: '10000000000000000', period
 ## 4. 选型决策树
 
 ```
-我需要做什么？
-├─ 发起真实链上交易（订阅/创建套餐/注册）且持有钱包 → SDK
-├─ 监听链上事件做增量同步 → SDK
-├─ 需要加密 / IPFS / 对话 SSE → SDK
-├─ AI Agent 工具调用（LLM 驱动读链上数据） → MCP
-├─ 只读链上数据、不想配置 RPC/合约地址 → MCP（或 REST）
+我需要做什么？（与 README 引言完全一致）
+├─ 深度集成：链上读写 / 真实交易（订阅、创建套餐）/ 事件监听 / 加密 / IPFS / 对话 SSE
+│     → **SDK**（直连区块链）
+├─ AI Agent 工具化调用（LLM 驱动，32 个工具动态发现）
+│     → **MCP 客户端**（经 Gateway）
+├─ 快速接入、只读为主、不想配置 RPC / 合约地址
+│     → **MCP 客户端**（零依赖、免链配置）
 └─ 两者都行：MCP 更轻（零依赖），SDK 更全（直连 + 交易 + 事件）
 ```
 
