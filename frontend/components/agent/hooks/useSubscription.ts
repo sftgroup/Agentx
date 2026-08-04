@@ -106,6 +106,37 @@ export interface UseSubscriptionReturn {
   refetchData: () => Promise<void>; resetState: () => void
 }
 
+// ── Channel attribution (docs/payment-architecture.md §6) ─────────────────
+// Referring channel comes from `?ref=CHANNEL_ID` URL param (set when the
+// third-party platform sends the user) or a previously stored value.
+function resolveChannelRef(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const urlRef = new URLSearchParams(window.location.search).get('ref')
+    if (urlRef) return urlRef
+    return window.localStorage.getItem('agentx_channel_ref')
+  } catch {
+    return null
+  }
+}
+
+// Report a completed chain subscription to the Gateway so the channel gets
+// its share. Fire-and-forget: attribution must never block the subscribe flow.
+async function reportChannelAttribution(opts: { subscriber: string; agentId: number; planId?: number }): Promise<void> {
+  const channelId = resolveChannelRef()
+  if (!channelId) return
+  const base = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
+  try {
+    await fetch(`${base}/api/v1/channel/attribute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscriber: opts.subscriber, agentId: opts.agentId, planId: opts.planId, channelId }),
+    })
+  } catch {
+    // ignore — attribution is best-effort
+  }
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────
 export function useSubscription(): UseSubscriptionReturn {
   const { address, isConnected } = useAccount()
@@ -162,6 +193,7 @@ export function useSubscription(): UseSubscriptionReturn {
       const result = await manager.subscribe(planId, { valueWei: value })
       setTxHash(result.txHash)
       setLastSubscribeResult({ subscriptionId: result.subscriptionId, agentId: result.agentId, expiresAt: result.expiresAt, subscriber: result.subscriber })
+      reportChannelAttribution({ subscriber: result.subscriber, agentId: result.agentId, planId })
       return result.txHash
     } catch(e) { setError(e as Error); return undefined }
     finally { setIsSubbing(false) }
