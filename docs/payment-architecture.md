@@ -221,3 +221,18 @@ CREATE INDEX IF NOT EXISTS idx_channel_attributions_channel ON channel_attributi
 - **法币/x402 是结算层的可选扩展**，访问控制始终在 Gateway，可叠加、可共存、不影响链上订阅
 - **第三方集成的推荐路径**：B1 中间人模式（零改动）；原生法币（A1）仅在出现明确 C 端无钱包需求时实施
 - **渠道分成**：走 §6 链下归因（平台费让利 + DB 归因 + 链上事件对账），可追溯、可审计，不动 creator 收入
+
+## 9. 实现状态（2026-08-05 已上线）
+
+三项方案的技术层已在 Gateway 落地（commit `5d04895`），生产已部署：
+
+| 方案 | 交付物 | 状态 |
+| --- | --- | --- |
+| §6 渠道归因 | migration `007_channel_attributions`、`POST /api/v1/channel/attribute`、`GET /api/v1/channel/report`、前端 subscribe 成功后经 `?ref=` 上报 | ✅ 生产可用（归因幂等，分成=amountPaid×shareBps/10000） |
+| A1 法币订阅 | migration `008_fiat_subscriptions`、`POST /api/v1/fiat/checkout`、`POST /api/v1/fiat/webhook`（HMAC 验签）、`GET /api/v1/fiat/status` | ⏸ 代码已上线，惰性生效：未配 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` 时 checkout/webhook 返回 503 |
+| A2 x402 | migration `009_x402`、`POST /api/v1/agent/runs` 402 门卫、`GET/POST /api/v1/x402/info\|verify\|balance\|paywall`、`X-PAYMENT` 头验证 + 余额账本 | ⏸ 代码已上线，惰性生效：未设 `X402_ENABLED=true` + `X402_PAY_TO` 时放行，不改变现有行为 |
+
+**启用前置条件**（外部依赖，非代码问题）：
+- 渠道归因：向 `channels` 表插入渠道配置（id/name/share_bps/wallet）即可，无外部依赖
+- 法币：需要 Stripe 商户账号 + 合规主体，配置两个密钥并到 Stripe 后台注册 webhook
+- x402：需要稳定币/原生代币结算通道与收款钱包地址，配置 `X402_ENABLED` + `X402_PAY_TO`
