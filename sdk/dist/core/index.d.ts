@@ -7,11 +7,11 @@ declare function randomBytes(length: number): Uint8Array;
 
 /**
  * Encrypt with AES-256-GCM.
- * Wire format (same as aihunter-saas): base64( IV[12] || ciphertext || authTag[16] )
+ * Wire format: base64( IV[12] || ciphertext || authTag[16] )
  */
 declare function aesEncrypt(plaintext: string, keyHex: string): string;
 /**
- * Decrypt AES-256-GCM (same wire format as aihunter-saas).
+ * Decrypt AES-256-GCM.
  */
 declare function aesDecrypt(encryptedBase64: string, keyHex: string): string;
 /**

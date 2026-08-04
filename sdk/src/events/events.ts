@@ -4,7 +4,7 @@
 // Lightweight contract event subscription (Transfer / AgentRegistered on the
 // IdentityRegistry, PlanCreated / Subscribed on the SubscriptionManager).
 // Uses viem `watchContractEvent` in poll mode (works over any transport).
-// Replaces the 2-minute polling loop used by aihunter-saas chain-sync.
+// Replaces 2-minute polling loops with near-real-time event-driven sync.
 // ---------------------------------------------------------------------------
 
 import { parseAbiItem } from 'viem'

@@ -7,9 +7,9 @@
 
 ## 2026-08-04
 
-### SDK v0.8.0 — 链上数据能力（AIHunter-SaaS 集成）
+### SDK v0.8.0 — 链上数据能力
 
-**新特性**：为 aihunter-saas 的 `chain-sync` / `subscribe` / `pricing` 三组件提供 SDK 统一封装，替代其裸 ethers.js + 手工 ABI 实现。
+**新特性**：为第三方服务的 `chain-sync` / `subscribe` / `pricing` 场景提供 SDK 统一封装，替代裸 ethers.js + 手工 ABI 实现。
 
 - **IdentityRegistry 批量查询**：
   - `getAllAgents(options?)` — 批量拉取 Agent（`fromId`/`toId`/`activeOnly`/`capabilities` 筛选，`batchSize` 分批），返回结构化 `AgentSummary`（name/description/capabilities/skills/isActive/createdAt）
