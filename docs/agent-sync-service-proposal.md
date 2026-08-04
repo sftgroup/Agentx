@@ -6,12 +6,12 @@
 
 ## 背景
 
-AIHunter-SaaS 当前自建了一个 `chain-sync` 微服务，用裸 ethers.js 从 OxaChain 扫描 Agent 数据。
+外部服务当前自建了一个 `chain-sync` 微服务，用裸 ethers.js 从 OxaChain 扫描 Agent 数据。
 
 问题：
 - 手工二分查找 + 手工 base64 解析 tokenURI，不感知 AgentX 合约结构
 - 无法筛选（activeOnly、capabilities），62 个 Agent 全入库
-- AgentX 和 AIHunter 各维护一套链交互代码
+- AgentX 与外部服务各维护一套链交互代码
 
 **方案**：将此微服务移入 AgentX，让 AgentX 成为链上 Agent 数据的唯一权威源。
 
@@ -38,8 +38,8 @@ AIHunter-SaaS 当前自建了一个 `chain-sync` 微服务，用裸 ethers.js �
             ┌────────────────────────────┘
             ▼
      ┌─────────────┐     ┌──────────────┐
-     │ aihunter-saas│    │  其他消费者   │
-     │  frontend    │    │  (MCP, SDK)  │
+     │  外部服务    │    │  其他消费者   │
+     │  frontend   │    │  (MCP, SDK)  │
      └─────────────┘    └──────────────┘
 ```
 
@@ -248,7 +248,7 @@ agent-sync:
 |------|------|------|
 | 职责 | Agent 注册、发布、加密管线、订阅 | Agent 数据查询、列表、筛选 |
 | 数据源 | 直接读链 (实时) | DB 缓存 + SDK 读链 |
-| 调用方 | 前端用户操作 | 外部服务 (aihunter-saas 等) |
+| 调用方 | 前端用户操作 | 外部服务 / 第三方平台 |
 | 性能 | 实时但慢 (链 RPC) | 缓存快 (DB/Redis) |
 | 接口风格 | MCP / AgentX protocol | RESTful API |
 
@@ -263,4 +263,4 @@ agent-sync:
 | 3 | 实现 `routes.ts`：REST API endpoints | 小 |
 | 4 | Redis 缓存层 | 小 |
 | 5 | docker-compose 集成 + 部署 | 小 |
-| 6 | AIHunter-SaaS 接入 | 见 aihunter-saas 侧文档 |
+| 6 | 第三方服务接入 | 使用本文 REST API + SDK 对接 |

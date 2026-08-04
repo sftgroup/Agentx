@@ -199,7 +199,7 @@ export interface SubscriptionDetail {
 // ── Period ─────────────────────────────────────────────────────────────────
 // On-chain `_periodToSeconds` only recognizes day/week/month/year; any other
 // string silently falls back to 30 days. Typed here so consumers cannot pass
-// e.g. 'monthly'/'yearly' and get a wrong expiry (see aihunter-saas incident).
+// e.g. 'monthly'/'yearly' and get a wrong expiry (silently falling back to 30 days).
 
 export const SUBSCRIPTION_PERIODS = ['day', 'week', 'month', 'year'] as const
 export type SubscriptionPeriod = (typeof SUBSCRIPTION_PERIODS)[number]

@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
 // @agentx/sdk — Crypto Engine
 // ---------------------------------------------------------------------------
-// AES-256-GCM for content encryption (NIST standard, same wire format as
-// aihunter-saas for interop).  ECIES (secp256k1) for key wrapping.
+// AES-256-GCM for content encryption (NIST standard wire format).
+// ECIES (secp256k1) for key wrapping.
 //
 // Wire format (AES-256-GCM):
 //   base64( IV[12] || ciphertext || authTag[16] )
@@ -70,7 +70,7 @@ function fromBase64(b64: string): Uint8Array {
 
 /**
  * Encrypt with AES-256-GCM.
- * Wire format (same as aihunter-saas): base64( IV[12] || ciphertext || authTag[16] )
+ * Wire format: base64( IV[12] || ciphertext || authTag[16] )
  */
 export function aesEncrypt(plaintext: string, keyHex: string): string {
   const key = hexToBytes(keyHex)
@@ -93,7 +93,7 @@ export function aesEncrypt(plaintext: string, keyHex: string): string {
 }
 
 /**
- * Decrypt AES-256-GCM (same wire format as aihunter-saas).
+ * Decrypt AES-256-GCM.
  */
 export function aesDecrypt(encryptedBase64: string, keyHex: string): string {
   const key = hexToBytes(keyHex)

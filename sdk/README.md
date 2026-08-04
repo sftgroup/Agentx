@@ -294,7 +294,9 @@ const ragResult = await client.chat({
 
 ## On-Chain Data (v0.8.0) — Batch Query + Subscription Writes + Event Stream
 
-Built for services like aihunter-saas that previously hand-rolled ethers.js + manual ABI/parseLog code. All methods accept viem `PublicClient` / `WalletClient` (chain-agnostic).
+Replaces hand-rolled ethers.js + manual ABI/parseLog code. All methods accept viem `PublicClient` / `WalletClient` (chain-agnostic).
+
+> 完整接入样例（SDK / MCP / REST 三通道 + 关键约定）：[docs/sdk-integration-example.md](../docs/sdk-integration-example.md)
 
 ### IdentityRegistry — batch read
 
@@ -558,7 +560,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
-| **0.8.0** | 2026-08-04 | Chain-data capabilities for aihunter-saas: `getAllAgents()` / `totalAgents()` / `getAgentMetadata()` on IdentityRegistry; `createPlan()` (typed period `day|week|month|year`) / `subscribe()` (event-parsed result) / `createPlanAndSubscribe()`; `subscribeToEvents()` event stream |
+| **0.8.0** | 2026-08-04 | Chain-data capabilities: `getAllAgents()` / `totalAgents()` / `getAgentMetadata()` on IdentityRegistry; `createPlan()` (typed period `day|week|month|year`) / `subscribe()` (event-parsed result) / `createPlanAndSubscribe()`; `subscribeToEvents()` event stream |
 | **0.7.5** | 2026-08-04 | Fix AgentLoop forcing `ctx.model ?? 'gpt-4o'` over provider model — priority now `ctx.model ?? provider.model ?? default` |
 | **0.7.4** | 2026-08-04 | `ConversationClient` adds `llmModel` (forwarded as `X-Llm-Model`) — BYOK now covers key + endpoint + model (e.g. `deepseek-v4-pro`) |
 | **0.7.3** | 2026-08-04 | Stateless BYOK: `ConversationClient` adds `llmEndpoint` (forwarded as `X-Llm-Endpoint`) so callers supply their own LLM key + endpoint (e.g. DeepSeek) per request — no AgentX-side key storage needed |
