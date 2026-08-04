@@ -221,7 +221,7 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
   useEffect(() => {
     if (agentsData) {
       try {
-        const agents = agentsData.map((id: bigint) => Number(id))
+        const agents = (agentsData as unknown as readonly bigint[]).map((id) => Number(id))
         
         // 去重逻辑：确保没有重复的 Agent ID
         const uniqueAgents = Array.from(new Set(agents))

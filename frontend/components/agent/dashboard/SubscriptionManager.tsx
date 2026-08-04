@@ -207,12 +207,12 @@ export function SubscriptionManager() {
     const priceInToken = Number(plan.price) / Math.pow(10, decimals)
 
     setFormData({
-      name: plan.name,
-      description: plan.description,
+      name: plan.name ?? '',
+      description: plan.description ?? '',
       price: priceInToken,
-      billingPeriod: plan.billingPeriod,
-      token: plan.token,
-      maxUsage: Number(plan.maxUsage)
+      billingPeriod: plan.billingPeriod ?? BillingPeriod.Monthly,
+      token: plan.token ?? '0x0000000000000000000000000000000000000000',
+      maxUsage: plan.maxUsage ?? 1000
     })
     setShowPlanForm(true)
     setValidation({ isValid: true, message: '' })
@@ -248,10 +248,10 @@ export function SubscriptionManager() {
       // 修复：通过更新计划将最大使用量设置为0来"停用"计划
       await updateSubscriptionPlan(
         Number(plan.planId),
-        plan.name,
-        plan.description,
+        plan.name ?? '',
+        plan.description ?? '',
         Number(plan.price),
-        plan.billingPeriod,
+        plan.billingPeriod ?? BillingPeriod.Monthly,
         0 // 设置最大使用量为0来停用计划
       )
     } catch (error) {
@@ -274,10 +274,10 @@ export function SubscriptionManager() {
       // 修复：通过更新计划重新启用，设置合理的最大使用量
       await updateSubscriptionPlan(
         Number(plan.planId),
-        plan.name,
-        plan.description,
+        plan.name ?? '',
+        plan.description ?? '',
         Number(plan.price),
-        plan.billingPeriod,
+        plan.billingPeriod ?? BillingPeriod.Monthly,
         1000 // 重新启用时设置合理的最大使用量
       )
     } catch (error) {
@@ -501,13 +501,13 @@ export function SubscriptionManager() {
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">价格</span>
                         <span className="font-semibold">
-                          {formatPrice(plan.price, plan.token)}
+                          {formatPrice(plan.price, plan.token ?? '0x0000000000000000000000000000000000000000')}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">计费周期</span>
                         <span className="text-sm">
-                          {getBillingPeriodLabel(plan.billingPeriod)}
+                          {getBillingPeriodLabel(plan.billingPeriod ?? BillingPeriod.Monthly)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
@@ -519,13 +519,13 @@ export function SubscriptionManager() {
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">代币</span>
                         <span className="text-sm">
-                          {getTokenSymbol(plan.token)}
+                          {getTokenSymbol(plan.token ?? '0x0000000000000000000000000000000000000000')}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">创建时间</span>
                         <span className="text-xs text-gray-500">
-                          {formatTimestamp(plan.createdAt)}
+                          {formatTimestamp(BigInt(plan.createdAt ?? 0))}
                         </span>
                       </div>
                     </div>

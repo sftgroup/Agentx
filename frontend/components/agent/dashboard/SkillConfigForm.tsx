@@ -3,7 +3,7 @@
 'use client'
 
 import { Plus, XCircle, DollarSign, AlertCircle } from 'lucide-react'
-import type { A2ASkill } from '../../hooks/useA2AProtocol'
+import type { A2ASkill } from '../hooks/useA2AProtocol'
 
 interface SkillConfigData {
   skillId: number

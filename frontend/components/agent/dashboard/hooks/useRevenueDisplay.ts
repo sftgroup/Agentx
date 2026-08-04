@@ -10,6 +10,10 @@ import {
 import { useSubscription, type Subscription, SubscriptionStatus } from '../../hooks/useSubscription'
 import { useOnChainAgentRegistry as useAgentRegistry } from '../../hooks/useAgentRegistry'
 
+// Re-export 接口，供同目录组件引用
+export type { Payment } from '../../hooks/usePaymentGateway'
+export type { Subscription } from '../../hooks/useSubscription'
+
 export interface TimeRange {
   label: string
   value: string
@@ -73,6 +77,11 @@ const TIME_RANGES: TimeRange[] = [
   { label: '全部', value: 'all', days: 0 }
 ]
 
+// ---- Utility functions ----
+export function formatCurrency(amount: number, currency: string = 'ETH'): string {
+  return `${amount.toFixed(4)} ${currency}`
+}
+
 export function useRevenueDisplay() {
   const { address, isConnected } = useAccount()
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>('all')
@@ -95,10 +104,6 @@ export function useRevenueDisplay() {
   const { userAgents } = useAgentRegistry()
 
   // ---- Utility functions ----
-  const formatCurrency = useCallback((amount: number, currency: string = 'ETH') => {
-    return `${amount.toFixed(4)} ${currency}`
-  }, [])
-
   const formatDate = useCallback((timestamp: bigint) => {
     return new Date(Number(timestamp) * 1000).toLocaleDateString('zh-CN')
   }, [])
@@ -311,7 +316,7 @@ export function useRevenueDisplay() {
     const subscriptionData = filteredSubscriptions.map(subscription => [
       '订阅', subscription.subscriptionId.toString(), subscription.agentId.toString(),
       (Number(subscription.totalPaid || 0) / 1e18).toString(), 'ETH',
-      getSubscriptionStatusDisplay(subscription.status).text, formatDate(subscription.createdAt),
+      getSubscriptionStatusDisplay(subscription.status).text, formatDate(BigInt(subscription.createdAt)),
       subscription.subscriber.slice(0, 8) + '...', `订阅 #${subscription.subscriptionId}`
     ])
 

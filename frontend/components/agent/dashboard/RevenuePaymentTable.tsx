@@ -107,8 +107,8 @@ export function RevenuePaymentTable({
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>{statusInfo.text}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(subscription.startDate)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(subscription.nextBillingDate)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(BigInt(subscription.startDate || 0))}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(BigInt(subscription.nextBillingDate || 0))}</td>
                     </tr>
                   )
                 })}
