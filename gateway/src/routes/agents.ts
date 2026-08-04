@@ -142,10 +142,10 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Agent not found' })
     }
 
-    // Subscription plans maintained by the event-driven plans indexer.
+    // On-chain subscription plans maintained by the event-driven plans indexer.
     const { rows: planRows } = await pool.query(
       `SELECT plan_id, agent_id, creator, price, period, pay_token, trial_days, active
-       FROM plans WHERE agent_id = $1 AND active = true
+       FROM subscription_plans WHERE agent_id = $1 AND active = true
        ORDER BY plan_id ASC`,
       [id]
     )
