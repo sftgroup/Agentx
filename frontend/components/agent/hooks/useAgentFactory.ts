@@ -24,7 +24,6 @@ const AGENT_FACTORY_ADDRESS = validateAddress(process.env.NEXT_PUBLIC_AGENT_FACT
 
 // 完整的 AgentFactory ABI，与智能合约完全匹配
 import { AGENT_FACTORY_ABI } from '@/abis/AgentFactory'
- as const
 
 // TypeScript 接口定义
 export interface AgentTemplate {

@@ -24,7 +24,6 @@ const MULTI_ENDPOINT_ADDRESS = validateAddress(process.env.NEXT_PUBLIC_MULTI_END
 
 // 完整的 ABI 定义，与智能合约完全匹配
 import { MULTI_ENDPOINT_ABI } from '@/abis/MultiEndpoint'
- as const
 
 // TypeScript 接口定义
 export interface Endpoint {
