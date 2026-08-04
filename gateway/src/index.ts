@@ -17,6 +17,7 @@ import tenantRouter from './routes/tenant'
 // historyRouter deprecated — conversation management moved to conversation-service microservice
 import mcpRouter from './routes/mcp'
 import agentsRouter from './routes/agents'
+import chainRouter from './routes/chain'
 import a2aRouter from './routes/a2a'
 import adminRouter from './routes/admin'
 import agentRunsRouter from './routes/agent-runs'
@@ -103,6 +104,10 @@ app.post('/api/v1/auth/verify', verifyChallenge)
 // ── Agents API (public, no auth needed) ────────────────────────────────────
 
 app.use('/api/v1/agents', agentsRouter)
+
+// ── Real-time Chain Data API (public, SDK-based live on-chain reads) ───────
+
+app.use('/api/v1/chain', chainRouter)
 
 // ── Skills Marketplace (mixed: GET public, POST/PUT/DELETE protected) ──────
 
