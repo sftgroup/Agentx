@@ -113,4 +113,5 @@ const op = await mcp.createPlan({ agentId: 2, price: '10000000000000000', period
 - SDK 使用：仓库 [sdk/README.md](../sdk/README.md) · [INTEGRATION.md](../INTEGRATION.md) · [UPGRADE.md](../sdk/UPGRADE.md)
 - MCP：仓库 [MCP_SETUP.md](../MCP_SETUP.md) · 包 [@agentxv2/mcp README](../mcp/README.md)
 - 三通道接入样例（SDK / MCP / REST）：[docs/sdk-integration-example.md](sdk-integration-example.md)
+- **双通道 DApp 代码示例（SDK + MCP 同时使用）**：[examples/sdk-mcp-dapp.ts](../examples/sdk-mcp-dapp.ts)
 - 链上数据需求实现状态：[docs/agent-sync-service-proposal.md](agent-sync-service-proposal.md)
