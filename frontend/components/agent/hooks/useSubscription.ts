@@ -2,8 +2,9 @@
 // Keeps v1 surface API stable for existing callers while aligning to v2 contracts.
 'use client'
 
-import { useWriteContract, useReadContract, useAccount, useWaitForTransactionReceipt, usePublicClient } from 'wagmi'
+import { useWriteContract, useReadContract, useAccount, useWaitForTransactionReceipt, usePublicClient, useWalletClient } from 'wagmi'
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { SubscriptionManager } from '@agentxv2/sdk'
 
 // ── Validation ────────────────────────────────────────────────────────────
 const validateAddr = (a?: string): `0x${string}` =>
@@ -19,7 +20,9 @@ const ABI = [
     inputs:[{name:'agentId',type:'uint256'},{name:'price',type:'uint256'},{name:'period',type:'string'},{name:'payToken',type:'address'},{name:'trialDays',type:'uint256'}],
     outputs:[{name:'planId',type:'uint256'}] },
   { name:'getPlan', type:'function', stateMutability:'view', inputs:[{name:'planId',type:'uint256'}],
-    outputs:[{name:'planId',type:'uint256'},{name:'agentId',type:'uint256'},{name:'creator',type:'address'},{name:'price',type:'uint256'},{name:'period',type:'string'},{name:'active',type:'bool'},{name:'payToken',type:'address'},{name:'trialDays',type:'uint256'}] },
+    outputs:[{ name:'', type:'tuple', components:[
+      {name:'planId',type:'uint256'},{name:'agentId',type:'uint256'},{name:'creator',type:'address'},{name:'price',type:'uint256'},{name:'period',type:'string'},{name:'active',type:'bool'},{name:'payToken',type:'address'},{name:'trialDays',type:'uint256'}
+    ] }] },
   { name:'subscribe', type:'function', stateMutability:'payable', inputs:[{name:'planId',type:'uint256'}], outputs:[{name:'subscriptionId',type:'uint256'}] },
   { name:'releaseFunds', type:'function', stateMutability:'nonpayable', inputs:[{name:'subscriptionId',type:'uint256'}], outputs:[] },
   { name:'cancelSubscription', type:'function', stateMutability:'nonpayable', inputs:[{name:'subscriptionId',type:'uint256'}], outputs:[] },
@@ -112,16 +115,30 @@ export function useSubscription(): UseSubscriptionReturn {
   const [planSubs, setPlanSubs] = useState<Subscription[]>([])
   const [stats, setStats] = useState<SubscriptionStats|null>(null)
   const [revenue, setRevenue] = useState<bigint>(0n)
+  const [lastSubscribeResult, setLastSubscribeResult] = useState<{
+    subscriptionId: number; agentId: number; expiresAt: number; subscriber: string
+  } | null>(null)
 
-  const { writeContractAsync: subAsync, isPending: isSubbing, error: subErr } = useWriteContract()
+  const [isSubbing, setIsSubbing] = useState(false)
   const { writeContractAsync: cancelAsync, isPending: isCanceling, error: cancelErr } = useWriteContract()
   const { writeContractAsync: createAsync, isPending: isCreating } = useWriteContract()
   const { writeContractAsync: releaseAsync } = useWriteContract()
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash })
 
+  // ── SDK SubscriptionManager (v0.8.0) ────────────────────────────────────
+  // Replaces hand-rolled ABI calls with the SDK wrapper: correct struct decoding
+  // (getPlan) and event parsing (subscribe → subscriptionId/expiresAt).
+  const walletClient = useWalletClient()
+  const manager = useMemo(
+    () => (publicClient && walletClient.data
+      ? new SubscriptionManager({ contractAddress: CONTRACT_ADDR, publicClient, walletClient: walletClient.data })
+      : null),
+    [publicClient, walletClient.data]
+  )
+
   const { data: feeData } = useReadContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'platformFeeBps' })
 
-  useEffect(() => { if (subErr||cancelErr) setError(subErr||cancelErr) }, [subErr,cancelErr])
+  useEffect(() => { if (cancelErr) setError(cancelErr) }, [cancelErr])
 
   // ── V2: platform fee ────────────────────────────────────────────────────
   const getPlatformFeeBps = useCallback(async () => {
@@ -134,15 +151,19 @@ export function useSubscription(): UseSubscriptionReturn {
     try { return await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'tokenWhitelist', args:[t] }) as boolean } catch { return false }
   }, [publicClient])
 
-  // ── Subscribe ───────────────────────────────────────────────────────────
+  // ── Subscribe (SDK — event-parsed subscriptionId/expiresAt) ─────────────
   const subscribe = useCallback(async (planId:number,value?:bigint) => {
     if (!isConnected||!address) throw new Error('Wallet not connected')
-    setError(null)
+    if (!manager) throw new Error('Wallet client not ready')
+    setError(null); setIsSubbing(true)
     try {
-      const h = await subAsync({ address:CONTRACT_ADDR, abi:ABI, functionName:'subscribe', args:[BigInt(planId)], value:value??0n })
-      setTxHash(h); return h
+      const result = await manager.subscribe(planId, { valueWei: value })
+      setTxHash(result.txHash)
+      setLastSubscribeResult({ subscriptionId: result.subscriptionId, agentId: result.agentId, expiresAt: result.expiresAt, subscriber: result.subscriber })
+      return result.txHash
     } catch(e) { setError(e as Error); return undefined }
-  }, [isConnected,address,subAsync])
+    finally { setIsSubbing(false) }
+  }, [isConnected,address,manager])
 
   const releaseFunds = useCallback(async (sid:number) => {
     const [acct] = [{ getAddresses: async () => [address] }] // use writeContractAsync
@@ -174,17 +195,39 @@ export function useSubscription(): UseSubscriptionReturn {
     } catch(e) { setError(e as Error); return undefined }
   }, [isConnected,address,createAsync])
 
-  // ── Queries (v1-compatible wrappers) ────────────────────────────────────
+  // ── Queries ─────────────────────────────────────────────────────────────
+  // getPlan via SDK — correct struct (tuple components) decoding, same fix
+  // already applied to SDK / Gateway indexer / MCP.
   const getPlan = useCallback(async (pid:number) => {
-    if (!publicClient) return null
+    if (!manager) return null
     try {
-      const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'getPlan', args:[BigInt(pid)] })
-      const [pid_,aid,creator,price,period,active,pt,td] = r as [bigint,bigint,string,bigint,string,boolean,string,bigint]
-      return { planId:Number(pid_),agentId:Number(aid),creator,name:'',description:'',price,period,active,payToken:pt,trialDays:Number(td) }
+      const p = await manager.getPlan(pid)
+      return { planId:p.planId, agentId:p.agentId, creator:p.creator, name:'', description:'', price:p.price, period:p.period, active:p.active, payToken:p.payToken, trialDays:p.trialDays }
     } catch { return null }
-  }, [publicClient])
+  }, [manager])
 
-  const getAgentPlans = useCallback(async (aid:number) => { return [] as SubscriptionPlan[] }, [])
+  // getAgentPlans — served by Gateway REST (chain data synced by the indexer),
+  // instead of the previous stub that always returned [].
+  const getAgentPlans = useCallback(async (aid:number) => {
+    const base = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
+    try {
+      const res = await fetch(`${base}/api/v1/agents/${aid}`)
+      if (!res.ok) { setPlans([]); return [] }
+      const data = await res.json()
+      const list: SubscriptionPlan[] = (data.subscriptionPlans || []).map((p: any) => ({
+        planId: Number(p.planId),
+        agentId: aid,
+        creator: p.creator,
+        price: typeof p.price === 'string' ? BigInt(p.price) : BigInt(p.price || 0),
+        period: p.period,
+        active: p.isActive,
+        payToken: p.payToken,
+        trialDays: p.trialDays,
+      }))
+      setPlans(list)
+      return list
+    } catch { setPlans([]); return [] }
+  }, [])
   const getPlanSubscriptions = useCallback(async (_:number) => { return [] as Subscription[] }, [])
   const getAgentSubscriptionStats = useCallback(async (_:number) => null as SubscriptionStats|null, [])
   const getWithdrawableRevenue = useCallback(async (_:number) => 0n, [])

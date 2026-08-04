@@ -34,6 +34,7 @@ interface AgentChatOptions {
   onToolCall?: (msg: ChatMessage) => void
   onToolResult?: (msg: ChatMessage) => void
   onThinking?: (text: string) => void
+  onClarification?: (question: string) => void
   onComplete?: (usage?: { totalTokens: number }) => void
   onError?: (error: string) => void
 }
@@ -177,6 +178,14 @@ export function useAgentChat() {
               case 'thinking':
                 setThinkingText(event.content || '')
                 options.onThinking?.(event.content)
+                break
+
+              case 'clarification':
+                // Conversation Service interruption: the request was ambiguous
+                // and the assistant asks a clarifying question. Surface it to the
+                // user; the answer is re-sent as a follow-up message.
+                setThinkingText('')
+                options.onClarification?.(event.question || event.content || '')
                 break
 
               case 'done':
