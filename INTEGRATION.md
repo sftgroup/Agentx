@@ -1,7 +1,7 @@
 # AgentX Integration Guide
 
 > SDK / Contracts / Integration for third-party developers
-> Version: v7 · Updated: 2026-08-04 (SDK v0.7.4, stateless BYOK key+endpoint+model)
+> Version: v8 · Updated: 2026-08-04 (SDK v0.8.0, stateless BYOK key+endpoint+model, on-chain batch query)
 
 ## Overview
 
@@ -76,13 +76,18 @@ pnpm add @agentxv2/sdk@0.8.0
 | IPFSUploader | `uploadFile(content)` | Upload file / Blob / Buffer |
 | IPFSUploader | `getUrl(cid)` | Build public gateway URL from CID |
 | publishAgent | `publishAgent({ agent, publicKey, uploader })` | One-shot encrypt + IPFS upload + pack |
-| SubscriptionManager | `subscribe(planId, opts)` | ETH/ERC20 subscription payment |
+| SubscriptionManager | `createPlan({ agentId, price, period, payToken?, trialDays? })` | Create a plan (returns `{ planId, txHash }`), event-parsed |
+| SubscriptionManager | `createPlanAndSubscribe(params)` | One-tx: create plan + subscribe (returns plan + subscription IDs) |
+| SubscriptionManager | `subscribe(planId, opts)` | ETH/ERC20 subscription payment (returns `{ subscriptionId, txHash, expiresAt }`) |
 | SubscriptionManager | `releaseFunds(subId)` | Release escrowed funds after trial |
 | SubscriptionManager | `cancelSubscription(subId)` | Cancel subscription (full refund if in trial) |
 | SubscriptionManager | `hasActiveSubscription(subscriber, agentId)` | Verify subscription status |
 | SubscriptionManager | `getSubscriptionDetail(subId)` | Full detail with trial/escrow/payToken fields |
 | SubscriptionManager | `getPlatformFeeBps()` | Query current platform fee rate |
 | SubscriptionManager | `isTokenWhitelisted(token)` | Check ERC20 token whitelist |
+| IdentityRegistry | `getAllAgents(options?)` | Batch-read all agents with structured metadata + filters (replaces manual scanning) |
+| IdentityRegistry | `totalAgents()` | Total agents registered (contract `totalAgents()`) |
+| IdentityRegistry | `getAgentMetadata(agentId)` | Structured metadata for one agent (capabilities/skills/isActive/createdAt) |
 | AgentRegistry | `register(metadata)` | Register agent on-chain |
 | AgentRegistry | `getById(id)` | Query agent metadata |
 | A2AProtocol | `createTask(agentId, params)` | Agent-to-Agent task protocol |
@@ -231,10 +236,65 @@ try {
 **Separation of concerns:**
 
 | Layer | Who | What |
-|-------|-----|------|
+|-------|-----|-------|
 | Wallet | wagmi / MetaMask / Phantom | Sign messages, send transactions |
 | Payment | X402 SDK / wagmi useWriteContract | ERC20 approve + transfer |
 | AgentX | @agentxv2/sdk | Subscribe gate, decrypt, run agent |
+
+---
+
+## On-Chain Data & Subscription Writes (v0.8.0)
+
+Chain-agnostic read/write via viem: pass a `PublicClient` for reads and a `WalletClient` for writes. No manual ABI, no manual `parseLog`, no binary search.
+
+```typescript
+import { createPublicClient, createWalletClient, http, type Hex } from 'viem'
+import { IdentityRegistry, SubscriptionManager, subscribeToEvents } from '@agentxv2/sdk'
+
+const publicClient = createPublicClient({ transport: http('https://rpc-oxa.0xainet.top') })
+const walletClient = createWalletClient({ transport: http('https://rpc-oxa.0xainet.top') })  // connected account
+
+// ── Batch read (replaces manual binary search + tokenURI parsing) ──
+const registry = new IdentityRegistry({ publicClient, identityRegistryAddress: '0xbf5F...' })
+
+const total = await registry.totalAgents()              // 62
+const agents = await registry.getAllAgents({
+  fromId: 1, toId: total,
+  activeOnly: true,                 // filter: isActive === true
+  capabilities: ['trading'],        // filter: must include ALL listed capabilities
+  batchSize: 10,                    // optional concurrency cap
+})
+// → [{ agentId, owner, tokenURI, metadata: { name, description, capabilities, skills, isActive }, createdAt }]
+
+const meta = await registry.getAgentMetadata(1)
+// → { name, description, encryptedPayloadCid, eciesEncryptedKey, publicPayloadCid, capabilities, skills, isActive }
+
+// ── Subscription writes (event-parsed IDs, no manual parseLog) ──
+const subMgr = new SubscriptionManager({ publicClient, walletClient, subscriptionManagerAddress: '0x019A...' })
+
+const { planId, txHash } = await subMgr.createPlan({
+  agentId: 1,
+  price: 10000000000000000n,   // bigint (wei)
+  period: 'month',             // 'day' | 'week' | 'month' | 'year' — contract only recognizes these
+  trialDays: 0,                // 0-30
+})
+
+const { subscriptionId, expiresAt } = await subMgr.subscribe({ planId })
+
+// One-tx: createPlan + subscribe
+const both = await subMgr.createPlanAndSubscribe({ agentId: 1, price: 1n, period: 'day' })
+
+// ── Event listening (returns unsubscribe) ──
+const unsubscribe = await subscribeToEvents(publicClient, {
+  identityRegistryAddress: '0xbf5F...',
+  subscriptionManagerAddress: '0x019A...',
+  events: ['Transfer', 'AgentRegistered', 'PlanCreated', 'Subscribed'],
+  onEvent: (event) => console.log(event.type, event.args),
+})
+// ... later: unsubscribe()
+```
+
+> **Period validation:** the SDK accepts only `'day' | 'week' | 'month' | 'year'` — the contract's `_periodToSeconds` maps exactly these four; any other string (e.g. `'monthly'`, `'quarterly'`) silently falls back to a 30-day subscription. The SDK throws on invalid values at runtime instead.
 
 ---
 
@@ -310,7 +370,7 @@ function getSubscription(
 function createPlan(
     uint256 agentId,    // Agent ID
     uint256 price,      // Price in wei or token minimum unit
-    string period,      // "day" | "week" | "month" | "quarter" | "year"
+    string period,      // "day" | "week" | "month" | "year" (contract _periodToSeconds only recognizes these; anything else silently falls back to 30 days)
     address payToken,   // address(0) = ETH, else ERC20 token address
     uint256 trialDays   // Trial days, 0 = no trial
 ) external returns (uint256 planId);

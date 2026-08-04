@@ -1,12 +1,12 @@
 # AgentX MCP Server
 
-> v0.7.0 · Platform: `POST /mcp` (29 tools) · Agent Export: `POST /mcp/agent/:id` · Standard MCP JSON-RPC 2.0
+> v0.8.0 · Platform: `POST /mcp` (32 tools) · Agent Export: `POST /mcp/agent/:id` · Standard MCP JSON-RPC 2.0
 
 ---
 
 ## Overview
 
-AgentX exposes its entire platform (6 smart contracts + Gateway API) as a standard **MCP (Model Context Protocol) Server**. Any MCP-compatible client — Claude Desktop, Cursor, VS Code, custom agents — can directly read on-chain data and interact with AgentX contracts through 29 built-in tools.
+AgentX exposes its entire platform (6 smart contracts + Gateway API) as a standard **MCP (Model Context Protocol) Server**. Any MCP-compatible client — Claude Desktop, Cursor, VS Code, custom agents — can directly read on-chain data and interact with AgentX contracts through 32 built-in tools.
 
 ```
 Claude Desktop / Cursor / Any MCP Client
@@ -17,7 +17,7 @@ Claude Desktop / Cursor / Any MCP Client
 │ AgentX Gateway (:3090)              │
 │ ┌───────────────────────────────┐   │
 │ │ POST /mcp                     │   │
-│ │   tools/list    → 29 tools    │   │
+│ │   tools/list    → 32 tools    │   │
 │ │   tools/call    → execute     │   │
 │ │   initialize    → handshake   │   │
 │ └───────────────────────────────┘   │
@@ -73,27 +73,39 @@ curl -s -X POST http://43.159.60.46:3090/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"agentx_reputation_get","arguments":{"agentId":1}}}'
 
+# List all agents on OxaChain with structured metadata + filters (SDK getAllAgents)
+curl -s -X POST http://43.159.60.46:3090/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"agentx_identity_list_all","arguments":{"chain":"oxachain","activeOnly":true,"capabilities":"trading"}}}'
+
+# Create a subscription plan (WRITE — returns tx payload)
+curl -s -X POST http://43.159.60.46:3090/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"agentx_subscription_create_plan","arguments":{"agentId":1,"price":"10000000000000000","period":"month","chain":"oxachain"}}}'
+
 # Health check
 curl -s -X POST http://43.159.60.46:3090/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"agentx_gateway_health","arguments":{}}}'
+  -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"agentx_gateway_health","arguments":{}}}'
 ```
 
 ---
 
-## All 29 Tools
+## All 32 Tools
 
-### IdentityRegistry (5)
+### IdentityRegistry (7)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `agentx_identity_list` | READ | List agent IDs owned by a wallet |
 | `agentx_identity_get` | READ | Get agent tokenURI + metadata |
+| `agentx_identity_list_all` | READ | List all agents with structured metadata (name/capabilities/skills/isActive), supports `fromId`/`toId`/`activeOnly`/`capabilities` filters — SDK `getAllAgents` |
+| `agentx_identity_metadata` | READ | Structured metadata for one agent (capabilities/skills/isActive/createdAt) — SDK `getAgentMetadata` |
 | `agentx_identity_exists` | READ | Check if agent ID exists |
-| `agentx_identity_total_count` | READ | Total agents registered |
+| `agentx_identity_total_count` | READ | Total agents registered (contract `totalAgents()`) |
 | `agentx_identity_register` | WRITE | Register a new agent (returns tx payload) |
 
-### SubscriptionManager (8)
+### SubscriptionManager (9)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -101,6 +113,7 @@ curl -s -X POST http://43.159.60.46:3090/mcp \
 | `agentx_subscription_check` | READ | Check active subscription |
 | `agentx_subscription_detail` | READ | Full subscription detail |
 | `agentx_subscription_my_list` | READ | User's subscription IDs |
+| `agentx_subscription_create_plan` | WRITE | Create plan (`agentId`, `price`, `period`, `payToken`, `trialDays`) — SDK `createPlan` |
 | `agentx_subscription_subscribe` | WRITE | Subscribe to plan |
 | `agentx_subscription_cancel` | WRITE | Cancel subscription |
 | `agentx_subscription_release` | WRITE | Release escrow funds |
@@ -266,7 +279,7 @@ const mcp = new MCPConnector({
   url: 'http://43.159.60.46:3090/mcp',
 })
 
-// List all 29 platform tools
+// List all 32 platform tools
 const tools = await mcp.listTools()
 
 // Query on-chain data
@@ -274,6 +287,13 @@ const health = await mcp.callTool('agentx_gateway_health', {})
 const agents = await mcp.callTool('agentx_identity_list', {
   ownerAddress: '0x...',
   chain: 'oxachain',
+})
+
+// Batch list with structured metadata + capability filter (SDK getAllAgents)
+const all = await mcp.callTool('agentx_identity_list_all', {
+  chain: 'oxachain',
+  activeOnly: true,
+  capabilities: 'trading',
 })
 ```
 

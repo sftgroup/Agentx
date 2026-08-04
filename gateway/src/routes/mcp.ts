@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Standard MCP JSON-RPC 2.0 endpoint. Supports dual-chain (Sepolia + OxaChain L1).
 //   POST /mcp
-//     tools/list  → all 29 AgentX platform tools
+//     tools/list  → all 32 AgentX platform tools
 //     tools/call  → params.name + params.arguments.{chain:"sepolia"|"oxachain"}
 //     initialize  → handshake
 //
@@ -14,6 +14,7 @@
 import { Router, Request, Response } from 'express'
 import { ethers } from 'ethers'
 import { config } from '../config'
+import { parseTokenURIToJSON, extractMetadata } from '../services/agent-indexer'
 
 const router = Router()
 
@@ -99,6 +100,25 @@ const MCP_TOOLS: MCPTool[] = [
     inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent numeric ID' } }, required: ['agentId'] },
   },
   {
+    name: 'agentx_identity_list_all',
+    description: 'List all agents with structured metadata (name, capabilities, skills, isActive). Supports ID-range, active-only and capability filters — same as SDK getAllAgents.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ...commonArgs(),
+        fromId: { type: 'integer', description: 'Start Agent ID (default 1)' },
+        toId: { type: 'integer', description: 'End Agent ID (default: last agent)' },
+        activeOnly: { type: 'boolean', description: 'Only return isActive=true agents' },
+        capabilities: { type: 'string', description: 'Comma-separated capability filter, e.g. "trading,analysis"' },
+      },
+    },
+  },
+  {
+    name: 'agentx_identity_metadata',
+    description: 'Get structured metadata for one agent: name, description, capabilities, skills, isActive, createdAt.',
+    inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent numeric ID' } }, required: ['agentId'] },
+  },
+  {
     name: 'agentx_identity_exists',
     description: 'Check whether an agent ID exists on-chain.',
     inputSchema: { type: 'object', properties: { ...commonArgs(), agentId: { type: 'integer', description: 'Agent ID' } }, required: ['agentId'] },
@@ -171,6 +191,22 @@ const MCP_TOOLS: MCPTool[] = [
     name: 'agentx_subscription_fee',
     description: 'Get current platform fee in bps.',
     inputSchema: { type: 'object', properties: { ...commonArgs() } },
+  },
+  {
+    name: 'agentx_subscription_create_plan',
+    description: 'Create a subscription plan for an agent. WRITE operation. Note: period must be one of "day" | "week" | "month" | "year" (contract `_periodToSeconds` only recognizes these; anything else silently falls back to 30 days).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ...commonArgs(),
+        agentId: { type: 'integer', description: 'Agent ID' },
+        price: { type: 'string', description: 'Price in wei (string)' },
+        period: { type: 'string', description: '"day" | "week" | "month" | "year"' },
+        payToken: { type: 'string', description: 'ERC20 token address; omit for native ETH' },
+        trialDays: { type: 'integer', description: 'Trial days, 0-30 (default 0)' },
+      },
+      required: ['agentId', 'price', 'period'],
+    },
   },
 
   // ── A2AProtocol ─────────────────────────────────────────────────────────
@@ -289,6 +325,8 @@ const MCP_TOOLS: MCPTool[] = [
 const ID_ABI = [
   'function getAgentsByOwner(address owner) view returns (uint256[])',
   'function getCurrentAgentId() view returns (uint256)',
+  'function totalAgents() view returns (uint256)',
+  'function getAgentOwner(uint256 agentId) view returns (address)',
   'function agentExists(uint256 agentId) view returns (bool)',
   'function tokenURI(uint256 tokenId) view returns (string)',
 ]
@@ -334,6 +372,31 @@ function toObj(keys: string[], vals: any[]): Record<string, unknown> {
   return obj
 }
 
+// Read one agent's owner + tokenURI and normalize into structured metadata.
+// Returns null when the agent is burned (zero owner) or its tokenURI is unreadable.
+async function readAgentStructured(c: ethers.Contract, agentId: number): Promise<{
+  agentId: number
+  owner: string
+  tokenURI: string
+  metadata: { name: string; description: string; capabilities: string[]; skills: string[]; isActive: boolean }
+  createdAt: number
+} | null> {
+  const [owner, tokenURI] = await Promise.all([
+    c.getAgentOwner(agentId).catch(() => null),
+    c.tokenURI(agentId).catch(() => null),
+  ])
+  if (!owner || owner === '0x0000000000000000000000000000000000000000' || !tokenURI) return null
+  const parsed = parseTokenURIToJSON(tokenURI)
+  const m = extractMetadata(parsed, agentId)
+  return {
+    agentId,
+    owner,
+    tokenURI,
+    metadata: { name: m.name, description: m.description, capabilities: m.capabilities, skills: m.skills, isActive: m.isActive },
+    createdAt: m.agentCreatedAt,
+  }
+}
+
 // ── Tool Executor ───────────────────────────────────────────────────────────
 
 async function executeToolCall(name: string, args: Record<string, unknown>): Promise<unknown> {
@@ -362,8 +425,40 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
       case 'agentx_identity_exists':
         return { exists: await getContract(ck, chain.identityRegistry, ID_ABI).agentExists(Number(args.agentId)), chain: chainLabel, chainId }
       case 'agentx_identity_total_count': {
-        const total = await getContract(ck, chain.identityRegistry, ID_ABI).getCurrentAgentId()
+        const total = await getContract(ck, chain.identityRegistry, ID_ABI).totalAgents()
         return { totalAgents: Number(total), chain: chainLabel, chainId }
+      }
+      case 'agentx_identity_list_all': {
+        const c = getContract(ck, chain.identityRegistry, ID_ABI)
+        const total = Number(await c.totalAgents().catch(() => 0))
+        if (total <= 0) return { agents: [], total: 0, chain: chainLabel, chainId }
+        const fromId = Math.max(1, Number(args.fromId ?? 1))
+        const toId = Math.min(total, Number(args.toId ?? total))
+        const activeOnly = args.activeOnly === true || args.activeOnly === 'true'
+        const capabilities = String(args.capabilities ?? '')
+          .split(',').map(s => s.trim()).filter(Boolean)
+
+        const agents: any[] = []
+        const batchSize = config.agentsIndexBatchSize
+        for (let start = fromId; start <= toId; start += batchSize) {
+          const end = Math.min(start + batchSize - 1, toId)
+          const results = await Promise.all(
+            Array.from({ length: end - start + 1 }, (_, i) => readAgentStructured(c, start + i))
+          )
+          for (const a of results) {
+            if (!a) continue
+            if (activeOnly && !a.metadata.isActive) continue
+            if (capabilities.length > 0 && !capabilities.every(cap => a.metadata.capabilities.includes(cap))) continue
+            agents.push(a)
+          }
+        }
+        return { agents, total: agents.length, range: { fromId, toId }, chain: chainLabel, chainId }
+      }
+      case 'agentx_identity_metadata': {
+        const agentId = Number(args.agentId)
+        const a = await readAgentStructured(getContract(ck, chain.identityRegistry, ID_ABI), agentId)
+        if (!a) return { agentId, exists: false, chain: chainLabel, chainId }
+        return { ...a, exists: true, chain: chainLabel, chainId }
       }
       case 'agentx_identity_register':
         return { _writeOp: true, message: `WRITE. Use a wallet client to sign and submit to ${chainLabel}.`, contract: chain.identityRegistry, chain: chainLabel, chainId }
@@ -403,6 +498,21 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
         const fee = await getContract(ck, chain.subscriptionManager, SUB_ABI).platformFeeBps()
         return { platformFeeBps: Number(fee), chain: chainLabel, chainId }
       }
+      case 'agentx_subscription_create_plan':
+        return {
+          _writeOp: true,
+          message: `WRITE. Create plan via wallet client on ${chainLabel}.`,
+          contract: chain.subscriptionManager,
+          args: {
+            agentId: Number(args.agentId),
+            price: String(args.price),
+            period: String(args.period),
+            payToken: args.payToken ? String(args.payToken) : '0x0000000000000000000000000000000000000000',
+            trialDays: Number(args.trialDays ?? 0),
+          },
+          chain: chainLabel,
+          chainId,
+        }
 
       // ── A2A ───────────────────────────────────────
       case 'agentx_a2a_get_task': {

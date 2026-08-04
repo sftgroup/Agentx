@@ -25,6 +25,7 @@
   - `GET /api/v1/agents/count` — 总数 / active 数统计
   - agent-indexer — 结构化 metadata（skills/is_active/agent_created_at）入库；`totalAgents()` 界定全量扫描；新增 `AgentRegistered`/`Transfer` 事件驱动增量同步（mint → upsert，burn → 删除）
   - 新迁移 `005_agents_structured.sql`（is_active / skills / agent_created_at 列 + 索引）
+  - MCP `/mcp` — 工具数 29 → 32：新增 `agentx_identity_list_all`（批量+筛选，等价 `getAllAgents`）、`agentx_identity_metadata`（等价 `getAgentMetadata`）、`agentx_subscription_create_plan`（等价 `createPlan`）；`agentx_identity_total_count` 改用 `totalAgents()`
 
 ### SDK v0.7.5 — AgentLoop 模型覆盖修复
 
