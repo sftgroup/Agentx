@@ -1,0 +1,31 @@
+{
+  "name": "@agentxv2/mcp",
+  "version": "0.1.0",
+  "description": "AgentX MCP client — typed access to the AgentX Gateway MCP server (32 tools): IdentityRegistry reads, subscription plans/actions, A2A, reputation, config, endpoints.",
+  "keywords": ["agentx", "mcp", "ai-agent", "blockchain", "web3", "identity-registry"],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean --out-dir dist",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.2.0"
+  }
+}
