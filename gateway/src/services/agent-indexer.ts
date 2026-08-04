@@ -235,7 +235,7 @@ async function fetchAndUpsertPlan(planId: number, contract: ethers.Contract): Pr
   ]
 
   await pool.query(
-    `INSERT INTO plans (plan_id, agent_id, creator, price, period, pay_token, trial_days, active, updated_at)
+    `INSERT INTO subscription_plans (plan_id, agent_id, creator, price, period, pay_token, trial_days, active, updated_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
      ON CONFLICT (plan_id) DO UPDATE SET
        agent_id = EXCLUDED.agent_id,
@@ -251,7 +251,7 @@ async function fetchAndUpsertPlan(planId: number, contract: ethers.Contract): Pr
   return true
 }
 
-/** Backfill the plans table from PlanCreated history (runs once on boot). */
+/** Backfill the subscription_plans table from PlanCreated history (runs once on boot). */
 export async function syncPlanHistory(): Promise<number> {
   const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
   const contract = new ethers.Contract(config.subscriptionManagerOxaChain, SUBSCRIPTION_ABI, provider)

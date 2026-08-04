@@ -1,6 +1,7 @@
--- Plans table — subscription plans synced from SubscriptionManager (event-driven).
+-- On-chain subscription plans synced from SubscriptionManager (event-driven).
+-- Named subscription_plans to avoid clashing with the platform pricing `plans` table.
 -- Price stored as decimal string to avoid JS bigint/number precision loss.
-CREATE TABLE IF NOT EXISTS plans (
+CREATE TABLE IF NOT EXISTS subscription_plans (
   plan_id    INTEGER PRIMARY KEY,
   agent_id   INTEGER NOT NULL,
   creator    TEXT,
@@ -13,5 +14,5 @@ CREATE TABLE IF NOT EXISTS plans (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_plans_agent_id ON plans(agent_id);
-CREATE INDEX IF NOT EXISTS idx_plans_active ON plans(active);
+CREATE INDEX IF NOT EXISTS idx_subscription_plans_agent_id ON subscription_plans(agent_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_plans_active ON subscription_plans(active);
