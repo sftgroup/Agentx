@@ -275,7 +275,9 @@ router.get('/system', async (_req: Request, res: Response) => {
 
 // ── Revenue ────────────────────────────────────────────────────────────────
 
-router.get('/revenue', async (_req: Request, res: Response) => {
+router.get('/revenue', async (req: Request, res: Response) => {
+  const t0 = Date.now()
+  log.info(`admin/revenue called (ip=${req.ip}, query=${JSON.stringify(req.query)}, ua=${req.headers['user-agent'] ?? '-'})`)
   try {
     const pool = getPool()
     const [sepoliaFees, oxaFees, feeBps, fiatResult, channelResult, x402Payments, x402Balances] = await Promise.all([
@@ -303,7 +305,7 @@ router.get('/revenue', async (_req: Request, res: Response) => {
       pool.query(`SELECT COALESCE(SUM(balance_wei::numeric), 0) AS outstanding_wei FROM x402_balances`),
     ])
 
-    res.json({
+    const result = {
       onChain: {
         platformFeeBps: feeBps,
         sepolia: { nativeFeesWei: sepoliaFees },
@@ -313,16 +315,24 @@ router.get('/revenue', async (_req: Request, res: Response) => {
       channel: channelResult.rows[0],
       x402: { ...x402Payments.rows[0], ...x402Balances.rows[0] },
       note: 'on-chain/x402 amounts in wei; fiat amounts in cents',
-    })
+    }
+    log.info(
+      `admin/revenue result (${Date.now() - t0}ms) ` +
+      `onChain=[sepolia=${result.onChain.sepolia.nativeFeesWei} wei, oxachain=${result.onChain.oxachain.nativeFeesWei} wei, feeBps=${result.onChain.platformFeeBps}] ` +
+      `fiat=${JSON.stringify(result.fiat)} channel=${JSON.stringify(result.channel)} x402=${JSON.stringify(result.x402)}`
+    )
+    res.json(result)
   } catch (err: any) {
-    log.error(`admin/revenue failed: ${err.message}`)
+    log.error(`admin/revenue failed after ${Date.now() - t0}ms: ${err.message}`)
     res.status(500).json({ error: err.message })
   }
 })
 
 // ── Payment / Merchant Status ──────────────────────────────────────────────
 
-router.get('/payments', async (_req: Request, res: Response) => {
+router.get('/payments', async (req: Request, res: Response) => {
+  const t0 = Date.now()
+  log.info(`admin/payments called (ip=${req.ip}, query=${JSON.stringify(req.query)}, ua=${req.headers['user-agent'] ?? '-'})`)
   try {
     const pool = getPool()
     const [fiatSubs, channelList, x402Payments, planCount] = await Promise.all([
@@ -340,7 +350,7 @@ router.get('/payments', async (_req: Request, res: Response) => {
       pool.query(`SELECT COUNT(*) AS total FROM subscription_plans`),
     ])
 
-    res.json({
+    const result = {
       stripe: {
         configured: Boolean(config.stripeSecretKey && config.stripeWebhookSecret),
         secretKeySet: Boolean(config.stripeSecretKey),
@@ -356,9 +366,15 @@ router.get('/payments', async (_req: Request, res: Response) => {
       },
       channels: channelList.rows,
       onChain: { subscriptionPlans: Number(planCount.rows[0]?.total ?? 0) },
-    })
+    }
+    log.info(
+      `admin/payments result (${Date.now() - t0}ms) ` +
+      `stripe=${JSON.stringify(result.stripe)} x402=${JSON.stringify(result.x402)} ` +
+      `channels=${JSON.stringify(result.channels)} onChain=${JSON.stringify(result.onChain)}`
+    )
+    res.json(result)
   } catch (err: any) {
-    log.error(`admin/payments failed: ${err.message}`)
+    log.error(`admin/payments failed after ${Date.now() - t0}ms: ${err.message}`)
     res.status(500).json({ error: err.message })
   }
 })
