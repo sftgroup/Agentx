@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { Router, Request, Response } from 'express'
-import { chainDataReader } from '../services/chain-data-reader'
+import { chainDataReader, log } from '../services/chain-data-reader'
 import type { ChainKey } from '../services/chain-data-reader'
 
 const router = Router()
@@ -23,30 +23,38 @@ function serializePlan(plan: { planId: number; agentId: number; creator: string;
 
 // GET /api/v1/chain/health?chain= → live chain status (block number + totals)
 router.get('/health', async (req: Request, res: Response, next) => {
+  const t0 = Date.now()
   try {
     const chain = resolveChain(req)
     const [blockNumber, totalAgents] = await Promise.all([
       chainDataReader.getBlockNumber(chain),
       chainDataReader.totalAgents(chain),
     ])
+    log.info(`GET /chain/health (chain=${chain}) → block=${blockNumber} total=${totalAgents} in ${Date.now() - t0}ms`)
     res.json({ status: 'ok', chain, blockNumber, totalAgents, time: new Date().toISOString() })
   } catch (err) {
+    log.error(`GET /chain/health failed: ${(err as Error).message}`)
     next(err)
   }
 })
 
 // GET /api/v1/chain/total?chain= → total agent count
 router.get('/total', async (req: Request, res: Response, next) => {
+  const t0 = Date.now()
   try {
     const chain = resolveChain(req)
-    res.json({ chain, totalAgents: await chainDataReader.totalAgents(chain) })
+    const totalAgents = await chainDataReader.totalAgents(chain)
+    log.info(`GET /chain/total (chain=${chain}) → ${totalAgents} in ${Date.now() - t0}ms`)
+    res.json({ chain, totalAgents })
   } catch (err) {
+    log.error(`GET /chain/total failed: ${(err as Error).message}`)
     next(err)
   }
 })
 
 // GET /api/v1/chain/agents?chain=&fromId=&toId=&activeOnly=&capabilities=
 router.get('/agents', async (req: Request, res: Response, next) => {
+  const t0 = Date.now()
   try {
     const chain = resolveChain(req)
     const fromId = req.query.fromId ? Number(req.query.fromId) : undefined
@@ -55,14 +63,17 @@ router.get('/agents', async (req: Request, res: Response, next) => {
     const capabilities = String(req.query.capabilities ?? '')
       .split(',').map(s => s.trim()).filter(Boolean)
     const agents = await chainDataReader.listAgents(chain, { fromId, toId, activeOnly, capabilities })
+    log.info(`GET /chain/agents (chain=${chain}, fromId=${fromId ?? '-'}, toId=${toId ?? '-'}, activeOnly=${activeOnly}, capabilities=[${capabilities.join(',')}]) → ${agents.length} agents in ${Date.now() - t0}ms`)
     res.json({ chain, agents, total: agents.length })
   } catch (err) {
+    log.error(`GET /chain/agents failed: ${(err as Error).message}`)
     next(err)
   }
 })
 
 // GET /api/v1/chain/agents/:agentId?chain=
 router.get('/agents/:agentId', async (req: Request, res: Response, next) => {
+  const t0 = Date.now()
   try {
     const chain = resolveChain(req)
     const agentId = Number(req.params.agentId)
@@ -70,37 +81,46 @@ router.get('/agents/:agentId', async (req: Request, res: Response, next) => {
       chainDataReader.agentExists(chain, agentId),
       chainDataReader.getAgentMetadata(chain, agentId),
     ])
+    log.info(`GET /chain/agents/${agentId} (chain=${chain}) → exists=${exists} name="${metadata.name}" in ${Date.now() - t0}ms`)
     res.json({ chain, agentId, exists, metadata })
   } catch (err) {
+    log.error(`GET /chain/agents/:id failed (agentId=${req.params.agentId}): ${(err as Error).message}`)
     next(err)
   }
 })
 
 // GET /api/v1/chain/plans/:planId?chain=
 router.get('/plans/:planId', async (req: Request, res: Response, next) => {
+  const t0 = Date.now()
   try {
     const chain = resolveChain(req)
     const planId = Number(req.params.planId)
     const plan = await chainDataReader.getPlan(chain, planId)
+    log.info(`GET /chain/plans/${planId} (chain=${chain}) → agentId=${plan.agentId} period="${plan.period}" active=${plan.active} in ${Date.now() - t0}ms`)
     res.json({ chain, plan: serializePlan(plan) })
   } catch (err) {
+    log.error(`GET /chain/plans/:id failed (planId=${req.params.planId}): ${(err as Error).message}`)
     next(err)
   }
 })
 
 // GET /api/v1/chain/check-subscription?chain=&subscriber=&agentId=
 router.get('/check-subscription', async (req: Request, res: Response, next) => {
+  const t0 = Date.now()
   try {
     const chain = resolveChain(req)
     const subscriber = String(req.query.subscriber ?? '')
     const agentId = Number(req.query.agentId)
     if (!subscriber || !agentId) {
+      log.warn(`GET /chain/check-subscription missing params (subscriber="${subscriber}", agentId=${req.query.agentId})`)
       res.status(400).json({ error: 'subscriber and agentId are required' })
       return
     }
     const active = await chainDataReader.hasActiveSubscription(chain, subscriber as `0x${string}`, agentId)
+    log.info(`GET /chain/check-subscription (chain=${chain}, subscriber=${subscriber}, agentId=${agentId}) → active=${active} in ${Date.now() - t0}ms`)
     res.json({ chain, subscriber, agentId, active })
   } catch (err) {
+    log.error(`GET /chain/check-subscription failed: ${(err as Error).message}`)
     next(err)
   }
 })

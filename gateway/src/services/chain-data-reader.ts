@@ -51,6 +51,15 @@ const CHAINS: Record<ChainKey, ChainInfo> = {
 // construct one without an account (read-only). ChainDataReader is strictly
 // read-only; all writes must be done by a caller-owned wallet client.
 
+// ── Logger ─────────────────────────────────────────────────────────────────
+// Gateway has no logger lib; console-based with a shared prefix so the chain
+// read path is greppable in pm2 logs (`grep "chain-data"`).
+export const log = {
+  info: (msg: string, ...args: unknown[]) => console.log(`[chain-data] ${msg}`, ...args),
+  warn: (msg: string, ...args: unknown[]) => console.warn(`[chain-data] ${msg}`, ...args),
+  error: (msg: string, ...args: unknown[]) => console.error(`[chain-data] ${msg}`, ...args),
+}
+
 export interface ListAgentsOptions {
   fromId?: number
   toId?: number
@@ -67,7 +76,10 @@ export class ChainDataReader {
   /** Resolve chain config; throws on unknown chain. */
   private resolve(chain: ChainKey): ChainInfo {
     const info = CHAINS[chain]
-    if (!info) throw new Error(`Unknown chain: "${chain}". Must be "sepolia" or "oxachain".`)
+    if (!info) {
+      log.warn(`resolve() rejected unknown chain "${chain}"`)
+      throw new Error(`Unknown chain: "${chain}". Must be "sepolia" or "oxachain".`)
+    }
     return info
   }
 
@@ -76,6 +88,7 @@ export class ChainDataReader {
     const key = this.resolve(chain)
     if (!this.clients[chain]) {
       this.clients[chain] = createPublicClient({ transport: http(key.rpcUrl) }) as unknown as PublicClient
+      log.info(`public client created (chain=${chain}, rpc=${key.rpcUrl})`)
     }
     return this.clients[chain]!
   }
@@ -89,7 +102,9 @@ export class ChainDataReader {
 
   /** Current block number of a chain. */
   async getBlockNumber(chain: ChainKey): Promise<number> {
-    return Number(await this.getPublicClient(chain).getBlockNumber())
+    const bn = Number(await this.getPublicClient(chain).getBlockNumber())
+    log.info(`getBlockNumber(chain=${chain}) → ${bn}`)
+    return bn
   }
 
   private getRegistry(chain: ChainKey): AgentRegistry {
@@ -100,6 +115,7 @@ export class ChainDataReader {
         publicClient: this.getPublicClient(chain),
         walletClient: createWalletClient({ transport: http(info.rpcUrl) }),
       })
+      log.info(`AgentRegistry ready (chain=${chain}, address=${info.identityRegistry})`)
     }
     return this.registries[chain]!
   }
@@ -112,6 +128,7 @@ export class ChainDataReader {
         publicClient: this.getPublicClient(chain),
         walletClient: this.makeReadonlyWallet(info.rpcUrl),
       })
+      log.info(`SubscriptionManager ready (chain=${chain}, address=${info.subscriptionManager})`)
     }
     return this.subscriptions[chain]!
   }
@@ -120,7 +137,9 @@ export class ChainDataReader {
 
   /** Total number of registered agents (monotonic max agent ID). */
   async totalAgents(chain: ChainKey): Promise<number> {
-    return this.getRegistry(chain).totalAgents()
+    const n = await this.getRegistry(chain).totalAgents()
+    log.info(`totalAgents(chain=${chain}) → ${n}`)
+    return n
   }
 
   /**
@@ -128,39 +147,73 @@ export class ChainDataReader {
    * (equivalent to SDK `getAllAgents`; tolerant of malformed tokenURIs).
    */
   async listAgents(chain: ChainKey, options: ListAgentsOptions = {}): Promise<AgentSummary[]> {
-    return this.getRegistry(chain).getAllAgents(options)
+    const t0 = Date.now()
+    try {
+      const agents = await this.getRegistry(chain).getAllAgents(options)
+      log.info(
+        `listAgents(chain=${chain}, ${JSON.stringify(options)}) → ${agents.length} agents in ${Date.now() - t0}ms`
+      )
+      return agents
+    } catch (err) {
+      log.error(`listAgents(chain=${chain}, ${JSON.stringify(options)}) failed: ${(err as Error).message}`)
+      throw err
+    }
   }
 
   /** Structured metadata for one agent (on-chain attrs + tokenURI JSON). */
   async getAgentMetadata(chain: ChainKey, agentId: number) {
-    return this.getRegistry(chain).getAgentMetadata(agentId)
+    try {
+      const meta = await this.getRegistry(chain).getAgentMetadata(agentId)
+      log.info(`getAgentMetadata(chain=${chain}, agentId=${agentId}) → name="${meta.name}" isActive=${meta.isActive}`)
+      return meta
+    } catch (err) {
+      log.error(`getAgentMetadata(chain=${chain}, agentId=${agentId}) failed: ${(err as Error).message}`)
+      throw err
+    }
   }
 
   /** Check if an agent ID exists on-chain. */
   async agentExists(chain: ChainKey, agentId: number): Promise<boolean> {
-    return this.getRegistry(chain).agentExists(agentId)
+    const ok = await this.getRegistry(chain).agentExists(agentId)
+    log.info(`agentExists(chain=${chain}, agentId=${agentId}) → ${ok}`)
+    return ok
   }
 
   /** All agent IDs owned by an address. */
   async getAgentsByOwner(chain: ChainKey, owner: Address): Promise<number[]> {
-    return this.getRegistry(chain).getAgentsByOwner(owner)
+    const ids = await this.getRegistry(chain).getAgentsByOwner(owner)
+    log.info(`getAgentsByOwner(chain=${chain}, owner=${owner}) → ${ids.length} ids`)
+    return ids
   }
 
   // ── SubscriptionManager reads ───────────────────────────────────────────
 
   /** Full plan details; `price` is a bigint (convert to string for JSON). */
   async getPlan(chain: ChainKey, planId: number): Promise<PlanDetail> {
-    return this.getSubscription(chain).getPlan(planId)
+    try {
+      const plan = await this.getSubscription(chain).getPlan(planId)
+      log.info(
+        `getPlan(chain=${chain}, planId=${planId}) → agentId=${plan.agentId} price=${plan.price} period="${plan.period}" active=${plan.active}`
+      )
+      return plan
+    } catch (err) {
+      log.error(`getPlan(chain=${chain}, planId=${planId}) failed: ${(err as Error).message}`)
+      throw err
+    }
   }
 
   /** Whether a wallet has an active subscription for an agent. */
   async hasActiveSubscription(chain: ChainKey, subscriber: Address, agentId: number): Promise<boolean> {
-    return this.getSubscription(chain).hasActiveSubscription(subscriber, agentId)
+    const active = await this.getSubscription(chain).hasActiveSubscription(subscriber, agentId)
+    log.info(`hasActiveSubscription(chain=${chain}, subscriber=${subscriber}, agentId=${agentId}) → ${active}`)
+    return active
   }
 
   /** Platform fee in basis points. */
   async platformFeeBps(chain: ChainKey): Promise<number> {
-    return this.getSubscription(chain).getPlatformFeeBps()
+    const fee = await this.getSubscription(chain).getPlatformFeeBps()
+    log.info(`platformFeeBps(chain=${chain}) → ${fee}`)
+    return fee
   }
 
   // ── Event stream ────────────────────────────────────────────────────────
@@ -176,13 +229,18 @@ export class ChainDataReader {
     fromBlock?: number
   ): Promise<() => void> {
     const info = this.resolve(chain)
-    return subscribeToEvents(this.getPublicClient(chain), {
+    log.info(`watchEvents started (chain=${chain}, events=${events.join(',')}${fromBlock !== undefined ? `, fromBlock=${fromBlock}` : ''})`)
+    const unwatch = await subscribeToEvents(this.getPublicClient(chain), {
       identityRegistryAddress: info.identityRegistry,
       subscriptionManagerAddress: info.subscriptionManager,
       events,
       onEvent,
       fromBlock,
     })
+    return () => {
+      unwatch()
+      log.info(`watchEvents stopped (chain=${chain}, events=${events.join(',')})`)
+    }
   }
 }
 
