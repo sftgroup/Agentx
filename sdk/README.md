@@ -11,7 +11,7 @@ Agent = Prompt + Skills[] + MCP
 ## Installation
 
 ```bash
-npm install @agentxv2/sdk@0.7.1
+npm install @agentxv2/sdk@0.8.1
 ```
 
 ### Peer Dependencies
@@ -228,7 +228,7 @@ const result = await connector.callTool('get_balance', {
 
 ---
 
-## ConversationClient (v0.8.0) — Remote Conversation Service
+## ConversationClient (v0.8.1) — Remote Conversation Service
 
 Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auto-sends `X-Api-Key` (tenant API key), `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` + `X-Llm-Endpoint` + `X-Llm-Model` (stateless BYOK override — your own key AND endpoint AND model, e.g. DeepSeek).
 
@@ -292,11 +292,12 @@ const ragResult = await client.chat({
 
 ---
 
-## On-Chain Data (v0.8.0) — Batch Query + Subscription Writes + Event Stream
+## On-Chain Data (v0.8.1) — Batch Query + Subscription Writes + Event Stream
 
 Replaces hand-rolled ethers.js + manual ABI/parseLog code. All methods accept viem `PublicClient` / `WalletClient` (chain-agnostic).
 
 > 完整接入样例（SDK / MCP / REST 三通道 + 关键约定）：[docs/sdk-integration-example.md](../docs/sdk-integration-example.md)
+> 可运行的 SDK 链上读取完整样例（生产地址）：[examples/sdk-chain-read.ts](../examples/sdk-chain-read.ts)
 
 ### IdentityRegistry — batch read
 
@@ -320,6 +321,11 @@ const meta = await registry.getAgentMetadata(1)
 // → { name, description, encryptedPayloadCid, eciesEncryptedKey, publicPayloadCid,
 //     capabilities, skills, isActive }
 ```
+
+> **v0.8.1 容错解析**：tokenURI 可能因合约 bug 损坏（base64 尾部垃圾 / JSON 未闭合）。
+> `getAllAgents()` / `getAgentMetadata()` 会自动清理尾部垃圾、补齐未闭合引号/花括号，
+> 仍失败时以 regex 兜底提取 `name`，最终回退为 `Agent {id}`——与 Gateway indexer 行为一致，
+> 不会因单条损坏数据导致整批查询失败。
 
 ### SubscriptionManager — write + event-parsed results
 

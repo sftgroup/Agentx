@@ -2,7 +2,7 @@
 
 > 面向任何想要接入 AgentX 平台的第三方服务（AI 助手平台、交易工具、SaaS 产品等）。
 > 本文提供三种接入通道（SDK / MCP / REST）的完整可运行样例，以及必须注意的关键约定。
-> 版本：SDK v0.8.0 · 2026-08-04
+> 版本：SDK v0.8.1 · 2026-08-05
 
 ---
 
@@ -29,7 +29,7 @@
 ### 2.1 安装
 
 ```bash
-npm install @agentxv2/sdk@0.8.0
+npm install @agentxv2/sdk@0.8.1
 ```
 
 ### 2.2 初始化（chain-agnostic，viem）
@@ -88,6 +88,12 @@ const meta = await registry.getAgentMetadata(1)
 // → { name, description, encryptedPayloadCid, eciesEncryptedKey,
 //     publicPayloadCid, capabilities, skills, isActive }
 ```
+
+> **v0.8.1 容错解析**：部分 tokenURI 因合约 bug 损坏（base64 尾部垃圾 / JSON 未闭合）。
+> SDK 会自动清理尾部垃圾、补齐未闭合引号/花括号，仍失败时 regex 兜底提取 `name`，
+> 最终回退为 `Agent {id}`——与 Gateway indexer 行为一致，单条损坏数据不会导致整批查询失败。
+
+> 可运行的完整 SDK 链上读取样例（生产地址）：[examples/sdk-chain-read.ts](../examples/sdk-chain-read.ts)
 
 ### 2.4 写入：创建套餐 + 订阅
 
