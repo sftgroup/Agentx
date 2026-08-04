@@ -23,7 +23,6 @@ const CONFIGURATION_REGISTRY_ADDRESS = validateAddress(process.env.NEXT_PUBLIC_C
 
 // 完整的 ABI 定义，与智能合约完全匹配
 import { CONFIGURATION_REGISTRY_ABI } from '@/abis/ConfigurationRegistry'
- as const
 
 // TypeScript 接口定义
 export enum ConfigDataType {

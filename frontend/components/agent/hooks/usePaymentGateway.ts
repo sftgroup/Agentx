@@ -25,7 +25,6 @@ const PAYMENT_GATEWAY_ADDRESS = validateAddress(process.env.NEXT_PUBLIC_PAYMENT_
 
 // 完整的 ABI 定义，与智能合约完全匹配
 import { PAYMENT_GATEWAY_ABI } from '@/abis/PaymentGateway'
- as const
 
 // TypeScript 接口定义
 export enum PaymentStatus {
