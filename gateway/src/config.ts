@@ -73,3 +73,26 @@ export const config = {
   x402PriceWei: process.env.X402_PRICE_WEI || '1000000000000000', // 0.001 native by default
   x402Chain: process.env.X402_CHAIN || 'oxachain',
 }
+
+// ---------------------------------------------------------------------------
+// Fail-fast: never boot production with placeholder secrets.
+// Placeholder defaults above exist only so `npm run dev` works without .env;
+// a weak/missing secret in production silently breaks auth (or worse).
+// ---------------------------------------------------------------------------
+const PLACEHOLDER_SECRETS: Record<string, string> = {
+  JWT_SECRET: 'dev-secret-change-me',
+  CONVERSATION_SERVICE_TOKEN: 'change-me-in-production',
+}
+
+if (config.nodeEnv === 'production') {
+  const missing: string[] = []
+  for (const [name, placeholder] of Object.entries(PLACEHOLDER_SECRETS)) {
+    if (!process.env[name] || process.env[name] === placeholder) missing.push(name)
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `[config] Missing required production environment variable(s): ${missing.join(', ')}. ` +
+        `Refusing to start with a weak default secret.`
+    )
+  }
+}

@@ -9,6 +9,8 @@ frontend/.next/
 
 # Secrets & env
 *.env
+.env.local
+.env.*.local
 !*.env.example
 !*.env.production
 

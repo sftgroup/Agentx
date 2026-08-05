@@ -5,37 +5,13 @@
 import { useWriteContract, useReadContract, useAccount, useWaitForTransactionReceipt, usePublicClient, useWalletClient } from 'wagmi'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { SubscriptionManager } from '@agentxv2/sdk'
+import { SUBSCRIPTION_MANAGER_ABI } from '@/abis/SubscriptionManager'
 
 // ── Validation ────────────────────────────────────────────────────────────
 const validateAddr = (a?: string): `0x${string}` =>
   (a && a.startsWith('0x') && a.length === 42) ? a as `0x${string}` : '0x0000000000000000000000000000000000000000'
 
 const CONTRACT_ADDR = validateAddr(process.env.NEXT_PUBLIC_SUBSCRIPTION_MANAGER_ADDRESS)
-
-// ── ABI — v2 SubscriptionManager ─────────────────────────────────────────
-const ABI = [
-  { name:'platformFeeBps', type:'function', stateMutability:'view', inputs:[], outputs:[{name:'',type:'uint256'}] },
-  { name:'tokenWhitelist', type:'function', stateMutability:'view', inputs:[{name:'token',type:'address'}], outputs:[{name:'',type:'bool'}] },
-  { name:'createPlan', type:'function', stateMutability:'nonpayable',
-    inputs:[{name:'agentId',type:'uint256'},{name:'price',type:'uint256'},{name:'period',type:'string'},{name:'payToken',type:'address'},{name:'trialDays',type:'uint256'}],
-    outputs:[{name:'planId',type:'uint256'}] },
-  { name:'getPlan', type:'function', stateMutability:'view', inputs:[{name:'planId',type:'uint256'}],
-    outputs:[{ name:'', type:'tuple', components:[
-      {name:'planId',type:'uint256'},{name:'agentId',type:'uint256'},{name:'creator',type:'address'},{name:'price',type:'uint256'},{name:'period',type:'string'},{name:'active',type:'bool'},{name:'payToken',type:'address'},{name:'trialDays',type:'uint256'}
-    ] }] },
-  { name:'subscribe', type:'function', stateMutability:'payable', inputs:[{name:'planId',type:'uint256'}], outputs:[{name:'subscriptionId',type:'uint256'}] },
-  { name:'releaseFunds', type:'function', stateMutability:'nonpayable', inputs:[{name:'subscriptionId',type:'uint256'}], outputs:[] },
-  { name:'cancelSubscription', type:'function', stateMutability:'nonpayable', inputs:[{name:'subscriptionId',type:'uint256'}], outputs:[] },
-  { name:'getSubscription', type:'function', stateMutability:'view',
-    inputs:[{name:'subscriber',type:'address'},{name:'agentId',type:'uint256'}],
-    outputs:[{name:'subscriptionId',type:'uint256'},{name:'subscriber',type:'address'},{name:'agentId',type:'uint256'},{name:'status',type:'uint8'},{name:'startedAt',type:'uint256'},{name:'expiresAt',type:'uint256'},{name:'period',type:'string'}] },
-  { name:'hasActiveSubscription', type:'function', stateMutability:'view',
-    inputs:[{name:'subscriber',type:'address'},{name:'agentId',type:'uint256'}], outputs:[{name:'',type:'bool'}] },
-  { name:'getUserSubscriptions', type:'function', stateMutability:'view',
-    inputs:[{name:'user',type:'address'}], outputs:[{name:'',type:'uint256[]'}] },
-  { name:'getSubscriptionDetail', type:'function', stateMutability:'view', inputs:[{name:'subscriptionId',type:'uint256'}],
-    outputs:[{name:'subscriptionId',type:'uint256'},{name:'subscriber',type:'address'},{name:'agentId',type:'uint256'},{name:'status',type:'uint8'},{name:'startedAt',type:'uint256'},{name:'expiresAt',type:'uint256'},{name:'period',type:'string'},{name:'payToken',type:'address'},{name:'amountPaid',type:'uint256'},{name:'trialActive',type:'bool'},{name:'trialEndsAt',type:'uint256'},{name:'fundsReleased',type:'bool'}] },
-] as const
 
 // ── Types (stable v1 surface + v2 additions) ─────────────────────────────
 export interface Subscription {
@@ -179,19 +155,19 @@ export function useSubscription(): UseSubscriptionReturn {
     [publicClient, walletClient.data]
   )
 
-  const { data: feeData } = useReadContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'platformFeeBps' })
+  const { data: feeData } = useReadContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'platformFeeBps' })
 
   useEffect(() => { if (cancelErr) setError(cancelErr) }, [cancelErr])
 
   // ── V2: platform fee ────────────────────────────────────────────────────
   const getPlatformFeeBps = useCallback(async () => {
     if (!publicClient) return 0
-    try { return Number(await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'platformFeeBps' })) } catch { return 0 }
+    try { return Number(await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'platformFeeBps' })) } catch { return 0 }
   }, [publicClient])
 
   const isTokenWhitelisted = useCallback(async (t:`0x${string}`) => {
     if (!publicClient) return false
-    try { return await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'tokenWhitelist', args:[t] }) as boolean } catch { return false }
+    try { return await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'tokenWhitelist', args:[t] }) as boolean } catch { return false }
   }, [publicClient])
 
   // ── Subscribe (SDK — event-parsed subscriptionId/expiresAt) ─────────────
@@ -213,7 +189,7 @@ export function useSubscription(): UseSubscriptionReturn {
     const [acct] = [{ getAddresses: async () => [address] }] // use writeContractAsync
     if (!address) throw new Error('Wallet not connected')
     try {
-      const h = await releaseAsync({ address:CONTRACT_ADDR, abi:ABI, functionName:'releaseFunds', args:[BigInt(sid)] })
+      const h = await releaseAsync({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'releaseFunds', args:[BigInt(sid)] })
       setTxHash(h); return h
     } catch(e) { setError(e as Error); return undefined }
   }, [address,releaseAsync])
@@ -222,7 +198,7 @@ export function useSubscription(): UseSubscriptionReturn {
     if (!isConnected||!address) throw new Error('Wallet not connected')
     setError(null)
     try {
-      const h = await cancelAsync({ address:CONTRACT_ADDR, abi:ABI, functionName:'cancelSubscription', args:[BigInt(sid)] })
+      const h = await cancelAsync({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'cancelSubscription', args:[BigInt(sid)] })
       setTxHash(h); return h
     } catch(e) { setError(e as Error); return undefined }
   }, [isConnected,address,cancelAsync])
@@ -235,7 +211,7 @@ export function useSubscription(): UseSubscriptionReturn {
     const periodStr = BILLING_PERIOD_TO_ONCHAIN[period]
     if (!periodStr) throw new Error('Quarterly plans are not supported on-chain (only day/week/month/year)')
     try {
-      const h = await createAsync({ address:CONTRACT_ADDR, abi:ABI, functionName:'createPlan', args:[BigInt(agentId),BigInt(price),periodStr,'0x0000000000000000000000000000000000000000' as `0x${string}`,BigInt(0)] })
+      const h = await createAsync({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'createPlan', args:[BigInt(agentId),BigInt(price),periodStr,'0x0000000000000000000000000000000000000000' as `0x${string}`,BigInt(0)] })
       setTxHash(h); return h
     } catch(e) { setError(e as Error); return undefined }
   }, [isConnected,address,createAsync])
@@ -280,7 +256,7 @@ export function useSubscription(): UseSubscriptionReturn {
   const getSubscription = useCallback(async (sid:number) => {
     if (!publicClient||!address) return null
     try {
-      const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'getSubscriptionDetail', args:[BigInt(sid)] })
+      const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getSubscriptionDetail', args:[BigInt(sid)] })
       const [sId,s,aId,status,started,expires,period] = r as unknown as [bigint,string,bigint,number,bigint,bigint,string]
       return { subscriptionId:Number(sId),agentId:Number(aId),subscriber:s,status,startDate:Number(started),endDate:Number(expires),period,totalPaid:BigInt(0),createdAt:0 }
     } catch { return null }
@@ -289,7 +265,7 @@ export function useSubscription(): UseSubscriptionReturn {
   const getSubscriptionDetail = useCallback(async (sid:number) => {
     if (!publicClient) return null
     try {
-      const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'getSubscriptionDetail', args:[BigInt(sid)] })
+      const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getSubscriptionDetail', args:[BigInt(sid)] })
       const [sId,s,aId,status,started,expires,period,pt,amt,tA,tE,fR] = r as [bigint,string,bigint,number,bigint,bigint,string,string,bigint,boolean,bigint,boolean]
       return { subscriptionId:Number(sId),subscriber:s,agentId:Number(aId),status,startedAt:Number(started),expiresAt:Number(expires),period,payToken:pt,amountPaid:amt,trialActive:tA,trialEndsAt:Number(tE),fundsReleased:fR }
     } catch { return null }
@@ -297,17 +273,17 @@ export function useSubscription(): UseSubscriptionReturn {
 
   const hasActiveSubscription = useCallback(async (sub:`0x${string}`,aid:number) => {
     if (!publicClient) return false
-    try { return await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'hasActiveSubscription', args:[sub,BigInt(aid)] }) as boolean } catch { return false }
+    try { return await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'hasActiveSubscription', args:[sub,BigInt(aid)] }) as boolean } catch { return false }
   }, [publicClient])
 
   const getUserSubscriptions = useCallback(async () => {
     if (!publicClient||!address) return []
     try {
-      const ids = await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'getUserSubscriptions', args:[address] }) as bigint[]
+      const ids = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getUserSubscriptions', args:[address] }) as bigint[]
       const dets: Subscription[] = []
       for (const id of ids) {
         try {
-          const d = await publicClient.readContract({ address:CONTRACT_ADDR, abi:ABI, functionName:'getSubscriptionDetail', args:[id] })
+          const d = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getSubscriptionDetail', args:[id] })
           const [sid,s,aId,status,started,expires,period] = d as unknown as [bigint,string,bigint,number,bigint,bigint,string]
           dets.push({ subscriptionId:Number(sid),agentId:Number(aId),subscriber:s,status,startDate:Number(started),endDate:Number(expires),period,totalPaid:BigInt(0),createdAt:0 })
         } catch { /* skip */ }

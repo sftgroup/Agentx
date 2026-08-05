@@ -8,15 +8,19 @@
 //     initialize  → handshake
 //
 // Claude Desktop config:
-//   { "mcpServers": { "agentx": { "url": "http://43.156.225.164:3090/mcp" } } }
+//   { "mcpServers": { "agentx": { "url": "http://43.159.60.46:3090/mcp" } } }
 // ---------------------------------------------------------------------------
 
 import { Router, Request, Response } from 'express'
 import { ethers } from 'ethers'
+import type { Address } from 'viem'
 import { config } from '../config'
-import { parseTokenURIToJSON, extractMetadata } from '../services/agent-indexer'
+import { chainDataReader } from '../services/chain-data-reader'
 
 const router = Router()
+
+/** address(0) — native token / ETH sentinel for payToken. */
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 // ── Chain Config ───────────────────────────────────────────────────────────
 
@@ -321,24 +325,10 @@ const MCP_TOOLS: MCPTool[] = [
 ]
 
 // ── ABIs ────────────────────────────────────────────────────────────────────
+// IdentityRegistry and SubscriptionManager reads are served by ChainDataReader
+// (SDK-backed, see services/chain-data-reader.ts). Only the contracts the SDK
+// does not wrap yet keep local ABI definitions here.
 
-const ID_ABI = [
-  'function getAgentsByOwner(address owner) view returns (uint256[])',
-  'function getCurrentAgentId() view returns (uint256)',
-  'function totalAgents() view returns (uint256)',
-  'function getAgentOwner(uint256 agentId) view returns (address)',
-  'function agentExists(uint256 agentId) view returns (bool)',
-  'function tokenURI(uint256 tokenId) view returns (string)',
-]
-const SUB_ABI = [
-  // No named params — avoids ethers.js v6 struct decoding issues with mixed static/dynamic fields
-  'function getPlan(uint256) view returns (uint256,uint256,address,uint256,string,bool,address,uint256)',
-  'function hasActiveSubscription(address,uint256) view returns (bool)',
-  'function getSubscription(address,uint256) view returns (uint256,address,uint256,uint8,uint256,uint256,string)',
-  'function getSubscriptionDetail(uint256) view returns (uint256,address,uint256,uint8,uint256,uint256,string,address,uint256,bool,uint256,bool)',
-  'function getUserSubscriptions(address) view returns (uint256[])',
-  'function platformFeeBps() view returns (uint256)',
-]
 const A2A_ABI = [
   'function getTask(uint256) view returns (uint256,uint256,string,string,string,uint256,address,uint256,uint256)',
   'function getUserTasks(address) view returns (uint256[])',
@@ -372,31 +362,6 @@ function toObj(keys: string[], vals: any[]): Record<string, unknown> {
   return obj
 }
 
-// Read one agent's owner + tokenURI and normalize into structured metadata.
-// Returns null when the agent is burned (zero owner) or its tokenURI is unreadable.
-async function readAgentStructured(c: ethers.Contract, agentId: number): Promise<{
-  agentId: number
-  owner: string
-  tokenURI: string
-  metadata: { name: string; description: string; capabilities: string[]; skills: string[]; isActive: boolean }
-  createdAt: number
-} | null> {
-  const [owner, tokenURI] = await Promise.all([
-    c.getAgentOwner(agentId).catch(() => null),
-    c.tokenURI(agentId).catch(() => null),
-  ])
-  if (!owner || owner === '0x0000000000000000000000000000000000000000' || !tokenURI) return null
-  const parsed = parseTokenURIToJSON(tokenURI)
-  const m = extractMetadata(parsed, agentId)
-  return {
-    agentId,
-    owner,
-    tokenURI,
-    metadata: { name: m.name, description: m.description, capabilities: m.capabilities, skills: m.skills, isActive: m.isActive },
-    createdAt: m.agentCreatedAt,
-  }
-}
-
 // ── Tool Executor ───────────────────────────────────────────────────────────
 
 async function executeToolCall(name: string, args: Record<string, unknown>): Promise<unknown> {
@@ -407,30 +372,30 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
 
   try {
     switch (name) {
-      // ── Identity ──────────────────────────────────
+      // ── Identity (SDK-backed via ChainDataReader) ─────────────────
       case 'agentx_identity_list': {
         const owner = args.ownerAddress as string
-        const ids = await getContract(ck, chain.identityRegistry, ID_ABI).getAgentsByOwner(owner)
-        return { agentIds: formatBigInts(ids), owner, chain: chainLabel, chainId }
+        const ids = await chainDataReader.getAgentsByOwner(ck, owner as Address)
+        return { agentIds: ids, owner, chain: chainLabel, chainId }
       }
       case 'agentx_identity_get': {
         const agentId = Number(args.agentId)
-        const c = getContract(ck, chain.identityRegistry, ID_ABI)
-        const [exists, tokenURI] = await Promise.all([
-          c.agentExists(agentId).catch(() => false),
-          c.tokenURI(agentId).catch(() => null),
-        ])
+        const exists = await chainDataReader.agentExists(ck, agentId)
+        let tokenURI: string | null = null
+        if (exists) {
+          const [a] = await chainDataReader.listAgents(ck, { fromId: agentId, toId: agentId, batchSize: 1 })
+          tokenURI = a?.tokenURI ?? null
+        }
         return { agentId, exists, tokenURI, chain: chainLabel, chainId }
       }
       case 'agentx_identity_exists':
-        return { exists: await getContract(ck, chain.identityRegistry, ID_ABI).agentExists(Number(args.agentId)), chain: chainLabel, chainId }
+        return { exists: await chainDataReader.agentExists(ck, Number(args.agentId)), chain: chainLabel, chainId }
       case 'agentx_identity_total_count': {
-        const total = await getContract(ck, chain.identityRegistry, ID_ABI).totalAgents()
-        return { totalAgents: Number(total), chain: chainLabel, chainId }
+        const total = await chainDataReader.totalAgents(ck)
+        return { totalAgents: total, chain: chainLabel, chainId }
       }
       case 'agentx_identity_list_all': {
-        const c = getContract(ck, chain.identityRegistry, ID_ABI)
-        const total = Number(await c.totalAgents().catch(() => 0))
+        const total = await chainDataReader.totalAgents(ck)
         if (total <= 0) return { agents: [], total: 0, chain: chainLabel, chainId }
         const fromId = Math.max(1, Number(args.fromId ?? 1))
         const toId = Math.min(total, Number(args.toId ?? total))
@@ -438,56 +403,52 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
         const capabilities = String(args.capabilities ?? '')
           .split(',').map(s => s.trim()).filter(Boolean)
 
-        const agents: any[] = []
-        const batchSize = config.agentsIndexBatchSize
-        for (let start = fromId; start <= toId; start += batchSize) {
-          const end = Math.min(start + batchSize - 1, toId)
-          const results = await Promise.all(
-            Array.from({ length: end - start + 1 }, (_, i) => readAgentStructured(c, start + i))
-          )
-          for (const a of results) {
-            if (!a) continue
-            if (activeOnly && !a.metadata.isActive) continue
-            if (capabilities.length > 0 && !capabilities.every(cap => a.metadata.capabilities.includes(cap))) continue
-            agents.push(a)
-          }
-        }
+        const agents = await chainDataReader.listAgents(ck, {
+          fromId,
+          toId,
+          activeOnly,
+          capabilities: capabilities.length > 0 ? capabilities : undefined,
+          batchSize: config.agentsIndexBatchSize,
+        })
         return { agents, total: agents.length, range: { fromId, toId }, chain: chainLabel, chainId }
       }
       case 'agentx_identity_metadata': {
         const agentId = Number(args.agentId)
-        const a = await readAgentStructured(getContract(ck, chain.identityRegistry, ID_ABI), agentId)
+        const [a] = await chainDataReader.listAgents(ck, { fromId: agentId, toId: agentId, batchSize: 1 })
         if (!a) return { agentId, exists: false, chain: chainLabel, chainId }
         return { ...a, exists: true, chain: chainLabel, chainId }
       }
       case 'agentx_identity_register':
         return { _writeOp: true, message: `WRITE. Use a wallet client to sign and submit to ${chainLabel}.`, contract: chain.identityRegistry, chain: chainLabel, chainId }
 
-      // ── Subscription ──────────────────────────────
+      // ── Subscription (SDK-backed via ChainDataReader) ──────────────
       case 'agentx_subscription_plans': {
-        // Contract returns `SubscriptionPlan memory` (struct) → decode as tuple.
         const planId = Number(args.planId)
-        const abiCoder = ethers.AbiCoder.defaultAbiCoder()
-        const data = new ethers.Interface(SUB_ABI).encodeFunctionData('getPlan', [planId])
-        const raw = await getProvider(ck).call({ to: chain.subscriptionManager, data })
-        const decoded = abiCoder.decode(['(uint256,uint256,address,uint256,string,bool,address,uint256)'], raw)
-        const t = decoded[0] as [bigint, bigint, string, bigint, string, boolean, string, bigint]
-        return { planId: Number(t[0]), agentId: Number(t[1]), creator: t[2], price: t[3].toString(), period: t[4], active: t[5], payToken: t[6], trialDays: Number(t[7]), chain: chainLabel, chainId }
+        const plan = await chainDataReader.getPlan(ck, planId)
+        return { planId: plan.planId, agentId: plan.agentId, creator: plan.creator, price: plan.price.toString(), period: plan.period, active: plan.active, payToken: plan.payToken, trialDays: plan.trialDays, chain: chainLabel, chainId }
       }
       case 'agentx_subscription_check': {
         // Accept both 'subscriberAddress' and 'subscriber' parameter names
         const subscriber = (args.subscriberAddress || args.subscriber || args.subscriber_address) as string
         const subscriberAddr = ethers.getAddress(subscriber)
-        const ok = await getContract(ck, chain.subscriptionManager, SUB_ABI).hasActiveSubscription(subscriberAddr, Number(args.agentId))
+        const ok = await chainDataReader.hasActiveSubscription(ck, subscriberAddr as Address, Number(args.agentId))
         return { active: ok, subscriber: subscriberAddr, agentId: Number(args.agentId), chain: chainLabel, chainId }
       }
       case 'agentx_subscription_detail': {
-        const d = await getContract(ck, chain.subscriptionManager, SUB_ABI).getSubscriptionDetail(Number(args.subscriptionId))
-        return { ...toObj(['subscriptionId', 'subscriber', 'agentId', 'status', 'startedAt', 'expiresAt', 'period', 'payToken', 'amountPaid', 'trialActive', 'trialEndsAt', 'fundsReleased'], d), chain: chainLabel, chainId }
+        const d = await chainDataReader.getSubscriptionDetail(ck, Number(args.subscriptionId))
+        if (!d) return { error: `Subscription ${args.subscriptionId} not found`, chain: chainLabel, chainId }
+        return {
+          subscriptionId: d.subscriptionId, subscriber: d.subscriber, agentId: d.agentId, status: d.status,
+          startedAt: d.startedAt, expiresAt: d.expiresAt, period: d.period, payToken: d.payToken,
+          amountPaid: d.amountPaid > 2n ** 53n ? d.amountPaid.toString() : Number(d.amountPaid),
+          trialActive: d.trialActive, trialEndsAt: d.trialEndsAt, fundsReleased: d.fundsReleased,
+          chain: chainLabel, chainId,
+        }
       }
       case 'agentx_subscription_my_list': {
-        const ids = await getContract(ck, chain.subscriptionManager, SUB_ABI).getUserSubscriptions(args.userAddress as string)
-        return { subscriptionIds: formatBigInts(ids), user: args.userAddress, chain: chainLabel, chainId }
+        const user = args.userAddress as string
+        const ids = await chainDataReader.getUserSubscriptions(ck, user as Address)
+        return { subscriptionIds: ids, user, chain: chainLabel, chainId }
       }
       case 'agentx_subscription_subscribe':
         return { _writeOp: true, message: `WRITE. Subscribe via wallet client on ${chainLabel}.`, contract: chain.subscriptionManager, chain: chainLabel, chainId }
@@ -496,8 +457,8 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
       case 'agentx_subscription_release':
         return { _writeOp: true, message: `WRITE. Release via wallet client on ${chainLabel}.`, contract: chain.subscriptionManager, chain: chainLabel, chainId }
       case 'agentx_subscription_fee': {
-        const fee = await getContract(ck, chain.subscriptionManager, SUB_ABI).platformFeeBps()
-        return { platformFeeBps: Number(fee), chain: chainLabel, chainId }
+        const fee = await chainDataReader.platformFeeBps(ck)
+        return { platformFeeBps: fee, chain: chainLabel, chainId }
       }
       case 'agentx_subscription_create_plan':
         return {
@@ -508,7 +469,7 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
             agentId: Number(args.agentId),
             price: String(args.price),
             period: String(args.period),
-            payToken: args.payToken ? String(args.payToken) : '0x0000000000000000000000000000000000000000',
+            payToken: args.payToken ? String(args.payToken) : ZERO_ADDRESS,
             trialDays: Number(args.trialDays ?? 0),
           },
           chain: chainLabel,

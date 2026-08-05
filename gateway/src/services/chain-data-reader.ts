@@ -20,10 +20,13 @@
 import { createPublicClient, createWalletClient, http } from 'viem'
 import type { Address, PublicClient, WalletClient } from 'viem'
 import { AgentRegistry, SubscriptionManager, subscribeToEvents } from '@agentxv2/sdk'
-import type { AgentSummary, AgentXChainEvent, AgentXEventType, PlanDetail } from '@agentxv2/sdk'
+import type { AgentSummary, AgentXChainEvent, AgentXEventType, PlanDetail, SubscriptionDetail } from '@agentxv2/sdk'
 import { config } from '../config'
 
 export type ChainKey = 'sepolia' | 'oxachain'
+
+/** address(0) — native token sentinel for payToken / platformFeesCollected. */
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 /** Minimal ABI for raw viem reads the SDK does not wrap yet. */
 const PLATFORM_FEES_ABI = [
@@ -214,6 +217,25 @@ export class ChainDataReader {
     return active
   }
 
+  /** Full subscription detail for one subscription ID. */
+  async getSubscriptionDetail(chain: ChainKey, subscriptionId: number): Promise<SubscriptionDetail | null> {
+    try {
+      const d = await this.getSubscription(chain).getSubscriptionDetail(subscriptionId)
+      log.info(`getSubscriptionDetail(chain=${chain}, subscriptionId=${subscriptionId}) → agentId=${d.agentId} status=${d.status}`)
+      return d
+    } catch (err) {
+      log.error(`getSubscriptionDetail(chain=${chain}, subscriptionId=${subscriptionId}) failed: ${(err as Error).message}`)
+      return null
+    }
+  }
+
+  /** All subscription IDs owned by a wallet (v2: uint256[] of IDs). */
+  async getUserSubscriptions(chain: ChainKey, user: Address): Promise<number[]> {
+    const ids = await this.getSubscription(chain).getUserSubscriptions(user)
+    log.info(`getUserSubscriptions(chain=${chain}, user=${user}) → ${ids.length} ids`)
+    return ids
+  }
+
   /** Platform fee in basis points. */
   async platformFeeBps(chain: ChainKey): Promise<number> {
     const fee = await this.getSubscription(chain).getPlatformFeeBps()
@@ -226,7 +248,7 @@ export class ChainDataReader {
    * (address(0) = native ETH/OXA). Raw viem read — the SDK does not wrap
    * `platformFeesCollected` yet.
    */
-  async platformFeesCollected(chain: ChainKey, token: Address = '0x0000000000000000000000000000000000000000'): Promise<bigint> {
+  async platformFeesCollected(chain: ChainKey, token: Address = ZERO_ADDRESS): Promise<bigint> {
     const info = this.resolve(chain)
     const fees = await this.getPublicClient(chain).readContract({
       address: info.subscriptionManager,
