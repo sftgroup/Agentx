@@ -6,6 +6,7 @@ contracts/cache/
 contracts/out/
 gateway/dist/
 frontend/.next/
+*.tsbuildinfo
 
 # Secrets & env
 *.env
