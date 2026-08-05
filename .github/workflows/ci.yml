@@ -48,7 +48,8 @@ jobs:
           cache: npm
           cache-dependency-path: gateway/package-lock.json
       - name: Install
-        run: npm ci
+        # npm 10.x crashes on this large dep tree ("Exit handler never called") — use npm 11
+        run: npx --yes npm@11 ci --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests (chat-tasks / P9 gate)
