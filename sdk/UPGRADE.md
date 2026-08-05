@@ -1,5 +1,19 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.8.7 → v0.8.8
+
+### What's New
+
+Docs sync only — README updated to v0.8.7 (sessions & parallel tasks section + version history). Same code as 0.8.7.
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.8.8
+```
+
+No breaking changes.
+
 ## v0.8.6 → v0.8.7
 
 ### What's New

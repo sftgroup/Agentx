@@ -11,7 +11,7 @@
     "migrate": "node -e \"const{execSync}=require('child_process');execSync('psql '+process.env.DATABASE_URL+' -f migrations/001_memory.sql',{stdio:'inherit'});execSync('psql '+process.env.DATABASE_URL+' -f migrations/002_traces.sql',{stdio:'inherit'})\""
   },
   "dependencies": {
-    "@agentxv2/sdk": "^0.8.6",
+    "@agentxv2/sdk": "^0.8.8",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.0",
