@@ -323,11 +323,12 @@ const MCP_TOOLS: MCPTool[] = [
     inputSchema: { type: 'object', properties: {} },
   },
   // ── Gateway Conversation & Tasks (P8/P9) ────────────────────────────
-  // All conversation/task tools require tenant auth: pass either
-  // `api_key` (X-Api-Key, agentx_...) or `access_token` (gateway JWT).
+  // R14: all conversation/task tools require tenant auth via
+  // `access_token` (registered-user JWT) only. B-end integration keys
+  // (`agentx_...`) cannot call MCP — they are limited to the REST chat service.
   {
     name: 'agentx_gateway_chat',
-    description: 'Single-turn conversation with an agent (SSE stream collected into a reply). Requires api_key or access_token.',
+    description: 'Single-turn conversation with an agent (SSE stream collected into a reply). Requires access_token (registered-user JWT).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -336,28 +337,26 @@ const MCP_TOOLS: MCPTool[] = [
         prompt: { type: 'string', description: 'Inline mode: caller-supplied system prompt (bypasses agent lookup)' },
         history: { type: 'array', description: 'Optional conversation history [{role, content}]' },
         tenant_key_id: { type: 'string', description: 'BYOK: id of a stored tenant-owned API key' },
-        api_key: { type: 'string', description: 'Tenant API key (agentx_...) — alternative to access_token' },
-        access_token: { type: 'string', description: 'Gateway JWT — alternative to api_key' },
+        access_token: { type: 'string', description: 'Gateway JWT — registered-user auth (required)' },
       },
       required: ['message'],
     },
   },
   {
     name: 'agentx_gateway_create_session',
-    description: 'Create a conversation session (dialog container; idempotent). Requires api_key or access_token.',
+    description: 'Create a conversation session (dialog container; idempotent). Requires access_token (registered-user JWT).',
     inputSchema: {
       type: 'object',
       properties: {
         agent_id: { type: 'integer', description: 'Agent ID' },
         title: { type: 'string', description: 'Optional session title' },
-        api_key: { type: 'string', description: 'Tenant API key (agentx_...) — alternative to access_token' },
-        access_token: { type: 'string', description: 'Gateway JWT — alternative to api_key' },
+        access_token: { type: 'string', description: 'Gateway JWT — registered-user auth (required)' },
       },
     },
   },
   {
     name: 'agentx_gateway_create_task',
-    description: 'Create a background task in a session (returns immediately with taskId; queued→running→done). May return 403 PARALLEL_TASKS_DISABLED. Requires api_key or access_token.',
+    description: 'Create a background task in a session (returns immediately with taskId; queued→running→done). May return 403 PARALLEL_TASKS_DISABLED. Requires access_token (registered-user JWT).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -366,47 +365,43 @@ const MCP_TOOLS: MCPTool[] = [
         agent_id: { type: 'integer', description: 'Agent ID (omit when using inline prompt)' },
         prompt: { type: 'string', description: 'Inline mode: caller-supplied system prompt' },
         tenant_key_id: { type: 'string', description: 'BYOK: id of a stored tenant-owned API key' },
-        api_key: { type: 'string', description: 'Tenant API key (agentx_...) — alternative to access_token' },
-        access_token: { type: 'string', description: 'Gateway JWT — alternative to api_key' },
+        access_token: { type: 'string', description: 'Gateway JWT — registered-user auth (required)' },
       },
       required: ['session_id', 'message'],
     },
   },
   {
     name: 'agentx_gateway_get_task',
-    description: 'Get task detail by id (status, result, error). Requires api_key or access_token.',
+    description: 'Get task detail by id (status, result, error). Requires access_token (registered-user JWT).',
     inputSchema: {
       type: 'object',
       properties: {
         task_id: { type: 'string', description: 'Task ID' },
-        api_key: { type: 'string', description: 'Tenant API key (agentx_...) — alternative to access_token' },
-        access_token: { type: 'string', description: 'Gateway JWT — alternative to api_key' },
+        access_token: { type: 'string', description: 'Gateway JWT — registered-user auth (required)' },
       },
       required: ['task_id'],
     },
   },
   {
     name: 'agentx_gateway_list_tasks',
-    description: 'List all tasks of a session. Requires api_key or access_token.',
+    description: 'List all tasks of a session. Requires access_token (registered-user JWT).',
     inputSchema: {
       type: 'object',
       properties: {
         session_id: { type: 'string', description: 'Session ID' },
-        api_key: { type: 'string', description: 'Tenant API key (agentx_...) — alternative to access_token' },
-        access_token: { type: 'string', description: 'Gateway JWT — alternative to api_key' },
+        access_token: { type: 'string', description: 'Gateway JWT — registered-user auth (required)' },
       },
       required: ['session_id'],
     },
   },
   {
     name: 'agentx_gateway_cancel_task',
-    description: 'Cancel a task (queued → cancelled; running → aborted; terminal states are idempotent). Requires api_key or access_token.',
+    description: 'Cancel a task (queued → cancelled; running → aborted; terminal states are idempotent). Requires access_token (registered-user JWT).',
     inputSchema: {
       type: 'object',
       properties: {
         task_id: { type: 'string', description: 'Task ID' },
-        api_key: { type: 'string', description: 'Tenant API key (agentx_...) — alternative to access_token' },
-        access_token: { type: 'string', description: 'Gateway JWT — alternative to api_key' },
+        access_token: { type: 'string', description: 'Gateway JWT — registered-user auth (required)' },
       },
       required: ['task_id'],
     },
@@ -455,17 +450,16 @@ function toObj(keys: string[], vals: any[]): Record<string, unknown> {
 
 const gatewayApiBase = `http://127.0.0.1:${config.port}/api/v1`
 
-/** Resolve tenant auth from MCP args: `api_key` (X-Api-Key) or `access_token` (JWT). */
+/** Resolve tenant auth from MCP args. R14: conversation/task tools accept ONLY
+ * `access_token` (registered-user JWT). B-end `api_key` (agentx_...) is rejected —
+ * B-end keys are limited to the REST chat service. */
 function gatewayAuthHeaders(args: Record<string, unknown>): { headers: Record<string, string>; error?: string } {
-  const apiKey = args.api_key as string | undefined
   const token = args.access_token as string | undefined
-  if (!apiKey && !token) {
-    return { headers: {}, error: 'api_key or access_token is required for this tool' }
+  if (!token) {
+    return { headers: {}, error: 'access_token (registered-user JWT) is required for this tool' }
   }
   return {
-    headers: apiKey
-      ? { 'X-Api-Key': apiKey }
-      : { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}` },
   }
 }
 
