@@ -24,6 +24,7 @@ import x402Router from './routes/x402'
 import a2aRouter from './routes/a2a'
 import adminRouter from './routes/admin'
 import agentRunsRouter from './routes/agent-runs'
+import chatTasksRouter from './routes/chat-tasks'
 import tracesRouter from './routes/traces'
 import skillsRouter from './routes/skills'
 import agentMcpRouter from './routes/agent-mcp'
@@ -146,7 +147,7 @@ app.post('/api/v1/agents-sync', async (_req, res, next) => {
 // ── Protected routes (auth + rate-limit only on known paths) ─────────────
 
 // Known protected API path prefixes (anything else under /api/v1 returns 404)
-const PROTECTED_PREFIXES = ['/chat/completions', '/tenant/', '/agent/', '/traces/', '/auth/api-key']
+const PROTECTED_PREFIXES = ['/chat/completions', '/tenant/', '/agent/', '/traces/', '/auth/api-key', '/sessions', '/tasks']
 
 app.use('/api/v1', (req, _res, next) => {
   if (PROTECTED_PREFIXES.some(p => req.path.startsWith(p))) {
@@ -169,6 +170,9 @@ api.use('/tenant', tenantRouter)
 // /chat/history deprecated — use conversation-service instead
 api.use('/agent', agentRunsRouter)
 api.use('/traces', tracesRouter)
+// Chat sessions + parallel tasks (proxied to conversation-service)
+api.use('/sessions', chatTasksRouter)
+api.use('/tasks', chatTasksRouter)
 
 app.use('/api/v1', api)
 
