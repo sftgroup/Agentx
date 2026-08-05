@@ -47,6 +47,36 @@ Frontend / MCP Client
 
 ---
 
+## Integrator SDK (v0.8.8) — Sessions & Parallel Tasks
+
+Hosted sessions & parallel tasks are available to integrators through the published SDK — no platform-side changes needed:
+
+```bash
+# latest (recommended) — includes sessions & parallel tasks client
+npm install @agentxv2/sdk
+# or pin the exact release
+npm install @agentxv2/sdk@0.8.8
+```
+
+```ts
+import { ConversationClient, ConversationTaskError } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({ gatewayUrl: 'https://gateway.example.com', apiKey: 'agentx_...' })
+const session = await client.createSession({ title: 'Audit' })         // dialog container (idempotent)
+const task = await client.createTask({ sessionId: session.id, message: 'Analyze contract A' })
+// → returns immediately { id, status: 'queued' } — execution runs in the background
+//    poll getTask() / listTasks(), or cancel with cancelTask()
+```
+
+Key contracts:
+
+- `createTask()` returns **immediately** (`status: 'queued'`); execution runs in the background (DeerFlow Thread/Run model).
+- **P9 capability gate**: on a tenant/plan with multi-task disabled, `createTask()` rejects with HTTP 403 `{ error, code: "PARALLEL_TASKS_DISABLED" }` — surfaced as `ConversationTaskError` (`.status` / `.code`). Callers should degrade to single-turn `client.chat()`.
+- Querying (`getTask` / `listTasks`) and cancelling (`cancelTask`) are **never** gated.
+- Full method reference & examples: SDK README → "Sessions & Parallel Tasks (v0.8.7)".
+
+---
+
 ## Prerequisites
 
 | Dependency | Version | Purpose |

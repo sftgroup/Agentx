@@ -1,5 +1,19 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.8.8 → v0.8.9
+
+### What's New
+
+Docs sync only — README Installation now points at **v0.8.8** ("just install to use the sessions & parallel-tasks client"). Same code as 0.8.8.
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.8.9   # or simply: npm install @agentxv2/sdk (latest = 0.8.9)
+```
+
+No breaking changes.
+
 ## v0.8.7 → v0.8.8
 
 ### What's New
