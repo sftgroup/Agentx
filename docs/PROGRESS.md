@@ -140,7 +140,7 @@
 
 **R1 前端聊天页接入 sessions+tasks 模型（并行任务列表与取消）** —— 优先级：高 · ✅ 完成（2026-08-06 · commit `0f5c30d`）
 - 来源：P9 遗留（原 P8 待办「对话多任务前端接入」）
-- 涉及：[frontend/app/hooks/useAgentChat.ts](file:///home/ubuntu/Agentx/frontend/hooks/useAgentChat.ts)、前端聊天页组件、`@agentxv2/sdk@0.8.7` `ConversationClient`（0.8.7 已发布 npm，三服务依赖升至 ^0.8.7）
+- 涉及：[frontend/app/hooks/useAgentChat.ts](file:///home/ubuntu/Agentx/frontend/hooks/useAgentChat.ts)、前端聊天页组件、`@agentxv2/sdk@0.8.7` `ConversationClient`（0.8.7 功能版 + 0.8.8 README 文档重发均已发布 npm；三服务依赖统一升至 ^0.8.8，commit `1802fab`）
 - 实施要点：
   1. `useAgentChat` 底层切为 sessions+tasks：进入会话先 `createSession()`（幂等），发消息走 `createTask()` 立即返回 taskId，不再走单轮 `chat()`
   2. 任务列表：`listTasks()` 渲染并行任务卡片（status: queued/running/done/error/cancelled + 结果/错误摘要）
