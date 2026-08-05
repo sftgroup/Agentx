@@ -30,6 +30,7 @@ export function Header() {
                 {t('header.studio')} <Sparkles className="w-3 h-3 inline ml-1 text-accent-purple" />
               </Link>
               <Link href="/dashboard/agent" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">{t('header.dashboard')}</Link>
+              <Link href="/docs/sdk" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">{t('header.docs')}</Link>
             </nav>
           </div>
 

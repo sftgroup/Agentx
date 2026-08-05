@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X, Home, ShoppingBag, Sparkles, BarChart3, Terminal } from 'lucide-react'
+import { Menu, X, Home, ShoppingBag, Sparkles, BarChart3, Terminal, BookOpen } from 'lucide-react'
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Studio', href: '/studio', icon: Sparkles },
   { name: 'Dashboard', href: '/dashboard/agent', icon: BarChart3 },
   { name: 'A2A Tasks', href: '/a2a', icon: Terminal },
+  { name: 'Docs', href: '/docs/sdk', icon: BookOpen },
 ]
 
 export function MobileNav() {
