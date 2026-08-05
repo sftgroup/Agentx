@@ -134,6 +134,7 @@
   - R4-R6 = 待外部前提任务（R4/R5 需业务方提供凭据，R6 零依赖）
   - R7-R9 = 技术债（🔵 可选优化）
   - R10 = 用户定时任务（新需求，2026-08-06 用户确认补充，需求已细化待开发）
+  - R11 = 多调用方接入配置管理（新需求，2026-08-06 用户确认方案，需求已细化待开发）
 
 ### 开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）
 
@@ -226,6 +227,25 @@
   - 禁用后不再触发；删除后运行历史保留
   - P9 禁用租户：调度触发失败被记录（failed + error code），不影响其他功能
   - 运行历史可查（schedule_runs 关联 task 状态）
+
+**R11 多调用方接入配置管理（新需求）** —— 优先级：高 · ⏳ 待细化确认后开发
+- 来源：2026-08-06 用户需求（已确认：平台侧集中管理 + 各调用方项目侧模板；各调用方独立租户 key；5 个调用方全部生成模板）
+- 背景：外部系统调用 AgentX 需统一管理 `AGENTX_GATEWAY_URL` + `AGENTX_CONVERSATION_API_KEY`。调用方：aitrader / aiservicer / aihunter-saas（已存在）/ autoops / aiops-saas（目录未创建）
+- 现状：① 仅 aiservicer 有 `AGENTX_GATEWAY_URL`（config.cjs，fetch gateway chat/mcp/agents）；`AGENTX_CONVERSATION_API_KEY` 全平台不存在；② 平台租户 = wallet + `api_key`（agentx_xxx，`X-Api-Key` 经 apiKeyAuth 识别），admin **无**创建租户/签发 key 端点（租户靠 wallet 登录自动创建）
+- 平台侧：
+  1. 数据表 `integration_partners`：id, slug(唯一), name, gateway_url, tenant_id, active, notes, created_at, updated_at
+  2. admin 端点：GET /admin/integrations（列表）；POST /admin/integrations（创建调用方 = 自动创建租户 + 签发 `agentx_xxx`，明文 key 仅返回一次）；PATCH /admin/integrations/:id（URL/名称/active）；POST /admin/integrations/:id/rotate-key（轮换）；DELETE /admin/integrations/:id
+  3. admin 前端：新增 **Integrations Tab**（卡片列表 + 创建/编辑/轮换/复制配置，显示 `AGENTX_GATEWAY_URL` + `AGENTX_CONVERSATION_API_KEY`）
+  4. 租户创建：wallet_address 用系统标识（如 `partner-<slug>`），plan 可指定（默认 free 或 pro）
+- 调用方侧：
+  5. 统一变量约定：`AGENTX_GATEWAY_URL`（指向 AgentX 网关）+ `AGENTX_CONVERSATION_API_KEY`（租户 key，SDK `ConversationClient.apiKey` / `X-Api-Key`）
+  6. 为 5 个调用方生成 `.env.example` 模板 + 说明（aitrader：python-backend；aiservicer：config.cjs 补 key 支持；aihunter-saas：TypeScript backend；autoops/aiops-saas：占位模板）
+  7. 集成校验：`GET /api/v1/tenant/me` 验证 key 有效性
+- 验收标准：
+  - admin 可创建调用方并获得一次性明文 key；列表/编辑/轮换/禁用可用
+  - 调用方用 gateway_url + key 可访问 /tenant/me、chat、tasks（apiKeyAuth 生效）
+  - key 轮换后旧 key 立即失效
+  - 5 个调用方均有配置模板（含占位）
 
 ---
 
