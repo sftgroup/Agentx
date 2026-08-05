@@ -4,105 +4,7 @@
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useCallback } from 'react'
-
-// 修正后的订阅管理器 ABI - 根据实际合约
-const SUBSCRIPTION_MANAGER_ABI = [
-  {
-    name: 'getUserSubscriptions',
-    type: 'function',
-    inputs: [{ name: 'user', type: 'address' }],
-    outputs: [
-      {
-        name: '',
-        type: 'tuple[]',
-        components: [
-          { name: 'subscriptionId', type: 'uint256' },
-          { name: 'planId', type: 'uint256' },
-          { name: 'agentId', type: 'uint256' },
-          { name: 'subscriber', type: 'address' },
-          { name: 'status', type: 'uint8' },
-          { name: 'startDate', type: 'uint256' },
-          { name: 'nextBillingDate', type: 'uint256' },
-          { name: 'endDate', type: 'uint256' },
-          { name: 'currentUsage', type: 'uint256' },
-          { name: 'totalPaid', type: 'uint256' },
-          { name: 'createdAt', type: 'uint256' }
-        ]
-      }
-    ],
-    stateMutability: 'view'
-  },
-  {
-    name: 'getSubscription',
-    type: 'function',
-    inputs: [{ name: 'subscriptionId', type: 'uint256' }],
-    outputs: [
-      {
-        name: '',
-        type: 'tuple',
-        components: [
-          { name: 'subscriptionId', type: 'uint256' },
-          { name: 'planId', type: 'uint256' },
-          { name: 'agentId', type: 'uint256' },
-          { name: 'subscriber', type: 'address' },
-          { name: 'status', type: 'uint8' },
-          { name: 'startDate', type: 'uint256' },
-          { name: 'nextBillingDate', type: 'uint256' },
-          { name: 'endDate', type: 'uint256' },
-          { name: 'currentUsage', type: 'uint256' },
-          { name: 'totalPaid', type: 'uint256' },
-          { name: 'createdAt', type: 'uint256' }
-        ]
-      }
-    ],
-    stateMutability: 'view'
-  },
-  {
-    name: 'getPlan',
-    type: 'function',
-    inputs: [{ name: 'planId', type: 'uint256' }],
-    outputs: [
-      {
-        name: '',
-        type: 'tuple',
-        components: [
-          { name: 'planId', type: 'uint256' },
-          { name: 'agentId', type: 'uint256' },
-          { name: 'name', type: 'string' },
-          { name: 'description', type: 'string' },
-          { name: 'token', type: 'address' },
-          { name: 'price', type: 'uint256' },
-          { name: 'billingPeriod', type: 'uint8' },
-          { name: 'maxUsage', type: 'uint256' },
-          { name: 'isActive', type: 'bool' },
-          { name: 'createdAt', type: 'uint256' }
-        ]
-      }
-    ],
-    stateMutability: 'view'
-  },
-  {
-    name: 'processPayment',
-    type: 'function',
-    inputs: [{ name: 'subscriptionId', type: 'uint256' }],
-    outputs: [],
-    stateMutability: 'payable'  // 修改为 payable 以支持原生代币支付
-  },
-  {
-    name: 'cancelSubscription',
-    type: 'function',
-    inputs: [{ name: 'subscriptionId', type: 'uint256' }],
-    outputs: [],
-    stateMutability: 'nonpayable'
-  },
-  {
-    name: 'isSubscriptionActive',
-    type: 'function',
-    inputs: [{ name: 'subscriptionId', type: 'uint256' }],
-    outputs: [{ name: '', type: 'bool' }],
-    stateMutability: 'view'
-  }
-] as const
+import { SUBSCRIPTION_MANAGER_V1_ABI } from '@/abis/SubscriptionManagerV1'
 
 // 环境变量验证
 const getSubscriptionManagerAddress = (): `0x${string}` => {
@@ -273,7 +175,7 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
         // 获取基础订阅信息
         const subscriptionData = await publicClient.readContract({
           address: subscriptionManagerAddress,
-          abi: SUBSCRIPTION_MANAGER_ABI,
+          abi: SUBSCRIPTION_MANAGER_V1_ABI,
           functionName: 'getUserSubscriptions',
           args: [address]
         }) as any[]
@@ -328,7 +230,7 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
     try {
       const planData = await publicClient.readContract({
         address: subscriptionManagerAddress,
-        abi: SUBSCRIPTION_MANAGER_ABI,
+        abi: SUBSCRIPTION_MANAGER_V1_ABI,
         functionName: 'getPlan',
         args: [BigInt(planId)]
       }) as any
@@ -366,7 +268,7 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
     try {
       const isActive = await publicClient.readContract({
         address: subscriptionManagerAddress,
-        abi: SUBSCRIPTION_MANAGER_ABI,
+        abi: SUBSCRIPTION_MANAGER_V1_ABI,
         functionName: 'isSubscriptionActive',
         args: [BigInt(subscriptionId)]
       }) as boolean
@@ -395,7 +297,7 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
       // 修复：正确构建 writeContract 参数
       const contractConfig: any = {
         address: subscriptionManagerAddress,
-        abi: SUBSCRIPTION_MANAGER_ABI,
+        abi: SUBSCRIPTION_MANAGER_V1_ABI,
         functionName: 'processPayment',
         args: [BigInt(subscriptionId)],
       }
@@ -440,7 +342,7 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
       
       const hash = await writeContractAsync({
         address: subscriptionManagerAddress,
-        abi: SUBSCRIPTION_MANAGER_ABI,
+        abi: SUBSCRIPTION_MANAGER_V1_ABI,
         functionName: 'cancelSubscription',
         args: [BigInt(subscriptionId)]
       })
@@ -490,7 +392,7 @@ export function useSubscriptionDetail(subscriptionId: number) {
         // 直接获取单个订阅详情
         const subscriptionData = await publicClient.readContract({
           address: getSubscriptionManagerAddress(),
-          abi: SUBSCRIPTION_MANAGER_ABI,
+          abi: SUBSCRIPTION_MANAGER_V1_ABI,
           functionName: 'getSubscription',
           args: [BigInt(subscriptionId)]
         }) as any
@@ -511,7 +413,7 @@ export function useSubscriptionDetail(subscriptionId: number) {
         try {
           const allSubscriptions = await publicClient.readContract({
             address: getSubscriptionManagerAddress(),
-            abi: SUBSCRIPTION_MANAGER_ABI,
+            abi: SUBSCRIPTION_MANAGER_V1_ABI,
             functionName: 'getUserSubscriptions',
             args: [address]
           }) as any[]

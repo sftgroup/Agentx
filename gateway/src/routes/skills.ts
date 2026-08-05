@@ -3,6 +3,7 @@
 
 import { Router, Request, Response } from 'express'
 import { getSkillService } from '../services/skill-service'
+import { adminAuth } from '../middleware/adminAuth'
 
 const router = Router()
 
@@ -76,18 +77,8 @@ router.get('/my', async (req: Request, res: Response) => {
 })
 
 // PUT /api/v1/skills/:id/review — Admin: approve/reject a skill (Admin auth)
-router.put('/:id/review', async (req: Request, res: Response) => {
+router.put('/:id/review', adminAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user
-    // Admin check — relies on admin middleware being applied before this route
-    if (!user?.isAdmin) {
-      // Fallback: check admin key header
-      const adminKey = req.headers['x-admin-key'] as string
-      if (!adminKey || adminKey !== process.env.ADMIN_API_KEY) {
-        return res.status(403).json({ error: 'Admin access required' })
-      }
-    }
-
     const { action, note } = req.body
     if (!['approve', 'reject'].includes(action)) {
       return res.status(400).json({ error: 'action must be "approve" or "reject"' })
@@ -96,7 +87,7 @@ router.put('/:id/review', async (req: Request, res: Response) => {
     const skill = await getSkillService().review({
       id: parseInt(req.params.id),
       action,
-      reviewer: user?.address || 'admin',
+      reviewer: 'admin',
       note,
     })
 

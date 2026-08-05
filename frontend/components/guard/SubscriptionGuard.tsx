@@ -19,21 +19,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useAccount, usePublicClient } from 'wagmi'
 import { AlertCircle, Lock, Loader2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
-
-// ── SubscriptionManager ABI (minimal) ──────────────────────────────────────
-
-const SUBSCRIPTION_MANAGER_ABI = [
-  {
-    name: 'hasActiveSubscription',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'subscriber', type: 'address' },
-      { name: 'agentId', type: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-] as const
+import { SUBSCRIPTION_MANAGER_ABI } from '@/abis/SubscriptionManager'
 
 // ── Context ────────────────────────────────────────────────────────────────
 

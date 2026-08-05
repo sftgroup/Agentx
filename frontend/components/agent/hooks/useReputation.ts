@@ -10,6 +10,7 @@ import {
 } from 'wagmi'
 import { useState, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { REPUTATION_REGISTRY_ABI } from '@/abis/ReputationRegistry'
 
 // 生产级环境变量验证
 const validateAddress = (address: string | undefined): `0x${string}` => {
@@ -21,115 +22,6 @@ const validateAddress = (address: string | undefined): `0x${string}` => {
 }
 
 const REPUTATION_REGISTRY_ADDRESS = validateAddress(process.env.NEXT_PUBLIC_REPUTATION_REGISTRY_ADDRESS)
-
-// 完整的声誉系统 ABI 定义
-const REPUTATION_REGISTRY_ABI = [
-  // 反馈相关函数
-  {
-    name: 'giveFeedback',
-    type: 'function',
-    inputs: [
-      { name: 'agentId', type: 'uint256' },
-      { name: 'score', type: 'uint8' },
-      { name: 'tag1', type: 'bytes32' },
-      { name: 'tag2', type: 'bytes32' },
-      { name: 'fileuri', type: 'string' },
-      { name: 'filehash', type: 'bytes32' },
-      { name: 'feedbackAuth', type: 'bytes' }
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable'
-  },
-  {
-    name: 'revokeFeedback',
-    type: 'function',
-    inputs: [
-      { name: 'agentId', type: 'uint256' },
-      { name: 'feedbackIndex', type: 'uint64' }
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable'
-  },
-  {
-    name: 'appendResponse',
-    type: 'function',
-    inputs: [
-      { name: 'agentId', type: 'uint256' },
-      { name: 'clientAddress', type: 'address' },
-      { name: 'feedbackIndex', type: 'uint64' },
-      { name: 'responseUri', type: 'string' },
-      { name: 'responseHash', type: 'bytes32' }
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable'
-  },
-  
-  // 查询函数
-  {
-    name: 'getReputationSummary',
-    type: 'function',
-    inputs: [
-      { name: 'agentId', type: 'uint256' },
-      { name: 'clientAddresses', type: 'address[]' },
-      { name: 'tag1', type: 'bytes32' },
-      { name: 'tag2', type: 'bytes32' }
-    ],
-    outputs: [
-      { name: 'count', type: 'uint64' },
-      { name: 'averageScore', type: 'uint8' }
-    ],
-    stateMutability: 'view'
-  },
-  {
-    name: 'getReputationSummaryDetailed',
-    type: 'function',
-    inputs: [
-      { name: 'agentId', type: 'uint256' },
-      { name: 'clientAddresses', type: 'address[]' },
-      { name: 'tag1', type: 'bytes32' },
-      { name: 'tag2', type: 'bytes32' }
-    ],
-    outputs: [
-      { name: 'count', type: 'uint64' },
-      { name: 'totalScore', type: 'uint256' },
-      { name: 'averageScorePrecise', type: 'uint16' }
-    ],
-    stateMutability: 'view'
-  },
-  {
-    name: 'readFeedback',
-    type: 'function',
-    inputs: [
-      { name: 'agentId', type: 'uint256' },
-      { name: 'clientAddress', type: 'address' },
-      { name: 'index', type: 'uint64' }
-    ],
-    outputs: [
-      { name: 'score', type: 'uint8' },
-      { name: 'tag1', type: 'bytes32' },
-      { name: 'tag2', type: 'bytes32' },
-      { name: 'isRevoked', type: 'bool' }
-    ],
-    stateMutability: 'view'
-  },
-  {
-    name: 'getClients',
-    type: 'function',
-    inputs: [{ name: 'agentId', type: 'uint256' }],
-    outputs: [{ name: '', type: 'address[]' }],
-    stateMutability: 'view'
-  },
-  {
-    name: 'getLastIndex',
-    type: 'function',
-    inputs: [
-      { name: 'agentId', type: 'uint256' },
-      { name: 'clientAddress', type: 'address' }
-    ],
-    outputs: [{ name: '', type: 'uint64' }],
-    stateMutability: 'view'
-  }
-] as const
 
 // TypeScript 接口定义
 export interface ReputationSummary {

@@ -11,36 +11,15 @@ import {
   Loader2, ArrowRight, Filter, Info, Send, X, Check, Search, Zap, Brain
 } from 'lucide-react'
 import { createPublicClient, http } from 'viem'
+import {
+  A2A_CREATE_TASK_ABI, A2A_COMPLETE_TASK_ABI, A2A_TASK_ABI, A2A_USER_TASKS_ABI,
+} from '@/abis/A2AProtocol'
 
 const oxaChain = { id: 19505, name: 'OxaChain L1', nativeCurrency: { name: 'OXA', symbol: 'OXA', decimals: 18 }, rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_OXACHAIN_RPC_URL || 'https://rpc-oxa.0xainet.top'] } } }
 const A2A_REGISTRY = (process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS || '0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86') as `0x${string}`
 const GATEWAY_URL = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
 
 const publicClient = createPublicClient({ chain: oxaChain, transport: http() })
-
-const A2A_ABI_CREATE_TASK = {
-  inputs: [{ name: 'agentId', type: 'uint256' }, { name: 'taskType', type: 'string' }, { name: 'inputData', type: 'string' }],
-  name: 'createTask', outputs: [{ name: 'taskId', type: 'uint256' }], stateMutability: 'nonpayable', type: 'function',
-} as const
-
-const A2A_ABI_COMPLETE_TASK = {
-  inputs: [{ name: 'taskId', type: 'uint256' }, { name: 'outputData', type: 'string' }, { name: 'status', type: 'uint256' }],
-  name: 'completeTask', outputs: [], stateMutability: 'nonpayable', type: 'function',
-} as const
-
-const A2A_ABI_TASK = {
-  inputs: [{ name: 'taskId', type: 'uint256' }], name: 'getTask',
-  outputs: [
-    { name: 'taskId', type: 'uint256' }, { name: 'agentId', type: 'uint256' }, { name: 'taskType', type: 'string' },
-    { name: 'inputData', type: 'string' }, { name: 'outputData', type: 'string' }, { name: 'status', type: 'uint256' },
-    { name: 'clientAddress', type: 'address' }, { name: 'createdAt', type: 'uint256' }, { name: 'completedAt', type: 'uint256' },
-  ], stateMutability: 'view', type: 'function',
-} as const
-
-const A2A_ABI_USER_TASKS = {
-  inputs: [{ name: 'user', type: 'address' }], name: 'getUserTasks',
-  outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view', type: 'function',
-} as const
 
 const TASK_TYPE_PRESETS = ['Audit', 'Analyze', 'Summarize', 'Research', 'Translate', 'Generate Report']
 
@@ -183,7 +162,7 @@ export default function A2ATasksPage() {
       let taskIds: bigint[] = []
       try {
         taskIds = await publicClient.readContract({
-          address: A2A_REGISTRY, abi: [A2A_ABI_USER_TASKS], functionName: 'getUserTasks', args: [address],
+          address: A2A_REGISTRY, abi: [A2A_USER_TASKS_ABI], functionName: 'getUserTasks', args: [address],
         }) as bigint[]
       } catch (e: any) {
         if (e.message?.includes('returned no data') || e.message?.includes('reverted')) {
@@ -194,7 +173,7 @@ export default function A2ATasksPage() {
           for (let id = 1; consecutiveMisses < MAX_MISSES && id <= 200; id++) {
             try {
               const r = await publicClient.readContract({
-                address: A2A_REGISTRY, abi: [A2A_ABI_TASK], functionName: 'getTask', args: [BigInt(id)],
+                address: A2A_REGISTRY, abi: [A2A_TASK_ABI], functionName: 'getTask', args: [BigInt(id)],
               }) as unknown as any[]
               consecutiveMisses = 0
               if ((r[6] as string).toLowerCase() === address.toLowerCase()) {
@@ -208,7 +187,7 @@ export default function A2ATasksPage() {
       for (const id of taskIds.slice(-50)) {
         try {
           const r = await publicClient.readContract({
-            address: A2A_REGISTRY, abi: [A2A_ABI_TASK], functionName: 'getTask', args: [id],
+            address: A2A_REGISTRY, abi: [A2A_TASK_ABI], functionName: 'getTask', args: [id],
           }) as any
           results.push({
             taskId: Number(r[0]), agentId: Number(r[1]), taskType: r[2] as string,
@@ -229,7 +208,7 @@ export default function A2ATasksPage() {
     setCreating(true); setCreateError(null); setCreateTxHash(null)
     try {
       const hash = await writeContractAsync({
-        address: A2A_REGISTRY, abi: [A2A_ABI_CREATE_TASK], functionName: 'createTask',
+        address: A2A_REGISTRY, abi: [A2A_CREATE_TASK_ABI], functionName: 'createTask',
         args: [BigInt(selectedAgent.id), taskType, inputData],
       })
       setCreateTxHash(hash)
@@ -248,7 +227,7 @@ export default function A2ATasksPage() {
     setCompleting(true)
     try {
       await writeContractAsync({
-        address: A2A_REGISTRY, abi: [A2A_ABI_COMPLETE_TASK], functionName: 'completeTask',
+        address: A2A_REGISTRY, abi: [A2A_COMPLETE_TASK_ABI], functionName: 'completeTask',
         args: [BigInt(completeTarget), completeOutput, BigInt(completeStatus)],
       })
       setCompleteTarget(null); setCompleteOutput(''); setCompleteStatus('3')
