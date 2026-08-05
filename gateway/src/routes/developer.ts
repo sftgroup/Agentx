@@ -18,7 +18,10 @@ const router = Router()
 router.post('/apply', async (req: Request, res: Response) => {
   try {
     const { company, contact_name, contact_email, website, description } = req.body
-    if (!company || !contact_name || !contact_email) {
+    const companyTrim = String(company ?? '').trim()
+    const contactNameTrim = String(contact_name ?? '').trim()
+    const contactEmailTrim = String(contact_email ?? '').trim()
+    if (!companyTrim || !contactNameTrim || !contactEmailTrim) {
       res.status(400).json({ error: 'company, contact_name, and contact_email are required' })
       return
     }
@@ -28,7 +31,7 @@ router.post('/apply', async (req: Request, res: Response) => {
       `INSERT INTO partner_applications (company, contact_name, contact_email, website, description, type)
        VALUES ($1, $2, $3, $4, $5, 'developer')
        RETURNING id, company, type, status, created_at`,
-      [String(company).trim(), String(contact_name).trim(), String(contact_email).trim(),
+      [companyTrim, contactNameTrim, contactEmailTrim,
        website ? String(website).trim() : null, description ? String(description).trim() : null]
     )
 
