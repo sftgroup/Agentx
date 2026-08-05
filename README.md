@@ -1,12 +1,12 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.8.1 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-04
+> SDK v0.8.3 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-05
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
 **两种接入方式，按场景选择：**
 
-- **SDK** · [`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk) v0.8.1 — 直连区块链：链上读写、真实交易（订阅 / 创建套餐）、事件监听、加密、IPFS、对话 SSE。适合 **DApp 与深度集成**。
+- **SDK** · [`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk) v0.8.3 — 直连区块链：链上读写、真实交易（订阅 / 创建套餐）、事件监听、加密、IPFS、对话 SSE。适合 **DApp 与深度集成**。
 - **MCP 客户端** · [`@agentxv2/mcp`](https://www.npmjs.com/package/@agentxv2/mcp) v0.1.0 — 经 Gateway MCP 协议：32 个工具、AI Agent 工具化调用、零依赖、免链配置。适合 **快速接入与只读场景**。
 
 > 详细对比（能力 / 场景 / 选型决策树）：[docs/sdk-vs-mcp.md](docs/sdk-vs-mcp.md)
@@ -36,10 +36,11 @@ Agentx/
 │   │   └── agent/       #   — hooks/, dashboard/ (Agent 仪表板组件)
 │   ├── hooks/           #   — aimarket/, user/ 数据获取 hooks
 │   └── lib/             #   — i18n, ipfs, wagmi 配置
+├── docs/                 # 设计/需求文档 + 统一任务进度清单 (PROGRESS.md)
 ├── .ua/                 # 知识图谱 (Understand-Anything v2.9.4)
 │   └── knowledge-graph.json  # 509 节点 · 451 边 · 8 架构层 · 8 步导览
 ├── CODE_REVIEW_REPORT.md # 代码审查报告与修复任务清单
-└── memory/              # 项目进度记录
+└── memory/              # ⚠️ 已归档（进度统一见 docs/PROGRESS.md）
 ```
 
 ---
@@ -81,7 +82,7 @@ ERC-8004 Standard (planned):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.7.4
+npm install @agentxv2/sdk@0.8.3
 ```
 
 ```typescript
@@ -136,6 +137,8 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | **Dual-Mode LLM** | Platform quota (DeepSeek/OpenAI) + BYOK transparent proxy |
 | **Admin Dashboard** | Web UI for platform key/plan/tenant/usage management |
 | **MCP Remote Tools** | Publisher-hosted tools with ECDSA auth |
+| **Payment Stack** | 链上自动分成（creator 97.5% + 平台 2.5%）+ 渠道归因分成（可追溯）+ 法币订阅 (Stripe, A1) + x402 按次付费 (A2) |
+| **Live Chain Data API** | `/api/v1/chain` 实时直读（SDK 驱动）+ `/api/v1/agents` 索引层（PostgreSQL 双轨架构） |
 | **A2A Protocol** | Agent-to-Agent task delegation with auto-processing Worker + SDK Daemon |
 | **IPFS / Pinata** | Encrypted payload + metadata upload to IPFS via Pinata |
 | **Dual-Chain** | Sepolia (testnet) + OxaChain L1 (mainnet, default) |
@@ -155,10 +158,11 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | **Chain Data API** | `http://43.159.60.46:3090/api/v1/chain`（实时链上读取：health/total/agents/plans/check-subscription） |
 | **MCP Server** | `http://43.159.60.46:3090/mcp` |
 | **Conversation Service** | `http://43.159.60.46:8100` |
+| **SDK Docs (live)** | `http://43.159.60.46:3100/docs/sdk`（实时渲染 SDK README） |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.8.1` |
-| **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.8.0`, production :3100) |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.8.3` |
+| **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.8.3`, production :3100) |
 
 ---
 
@@ -182,6 +186,8 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 
 | Doc | Content |
 |-----|---------|
+| [PROGRESS.md](./docs/PROGRESS.md) | **统一任务清单与进度**（P0–P4 全部任务状态 / 待办 / 生产环境 / 合约地址 / 验证记录） |
+| [payment-architecture.md](./docs/payment-architecture.md) | 支付体系设计：渠道分成、法币订阅 (A1)、x402 按次付费 (A2)、决策树 |
 | [INTEGRATION.md](./INTEGRATION.md) | SDK / Gateway / Contract integration guide |
 | [CONVERSATION_SERVICE.md](./CONVERSATION_SERVICE.md) | Conversation Service server protocol (auth, SSE, BYOK, memory) |
 | [AISERVICER_INTEGRATION.md](./AISERVICER_INTEGRATION.md) | Sample: external project integration (aiservicer) — final BYOK form |
