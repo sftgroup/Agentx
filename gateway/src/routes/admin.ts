@@ -589,7 +589,14 @@ router.get('/channels/:id/report', async (req: Request, res: Response) => {
       totalShareWei: totalShare.toString(),
       outstandingWei: outstanding.toString(),
       attributions: items.map(it => ({ ...it, channelShare: it.channelShare.toString() })),
-      settlements,
+      settlements: settlements.rows.map((r: any) => ({
+        id: r.id,
+        channelId: r.channel_id,
+        amountWei: r.amount_wei,
+        txHash: r.tx_hash,
+        note: r.note,
+        createdAt: r.created_at,
+      })),
     })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
