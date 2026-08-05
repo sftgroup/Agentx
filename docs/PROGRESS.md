@@ -289,7 +289,7 @@
   - B 端 key 调 `/sessions` `/tasks` → 403 PARTNER_TASKS_DISABLED
   - B 端 key 调 `/chat/completions` 进入平台模式（非 401）
   - MCP 对话/任务工具传 `api_key` → 拒绝；传 `access_token` 正常转发
-- 验证：单测 35/35（mcp 新增 B 端 api_key 拒绝用例 + chat-tasks 新增 partner gate 3 用例）；生产冒烟——① developer apply→approve→key（39 字符）；② 租户 `kind=partner, quota_daily=5,000,000`；③ `/sessions` 403 + `/tasks` PARTNER_TASKS_DISABLED；④ `/chat/completions` 500（**根因：生产 `platform_api_keys` 为空（0 行）——R3 既有问题，需在 admin LLM Keys 配置平台 key 后 B 端对话方可真正调用**）；⑤ MCP 传 `api_key` → `access_token (registered-user JWT) is required for this tool` ✅；smoke 数据已清理
+- 验证：单测 35/35（mcp 新增 B 端 api_key 拒绝用例 + chat-tasks 新增 partner gate 3 用例）；生产冒烟——① developer apply→approve→key（39 字符）；② 租户 `kind=partner, quota_daily=5,000,000`；③ `/sessions` 403 + `/tasks` PARTNER_TASKS_DISABLED；④ `/chat/completions` **200**（2026-08-06 配置正式 DeepSeek 平台 key 后 B 端对话真实可用；key 记录于生产 `.env` 的 `DEEPSEEK_API_KEY`，经 admin API 写入 `platform_api_keys` 加密存储）；⑤ MCP 传 `api_key` → `access_token (registered-user JWT) is required for this tool` ✅；smoke 数据已清理
 
 ---
 
