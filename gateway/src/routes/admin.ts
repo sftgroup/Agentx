@@ -721,7 +721,7 @@ router.get('/applications', async (req: Request, res: Response) => {
     }
     const result = await pool.query(
       `SELECT id, company, contact_name, contact_email, website, description,
-              channel_id_hint, desired_share_bps, wallet, status, decision_note, decided_at, created_at
+              channel_id_hint, desired_share_bps, wallet, type, status, decision_note, decided_at, created_at
        FROM partner_applications
        ${where}
        ORDER BY created_at DESC
@@ -734,7 +734,9 @@ router.get('/applications', async (req: Request, res: Response) => {
   }
 })
 
-// Decide an application: approve → auto-create channel, reject → mark rejected.
+// Decide an application: approve → for type=channel auto-create channel; for
+// type=developer auto-create tenant + integration partner + issue api key.
+// reject → mark rejected.
 // body: { decision: 'approved' | 'rejected', channel_id?, share_bps?, note? }
 router.post('/applications/:id/decide', async (req: Request, res: Response) => {
   try {
@@ -763,6 +765,49 @@ router.post('/applications/:id/decide', async (req: Request, res: Response) => {
       await client.query('BEGIN')
 
       if (decision === 'approved') {
+        // R13: type=developer → auto-create tenant + integration partner + issue api key
+        if (app.type === 'developer') {
+          const baseSlug = String(app.company).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'developer'
+          let slug = baseSlug
+          for (let attempt = 1; ; attempt++) {
+            const dup = await client.query(`SELECT id FROM integration_partners WHERE slug = $1`, [slug])
+            if (dup.rowCount === 0) break
+            slug = `${baseSlug}-${attempt}`
+          }
+          const wallet = `partner-${slug}`
+          const apiKey = 'agentx_' + crypto.randomBytes(16).toString('hex')
+          const plan = await client.query(`SELECT id FROM plans WHERE slug = 'enterprise'`)
+          if (plan.rows.length === 0) throw new Error('enterprise plan not found')
+          const tenant = await client.query(
+            `INSERT INTO tenants (wallet_address, name, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key)
+             VALUES ($1, $2, $3, 0, 100, 10, $4)
+             ON CONFLICT (wallet_address) DO UPDATE SET plan_id = EXCLUDED.plan_id
+             RETURNING id`,
+            [wallet, `Integration: ${app.company}`, plan.rows[0].id, apiKey]
+          )
+          const partner = await client.query(
+            `INSERT INTO integration_partners (slug, name, gateway_url, tenant_id, active, notes)
+             VALUES ($1, $2, $3, $4, true, $5)
+             ON CONFLICT (slug) DO UPDATE
+               SET name = EXCLUDED.name, tenant_id = EXCLUDED.tenant_id,
+                   gateway_url = EXCLUDED.gateway_url, notes = EXCLUDED.notes, updated_at = NOW()
+             RETURNING id, slug, name, gateway_url, tenant_id, active`,
+            [slug, app.company, config.publicGatewayUrl, tenant.rows[0].id, note || null]
+          )
+          await client.query(
+            `UPDATE partner_applications SET status = 'approved', decision_note = $1, decided_at = NOW()
+             WHERE id = $2`,
+            [note || `Approved as integration partner "${slug}"`, app.id]
+          )
+          await client.query('COMMIT')
+          res.json({
+            success: true, decision: 'approved', type: 'developer',
+            integration: partner.rows[0],
+            api_key: apiKey,
+            warning: "api_key is shown only on approval — store it in the caller's AGENTX_CONVERSATION_API_KEY",
+          })
+          return
+        }
         // Resolve channel id: explicit > application hint > company slug
         let chId = channel_id || app.channel_id_hint || null
         if (!chId) {

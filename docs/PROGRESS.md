@@ -257,6 +257,24 @@
 - 文档：MCP_SETUP.md（38 tools + Conversation & Tasks 表 + curl 示例）、mcp/README.md、[docs/sdk-vs-mcp.md](sdk-vs-mcp.md)（对话/任务行双通道等价）、README.md、docs/sdk-integration-example.md、[docs/integration-callers.md](integration-callers.md)（新增 §7.5 MCP 接入）
 - 验证：生产部署 + 冒烟 7/7 PASS（tools/list=38 / create_session / create_task→running→done / get_task / list_tasks / cancel_task / chat 聚合）；任务执行错误 `Missing or invalid Authorization header` 为既有 R3 平台兜底 LLM key 未生效问题（非本次引入）
 
+**R13 外部项目方自助申请 API Key（开发者接入申请）** —— 优先级：高 · ✅ 已上线（2026-08-06）
+- 来源：2026-08-06 用户确认（R11 调用方 key 由运营线下在 admin Integrations Tab 手动签发，缺少外部项目方**自助申请**入口；复用 P7-5 B 端申请模型 + R11 自动建租户/签发 key 逻辑）
+- 目标：外部项目方可自助提交接入申请 → admin 审批 → **自动**创建集成租户 + 签发 `agentx_` key；明文 key 在审批响应一次性返回，由运营线下分发给申请方（申请方无账号体系，沿用 R11 分发模式）
+- 平台侧：
+  1. migration 015：`partner_applications` 加 `type TEXT NOT NULL DEFAULT 'channel'`（'channel' | 'developer'）
+  2. 公开端点 `POST /api/v1/developer/apply`（company/contact_name/contact_email/website/description → 创建 type=developer 的 application，status=pending）
+  3. admin `POST /applications/:id/decide` 扩展：approve 按 `app.type` 分支——`developer` → 自动建租户（wallet=`partner-<slug>`，enterprise plan）+ 签发 `agentx_` key（明文仅响应一次）+ 创建 `integration_partners` 行；`channel` → 现有建 channel 逻辑不变
+  4. admin `GET /applications` 返回 `type` 字段
+- 前端：
+  5. `/apply` 页改为**双 Tab**（渠道合作 / API 接入）；developer 表单提交至 `/api/v1/developer/apply`
+  6. admin Applications Tab 支持 developer 类型审批，通过后展示一次性明文 key（复制分发）
+- 验收标准：
+  - 公开提交开发者申请成功 → admin Applications 可见 pending（含 type）
+  - approve 后自动创建租户 + integration partner + key；响应含明文 key；key 经 `GET /tenant/me` 验证 200
+  - 已审批申请不可重复审批（沿用现有保护）
+  - channel 申请/审批流程回归无影响
+- 验证：生产冒烟 4/4 PASS——① developer/apply 创建 type=developer application；② admin approve 返回 `type:'developer'` + `api_key`（`agentx_` 39 字符）+ integration partner（slug=smoke-dev-*）；③ 新 key 经 `GET /tenant/me` 200（enterprise plan · rate_limit_rpm=100 · max_concurrent=10）；④ channel 申请/审批回归返回 `channelId`；smoke 数据已清理
+
 ---
 
 ## 三、生产环境

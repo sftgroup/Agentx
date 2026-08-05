@@ -19,6 +19,7 @@ import mcpRouter from './routes/mcp'
 import agentsRouter from './routes/agents'
 import chainRouter from './routes/chain'
 import channelRouter from './routes/channel'
+import developerRouter from './routes/developer'
 import fiatRouter from './routes/fiat'
 import x402Router from './routes/x402'
 import a2aRouter from './routes/a2a'
@@ -116,6 +117,7 @@ app.use('/api/v1/chain', chainRouter)
 // ── Channel attribution & revenue share (public) ───────────────────────────
 
 app.use('/api/v1/channel', channelRouter)
+app.use('/api/v1/developer', developerRouter)
 
 // ── Fiat subscriptions (A1; inert without Stripe keys) ─────────────────────
 
