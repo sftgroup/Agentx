@@ -102,3 +102,37 @@
   .fade-up-delay-3 { animation-delay: 0.3s; }
   .fade-up-delay-4 { animation-delay: 0.4s; }
 }
+
+/* ── Markdown docs (app/docs) ─────────────────────────── */
+.markdown-body { @apply text-[15px] leading-relaxed text-text-secondary; }
+.markdown-body h1 { @apply text-2xl font-semibold text-text-primary mb-4 pt-2; }
+.markdown-body h2 {
+  @apply text-xl font-semibold text-text-primary mt-10 mb-3 pb-2 border-b border-border/60;
+}
+.markdown-body h3 { @apply text-lg font-semibold text-text-primary mt-6 mb-2; }
+.markdown-body h4 { @apply text-base font-semibold text-text-primary mt-4 mb-2; }
+.markdown-body p { @apply mb-4 leading-relaxed; }
+.markdown-body ul { @apply list-disc ml-5 mb-4 space-y-1; }
+.markdown-body ol { @apply list-decimal ml-5 mb-4 space-y-1; }
+.markdown-body li { @apply leading-relaxed; }
+.markdown-body a { @apply text-accent-purple hover:underline; }
+.markdown-body code {
+  @apply bg-bg-card px-1.5 py-0.5 rounded text-[13px] font-mono text-text-primary;
+}
+.markdown-body pre {
+  @apply bg-bg-card rounded-lg p-4 overflow-x-auto text-[13px] leading-relaxed mb-4 font-mono;
+}
+.markdown-body pre code { @apply bg-transparent p-0; }
+.markdown-body blockquote {
+  @apply border-l-4 border-accent-purple/40 pl-4 my-4 italic text-text-secondary;
+}
+.markdown-body table { @apply w-full text-sm mb-4 border-collapse; }
+.markdown-body th {
+  @apply py-2 px-3 font-semibold text-text-primary text-left whitespace-nowrap border-b border-border;
+}
+.markdown-body td {
+  @apply py-2 px-3 border-b border-border/50 align-top;
+}
+.markdown-body hr { @apply my-8 border-border/60; }
+.markdown-body strong { @apply font-semibold text-text-primary; }
+.markdown-body img { @apply max-w-full rounded-lg my-4; }

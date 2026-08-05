@@ -21,7 +21,8 @@
     "marketplace": "Marketplace",
     "studio": "Studio",
     "dashboard": "Dashboard",
-    "a2aTasks": "A2A Tasks"
+    "a2aTasks": "A2A Tasks",
+    "docs": "Docs"
   },
   "home": {
     "badge": "Decentralized AI Agent Protocol",
