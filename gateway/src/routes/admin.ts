@@ -429,6 +429,23 @@ router.get('/payments', async (req: Request, res: Response) => {
 
 // ── Channels (CRUD + settlement) ───────────────────────────────────────────
 
+// List channels (with attribution counts)
+router.get('/channels', async (_req: Request, res: Response) => {
+  try {
+    const pool = getPool()
+    const result = await pool.query(
+      `SELECT c.id, c.name, c.share_bps, c.wallet, c.active, COUNT(a.id) AS attributions
+       FROM channels c
+       LEFT JOIN channel_attributions a ON a.channel_id = c.id
+       GROUP BY c.id
+       ORDER BY c.id`
+    )
+    res.json({ channels: result.rows })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Create channel
 router.post('/channels', async (req: Request, res: Response) => {
   try {
