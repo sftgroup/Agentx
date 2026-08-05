@@ -28,6 +28,15 @@ describe('POST /api/v1/developer/apply', () => {
     expect(poolMock.query).not.toHaveBeenCalled()
   })
 
+  it('rejects whitespace-only required fields (400)', async () => {
+    const res = await request(app).post('/api/v1/developer/apply').send({
+      company: '   ', contact_name: 'Jane', contact_email: 'jane@acme.io',
+    })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toContain('company, contact_name, and contact_email are required')
+    expect(poolMock.query).not.toHaveBeenCalled()
+  })
+
   it('creates a developer application (201) with type=developer', async () => {
     poolMock.query.mockResolvedValueOnce({
       rows: [{ id: 42, company: 'Acme Labs', type: 'developer', status: 'pending', created_at: '2026-08-06T00:00:00Z' }],

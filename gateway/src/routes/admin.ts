@@ -769,9 +769,10 @@ router.post('/applications/:id/decide', async (req: Request, res: Response) => {
         if (app.type === 'developer') {
           const baseSlug = String(app.company).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'developer'
           let slug = baseSlug
-          for (let attempt = 1; ; attempt++) {
+          for (let attempt = 1; attempt <= 50; attempt++) {
             const dup = await client.query(`SELECT id FROM integration_partners WHERE slug = $1`, [slug])
             if (dup.rowCount === 0) break
+            if (attempt === 50) throw new Error('could not allocate a unique partner slug')
             slug = `${baseSlug}-${attempt}`
           }
           const wallet = `partner-${slug}`
@@ -781,7 +782,8 @@ router.post('/applications/:id/decide', async (req: Request, res: Response) => {
           const tenant = await client.query(
             `INSERT INTO tenants (wallet_address, name, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key)
              VALUES ($1, $2, $3, 0, 100, 10, $4)
-             ON CONFLICT (wallet_address) DO UPDATE SET plan_id = EXCLUDED.plan_id
+             ON CONFLICT (wallet_address) DO UPDATE
+               SET plan_id = EXCLUDED.plan_id, api_key = EXCLUDED.api_key, updated_at = NOW()
              RETURNING id`,
             [wallet, `Integration: ${app.company}`, plan.rows[0].id, apiKey]
           )
@@ -912,7 +914,8 @@ router.post('/integrations', async (req: Request, res: Response) => {
       const tenant = await client.query(
         `INSERT INTO tenants (wallet_address, name, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (wallet_address) DO UPDATE SET plan_id = EXCLUDED.plan_id
+         ON CONFLICT (wallet_address) DO UPDATE
+           SET plan_id = EXCLUDED.plan_id, api_key = EXCLUDED.api_key, updated_at = NOW()
          RETURNING id`,
         [wallet, `Integration: ${name}`, plan.rows[0].id, 0, 100, 10, apiKey]
       )
