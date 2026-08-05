@@ -11,7 +11,7 @@ Agent = Prompt + Skills[] + MCP
 ## Installation
 
 ```bash
-npm install @agentxv2/sdk@0.8.1
+npm install @agentxv2/sdk@0.8.2
 ```
 
 ### Peer Dependencies
@@ -298,6 +298,7 @@ Replaces hand-rolled ethers.js + manual ABI/parseLog code. All methods accept vi
 
 > 完整接入样例（SDK / MCP / REST 三通道 + 关键约定）：[docs/sdk-integration-example.md](../docs/sdk-integration-example.md)
 > 可运行的 SDK 链上读取完整样例（生产地址）：[examples/sdk-chain-read.ts](../examples/sdk-chain-read.ts)
+> 可运行的 SDK 写操作样例（创建套餐，需私钥）：[examples/sdk-create-plan.ts](../examples/sdk-create-plan.ts)
 
 ### IdentityRegistry — batch read
 
@@ -351,6 +352,13 @@ const sub = await sm.subscribe(planId, { valueWei: 5000000000000000n })
 const combined = await sm.createPlanAndSubscribe({ agentId: 42, price: 1n, period: 'day' })
 // → { planId, subscriptionId, txHash, subscriber, agentId, expiresAt }
 ```
+
+> **v0.8.2 写操作签名修复**：`createPlan()` / `subscribe()` / `releaseFunds()` / `cancel()`
+> 现在优先使用完整的 viem `walletClient.account`（含签名能力），支持**本地私钥签名**场景
+> （`privateKeyToAccount` → `eth_sendRawTransaction`）；浏览器钱包（MetaMask 等，
+> json-rpc account）行为不变。此前传入裸地址字符串会走 `eth_sendTransaction`
+> （仅节点托管账户），本地签名时被 RPC 拒绝（`unknown account`）。
+> 写操作完整样例：[examples/sdk-create-plan.ts](../examples/sdk-create-plan.ts)
 
 ### subscribeToEvents — event-driven sync (< 15s vs 2min polling)
 
@@ -566,6 +574,8 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.8.2** | 2026-08-05 | Write-op fix: `createPlan()` / `subscribe()` / `releaseFunds()` / `cancel()` resolve the full viem `walletClient.account` instead of a bare address string — local/private-key signers now work (`eth_sendRawTransaction`); browser wallets unchanged. Verified on-chain (OxaChain L1) |
+| **0.8.1** | 2026-08-04 | `parseTokenURIJSON()` fault-tolerant parsing aligned with Gateway indexer: base64 trailing garbage cleanup, unterminated JSON repair, regex fallback, explicit `ipfs://` handling |
 | **0.8.0** | 2026-08-04 | Chain-data capabilities: `getAllAgents()` / `totalAgents()` / `getAgentMetadata()` on IdentityRegistry; `createPlan()` (typed period `day|week|month|year`) / `subscribe()` (event-parsed result) / `createPlanAndSubscribe()`; `subscribeToEvents()` event stream |
 | **0.7.5** | 2026-08-04 | Fix AgentLoop forcing `ctx.model ?? 'gpt-4o'` over provider model — priority now `ctx.model ?? provider.model ?? default` |
 | **0.7.4** | 2026-08-04 | `ConversationClient` adds `llmModel` (forwarded as `X-Llm-Model`) — BYOK now covers key + endpoint + model (e.g. `deepseek-v4-pro`) |

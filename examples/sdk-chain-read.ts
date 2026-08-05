@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// @agentxv2/sdk — Chain-Data Read/Write Example (v0.8.1)
+// @agentxv2/sdk — Chain-Data Read/Write Example (v0.8.2)
 // ---------------------------------------------------------------------------
 // 完整展示 SDK 直连区块链能力：
 //   读  ：totalAgents / getAllAgents（批量 + 筛选）/ getAgentMetadata / getPlan
 //   事件：subscribeToEvents（实时增量）
-//   写  ：createPlan / subscribe（需要真实钱包，签名链上交易）
+//   写  ：createPlan / subscribe（需要真实钱包，签名链上交易；v0.8.2 起支持本地私钥签名）
 // 特性：v0.8.1 起 tokenURI 解析支持畸形数据容错（base64 尾部垃圾清理、
 //       unterminated JSON 修复、regex 兜底），与 Gateway indexer 行为一致。
 // 运行：node sdk-chain-read.ts（需 npm i viem @agentxv2/sdk）
