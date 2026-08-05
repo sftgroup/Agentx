@@ -77,18 +77,18 @@
 | P6-5 | 生产部署：三服务 `npm install@^0.8.5` + build + pm2 restart，均 online；SDK 版本验证 3/3 为 0.8.5 | ✅ |
 | P6-6 | 回归验证：JWT → gateway `/api/v1/agent/runs` → conversation-service SSE 流式事件正常返回（text/done） | ✅ |
 
-### P7 平台商业化能力（⏳ 规划中，2026-08-06 已加入任务清单，未实施）
-> 用户需求整理（现状调研已完成，见下），待排期实施。
+### P7 平台商业化能力（✅ 完成，2026-08-06 · commits `1fa03b8` / `45703cd` / `25a3914`）
+> 需求调研 → 按阶段全部实施 → 生产部署 + 端到端验证完成。
 
-| # | 需求 | 现状 | 缺口 | 状态 |
-|---|------|------|------|:--:|
-| P7-1 | 付费用户使用平台 LLM（平台 key 在管理后台添加） | admin「LLM Keys」Tab 可增删平台 key（`GET/POST/DELETE /platform-keys`，AES-256-GCM 加密存储、按套餐绑定）；对话链路已通 | 无编辑/启停/权重调整端点与 UI | ⏳ |
-| P7-2 | 普通/付费用户自加 LLM key（预置常见 provider+端点，可自定义） | 后端 `GET/POST/DELETE /tenant/keys` + `validate` 完整；`tenant_api_keys` 表就绪 | **前端零调用**：settings 页 BYOK 表单仅存 localStorage；聊天链路未传 `tenant_key_id`；无预置 provider/端点库 | ⏳ |
-| P7-3 | 管理后台监控平台收入/用户 | admin Tenants（分页）/Usage/System/Revenue/Payments Tab 齐全 | 基本满足，可增量增强 | ✅ |
-| P7-4 | 渠道分成追踪 + 收益提成分配 | `/channel/attribute` + `/channel/report`（share_bps 计算）+ admin 聚合展示；`channels`/`channel_attributions` 表就绪 | 渠道无 CRUD 端点/UI（仅 SQL 插表）；`/channel/report` 无消费方；`settled` 结算/打款流程未实现 | ⏳ |
-| P7-5 | 独立页面供 B 端申请（入驻） | 无 | 无页面、无端点、无表；`channels` 全靠手工 SQL | ⏳ |
+| # | 需求 | 交付 |
+|---|------|------|
+| P7-1 | 付费用户使用平台 LLM（平台 key 在管理后台添加） | admin `PATCH /platform-keys/:id`（编辑/启停/权重）；PlatformKeysTab 增/改双模式表单 |
+| P7-2 | 普通/付费用户自加 LLM key（预置常见 provider+端点，可自定义） | settings 页对接 gateway `/tenant/keys` CRUD + validate；预置 openai/deepseek/moonshot/zhipu/siliconflow/ollama/custom；聊天链路透传 `tenantKeyId`（SDK 0.8.6），gateway 服务器端解密后转发（加密 key 不出服务器） |
+| P7-3 | 管理后台监控平台收入/用户 | 既有 Tenants/Usage/System/Revenue/Payments Tab（保持） |
+| P7-4 | 渠道分成追踪 + 收益提成分配 | 渠道 CRUD（`GET/POST/PATCH/DELETE /channels`）+ 单渠道明细报表（attributions + channelShare 计算）+ 记录制结算（`POST /channels/:id/settle` 写 `channel_settlements` 台账并标记 `settled_at`/`settlement_id`）；链上打款人工发起、台账可审计 |
+| P7-5 | 独立页面供 B 端申请（入驻） | 公开 `POST /channel/apply` + `/apply` 页面（hero + 收益说明 + Glass 表单）；admin Applications Tab 审批/拒绝（通过自动创建 channel） |
 
-> P7 决策备忘：实施范围=按阶段全部做（①LLM key 双轨 → ②渠道结算 → ③B 端申请）；B 端申请深度与渠道结算深度待后续确认。
+> P7 决策备忘：实施范围=按阶段全部做（①LLM key 双轨 → ②渠道结算 → ③B 端申请），已全部完成并生产部署。
 
 ---
 
@@ -116,7 +116,7 @@
 | 服务器 | 43.159.60.46（SSH: ubuntu） |
 | 服务 | agentx-gateway:3090 · agentx-conversation:8100 · agentx-frontend:3100（pm2） |
 | 数据库 | agentx_gateway（索引层）+ agentx_conversation（对话，端口 5433） |
-| SDK | `@agentxv2/sdk@0.8.5`（npm latest；gateway/conversation/frontend 三服务一致） |
+| SDK | `@agentxv2/sdk@0.8.6`（npm latest；gateway/conversation/frontend 三服务一致） |
 | 文档站点 | http://43.159.60.46:3100/docs/sdk（实时渲染 README） |
 | 管理后台 | http://43.159.60.46:3100/admin（X-Admin-Key） |
 | 测试钱包 | `0x52Ec58173042E8d0C9be0BdA81e95a8CbB5B8e06`（OXA 余额充足，私钥在本地 `.env.local`，已被 gitignore 保护） |
@@ -152,6 +152,9 @@
 | SDK 链上创建套餐（0.8.2 修复后） | plan 41 创建成功，读回 period=month；39/40/41 经 PlanCreated 事件同步进 Gateway DB |
 | 干净安装 0.8.3 | ESM+CJS 加载、getPlan(41)、totalAgents()=62 全部正常 |
 | x402 paywall | 返回 HTTP 402 + `x-price/x-pay-to/x-network` 头 |
+| P7 全链路集成回归（生产） | 15/15 通过：三服务 health / 链上读 / MCP 工具 / 对话 SSE 直连与经 gateway |
+| P7 渠道结算链路 smoke（生产） | 渠道创建 → 插入归因（1 OXA）→ report（channelShare=1e18×125/10000 正确）→ settle（写 `channel_settlements` 台账 + attribution `settled=true`）→ 有归因渠道删除自动转停用，全通过；测试数据已清理 |
+| P7 B 端申请链路 smoke（生产） | 公开 `/channel/apply` 提交 → admin 列表可见 → 审批通过自动创建 channel（含 channelId 解析）→ 删除清理，全通过 |
 | 渠道归因 | 归因→幂等（重复归因 false）→ report 分成计算正确（1 ETH × 125bps = 0.0125 ETH） |
 | period 数据清洗 | 生产 38 个套餐全部为标准值；130s 同步周期后无回写 |
 | 管理后台 | system/revenue/payments 200，日志输出 ip/query/耗时/结果 |
