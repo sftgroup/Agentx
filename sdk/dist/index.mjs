@@ -5083,6 +5083,24 @@ var SubscriptionManager = class {
     this.publicClient = config.publicClient;
     this.walletClient = config.walletClient;
   }
+  /**
+   * Resolve the caller account for write operations.
+   *
+   * Prefers `walletClient.account` (a full viem Account object with signing
+   * capability) over `getAddresses()[0]` (a bare address string). Passing a
+   * bare string as `account` makes viem route `writeContract` through
+   * `eth_sendTransaction` (node-managed accounts only), which fails for local
+   * signers; the full object enables local signing via `eth_sendRawTransaction`.
+   * In browser wallets (e.g. MetaMask) `client.account` is a json-rpc account
+   * and the provider signs, so both paths keep working.
+   */
+  async _resolveAccount() {
+    const clientAccount = this.walletClient.account;
+    if (clientAccount) return clientAccount;
+    const [address] = await this.walletClient.getAddresses();
+    if (!address) throw new Error("Wallet not connected");
+    return address;
+  }
   // ── Config Read ──────────────────────────────────────────────────────────
   /** Get current platform fee in basis points (e.g. 250 = 2.5%). */
   async getPlatformFeeBps() {
@@ -5143,8 +5161,7 @@ var SubscriptionManager = class {
     if (trialDays < 0 || trialDays > 30) {
       throw new Error("trialDays must be between 0 and 30");
     }
-    const [account] = await this.walletClient.getAddresses();
-    if (!account) throw new Error("Wallet not connected");
+    const account = await this._resolveAccount();
     const { request } = await this.publicClient.simulateContract({
       account,
       address: this.address,
@@ -5152,7 +5169,7 @@ var SubscriptionManager = class {
       functionName: "createPlan",
       args: [BigInt(agentId), price, period, payToken, BigInt(trialDays)]
     });
-    const hash2 = await this.walletClient.writeContract(request);
+    const hash2 = await this.walletClient.writeContract({ ...request, account });
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
     return { planId: this._parsePlanIdFromReceipt(receipt), txHash: hash2 };
   }
@@ -5166,8 +5183,7 @@ var SubscriptionManager = class {
    *          the Subscribed event (no longer hardcoded to 0).
    */
   async subscribe(planId, opts) {
-    const [account] = await this.walletClient.getAddresses();
-    if (!account) throw new Error("Wallet not connected");
+    const account = await this._resolveAccount();
     const plan = await this.getPlan(planId);
     if (!plan.active) throw new Error("Plan not active");
     if (plan.payToken === ZERO_ADDRESS2) {
@@ -5180,16 +5196,17 @@ var SubscriptionManager = class {
         args: [BigInt(planId)],
         value
       });
-      const hash2 = await this.walletClient.writeContract(request);
+      const hash2 = await this.walletClient.writeContract({ ...request, account });
       const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
       return { txHash: hash2, ...this._parseSubscribedFromReceipt(receipt) };
     } else {
+      const accountAddress = typeof account === "string" ? account : account.address;
       if (opts?.approveTokenFirst !== false) {
         const allowance = await this.publicClient.readContract({
           address: plan.payToken,
           abi: [ERC20_ABI.allowance],
           functionName: "allowance",
-          args: [account, this.address]
+          args: [accountAddress, this.address]
         });
         if (allowance < plan.price) {
           const { request: approveReq } = await this.publicClient.simulateContract({
@@ -5199,7 +5216,7 @@ var SubscriptionManager = class {
             functionName: "approve",
             args: [this.address, plan.price]
           });
-          await this.walletClient.writeContract(approveReq);
+          await this.walletClient.writeContract({ ...approveReq, account });
         }
       }
       const { request } = await this.publicClient.simulateContract({
@@ -5209,7 +5226,7 @@ var SubscriptionManager = class {
         functionName: "subscribe",
         args: [BigInt(planId)]
       });
-      const hash2 = await this.walletClient.writeContract(request);
+      const hash2 = await this.walletClient.writeContract({ ...request, account });
       const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
       return { txHash: hash2, ...this._parseSubscribedFromReceipt(receipt) };
     }
@@ -5225,8 +5242,7 @@ var SubscriptionManager = class {
   }
   /** Release escrowed funds to creator after trial window ends. */
   async releaseFunds(subscriptionId) {
-    const [account] = await this.walletClient.getAddresses();
-    if (!account) throw new Error("Wallet not connected");
+    const account = await this._resolveAccount();
     const { request } = await this.publicClient.simulateContract({
       account,
       address: this.address,
@@ -5234,12 +5250,11 @@ var SubscriptionManager = class {
       functionName: "releaseFunds",
       args: [BigInt(subscriptionId)]
     });
-    return this.walletClient.writeContract(request);
+    return this.walletClient.writeContract({ ...request, account });
   }
   /** Cancel subscription (trial refund if within window). */
   async cancel(subscriptionId) {
-    const [account] = await this.walletClient.getAddresses();
-    if (!account) throw new Error("Wallet not connected");
+    const account = await this._resolveAccount();
     const { request } = await this.publicClient.simulateContract({
       account,
       address: this.address,
@@ -5247,7 +5262,7 @@ var SubscriptionManager = class {
       functionName: "cancelSubscription",
       args: [BigInt(subscriptionId)]
     });
-    return this.walletClient.writeContract(request);
+    return this.walletClient.writeContract({ ...request, account });
   }
   // ── Read ─────────────────────────────────────────────────────────────────
   async hasActiveSubscription(subscriber, agentId) {
