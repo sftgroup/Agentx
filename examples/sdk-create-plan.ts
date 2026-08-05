@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @agentxv2/sdk — Chain-Data Write Example: Create a Subscription Plan (v0.8.2)
+// @agentxv2/sdk — Chain-Data Write Example: Create a Subscription Plan (v0.8.6)
 // ---------------------------------------------------------------------------
 // 演示 SDK 写操作：createPlan → getPlan 读回（OxaChain L1 生产地址）。
 // v0.8.2 起写操作支持本地私钥签名（walletClient.account 完整对象 →

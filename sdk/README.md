@@ -228,9 +228,11 @@ const result = await connector.callTool('get_balance', {
 
 ---
 
-## ConversationClient (v0.8.4) — Remote Conversation Service
+## ConversationClient (v0.8.6) — Remote Conversation Service
 
 Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auth requires **either** a tenant `apiKey` (`X-Api-Key`) **or** a Gateway `accessToken` (`Authorization: Bearer` — wallet-signed login). Also auto-sends `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` + `X-Llm-Endpoint` + `X-Llm-Model` (stateless BYOK override — your own key AND endpoint AND model, e.g. DeepSeek).
+
+> **v0.8.6 — stored BYOK (`tenantKeyId`)**: each chat/stream request can pass `tenantKeyId` to use a tenant-owned API key already stored & AES-encrypted on the Gateway (managed via Settings → Own LLM Keys, backed by `/tenant/keys`). The Gateway resolves the key server-side and injects it as `X-Llm-Api-Key` (priority over request-level headers) — the plaintext key never leaves the server. This complements the stateless `llmApiKey` override (request-level, highest priority).
 
 ```ts
 import { ConversationClient } from '@agentxv2/sdk/conversation'
@@ -253,6 +255,7 @@ for await (const event of client.stream({
   message: 'Analyze this contract',
   enableMemory: true,
   history: [{ role: 'user', content: 'hi' }],
+  tenantKeyId: 'key-01HX...',               // v0.8.6: BYOK via a stored tenant-owned API key (Settings → Own LLM Keys)
 }, { signal: controller.signal })) {
   switch (event.type) {
     case 'text':           appendDelta(event.content!); break

@@ -2,7 +2,7 @@
 
 > 面向任何想要接入 AgentX 平台的第三方服务（AI 助手平台、交易工具、SaaS 产品等）。
 > 本文提供三种接入通道（SDK / MCP / REST）的完整可运行样例，以及必须注意的关键约定。
-> 版本：SDK v0.8.1 · 2026-08-05
+> 版本：SDK v0.8.6 · 2026-08-06
 
 ---
 
@@ -29,7 +29,7 @@
 ### 2.1 安装
 
 ```bash
-npm install @agentxv2/sdk@0.8.1
+npm install @agentxv2/sdk@0.8.6
 ```
 
 ### 2.2 初始化（chain-agnostic，viem）
@@ -156,6 +156,9 @@ const client = new ConversationClient({
 for await (const event of client.stream({ message: '你好', agentId: 1 })) {
   if (event.type === 'text') console.log(event.content)
 }
+
+// v0.8.6 存储式 BYOK：使用已在平台 Settings 保存的租户自有 key（明文不出服务器）
+// 聊天链路也可传 tenantKeyId：client.stream({ agentId: 1, message: '...', tenantKeyId: 'key-01HX...' })
 ```
 
 ---
