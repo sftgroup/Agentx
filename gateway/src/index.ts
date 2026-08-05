@@ -170,9 +170,9 @@ api.use('/tenant', tenantRouter)
 // /chat/history deprecated — use conversation-service instead
 api.use('/agent', agentRunsRouter)
 api.use('/traces', tracesRouter)
-// Chat sessions + parallel tasks (proxied to conversation-service)
-api.use('/sessions', chatTasksRouter)
-api.use('/tasks', chatTasksRouter)
+// Chat sessions + parallel tasks (proxied to conversation-service).
+// Router declares full paths (/sessions..., /tasks...) so mount at root.
+api.use('/', chatTasksRouter)
 
 app.use('/api/v1', api)
 
