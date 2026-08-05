@@ -1,6 +1,6 @@
 # AgentX — 项目任务清单与进度
 
-> Last updated: 2026-08-05 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
+> Last updated: 2026-08-06 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
 > 状态图例：✅ 完成 · ⏸ 代码完成待外部前提 · 🔧 进行中 · ⏳ 待办 · 🔵 技术债
 
 ---
@@ -48,6 +48,21 @@
 | P4-3 | 前端套餐管理闭环：`/user/plans` 创建套餐入口 + 移除 Quarterly 选项（合约无 quarter） | ✅ |
 | P4-4 | 文档站点 `/docs/sdk`：服务端每次请求实时渲染 `sdk/README.md`（marked，force-dynamic） | ✅ |
 | P4-5 | 代码清理：4 个 TS1434 遗留文件 + 40+ 历史类型错误修复，typecheck 零错误 | ✅ |
+| P4-6 | 全项目代码审查修复（commit `90bddc0`，净 -107 行）：见下「P5」 | ✅ |
+
+### P5 代码审查修复（✅ 完成，2026-08-06 · commit `90bddc0`）
+> 审查维度：硬编码 / 大文件 / 模块化解耦 / 过度设计冗余 / 鉴权统一性
+
+| # | 维度 | 修复内容 | 状态 |
+|---|------|---------|:--:|
+| P5-1 | 硬编码 | gateway `config.ts` 生产 fail-fast：`JWT_SECRET` / `CONVERSATION_SERVICE_TOKEN` 缺失或仍为占位值即拒绝启动 | ✅ |
+| P5-2 | 硬编码 | `ZERO_ADDRESS` 常量抽取（mcp.ts / chain-data-reader.ts）；mcp.ts 头部旧生产 IP（43.156.225.164）修正为 43.159.60.46 | ✅ |
+| P5-3 | 冗余/死代码 | 删除未挂载的 `gateway/src/routes/history.ts`（deprecated，-117 行） | ✅ |
+| P5-4 | 模块化/解耦 | mcp.ts Identity + Subscription 链读统一走 `ChainDataReader`（SDK 栈），删除 ethers 双套实现与手工 AbiCoder 解码；ChainDataReader 新增 `getSubscriptionDetail` / `getUserSubscriptions` | ✅ |
+| P5-5 | 鉴权统一 | `skills.ts` review 端点改用共享 `adminAuth` 中间件；原内联校验引用不存在的 `ADMIN_API_KEY` 变量，端点恒 403 | ✅ |
+| P5-6 | ABI 冗余 | 前端 `abis/` 新增 `SubscriptionManager`（v2 规范）/ `SubscriptionManagerV1`（legacy 兼容）/ `ReputationRegistry` / `A2AProtocol` 共享模块；5 处内联 ABI 全部改为导入 | ✅ |
+| P5-7 | 安全 | `.gitignore` 忽略 `.env.local` / `.env.*.local`（含钱包私钥的本地环境文件，此前未被忽略） | ✅ |
+| P5-8 | 生产修复 | 执行已有 migration `001_skills.sql` 补建生产 `skills` 表（缺失导致 skills 端点 500，review 端点此前从未真正可用） | ✅ |
 
 ---
 
@@ -59,6 +74,7 @@
   - x402：提供结算通道与收款钱包 → 配置 `X402_ENABLED=true` / `X402_PAY_TO`
   - 渠道归因：向 `channels` 表插入渠道配置即可启用（零外部依赖）
 - **技术债（🔵 可选优化）**：
+  - 8 个 >760 行大文件待拆分（`gateway/src/routes/mcp.ts`、前端 hooks/组件等）——审查 #9，单独排期
   - 主入口仍 re-export react hooks（useAgentRunner），导致后端用户也需安装 wagmi——可后续拆分为独立子路径
   - admin/revenue 链上平台费目前只展示原生代币（OXA/ETH），ERC20 付费的按 token 展示扩展点已预留
   - 上游依赖 `@coinbase/cdp-sdk → axios` 存在 high 级通用 DoS 漏洞，待上游发版修复（与 SDK 代码无关）
@@ -111,6 +127,7 @@
 | 渠道归因 | 归因→幂等（重复归因 false）→ report 分成计算正确（1 ETH × 125bps = 0.0125 ETH） |
 | period 数据清洗 | 生产 38 个套餐全部为标准值；130s 同步周期后无回写 |
 | 管理后台 | system/revenue/payments 200，日志输出 ip/query/耗时/结果 |
+| 代码审查修复回归（90bddc0） | gateway/frontend typecheck+build 全绿；MCP 迁移后 identity_total_count=62 / subscription_plans / identity_list_all(过滤) / subscription_my_list=[1,2,3] 正常；skills review 无 key→401、带 key→404(业务语义)；生产三服务 online，frontend 200 |
 
 ---
 
