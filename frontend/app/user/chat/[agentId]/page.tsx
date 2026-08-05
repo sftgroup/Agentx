@@ -28,6 +28,17 @@ interface ModelOption {
 
 const HISTORY_KEY_PREFIX = 'agentx-chat-history-'
 
+// Read the active LLM key stored locally by the settings page (stateless BYOK fallback).
+function llmApiKeyFromLocalStorage(): string | undefined {
+  try {
+    const configs = JSON.parse(localStorage.getItem('aiConfigs') || '[]') as { apiKey: string; isActive: boolean }[]
+    const active = configs.find(c => c.isActive) || configs[0]
+    return active?.apiKey || undefined
+  } catch {
+    return undefined
+  }
+}
+
 export default function ChatPage() {
   const params = useParams()
   const { isConnected } = useAccount()
@@ -166,7 +177,10 @@ export default function ChatPage() {
           agentId,
           gatewayUrl,
           accessToken: gatewayCtx.accessToken,
-          llmApiKey: selectedModel?.source === 'tenant_owned' ? undefined : undefined,
+          // BYOK: prefer the tenant's stored key (resolved server-side by the Gateway);
+          // fall back to an ephemeral header key for stateless BYOK mode.
+          tenantKeyId: selectedModel?.source === 'tenant_owned' ? selectedModel.tenantKeyId : undefined,
+          llmApiKey: selectedModel?.source === 'tenant_owned' && !selectedModel.tenantKeyId ? llmApiKeyFromLocalStorage() : undefined,
           enableMemory: true,
           onComplete: (usage) => {
             // Optional: track usage

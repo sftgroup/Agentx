@@ -1,83 +1,298 @@
 // app/user/settings/page.tsx — API Settings (Glassmorphism Dark)
+// Own LLM keys are stored encrypted server-side via the Gateway (POST /tenant/keys)
+// and used by the SSE chat pipeline (resolved server-side, never exposed to the browser).
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { Settings, Plus, Trash2, Edit, Check, X, Zap, Key, Copy, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Settings, Plus, Trash2, Check, X, Zap, Key, Copy, Eye, EyeOff, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react'
 import { useAccount, useWalletClient } from 'wagmi'
+import { useGatewayAuth } from '@/hooks/useGatewayAuth'
 
-interface AIConfig { id: string; name: string; provider: string; endpoint: string; apiKey: string; model: string; temperature: number; maxTokens: number; isActive: boolean }
-
-const DEFAULT_CONFIGS: Record<string, { endpoint: string; models: string[]; displayName: string }> = {
-  openai: { endpoint: 'https://api.openai.com/v1/chat/completions', models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'], displayName: 'OpenAI' },
-  deepseek: { endpoint: 'https://api.deepseek.com/v1/chat/completions', models: ['deepseek-chat', 'deepseek-v4-pro'], displayName: 'DeepSeek' },
+// Preset OpenAI-compatible providers (endpoint base, no /chat/completions suffix).
+// Users may also pick "custom" and enter their own endpoint + model.
+interface ProviderPreset {
+  id: string
+  name: string
+  endpoint: string
+  models: string[]
 }
 
+const PROVIDERS: ProviderPreset[] = [
+  { id: 'openai', name: 'OpenAI', endpoint: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
+  { id: 'deepseek', name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1', models: ['deepseek-chat', 'deepseek-reasoner'] },
+  { id: 'moonshot', name: 'Moonshot (Kimi)', endpoint: 'https://api.moonshot.cn/v1', models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'kimi-k2-0905-preview'] },
+  { id: 'zhipu', name: 'Zhipu GLM', endpoint: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-4-plus', 'glm-4-flash', 'glm-4-air'] },
+  { id: 'siliconflow', name: 'SiliconFlow', endpoint: 'https://api.siliconflow.cn/v1', models: ['deepseek-ai/DeepSeek-V3', 'Qwen/Qwen2.5-72B-Instruct'] },
+  { id: 'ollama', name: 'Ollama (local)', endpoint: 'http://localhost:11434/v1', models: ['llama3.1'] },
+  { id: 'custom', name: 'Custom', endpoint: '', models: [] },
+]
+
+const GATEWAY = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || ''
+
 export default function SettingsPage() {
-  const [configs, setConfigs] = useState<AIConfig[]>([])
-  const [editing, setEditing] = useState<AIConfig | null>(null)
+  const { isConnected } = useAccount()
+  const { accessToken, isAuthenticated, context, refreshContext } = useGatewayAuth(GATEWAY)
+
   const [showForm, setShowForm] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => { const saved = localStorage.getItem('aiConfigs'); if (saved) setConfigs(JSON.parse(saved)) }, [])
-
-  const save = (cfg: AIConfig) => {
-    const next = editing ? configs.map(c => c.id === cfg.id ? cfg : c) : [...configs, { ...cfg, id: Date.now().toString() }]
-    setConfigs(next); localStorage.setItem('aiConfigs', JSON.stringify(next)); setShowForm(false); setEditing(null)
+  // ── Own key CRUD ────────────────────────────────────────────────────
+  const deleteKey = async (id: string) => {
+    setBusy(true); setError(null)
+    try {
+      const r = await fetch(`${GATEWAY}/api/v1/tenant/keys/${id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!r.ok) throw new Error((await r.json()).error || 'Delete failed')
+      await refreshContext()
+    } catch (e: any) { setError(e.message) }
+    finally { setBusy(false) }
   }
 
-  const remove = (id: string) => { const next = configs.filter(c => c.id !== id); setConfigs(next); localStorage.setItem('aiConfigs', JSON.stringify(next)) }
-  const setActive = (id: string) => {
-    const next = configs.map(c => ({ ...c, isActive: c.id === id })); setConfigs(next); localStorage.setItem('aiConfigs', JSON.stringify(next))
+  const validateKey = async (id: string) => {
+    setBusy(true); setError(null)
+    try {
+      const r = await fetch(`${GATEWAY}/api/v1/tenant/keys/${id}/validate`, {
+        method: 'POST', headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Validate failed')
+      await refreshContext()
+    } catch (e: any) { setError(e.message) }
+    finally { setBusy(false) }
   }
+
+  const addKey = async (input: { provider: string; endpoint: string; api_key: string; model: string; label?: string }) => {
+    setBusy(true); setError(null)
+    try {
+      const r = await fetch(`${GATEWAY}/api/v1/tenant/keys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify(input),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Add failed')
+      await refreshContext()
+      return true
+    } catch (e: any) {
+      setError(e.message)
+      return false
+    } finally { setBusy(false) }
+  }
+
+  const ownKeys = context?.ownKeys || []
 
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto py-8 px-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="heading-md flex items-center gap-3"><div className="w-9 h-9 rounded-xl bg-accent-purple/10 flex items-center justify-center"><Settings className="w-5 h-5 text-accent-purple" /></div>API Settings</h1>
-            <p className="body text-text-secondary mt-1">Configure LLM API keys for Agent chatting</p>
+            <h1 className="heading-md flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent-purple/10 flex items-center justify-center">
+                <Settings className="w-5 h-5 text-accent-purple" />
+              </div>API Settings
+            </h1>
+            <p className="body text-text-secondary mt-1">Configure your own LLM API keys or use the platform's managed models</p>
           </div>
-          <button onClick={() => { setEditing(null); setShowForm(true) }} className="btn-primary text-sm py-2"><Plus className="w-4 h-4" /> Add Config</button>
+          <button
+            onClick={() => { setShowForm(v => !v); setError(null) }}
+            disabled={!isAuthenticated}
+            className="btn-primary text-sm py-2 disabled:opacity-30"
+          >
+            <Plus className="w-4 h-4" /> Add Key
+          </button>
         </div>
 
-        {/* ── AgentX Platform API Key ─────────────────────────────────── */}
-        <PlatformApiKey />
-
-        {showForm && <ConfigForm editing={editing} onSave={save} onCancel={() => { setShowForm(false); setEditing(null) }} />}
-
-        {configs.length === 0 ? (
-          <div className="glass-card p-12 text-center">
-            <Zap className="w-12 h-12 text-text-muted mx-auto mb-3 opacity-30" />
-            <p className="text-text-secondary mb-4">No API configs yet. Add one to start chatting with Agents.</p>
-            <button onClick={() => { setEditing(null); setShowForm(true) }} className="btn-primary text-sm"><Plus className="w-4 h-4" /> Add Config</button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {configs.map(cfg => (
-              <div key={cfg.id} className={`glass-card glass-card-hover p-5 ${cfg.isActive ? 'ring-1 ring-accent-purple/30' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-accent-purple/10 flex items-center justify-center"><Zap className="w-5 h-5 text-accent-purple" /></div>
-                    <div>
-                      <div className="font-semibold text-sm">{cfg.name} <span className="text-xs text-text-muted ml-1">({cfg.provider})</span></div>
-                      <div className="text-xs text-text-muted">{cfg.model} · {cfg.endpoint.replace(/^https?:\/\//, '').replace(/\/v1\/.*/, '')}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {cfg.isActive ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-400/10 text-green-400">Active</span> : <button onClick={() => setActive(cfg.id)} className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-text-muted hover:text-accent-purple transition-colors">Activate</button>}
-                    <button onClick={() => { setEditing(cfg); setShowForm(true) }} className="text-text-muted hover:text-text-secondary transition-colors"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => remove(cfg.id)} className="text-text-muted hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                </div>
-              </div>
-            ))}
+        {!isConnected && (
+          <div className="glass-card p-6 text-sm text-text-muted flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-400" />
+            Connect your wallet to manage your own LLM API keys.
           </div>
         )}
+
+        {error && (
+          <div className="glass-card p-4 text-sm text-red-400 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)}><X className="w-4 h-4" /></button>
+          </div>
+        )}
+
+        {/* ── Platform API Key ─────────────────────────────────────── */}
+        <PlatformApiKey />
+
+        {/* ── Own LLM Keys (server-stored BYOK) ───────────────────── */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-text-secondary">
+            <ShieldCheck className="w-4 h-4 text-accent-cyan" /> Own LLM Keys
+            <span className="text-xs font-normal text-text-muted">encrypted at rest · resolved server-side · never exposed to the browser</span>
+          </div>
+
+          {ownKeys.length === 0 && !showForm ? (
+            <div className="glass-card p-8 text-center">
+              <Zap className="w-10 h-10 text-text-muted mx-auto mb-2 opacity-30" />
+              <p className="text-sm text-text-secondary">No own LLM keys yet. Add one to chat with your own API key (highest priority) or use platform models on paid plans.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {ownKeys.map(k => (
+                <div key={k.id} className="glass-card glass-card-hover p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-accent-cyan/10 flex items-center justify-center shrink-0">
+                      <Zap className="w-4 h-4 text-accent-cyan" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm flex items-center gap-2">
+                        {k.label || `${k.provider} key`}
+                        <span
+                          className={`text-xs px-1.5 py-0.5 rounded-full ${k.is_active ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}`}
+                        >
+                          {k.is_active ? 'active' : 'inactive'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-text-muted truncate">{k.provider} · {k.model} · {k.endpoint?.replace(/^https?:\/\//, '')}</div>
+                      {k.last_validated && <div className="text-[11px] text-text-muted">validated {new Date(k.last_validated).toLocaleString()}</div>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => validateKey(k.id)} disabled={busy} className="text-xs px-2 py-1 rounded-lg bg-white/5 text-text-muted hover:text-accent-cyan transition-colors disabled:opacity-30">
+                      Validate
+                    </button>
+                    <button onClick={() => deleteKey(k.id)} disabled={busy} className="text-text-muted hover:text-red-400 transition-colors disabled:opacity-30">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showForm && isAuthenticated && (
+            <KeyForm
+              busy={busy}
+              onSubmit={async (input) => {
+                const ok = await addKey(input)
+                if (ok) setShowForm(false)
+              }}
+              onCancel={() => setShowForm(false)}
+            />
+          )}
+        </div>
       </div>
     </AppLayout>
   )
 }
+
+// ── Add-key form with preset providers ─────────────────────────────────────
+
+function KeyForm({ busy, onSubmit, onCancel }: {
+  busy: boolean
+  onSubmit: (input: { provider: string; endpoint: string; api_key: string; model: string; label?: string }) => Promise<void>
+  onCancel: () => void
+}) {
+  const [provider, setProvider] = useState(PROVIDERS[0]!.id)
+  const [endpoint, setEndpoint] = useState(PROVIDERS[0]!.endpoint)
+  const [model, setModel] = useState(PROVIDERS[0]!.models[0]!)
+  const [apiKey, setApiKey] = useState('')
+  const [label, setLabel] = useState('')
+  const [customModel, setCustomModel] = useState('')
+
+  const preset = PROVIDERS.find(p => p.id === provider)!
+
+  const applyProvider = (id: string) => {
+    setProvider(id)
+    const p = PROVIDERS.find(x => x.id === id)!
+    setEndpoint(p.endpoint)
+    setModel(p.models[0] || '')
+    setCustomModel('')
+  }
+
+  const resolvedModel = provider === 'custom' ? customModel.trim() : model
+
+  const handleSubmit = async () => {
+    if (!apiKey.trim() || !endpoint.trim() || !resolvedModel) return
+    await onSubmit({
+      provider,
+      endpoint: endpoint.trim(),
+      api_key: apiKey.trim(),
+      model: resolvedModel,
+      label: label.trim() || undefined,
+    })
+  }
+
+  return (
+    <div className="glass-card p-6 space-y-4">
+      <h2 className="text-lg font-semibold">Add Own LLM Key</h2>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm text-text-secondary mb-1.5 block">Provider</label>
+          <select
+            value={provider}
+            onChange={e => applyProvider(e.target.value)}
+            className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors"
+          >
+            {PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-sm text-text-secondary mb-1.5 block">Label (optional)</label>
+          <input
+            value={label}
+            onChange={e => setLabel(e.target.value)}
+            placeholder="e.g. My DeepSeek key"
+            className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm text-text-secondary mb-1.5 block">Endpoint (OpenAI-compatible base URL)</label>
+          <input
+            value={endpoint}
+            onChange={e => setEndpoint(e.target.value)}
+            className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors font-mono"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm text-text-secondary mb-1.5 block">Model</label>
+          {provider === 'custom' ? (
+            <input
+              value={customModel}
+              onChange={e => setCustomModel(e.target.value)}
+              placeholder="e.g. my-model-v1"
+              className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors font-mono"
+            />
+          ) : (
+            <select
+              value={model}
+              onChange={e => setModel(e.target.value)}
+              className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors"
+            >
+              {preset.models.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          )}
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm text-text-secondary mb-1.5 block">API Key</label>
+          <input
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+            type="password"
+            placeholder="sk-..."
+            className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors font-mono"
+          />
+        </div>
+      </div>
+      <div className="flex gap-3 pt-2">
+        <button onClick={handleSubmit} disabled={busy || !apiKey.trim() || !resolvedModel} className="btn-primary text-sm px-6 py-2 disabled:opacity-30">
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Save
+        </button>
+        <button onClick={onCancel} className="btn-secondary text-sm px-6 py-2"><X className="w-4 h-4" /> Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Platform API Key (existing) ────────────────────────────────────────────
 
 function PlatformApiKey() {
   const { address, isConnected } = useAccount()
@@ -204,59 +419,6 @@ function PlatformApiKey() {
       ) : (
         <button onClick={fetchApiKey} className="btn-primary text-sm py-2"><Key className="w-4 h-4" /> Generate API Key</button>
       )}
-    </div>
-  )
-}
-
-function ConfigForm({ editing, onSave, onCancel }: { editing: AIConfig | null; onSave: (c: AIConfig) => void; onCancel: () => void }) {
-  const [provider, setProvider] = useState(editing?.provider || 'openai')
-  const [name, setName] = useState(editing?.name || '')
-  const [apiKey, setApiKey] = useState(editing?.apiKey || '')
-  const [model, setModel] = useState(editing?.model || DEFAULT_CONFIGS.openai.models[0])
-  const [endpoint, setEndpoint] = useState(editing?.endpoint || DEFAULT_CONFIGS.openai.endpoint)
-
-  useEffect(() => {
-    if (!editing) { const def = DEFAULT_CONFIGS[provider]; if (def) { setEndpoint(def.endpoint); setModel(def.models[0]) } }
-  }, [provider, editing])
-
-  const handleSave = () => {
-    if (!name.trim() || !apiKey.trim()) return
-    onSave({ id: editing?.id || '', name, provider, endpoint, apiKey, model, temperature: 0.7, maxTokens: 2048, isActive: editing?.isActive || false })
-  }
-
-  return (
-    <div className="glass-card p-6 space-y-4">
-      <h2 className="text-lg font-semibold">{editing ? 'Edit Config' : 'New Config'}</h2>
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm text-text-secondary mb-1.5 block">Name</label>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="My OpenAI Key" className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors" />
-        </div>
-        <div>
-          <label className="text-sm text-text-secondary mb-1.5 block">Provider</label>
-          <select value={provider} onChange={e => setProvider(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors">
-            {Object.entries(DEFAULT_CONFIGS).map(([k, v]) => <option key={k} value={k}>{v.displayName}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-sm text-text-secondary mb-1.5 block">Model</label>
-          <select value={model} onChange={e => setModel(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors">
-            {(DEFAULT_CONFIGS[provider]?.models || []).map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-sm text-text-secondary mb-1.5 block">Endpoint</label>
-          <input value={endpoint} onChange={e => setEndpoint(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors font-mono" />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm text-text-secondary mb-1.5 block">API Key</label>
-          <input value={apiKey} onChange={e => setApiKey(e.target.value)} type="password" placeholder="sk-..." className="w-full px-3 py-2 bg-white/5 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent-purple/40 transition-colors font-mono" />
-        </div>
-      </div>
-      <div className="flex gap-3 pt-2">
-        <button onClick={handleSave} className="btn-primary text-sm px-6 py-2"><Check className="w-4 h-4" /> Save</button>
-        <button onClick={onCancel} className="btn-secondary text-sm px-6 py-2"><X className="w-4 h-4" /> Cancel</button>
-      </div>
     </div>
   )
 }

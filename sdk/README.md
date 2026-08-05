@@ -1,4 +1,4 @@
-# @agentxv2/sdk v0.8.5
+# @agentxv2/sdk v0.8.6
 
 **Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query.
 
@@ -11,7 +11,7 @@ Agent = Prompt + Skills[] + MCP
 ## Installation
 
 ```bash
-npm install @agentxv2/sdk@0.8.5
+npm install @agentxv2/sdk@0.8.6
 ```
 
 ### Peer Dependencies
@@ -576,6 +576,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.8.6** | 2026-08-06 | `ConversationChatParams` gains `tenantKeyId` — BYOK via a stored tenant-owned API key, resolved server-side by the Gateway (plaintext key never leaves the server); used by the new frontend own-key settings flow |
 | **0.8.5** | 2026-08-06 | Docs sync — re-published with updated README (same code as 0.8.4) |
 | **0.8.4** | 2026-08-06 | `ConversationClient` now supports Gateway JWT auth (`accessToken` → `Authorization: Bearer`, alternative to `apiKey`) and external abort (`stream(params, { signal })`); `tool_result` event gains optional `error` field. Frontend chat hook unified onto it (single SSE client implementation) |
 | **0.8.3** | 2026-08-05 | Install fix: `wagmi` promoted from optional to required peer dependency — the package is now directly usable via `npm install @agentxv2/sdk@0.8.3` (no manual `wagmi` install); verified from a clean install (ESM + CJS, chain reads OK) |

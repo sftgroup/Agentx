@@ -48,6 +48,47 @@ router.post('/attribute', async (req: Request, res: Response, next) => {
   }
 })
 
+// POST /api/v1/channel/apply — B-end self-service onboarding application
+// Public endpoint; submissions are reviewed by admins (see admin/applications).
+router.post('/apply', async (req: Request, res: Response, next) => {
+  try {
+    const { company, contactName, contactEmail, website, description, channelIdHint, desiredShareBps, wallet } = req.body || {}
+    if (!company || !contactName || !contactEmail) {
+      res.status(400).json({ error: 'company, contactName and contactEmail are required' })
+      return
+    }
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRe.test(String(contactEmail))) {
+      res.status(400).json({ error: 'contactEmail is not a valid email' })
+      return
+    }
+    const shareBps = desiredShareBps === undefined ? null : Number(desiredShareBps)
+    if (shareBps !== null && (!Number.isInteger(shareBps) || shareBps < 0 || shareBps > 10000)) {
+      res.status(400).json({ error: 'desiredShareBps must be an integer between 0 and 10000' })
+      return
+    }
+
+    const pool = getPool()
+    const result = await pool.query(
+      `INSERT INTO partner_applications
+         (company, contact_name, contact_email, website, description, channel_id_hint, desired_share_bps, wallet)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, status, created_at`,
+      [company, contactName, contactEmail, website || null, description || null,
+       channelIdHint || null, shareBps, wallet || null]
+    )
+    const app = result.rows[0]
+    log.info(`apply(company=${company}, email=${contactEmail}) → application #${app.id} created`)
+    res.status(201).json({
+      success: true,
+      application: { id: app.id, status: app.status, createdAt: app.created_at },
+    })
+  } catch (err) {
+    log.error(`apply() failed: ${(err as Error).message}`)
+    next(err)
+  }
+})
+
 // GET /api/v1/channel/report?channelId=&from=&to= — channel reconciliation report
 router.get('/report', async (req: Request, res: Response, next) => {
   try {

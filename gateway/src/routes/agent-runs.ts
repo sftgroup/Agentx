@@ -4,6 +4,9 @@
 import { Router, Request, Response } from 'express'
 import { getConversationProxy } from '../services/conversation-proxy'
 import { x402Available, x402Guard } from '../services/x402'
+import { getPool } from '../lib/db'
+import { decryptApiKey } from '../lib/crypto'
+import { config } from '../config'
 
 const router = Router()
 
@@ -13,12 +16,12 @@ router.post('/runs', (req: Request, res: Response, next: () => void) => {
   if (x402Available()) x402Guard(req, res, next)
   else next()
 }, async (req: Request, res: Response) => {
-  const { agentId, message, enableMemory, contextBudget, history, prompt, skills } = req.body
-  const tenantAddress = (req as any).user?.address || (req as any).user?.tenantId || 'unknown'
+  const { agentId, message, enableMemory, contextBudget, history, prompt, skills, tenantKeyId } = req.body
+  const tenantAddress = req.tenant?.walletAddress || 'unknown'
   const endUserId = req.headers['x-end-user-id'] as string || undefined
-  const headerApiKey = req.headers['x-llm-api-key'] as string || undefined
-  const llmEndpoint = req.headers['x-llm-endpoint'] as string || undefined
-  const llmModel = req.headers['x-llm-model'] as string || undefined
+  let headerApiKey = req.headers['x-llm-api-key'] as string | undefined
+  let llmEndpoint = req.headers['x-llm-endpoint'] as string | undefined
+  let llmModel = req.headers['x-llm-model'] as string | undefined
 
   if (!message) {
     return res.status(400).json({ error: 'message is required' })
@@ -27,6 +30,25 @@ router.post('/runs', (req: Request, res: Response, next: () => void) => {
   const hasInline = typeof prompt === 'string' || (Array.isArray(skills) && skills.length > 0)
   if (!hasAgentId && !hasInline) {
     return res.status(400).json({ error: 'agentId or inline prompt/skills is required' })
+  }
+
+  // BYOK via stored tenant key: resolve the tenant's own key server-side so the
+  // plaintext key never leaves the gateway. Takes precedence over X-Llm-* headers.
+  if (tenantKeyId) {
+    const pool = getPool()
+    const keyRow = req.tenant
+      ? await pool.query(
+          `SELECT * FROM tenant_api_keys WHERE id = $1 AND tenant_id = $2 AND is_active = true`,
+          [tenantKeyId, req.tenant.id]
+        )
+      : { rows: [] }
+    if (keyRow.rows.length === 0) {
+      return res.status(400).json({ error: 'Tenant API key not found or inactive' })
+    }
+    const tk = keyRow.rows[0]
+    headerApiKey = decryptApiKey(tk.api_key, config.masterEncryptionKey)
+    llmEndpoint = tk.endpoint
+    llmModel = tk.model
   }
 
   try {
