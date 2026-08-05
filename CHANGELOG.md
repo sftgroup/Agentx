@@ -7,6 +7,21 @@
 
 ## 2026-08-06
 
+### Gateway — R13 外部项目方自助申请 API Key
+
+**新特性**：外部项目方可在 `/apply` 页自助提交 API 接入申请，admin 审批后**自动**创建集成租户并签发 `agentx_` key（复用 P7-5 申请模型 + R11 自动建租户逻辑）。
+
+- **`POST /api/v1/developer/apply`**（公开）— 提交 `type=developer` 申请（company/contact_name/contact_email/website/description）
+- **`POST /admin/applications/:id/decide`** 扩展 — approve 按 `app.type` 分流：developer → 自动建租户（wallet=`partner-<slug>`，enterprise plan）+ 签发 `agentx_` key（明文仅响应一次）+ 注册 `integration_partners`；channel 流程不变
+- **`GET /admin/applications`** 返回 `type` 字段
+- **migration 015** — `partner_applications` 增加 `type TEXT NOT NULL DEFAULT 'channel'`
+- **前端**：`/apply` 双 Tab（渠道合作 / API 接入）；admin Applications Tab 支持 developer 审批并展示一次性 key
+- **边界修补**（`defc031`）：tenants `ON CONFLICT (wallet_address)` 补充 `api_key = EXCLUDED.api_key`（孤儿租户场景签发 key 失效漏洞，R11 POST /integrations 同步修复）；slug 分配 50 次上限；必填字段全空格返回 400
+- 测试：`developer.test.ts` 4 用例，gateway 全量 31/31 通过；生产冒烟 4/4 PASS
+- 详细变更说明见 [docs/R13-change-notes.md](docs/R13-change-notes.md)
+
+## 2026-08-06
+
 ### Gateway — MCP 新增对话与任务管理工具（33→38）
 
 **新特性**：MCP 端点 `/mcp` 工具数 33→38，补齐对话与并行任务管理能力（此前仅链上 + 网关只读，MCP 客户端无法消费 P8/P9 并行能力）。
