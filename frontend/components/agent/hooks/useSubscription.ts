@@ -65,6 +65,16 @@ export interface SubscriptionDetailV2 {
 export enum SubscriptionStatus { Active=0,Cancelled=1,Expired=2,PaymentFailed=3 }
 export enum BillingPeriod { Daily=0,Weekly=1,Monthly=2,Quarterly=3,Yearly=4 }
 
+// On-chain `_periodToSeconds` only recognizes day/week/month/year. Quarterly is
+// intentionally NOT mapped — silently mapping it would create a 30-day plan.
+export const BILLING_PERIOD_TO_ONCHAIN: Record<BillingPeriod, string> = {
+  [BillingPeriod.Daily]: 'day',
+  [BillingPeriod.Weekly]: 'week',
+  [BillingPeriod.Monthly]: 'month',
+  [BillingPeriod.Yearly]: 'year',
+  [BillingPeriod.Quarterly]: '', // rejected in createSubscriptionPlan
+}
+
 export interface UseSubscriptionReturn {
   createSubscriptionPlan: (agentId:number,name:string,desc:string,token:string,price:number,period:BillingPeriod,maxUsage:number) => Promise<`0x${string}`|undefined>
   updateSubscriptionPlan: (planId:number,name:string,desc:string,price:number,period:BillingPeriod,maxUsage:number) => Promise<`0x${string}`|undefined>
@@ -222,7 +232,8 @@ export function useSubscription(): UseSubscriptionReturn {
     agentId:number, _name:string, _desc:string, _token:string, price:number, period:BillingPeriod, _max:number
   ) => {
     if (!isConnected||!address) throw new Error('Wallet not connected')
-    const periodStr = ['day','week','month','month','year'][period]||'month'
+    const periodStr = BILLING_PERIOD_TO_ONCHAIN[period]
+    if (!periodStr) throw new Error('Quarterly plans are not supported on-chain (only day/week/month/year)')
     try {
       const h = await createAsync({ address:CONTRACT_ADDR, abi:ABI, functionName:'createPlan', args:[BigInt(agentId),BigInt(price),periodStr,'0x0000000000000000000000000000000000000000' as `0x${string}`,BigInt(0)] })
       setTxHash(h); return h

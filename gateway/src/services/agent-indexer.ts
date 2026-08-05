@@ -231,9 +231,13 @@ async function fetchAndUpsertPlan(planId: number, contract: ethers.Contract): Pr
   const raw = await contract.getPlan(planId).catch(() => null)
   if (!raw) return false
   // ethers v6 tuple → [planId, agentId, creator, price, period, active, payToken, trialDays]
-  const [, agentId, creator, price, period, active, payToken, trialDays] = raw as [
+  const [, agentId, creator, price, rawPeriod, active, payToken, trialDays] = raw as [
     bigint, bigint, string, bigint, string, boolean, string, bigint,
   ]
+  // Normalize legacy non-standard period strings ('monthly' etc.) to the
+  // contract-valid enum so DB consumers always see day/week/month/year.
+  const PERIOD_NORMALIZE: Record<string, string> = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }
+  const period = PERIOD_NORMALIZE[rawPeriod] ?? rawPeriod
 
   await pool.query(
     `INSERT INTO subscription_plans (plan_id, agent_id, creator, price, period, pay_token, trial_days, active, updated_at)
