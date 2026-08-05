@@ -14,8 +14,51 @@ import type { AgentRunContext, RunnableSkill, ToolCallStart, ToolCallResult, Age
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
 import type { GatewayContext } from '@/hooks/useGatewayAuth'
 import { useAgentChat, type ChatMessage } from '@/hooks/useAgentChat'
-import { Send, Brain, AlertCircle, Sparkles, ArrowLeft, Loader2, Trash2, Square, Wrench } from 'lucide-react'
+import type { ConversationTask } from '@agentxv2/sdk/conversation'
+import { Send, Brain, AlertCircle, Sparkles, ArrowLeft, Loader2, Trash2, Square, Wrench, X } from 'lucide-react'
 import Link from 'next/link'
+
+// ── Parallel task card (R1) ──────────────────────────────────────────────
+const TASK_STATUS_STYLE: Record<string, string> = {
+  queued: 'bg-white/5 text-text-muted',
+  running: 'bg-accent-cyan/10 text-accent-cyan',
+  done: 'bg-green-400/10 text-green-400',
+  error: 'bg-red-400/10 text-red-400',
+  cancelled: 'bg-white/5 text-text-muted',
+}
+
+function TaskCard({ task, onCancel }: { task: ConversationTask; onCancel: (taskId: string) => void }) {
+  const terminal = task.status === 'done' || task.status === 'error' || task.status === 'cancelled'
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/5 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-text-secondary truncate">{task.message}</p>
+          <p className="text-[11px] text-text-muted/60 mt-0.5">
+            #{task.id.slice(0, 8)} · {new Date(task.createdAt).toLocaleTimeString()}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={`text-[11px] px-2 py-0.5 rounded-full ${TASK_STATUS_STYLE[task.status] || ''}`}>
+            {task.status === 'running' ? '● running' : task.status}
+          </span>
+          {!terminal && (
+            <button onClick={() => onCancel(task.id)} title="Cancel task"
+              className="p-1.5 rounded-lg hover:bg-red-400/10 text-text-muted hover:text-red-400 transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+      {task.status === 'done' && task.result && (
+        <p className="mt-2 text-xs text-text-secondary whitespace-pre-wrap line-clamp-3">{task.result as string}</p>
+      )}
+      {task.status === 'error' && (
+        <p className="mt-2 text-xs text-red-400 line-clamp-2">{task.error || 'Task failed'}</p>
+      )}
+    </div>
+  )
+}
 
 interface ModelOption {
   id: string
@@ -64,7 +107,7 @@ export default function ChatPage() {
   const { ctx, isLoading: isLoadingCtx, error: ctxError } = useAgentRunner({ agentId })
   const { isAuthenticated: isGatewayAuth, context: gatewayCtx } = useGatewayAuth(gatewayUrl)
 
-  // SSE streaming hook
+  // SSE streaming hook (now also sessions+tasks parallel mode, R1)
   const {
     messages: sseMessages,
     thinkingText: sseThinking,
@@ -73,6 +116,10 @@ export default function ChatPage() {
     stopStreaming: stopSse,
     clearMessages: clearSseMessages,
     setMessages: setSseMessages,
+    tasks,
+    parallelEnabled,
+    initSession: initChatSession,
+    cancelTask: cancelChatTask,
   } = useAgentChat()
 
   // ── Chat history persistence ─────────────────────────────────────────
@@ -155,6 +202,28 @@ export default function ChatPage() {
       } catch { /* ignore */ }
     }
   }, [gatewayUrl, gatewayCtx])
+
+  // ── Init chat session (R1): capability probe (P9) + session/task restore ──
+  const sessionKey = gatewayCtx?.tenant?.wallet_address
+    ? `agentx-chat-session-${agentId}-${gatewayCtx.tenant.wallet_address.toLowerCase()}`
+    : undefined
+
+  useEffect(() => {
+    if (!gatewayUrl || !gatewayCtx || !sessionKey) return
+    initChatSession({
+      agentId,
+      gatewayUrl,
+      accessToken: gatewayCtx.accessToken,
+      sessionKey,
+      enableMemory: true,
+      onError: (e) => console.warn('[chat] session init:', e),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gatewayUrl, gatewayCtx, sessionKey, agentId])
+
+  const handleCancelTask = useCallback(async (taskId: string) => {
+    await cancelChatTask(taskId)
+  }, [cancelChatTask])
 
   // ── Send message ──────────────────────────────────────────────────────
   const handleSendMessage = useCallback(async () => {
@@ -462,6 +531,21 @@ export default function ChatPage() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {tasks.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-text-muted">Parallel Tasks</span>
+                  <span className={`text-[11px] ${parallelEnabled === false ? 'text-text-muted' : 'text-accent-cyan'}`}>
+                    {parallelEnabled === false ? 'single-turn only' : 'multi-task enabled'}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {[...tasks].reverse().slice(0, 20).map(t => (
+                    <TaskCard key={t.id} task={t} onCancel={handleCancelTask} />
+                  ))}
+                </div>
+              </div>
+            )}
             {displayMessages.length === 0 ? (
               <div className="text-center py-20">
                 <div className="w-16 h-16 rounded-2xl bg-accent-purple/10 flex items-center justify-center mx-auto mb-4">
@@ -547,8 +631,8 @@ export default function ChatPage() {
             <div className="mt-2 flex items-center justify-between text-xs text-text-muted">
               {useSseStreaming ? (
                 <span className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                  SSE Streaming · Memory enabled
+                  <div className={`w-1.5 h-1.5 rounded-full ${parallelEnabled === false ? 'bg-amber-400' : 'bg-green-400'}`} />
+                  {parallelEnabled === false ? 'Single-turn streaming' : 'Parallel tasks'} · Memory enabled
                 </span>
               ) : selectedModel ? (
                 <span className="flex items-center gap-1">
