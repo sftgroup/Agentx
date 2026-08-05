@@ -165,7 +165,7 @@ for await (const event of client.stream({ message: '你好', agentId: 1 })) {
 
 ## 3. MCP 接入（AI Agent 工具化）
 
-标准 MCP JSON-RPC 2.0，`POST <GATEWAY>/mcp`，共 32 个工具。
+标准 MCP JSON-RPC 2.0，`POST <GATEWAY>/mcp`，共 38 个工具。
 
 ```bash
 # 列出全部工具
@@ -239,7 +239,7 @@ const rpc = async (method, params) => {
 }
 
 const tools = (await rpc('tools/list')).tools
-console.log('工具数:', tools.length)  // → 32
+console.log('工具数:', tools.length)  // → 38
 
 const res = await rpc('tools/call', {
   name: 'agentx_identity_list_all',

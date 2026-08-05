@@ -1,7 +1,7 @@
 # SDK vs MCP — 使用场景与区别
 
 > AgentX 提供两种链上数据/能力接入方式：**[`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk)（直连区块链）** 与 **[`@agentxv2/mcp`](https://www.npmjs.com/package/@agentxv2/mcp)（经 Gateway MCP 协议）**。
-> 版本：SDK v0.8.1 · MCP 客户端 v0.1.0 · 2026-08-04
+> 版本：SDK v0.8.1 · MCP 客户端 v0.1.0 · 2026-08-06（MCP 已新增对话/任务管理工具，工具数 32→38）
 
 ---
 
@@ -31,8 +31,9 @@ MCP:   你的服务 ──JSON-RPC──► Gateway /mcp ──ethers──► �
 | **事件监听**（实时增量） | ✅ `subscribeToEvents()` | ❌ 无 | MCP 是请求-响应协议，无事件流；增量需自己轮询 |
 | 加密工具（ECIES/AES-256-GCM） | ✅ | ❌ | SDK 独有（端到端加密负载） |
 | IPFS 上传 | ✅ | ❌ | SDK 独有 |
-| AgentLoop / 对话（SSE） | ✅ `ConversationClient` | ❌ | 走 Gateway `/api/v1/agent/runs`（REST，非 MCP 工具） |
-| A2A / 信誉 / 配置 / 端点工具 | ⚠️ 部分（SDK 提供 A2A daemon 等） | ✅ 全部 32 工具 | MCP 覆盖 6 个合约的读 + WRITE 描述 |
+| AgentLoop / 对话（SSE） | ✅ `ConversationClient` | ✅ `agentx_gateway_chat` | SDK 直连流式；MCP 经 Gateway 聚合 SSE 为 `reply`（2026-08-06 新增） |
+| 会话 / 并行任务管理 | ✅ `createSession`/`createTask`/`getTask`/`listTasks`/`cancelTask` | ✅ `agentx_gateway_create_session`/`create_task`/`get_task`/`list_tasks`/`cancel_task` | 双通道等价（MCP 2026-08-06 新增，需 `api_key`/`access_token`） |
+| A2A / 信誉 / 配置 / 端点工具 | ⚠️ 部分（SDK 提供 A2A daemon 等） | ✅ 全部 38 工具 | MCP 覆盖 6 个合约的读 + WRITE 描述 |
 | 平台健康/租户信息 | ❌ | ✅ `gatewayHealth()` / `gatewayTenant()` | MCP 独有（需要 `X-Api-Key` 的租户工具） |
 
 > **关键点**：SDK 的写操作是"真实交易"（签名+提交），MCP 的写操作是"指令描述"（安全，不托管密钥）。**MCP 不能替你发交易**——这是架构性差异，不是功能缺失。
@@ -61,7 +62,7 @@ const unwatch = await subscribeToEvents(publicClient, { events: ['Transfer'], on
 
 ### 用 MCP 客户端 — 快速接入与只读场景（经 Gateway）
 
-- **AI Agent / LLM 工具调用**：让 Agent 通过 `tools/list` 动态发现 32 个工具，自然语言驱动读取链上数据
+- **AI Agent / LLM 工具调用**：让 Agent 通过 `tools/list` 动态发现 38 个工具，自然语言驱动读取链上数据、发起对话与并行任务
 - **第三方服务快速接入**：一行 `new McpClient({ gatewayUrl })`，无需 RPC/合约地址/链配置
 - **只读为主 + 少量写**：读套餐、查订阅状态、查平台费率；写操作拿描述后由自有钱包处理
 - **版本解耦**：Gateway 新增工具即时可用（`tools/list` 动态发现），客户端无需升级
@@ -71,11 +72,16 @@ import { McpClient } from '@agentxv2/mcp'
 
 const mcp = new McpClient({ gatewayUrl: 'http://43.159.60.46:3090', defaultChain: 'oxachain' })
 
-const tools = await mcp.listTools()              // → 32
+const tools = await mcp.listTools()              // → 38
 const { agents } = await mcp.listAgents({ activeOnly: true })
 const plan = await mcp.getPlan(1)                // → price/period/...
 const op = await mcp.createPlan({ agentId: 2, price: '10000000000000000', period: 'month' })
 // op = { _writeOp: true, contract, chain, args } → 用钱包签名提交
+
+// 对话 + 并行任务（需 api_key / access_token 参数）
+const { id: sessionId } = await mcp.callTool('agentx_gateway_create_session', { api_key: 'agentx_...', agent_id: 1 })
+const task = await mcp.callTool('agentx_gateway_create_task', { api_key: 'agentx_...', session_id: sessionId, message: '分析数据', agent_id: 1 })
+// → { id, status: "queued", ... }；get_task / list_tasks / cancel_task 参数风格相同
 ```
 
 ---
@@ -86,7 +92,7 @@ const op = await mcp.createPlan({ agentId: 2, price: '10000000000000000', period
 我需要做什么？（与 README 引言完全一致）
 ├─ 深度集成：链上读写 / 真实交易（订阅、创建套餐）/ 事件监听 / 加密 / IPFS / 对话 SSE
 │     → **SDK**（直连区块链）
-├─ AI Agent 工具化调用（LLM 驱动，32 个工具动态发现）
+├─ AI Agent 工具化调用（LLM 驱动，38 个工具动态发现，含对话/任务）
 │     → **MCP 客户端**（经 Gateway）
 ├─ 快速接入、只读为主、不想配置 RPC / 合约地址
 │     → **MCP 客户端**（零依赖、免链配置）
