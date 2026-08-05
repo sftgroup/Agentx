@@ -133,6 +133,7 @@
   - R2-R3 = 可立即开发的规划任务
   - R4-R6 = 待外部前提任务（R4/R5 需业务方提供凭据，R6 零依赖）
   - R7-R9 = 技术债（🔵 可选优化）
+  - R10 = 用户定时任务（新需求，2026-08-06 用户确认补充，需求已细化待开发）
 
 ### 开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）
 
@@ -205,6 +206,26 @@
 - 涉及：gateway `admin/revenue` 端点 + 前端 admin RevenueTab
 - 实施要点：ERC20 付费按 token 计价展示（预留扩展点已就绪），原生代币（OXA/ETH）展示不变
 - 验收标准：混用代币付费时 revenue 按 token 分组展示正确
+
+**R10 用户定时任务（调度执行，新需求）** —— 优先级：中 · ⏳ 待细化确认后开发
+- 来源：2026-08-06 用户确认补充（基于 P8 sessions+tasks 后台执行模型 + R1 前端模型）
+- 目标：用户可设定**一次性 / 周期性**定时任务，到点自动创建并执行 task（无需人工触发）
+- 涉及：gateway 新 `routes/schedules.ts` + 调度 daemon、migration `013_schedules.sql`、前端用户「定时任务」设置页 + admin 调度查看入口
+- 需求细化：
+  1. **数据模型**
+     - `schedules`：id, tenant, agent_id, title, schedule_type(`one_time`|`interval`|`cron`), run_at / interval_seconds / cron_expr, timezone, enabled, next_run_at, created_at, updated_at
+     - `schedule_runs`：id, schedule_id, task_id, status(`triggered`|`failed`), error, triggered_at
+  2. **REST API**（JWT 鉴权）：`POST/GET /api/v1/schedules`、`PATCH /api/v1/schedules/:id`（启停/改参数）、`DELETE /api/v1/schedules/:id`、`GET /api/v1/schedules/:id/runs`（运行历史）
+  3. **调度 daemon**：gateway 内独立 setInterval（与 agent-sync 分离），每 30s 扫描 `enabled AND next_run_at <= NOW()` 的 schedules → 以租户身份调 task-manager 创建 task；**单飞防重入**（乐观锁 `UPDATE ... WHERE next_run_at = 旧值`），成功后推进 next_run_at
+  4. **P9 gate 联动**：调度触发 createTask 若返回 403 `PARALLEL_TASKS_DISABLED` → schedule_runs 记 failed（error 含 code），不中断其他调度
+  5. **前端**：用户中心新增「定时任务」页（新建：选 agent / 一次性时间或周期 / 启停 / 删除 / 运行历史）；管理后台可查看全局调度状态
+  6. **配额与限制**：每租户 schedule 上限（默认 10）、单 schedule 最小间隔（60s）、时间戳精确到秒
+- 验收标准：
+  - 一次性任务到点自动创建 task 并执行成功
+  - 周期任务按规则重复触发，无重复/漏触发（单飞）
+  - 禁用后不再触发；删除后运行历史保留
+  - P9 禁用租户：调度触发失败被记录（failed + error code），不影响其他功能
+  - 运行历史可查（schedule_runs 关联 task 状态）
 
 ---
 
