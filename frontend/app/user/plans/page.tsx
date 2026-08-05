@@ -5,24 +5,9 @@
 
 import { AppLayout } from '@/components/layout/AppLayout'
 import { SubscriptionManager } from '@/components/agent/dashboard/SubscriptionManager'
-import { useAccount } from 'wagmi'
-import { AlertCircle, CreditCard } from 'lucide-react'
+import { CreditCard } from 'lucide-react'
 
 export default function PlansPage() {
-  const { isConnected } = useAccount()
-
-  if (!isConnected) {
-    return (
-      <AppLayout>
-        <div className="max-w-4xl mx-auto text-center py-20">
-          <AlertCircle className="w-16 h-16 text-accent-purple/40 mx-auto mb-4" />
-          <h2 className="heading-md mb-3">Connect Your Wallet</h2>
-          <p className="body text-text-muted">Connect to create and manage subscription plans for your agents.</p>
-        </div>
-      </AppLayout>
-    )
-  }
-
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto py-8 px-6 space-y-6">
