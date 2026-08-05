@@ -100,6 +100,7 @@ export default function UserDashboard() {
             <p className="body text-text-secondary mt-1">Your agent ecosystem at a glance</p>
           </div>
           <div className="flex gap-3">
+            <Link href="/user/plans" className="btn-secondary text-sm py-2"><CreditCard className="w-4 h-4" /> Plans</Link>
             <Link href="/user/settings" className="btn-secondary text-sm py-2"><Settings className="w-4 h-4" /> Settings</Link>
             <Link href="/marketplace" className="btn-primary text-sm py-2"><Sparkles className="w-4 h-4" /> Explore</Link>
           </div>
