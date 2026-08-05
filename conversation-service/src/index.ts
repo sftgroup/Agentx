@@ -12,6 +12,9 @@ import { AgentContextLoader } from './services/agent-context-loader'
 import { ToolExecutor } from './services/tool-executor'
 import { createRunsRouter } from './routes/runs'
 import { createTenantsRouter } from './routes/tenants'
+import { createSessionsRouter } from './routes/sessions'
+import { createTasksRouter } from './routes/tasks'
+import { TaskManager } from './services/task-manager'
 
 const app = express()
 
@@ -40,10 +43,13 @@ const llmResolver = new TenantLLMResolver(db)
 const toolExecutor = new ToolExecutor(config.gatewayUrl)
 const contextLoader = new AgentContextLoader(config.gatewayUrl, config.contextCacheTtlSec * 1000, toolExecutor)
 const runner = new AgentRunnerService(memoryEngine, llmResolver, contextLoader)
+const taskManager = new TaskManager(db, runner)
 
 // Routes
 app.use('/runs', createRunsRouter(runner))
 app.use('/tenants', createTenantsRouter(llmResolver))
+app.use('/sessions', createSessionsRouter(db))
+app.use('/', createTasksRouter(taskManager))
 
 // 404 handler
 app.use((_req, res) => {

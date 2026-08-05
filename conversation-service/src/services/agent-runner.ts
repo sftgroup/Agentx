@@ -49,8 +49,10 @@ export class AgentRunnerService {
     private readonly contextLoader: AgentContextLoader,
   ) {}
 
-  async *streamRun(request: AgentRunRequest): AsyncGenerator<AgentRunSSEEvent> {
+  async *streamRun(request: AgentRunRequest, opts?: { signal?: AbortSignal }): AsyncGenerator<AgentRunSSEEvent> {
     const sessionId = uuidv4()
+    let loop: AgentLoop | null = null
+    const onAbort = () => loop?.abort()
 
     const hasInline = request.prompt !== undefined || (request.skills && request.skills.length > 0)
 
@@ -101,7 +103,7 @@ export class AgentRunnerService {
       }
 
       // 4. Initialize AgentLoop with loaded skills
-      const loop = new AgentLoop({
+      loop = new AgentLoop({
         ctx: {
           agentId: runAgentId,
           prompt: loadedCtx.prompt,
@@ -112,6 +114,9 @@ export class AgentRunnerService {
         maxIterations: 8,
         contextBudget: request.contextBudget,
       })
+
+      // External abort (task cancellation) → stop the loop mid-run
+      opts?.signal?.addEventListener('abort', onAbort, { once: true })
 
       // 5. Run AgentLoop with streaming events
       const result = await loop.run(request.message, request.history)
@@ -155,6 +160,8 @@ export class AgentRunnerService {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`[AgentRunner] Run failed (session ${sessionId}):`, message)
       yield { type: 'error', error: message }
+    } finally {
+      opts?.signal?.removeEventListener('abort', onAbort)
     }
   }
 

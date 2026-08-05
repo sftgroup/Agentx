@@ -44,4 +44,8 @@ export const config = {
 
   // AgentRunner context cache
   contextCacheTtlSec: parseInt(process.env.CONTEXT_CACHE_TTL_SEC || '300', 10),
+
+  // Task management (parallel runs within a session)
+  taskMaxConcurrent: parseInt(process.env.TASK_MAX_CONCURRENT || '4', 10),
+  taskTimeoutMs: parseInt(process.env.TASK_TIMEOUT_MS || String(15 * 60 * 1000), 10),
 }
