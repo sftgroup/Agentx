@@ -1,9 +1,9 @@
-import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, c as LLMProvider, L as LLMMessage, O as OpenAIToolDef } from './types-CVLuao33.js';
-import { R as RunnableSkill, b as AgentRunner } from './agent-runner-DFUWHCzi.js';
-import { TraceConfig, TraceEvent } from './traces/index.js';
+import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, c as LLMProvider, L as LLMMessage, O as OpenAIToolDef } from './types-BcaAkzw6.mjs';
+import { R as RunnableSkill, b as AgentRunner } from './agent-runner-BTiZ6St-.mjs';
+import { TraceConfig, TraceEvent } from './traces/index.mjs';
 import { Address, PublicClient, WalletClient, Hash } from 'viem';
-import { c as A2AAgentCard, e as A2ATask, l as AgentSubscription } from './types-CCl4P8IB.js';
-import { IPFSUploader } from './ipfs/index.js';
+import { c as A2AAgentCard, e as A2ATask, l as AgentSubscription } from './types-CCl4P8IB.mjs';
+import { IPFSUploader } from './ipfs/index.mjs';
 import { EventEmitter } from 'events';
 
 declare class AgentLoop {
@@ -174,6 +174,18 @@ declare class SubscriptionManager {
     private publicClient;
     private walletClient;
     constructor(config: SubscriptionConfig);
+    /**
+     * Resolve the caller account for write operations.
+     *
+     * Prefers `walletClient.account` (a full viem Account object with signing
+     * capability) over `getAddresses()[0]` (a bare address string). Passing a
+     * bare string as `account` makes viem route `writeContract` through
+     * `eth_sendTransaction` (node-managed accounts only), which fails for local
+     * signers; the full object enables local signing via `eth_sendRawTransaction`.
+     * In browser wallets (e.g. MetaMask) `client.account` is a json-rpc account
+     * and the provider signs, so both paths keep working.
+     */
+    private _resolveAccount;
     /** Get current platform fee in basis points (e.g. 250 = 2.5%). */
     getPlatformFeeBps(): Promise<number>;
     /** Check if a token is whitelisted for payments. */
