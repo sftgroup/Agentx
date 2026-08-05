@@ -22,6 +22,8 @@ export interface TenantContext {
   rateLimitRpm: number
   maxConcurrent: number
   status: string
+  /** R14: tenant category — 'user' (registered) | 'partner' (B-end integration) */
+  kind: string
   /** P9: tenant-level override for parallel tasks (NULL = inherit plan.features.parallel_tasks) */
   allowParallelTasks: boolean | null
   /** P9: plan.features JSONB — contains parallel_tasks capability bit */
@@ -137,6 +139,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
   const existing = await pool.query(
     `SELECT t.id, t.wallet_address, t.status, t.api_key,
             t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
+            t.kind,
             t.allow_parallel_tasks,
             p.id as plan_id, p.slug as plan_slug, p.features as plan_features
      FROM tenants t
@@ -167,6 +170,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
       rateLimitRpm: row.rate_limit_rpm,
       maxConcurrent: row.max_concurrent,
       status: row.status,
+      kind: row.kind,
       allowParallelTasks: row.allow_parallel_tasks ?? null,
       planFeatures: row.plan_features ?? null,
     }
@@ -192,6 +196,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
       rateLimitRpm: 5,
       maxConcurrent: 1,
       status: 'active',
+      kind: 'user',
       allowParallelTasks: null,
       planFeatures: freePlan.rows[0]?.features ?? null,
     }
@@ -266,6 +271,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
         rateLimitRpm: row.rate_limit_rpm,
         maxConcurrent: row.max_concurrent,
         status: row.status,
+      kind: row.kind,
         allowParallelTasks: row.allow_parallel_tasks ?? null,
         planFeatures: row.plan_features ?? null,
       }
@@ -312,6 +318,7 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
   pool.query(
     `SELECT t.id, t.wallet_address, t.status,
             t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
+            t.kind,
             t.allow_parallel_tasks,
             p.id as plan_id, p.slug as plan_slug, p.features as plan_features
      FROM tenants t
@@ -339,6 +346,7 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
         rateLimitRpm: row.rate_limit_rpm,
         maxConcurrent: row.max_concurrent,
         status: row.status,
+      kind: row.kind,
         allowParallelTasks: row.allow_parallel_tasks ?? null,
         planFeatures: row.plan_features ?? null,
       }

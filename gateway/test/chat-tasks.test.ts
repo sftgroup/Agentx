@@ -23,6 +23,7 @@ vi.mock('../src/services/conversation-proxy', () => ({
 interface TenantCtx {
   id: string
   walletAddress: string
+  kind?: string
   allowParallelTasks?: boolean | null
   planFeatures?: Record<string, unknown> | null
 }
@@ -95,6 +96,37 @@ describe('P9 capability gate — POST /sessions/:sessionId/tasks', () => {
       .post('/api/v1/sessions/s1/tasks')
       .send({ agentId: 1, message: 'hi' })
     expect(res.status).toBe(201)
+  })
+})
+
+// ── R14 B-end partner gate ────────────────────────────────────────────────
+
+describe('R14 B-end partner gate — kind=partner is chat-only', () => {
+  beforeEach(() => {
+    currentTenant = { id: 't-p', walletAddress: 'partner-smoke-1', kind: 'partner' }
+  })
+
+  it('blocks task creation → 403 PARTNER_TASKS_DISABLED', async () => {
+    const res = await request(app)
+      .post('/api/v1/sessions/s1/tasks')
+      .send({ agentId: 1, message: 'hi' })
+    expect(res.status).toBe(403)
+    expect(res.body.code).toBe('PARTNER_TASKS_DISABLED')
+    expect(proxyMock.createTask).not.toHaveBeenCalled()
+  })
+
+  it('blocks session creation → 403', async () => {
+    const res = await request(app).post('/api/v1/sessions').send({ agentId: 3 })
+    expect(res.status).toBe(403)
+    expect(res.body.code).toBe('PARTNER_TASKS_DISABLED')
+    expect(proxyMock.createSession).not.toHaveBeenCalled()
+  })
+
+  it('blocks task read/cancel endpoints → 403', async () => {
+    expect((await request(app).get('/api/v1/sessions/s1/tasks')).status).toBe(403)
+    expect((await request(app).get('/api/v1/tasks/t1')).status).toBe(403)
+    expect((await request(app).get('/api/v1/tasks/t1/events')).status).toBe(403)
+    expect((await request(app).delete('/api/v1/tasks/t1')).status).toBe(403)
   })
 })
 

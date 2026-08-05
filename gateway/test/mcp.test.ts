@@ -47,19 +47,25 @@ describe('MCP tools/list — conversation & task tools', () => {
 
 describe('agentx_gateway_chat', () => {
   it('rejects missing message', async () => {
-    const body = await callTool('agentx_gateway_chat', { api_key: 'agentx_test' })
+    const body = await callTool('agentx_gateway_chat', { message: undefined as any })
     expect(JSON.parse(textOf(body)).error).toBe('message is required')
   })
 
-  it('rejects missing auth (neither api_key nor access_token)', async () => {
+  it('rejects missing auth (no access_token)', async () => {
     const body = await callTool('agentx_gateway_chat', { message: 'hi' })
-    expect(JSON.parse(textOf(body)).error).toContain('api_key or access_token is required')
+    expect(JSON.parse(textOf(body)).error).toContain('access_token (registered-user JWT) is required')
   })
 
-  it('collects SSE events into a reply and uses X-Api-Key auth', async () => {
+  it('rejects B-end api_key auth — MCP is registered-user only', async () => {
+    const body = await callTool('agentx_gateway_chat', { message: 'hi', api_key: 'agentx_abcd1234' })
+    expect(JSON.parse(textOf(body)).error).toContain('access_token (registered-user JWT) is required')
+  })
+
+  it('collects SSE events into a reply using Bearer JWT auth', async () => {
     const fetchMock = vi.fn(async (url: any, init: any) => {
       expect(String(url)).toContain('/api/v1/agent/runs')
-      expect(init.headers['X-Api-Key']).toBe('agentx_test')
+      expect(init.headers.Authorization).toBe('Bearer jwt')
+      expect(init.headers['X-Api-Key']).toBeUndefined()
       const sse = [
         `data: ${JSON.stringify({ type: 'text', content: 'Hel' })}`,
         '',
@@ -73,7 +79,7 @@ describe('agentx_gateway_chat', () => {
       return new Response(sse, { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
-    const body = await callTool('agentx_gateway_chat', { message: 'hi', agent_id: 1, api_key: 'agentx_test' })
+    const body = await callTool('agentx_gateway_chat', { message: 'hi', agent_id: 1, access_token: 'jwt' })
     const result = JSON.parse(textOf(body))
     expect(result.reply).toBe('Hello')
     expect(result.tool_calls).toEqual([{ name: 't', arguments: { a: 1 } }])
@@ -85,7 +91,7 @@ describe('agentx_gateway_chat', () => {
       return new Response(sse, { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
-    const body = await callTool('agentx_gateway_chat', { message: 'hi', api_key: 'agentx_test' })
+    const body = await callTool('agentx_gateway_chat', { message: 'hi', access_token: 'jwt' })
     expect(JSON.parse(textOf(body)).error).toBe('boom')
   })
 })
@@ -130,7 +136,7 @@ describe('agentx_gateway session & task management tools', () => {
       return new Response(JSON.stringify({ id: 'sx', tenant: 'partner-x' }), { status: 201 })
     })
     vi.stubGlobal('fetch', fetchMock)
-    const body = await callTool('agentx_gateway_create_session', { agent_id: 3, api_key: 'agentx_test' })
+    const body = await callTool('agentx_gateway_create_session', { agent_id: 3, access_token: 'jwt' })
     const result = JSON.parse(textOf(body))
     expect(result.id).toBe('sx')
   })
@@ -141,7 +147,7 @@ describe('agentx_gateway session & task management tools', () => {
       return new Response(JSON.stringify({ id: 't9', status: 'done' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
-    const body = await callTool('agentx_gateway_get_task', { task_id: 't9', api_key: 'agentx_test' })
+    const body = await callTool('agentx_gateway_get_task', { task_id: 't9', access_token: 'jwt' })
     expect(JSON.parse(textOf(body)).status).toBe('done')
   })
 
@@ -151,7 +157,7 @@ describe('agentx_gateway session & task management tools', () => {
       return new Response(JSON.stringify({ tasks: [{ id: 't1', status: 'running' }] }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
-    const body = await callTool('agentx_gateway_list_tasks', { session_id: 's1', api_key: 'agentx_test' })
+    const body = await callTool('agentx_gateway_list_tasks', { session_id: 's1', access_token: 'jwt' })
     expect(JSON.parse(textOf(body)).tasks).toHaveLength(1)
   })
 
@@ -161,7 +167,7 @@ describe('agentx_gateway session & task management tools', () => {
       return new Response(JSON.stringify({ id: 't9', status: 'cancelled' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
-    const body = await callTool('agentx_gateway_cancel_task', { task_id: 't9', api_key: 'agentx_test' })
+    const body = await callTool('agentx_gateway_cancel_task', { task_id: 't9', access_token: 'jwt' })
     expect(JSON.parse(textOf(body)).status).toBe('cancelled')
   })
 })

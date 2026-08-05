@@ -15,6 +15,24 @@ import { config } from '../config'
 
 const router = Router()
 
+/**
+ * R14: B-end integration keys (kind='partner') are limited to the chat service.
+ * Sessions / tasks (background agent execution) are blocked for them — such calls
+ * would otherwise consume platform LLM budget via a2a-worker fallback keys.
+ */
+function partnerTaskGate(req: Request, res: ExpressResponse, next: () => void): void {
+  if (req.tenant?.kind === 'partner') {
+    res.status(403).json({
+      error: 'B-end integration keys are limited to the chat service',
+      code: 'PARTNER_TASKS_DISABLED',
+    })
+    return
+  }
+  next()
+}
+
+router.use(partnerTaskGate)
+
 /** Resolve stored BYOK (tenantKeyId) → plaintext key/endpoint/model. */
 async function resolveStoredKey(
   req: Request,

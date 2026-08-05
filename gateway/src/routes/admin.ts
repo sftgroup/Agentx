@@ -777,15 +777,15 @@ router.post('/applications/:id/decide', async (req: Request, res: Response) => {
           }
           const wallet = `partner-${slug}`
           const apiKey = 'agentx_' + crypto.randomBytes(16).toString('hex')
-          const plan = await client.query(`SELECT id FROM plans WHERE slug = 'enterprise'`)
+          const plan = await client.query(`SELECT id, quota_daily FROM plans WHERE slug = 'enterprise'`)
           if (plan.rows.length === 0) throw new Error('enterprise plan not found')
           const tenant = await client.query(
-            `INSERT INTO tenants (wallet_address, name, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key)
-             VALUES ($1, $2, $3, 0, 100, 10, $4)
+            `INSERT INTO tenants (wallet_address, name, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key, kind)
+             VALUES ($1, $2, $3, $4, 100, 10, $5, 'partner')
              ON CONFLICT (wallet_address) DO UPDATE
-               SET plan_id = EXCLUDED.plan_id, api_key = EXCLUDED.api_key, updated_at = NOW()
+               SET plan_id = EXCLUDED.plan_id, api_key = EXCLUDED.api_key, kind = 'partner', updated_at = NOW()
              RETURNING id`,
-            [wallet, `Integration: ${app.company}`, plan.rows[0].id, apiKey]
+            [wallet, `Integration: ${app.company}`, plan.rows[0].id, plan.rows[0].quota_daily, apiKey]
           )
           const partner = await client.query(
             `INSERT INTO integration_partners (slug, name, gateway_url, tenant_id, active, notes)
@@ -897,7 +897,7 @@ router.post('/integrations', async (req: Request, res: Response) => {
 
     // Resolve plan (default enterprise — partner callers need headroom)
     const planSlug = plan_slug || 'enterprise'
-    const plan = await pool.query(`SELECT id FROM plans WHERE slug = $1`, [planSlug])
+    const plan = await pool.query(`SELECT id, quota_daily FROM plans WHERE slug = $1`, [planSlug])
     if (plan.rows.length === 0) {
       res.status(400).json({ error: `Invalid plan_slug: ${planSlug}` })
       return
@@ -912,12 +912,12 @@ router.post('/integrations', async (req: Request, res: Response) => {
 
       // Tenant (api_key stored plaintext — same as JWT-registered tenants, 004 migration)
       const tenant = await client.query(
-        `INSERT INTO tenants (wallet_address, name, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO tenants (wallet_address, name, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key, kind)
+         VALUES ($1, $2, $3, $4, 100, 10, $5, 'partner')
          ON CONFLICT (wallet_address) DO UPDATE
-           SET plan_id = EXCLUDED.plan_id, api_key = EXCLUDED.api_key, updated_at = NOW()
+           SET plan_id = EXCLUDED.plan_id, api_key = EXCLUDED.api_key, kind = 'partner', updated_at = NOW()
          RETURNING id`,
-        [wallet, `Integration: ${name}`, plan.rows[0].id, 0, 100, 10, apiKey]
+        [wallet, `Integration: ${name}`, plan.rows[0].id, plan.rows[0].quota_daily, apiKey]
       )
 
       const partner = await client.query(
