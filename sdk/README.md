@@ -1,6 +1,6 @@
-# @agentxv2/sdk v0.8.6
+# @agentxv2/sdk v0.8.7
 
-**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query.
+**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query, hosted conversation sessions & parallel tasks.
 
 ```
 Agent = Prompt + Skills[] + MCP
@@ -11,7 +11,7 @@ Agent = Prompt + Skills[] + MCP
 ## Installation
 
 ```bash
-npm install @agentxv2/sdk@0.8.6
+npm install @agentxv2/sdk@0.8.7
 ```
 
 ### Peer Dependencies
@@ -228,11 +228,12 @@ const result = await connector.callTool('get_balance', {
 
 ---
 
-## ConversationClient (v0.8.6) — Remote Conversation Service
+## ConversationClient (v0.8.7) — Remote Conversation Service
 
 Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auth requires **either** a tenant `apiKey` (`X-Api-Key`) **or** a Gateway `accessToken` (`Authorization: Bearer` — wallet-signed login). Also auto-sends `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` + `X-Llm-Endpoint` + `X-Llm-Model` (stateless BYOK override — your own key AND endpoint AND model, e.g. DeepSeek).
 
 > **v0.8.6 — stored BYOK (`tenantKeyId`)**: each chat/stream request can pass `tenantKeyId` to use a tenant-owned API key already stored & AES-encrypted on the Gateway (managed via Settings → Own LLM Keys, backed by `/tenant/keys`). The Gateway resolves the key server-side and injects it as `X-Llm-Api-Key` (priority over request-level headers) — the plaintext key never leaves the server. This complements the stateless `llmApiKey` override (request-level, highest priority).
+> **v0.8.7 — sessions & parallel tasks**: `createSession()` / `createTask()` (returns a `taskId` immediately, runs in the background) / `getTask()` / `listTasks()` / `cancelTask()` + `getCapabilities()`. When the tenant/plan disallows multi-task (P9 capability gate), `createTask()` is rejected with HTTP 403 `{ code: "PARALLEL_TASKS_DISABLED" }` — surfaced as `ConversationTaskError` (`.status` / `.code`); callers should degrade to single-turn `chat()`.
 
 ```ts
 import { ConversationClient } from '@agentxv2/sdk/conversation'
@@ -294,6 +295,40 @@ const ragResult = await client.chat({
 
 > Auth: the `apiKey` set in the constructor is sent automatically as `X-Api-Key` (tenant API key) — the RAG example above needs no per-request credentials. Your RAG MCP/HTTP `execution.endpoint` stays under your control: secure it with your own auth, the service only forwards the call (30s timeout).
 > Sub-path import: `@agentxv2/sdk/conversation`. Server-side API & headers documented in [`CONVERSATION_SERVICE.md`](../CONVERSATION_SERVICE.md).
+
+### Sessions & Parallel Tasks (v0.8.7)
+
+Create a dialog session, fire multiple tasks into it, poll them in the background and cancel when needed:
+
+```ts
+import { ConversationClient, ConversationTaskError } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({ gatewayUrl: 'https://gateway.example.com', accessToken: 'eyJ...' })
+
+// (optional) check the integrator's capability first — when false, use single-turn chat() instead
+const caps = await client.getCapabilities()
+if (!caps.parallelTasks) {
+  const r = await client.chat({ agentId: 42, message: 'hello' })
+}
+
+const session = await client.createSession({ title: 'Audit' })          // dialog container (idempotent)
+const t1 = await client.createTask({ sessionId: session.id, agentId: 42, message: 'Analyze contract A' })
+const t2 = await client.createTask({ sessionId: session.id, agentId: 42, message: 'Analyze contract B' })
+// → both return immediately with { id, status: 'queued' } — execution runs in the background
+
+const tasks = await client.listTasks(session.id)                        // all tasks of the session
+
+let task = await client.getTask(t1.id)                                  // poll until terminal
+// task.status: queued → running → done / error / cancelled
+
+try {
+  await client.cancelTask(t2.id)                                        // cancel queued/running task
+} catch (err) {
+  if (err instanceof ConversationTaskError && err.code === 'PARALLEL_TASKS_DISABLED') {
+    // tenant/plan disallows multi-task → fall back to single-turn chat()
+  }
+}
+```
 
 ---
 
@@ -579,6 +614,8 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.8.8** | 2026-08-06 | Docs sync — README updated for 0.8.7 (sessions & parallel tasks section) |
+| **0.8.7** | 2026-08-06 | `ConversationClient` gains sessions & parallel tasks: `createSession()` / `createTask()` (returns `taskId` immediately, background execution) / `getTask()` / `listTasks()` / `cancelTask()` / `getCapabilities()`. New `ConversationTaskError` (`.status` / `.code`) — `createTask()` on a P9-disabled tenant/plan rejects with HTTP 403 `PARALLEL_TASKS_DISABLED`; used by the frontend parallel-task chat UI |
 | **0.8.6** | 2026-08-06 | `ConversationChatParams` gains `tenantKeyId` — BYOK via a stored tenant-owned API key, resolved server-side by the Gateway (plaintext key never leaves the server); used by the new frontend own-key settings flow |
 | **0.8.5** | 2026-08-06 | Docs sync — re-published with updated README (same code as 0.8.4) |
 | **0.8.4** | 2026-08-06 | `ConversationClient` now supports Gateway JWT auth (`accessToken` → `Authorization: Bearer`, alternative to `apiKey`) and external abort (`stream(params, { signal })`); `tool_result` event gains optional `error` field. Frontend chat hook unified onto it (single SSE client implementation) |
