@@ -1,4 +1,4 @@
-# @agentxv2/sdk v0.8.3
+# @agentxv2/sdk v0.8.5
 
 **Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query.
 
@@ -11,7 +11,7 @@ Agent = Prompt + Skills[] + MCP
 ## Installation
 
 ```bash
-npm install @agentxv2/sdk@0.8.3
+npm install @agentxv2/sdk@0.8.5
 ```
 
 ### Peer Dependencies
@@ -228,16 +228,17 @@ const result = await connector.callTool('get_balance', {
 
 ---
 
-## ConversationClient (v0.8.1) — Remote Conversation Service
+## ConversationClient (v0.8.4) — Remote Conversation Service
 
-Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auto-sends `X-Api-Key` (tenant API key), `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` + `X-Llm-Endpoint` + `X-Llm-Model` (stateless BYOK override — your own key AND endpoint AND model, e.g. DeepSeek).
+Streams agent conversations from the hosted **Conversation Service** via the Gateway (`POST /api/v1/agent/runs`, SSE). Auth requires **either** a tenant `apiKey` (`X-Api-Key`) **or** a Gateway `accessToken` (`Authorization: Bearer` — wallet-signed login). Also auto-sends `X-End-User-Id` (end-user memory isolation), `X-Llm-Api-Key` + `X-Llm-Endpoint` + `X-Llm-Model` (stateless BYOK override — your own key AND endpoint AND model, e.g. DeepSeek).
 
 ```ts
 import { ConversationClient } from '@agentxv2/sdk/conversation'
 
 const client = new ConversationClient({
   gatewayUrl: 'https://gateway.example.com',   // Gateway base URL (not the conversation service directly)
-  apiKey: 'agentx_...',                         // tenant API key issued after registration
+  apiKey: 'agentx_...',                         // tenant API key issued after registration (OR accessToken below)
+  // accessToken: 'eyJ...',                     // gateway JWT from wallet-signed login (alternative to apiKey)
   endUserId: 'user-123',                        // optional: per-end-user memory isolation
   llmApiKey: 'sk-...',                          // optional: BYOK — your own LLM key (highest priority)
   llmEndpoint: 'https://api.deepseek.com/v1',   // optional: endpoint for llmApiKey (default OpenAI)
@@ -246,12 +247,13 @@ const client = new ConversationClient({
 })
 
 // Stream events (thinking / tool_call / tool_result / text / clarification / done / error)
+const controller = new AbortController()        // optional: external stop (user "Stop" button)
 for await (const event of client.stream({
   agentId: 42,
   message: 'Analyze this contract',
   enableMemory: true,
   history: [{ role: 'user', content: 'hi' }],
-})) {
+}, { signal: controller.signal })) {
   switch (event.type) {
     case 'text':           appendDelta(event.content!); break
     case 'tool_call':      showToolBubble(event.toolName!, event.toolArgs); break
@@ -574,6 +576,8 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.8.5** | 2026-08-06 | Docs sync — re-published with updated README (same code as 0.8.4) |
+| **0.8.4** | 2026-08-06 | `ConversationClient` now supports Gateway JWT auth (`accessToken` → `Authorization: Bearer`, alternative to `apiKey`) and external abort (`stream(params, { signal })`); `tool_result` event gains optional `error` field. Frontend chat hook unified onto it (single SSE client implementation) |
 | **0.8.3** | 2026-08-05 | Install fix: `wagmi` promoted from optional to required peer dependency — the package is now directly usable via `npm install @agentxv2/sdk@0.8.3` (no manual `wagmi` install); verified from a clean install (ESM + CJS, chain reads OK) |
 | **0.8.2** | 2026-08-05 | Write-op fix: `createPlan()` / `subscribe()` / `releaseFunds()` / `cancel()` resolve the full viem `walletClient.account` instead of a bare address string — local/private-key signers now work (`eth_sendRawTransaction`); browser wallets unchanged. Verified on-chain (OxaChain L1) |
 | **0.8.1** | 2026-08-04 | `parseTokenURIJSON()` fault-tolerant parsing aligned with Gateway indexer: base64 trailing garbage cleanup, unterminated JSON repair, regex fallback, explicit `ipfs://` handling |

@@ -1,5 +1,6 @@
 // @agentx/frontend — useAgentChat Hook
-// SSE-streaming agent conversation via Gateway /api/v1/agent/runs
+// SSE-streaming agent conversation via SDK ConversationClient →
+// Gateway /api/v1/agent/runs → Conversation Service.
 //
 // Supports Plan C (Hybrid LLM):
 //   - Platform mode: uses AgentX official key (headerApiKey = undefined)
@@ -8,6 +9,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { ConversationClient } from '@agentxv2/sdk/conversation'
 
 export interface ChatMessage {
   id: string
@@ -63,140 +65,108 @@ export function useAgentChat() {
     const abort = new AbortController()
     abortRef.current = abort
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${options.accessToken}`,
-    }
-    if (options.llmApiKey) {
-      headers['X-Llm-Api-Key'] = options.llmApiKey
-    }
-
     let assistantId = ''
     let assistantText = ''
 
+    const client = new ConversationClient({
+      gatewayUrl: options.gatewayUrl,
+      accessToken: options.accessToken,
+      llmApiKey: options.llmApiKey,
+    })
+
     try {
-      const res = await fetch(`${options.gatewayUrl}/api/v1/agent/runs`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          agentId: options.agentId,
-          message: userInput,
-          enableMemory: options.enableMemory ?? false,
-          contextBudget: options.contextBudget,
-          history,
-        }),
-        signal: abort.signal,
-      })
+      const stream = client.stream({
+        agentId: options.agentId,
+        message: userInput,
+        enableMemory: options.enableMemory ?? false,
+        contextBudget: options.contextBudget,
+        history,
+      }, { signal: abort.signal })
 
-      if (!res.ok) {
-        const errText = await res.text()
-        throw new Error(errText || `Gateway error: ${res.status}`)
-      }
-
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No response body')
-
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          try {
-            const event = JSON.parse(line.slice(6))
-
-            switch (event.type) {
-              case 'text': {
-                const delta = event.content || ''
-                assistantText += delta
-                if (!assistantId) {
-                  assistantId = `asst-${Date.now()}`
-                  setMessages(prev => [...prev, {
-                    id: assistantId,
-                    role: 'assistant',
-                    content: delta,
-                    timestamp: Date.now(),
-                  }])
-                } else {
-                  setMessages(prev => {
-                    const updated = [...prev]
-                    const idx = updated.findIndex(m => m.id === assistantId)
-                    if (idx !== -1) {
-                      updated[idx] = { ...updated[idx], content: assistantText }
-                    }
-                    return updated
-                  })
+      for await (const event of stream) {
+        switch (event.type) {
+          case 'text': {
+            const delta = event.content || ''
+            assistantText += delta
+            if (!assistantId) {
+              assistantId = `asst-${Date.now()}`
+              setMessages(prev => [...prev, {
+                id: assistantId,
+                role: 'assistant',
+                content: delta,
+                timestamp: Date.now(),
+              }])
+            } else {
+              setMessages(prev => {
+                const updated = [...prev]
+                const idx = updated.findIndex(m => m.id === assistantId)
+                if (idx !== -1) {
+                  updated[idx] = { ...updated[idx], content: assistantText }
                 }
-                options.onTextDelta?.(delta, assistantText)
-                break
-              }
-
-              case 'tool_call': {
-                const tcMsg: ChatMessage = {
-                  id: `tc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
-                  role: 'tool_call',
-                  content: `Calling ${event.toolName}...`,
-                  timestamp: Date.now(),
-                  toolName: event.toolName,
-                  toolInput: event.toolArgs,
-                  toolStatus: 'pending',
-                }
-                setMessages(prev => [...prev, tcMsg])
-                options.onToolCall?.(tcMsg)
-                break
-              }
-
-              case 'tool_result': {
-                setMessages(prev => {
-                  const updated = [...prev]
-                  // Find the last pending tool_call for this name
-                  for (let i = updated.length - 1; i >= 0; i--) {
-                    if (updated[i]!.toolName === event.toolName && updated[i]!.toolStatus === 'pending') {
-                      updated[i] = {
-                        ...updated[i]!,
-                        role: 'tool_result',
-                        content: event.error ? `Error: ${event.error}` : 'Tool result received',
-                        toolStatus: event.error ? 'error' : 'done',
-                        toolResult: event.toolResult,
-                        toolError: event.error,
-                      }
-                      break
-                    }
-                  }
-                  return updated
-                })
-                break
-              }
-
-              case 'thinking':
-                setThinkingText(event.content || '')
-                options.onThinking?.(event.content)
-                break
-
-              case 'clarification':
-                // Conversation Service interruption: the request was ambiguous
-                // and the assistant asks a clarifying question. Surface it to the
-                // user; the answer is re-sent as a follow-up message.
-                setThinkingText('')
-                options.onClarification?.(event.question || event.content || '')
-                break
-
-              case 'done':
-                options.onComplete?.(event.usage)
-                break
-
-              case 'error':
-                options.onError?.(event.error)
-                break
+                return updated
+              })
             }
-          } catch { /* skip malformed SSE lines */ }
+            options.onTextDelta?.(delta, assistantText)
+            break
+          }
+
+          case 'tool_call': {
+            const tcMsg: ChatMessage = {
+              id: `tc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+              role: 'tool_call',
+              content: `Calling ${event.toolName}...`,
+              timestamp: Date.now(),
+              toolName: event.toolName,
+              toolInput: event.toolArgs,
+              toolStatus: 'pending',
+            }
+            setMessages(prev => [...prev, tcMsg])
+            options.onToolCall?.(tcMsg)
+            break
+          }
+
+          case 'tool_result': {
+            setMessages(prev => {
+              const updated = [...prev]
+              // Find the last pending tool_call for this name
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (updated[i]!.toolName === event.toolName && updated[i]!.toolStatus === 'pending') {
+                  updated[i] = {
+                    ...updated[i]!,
+                    role: 'tool_result',
+                    content: event.error ? `Error: ${event.error}` : 'Tool result received',
+                    toolStatus: event.error ? 'error' : 'done',
+                    toolResult: event.toolResult,
+                    toolError: event.error,
+                  }
+                  break
+                }
+              }
+              return updated
+            })
+            break
+          }
+
+          case 'thinking':
+            setThinkingText(event.content || '')
+            options.onThinking?.(event.content ?? '')
+            break
+
+          case 'clarification':
+            // Conversation Service interruption: the request was ambiguous
+            // and the assistant asks a clarifying question. Surface it to the
+            // user; the answer is re-sent as a follow-up message.
+            setThinkingText('')
+            options.onClarification?.(event.question || event.content || '')
+            break
+
+          case 'done':
+            options.onComplete?.(event.usage)
+            break
+
+          case 'error':
+            options.onError?.(event.error ?? '')
+            break
         }
       }
     } catch (err: any) {

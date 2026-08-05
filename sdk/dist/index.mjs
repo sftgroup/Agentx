@@ -6861,18 +6861,25 @@ var ConversationClient = class {
   baseUrl;
   /**
    * Stream an agent conversation (SSE). Yields parsed events.
+   * @param opts.signal external AbortSignal — aborts the stream (e.g. user "stop")
    */
-  async *stream(params) {
+  async *stream(params, opts) {
     const headers = {
-      "Content-Type": "application/json",
-      "X-Api-Key": this.config.apiKey
+      "Content-Type": "application/json"
     };
+    if (this.config.apiKey) headers["X-Api-Key"] = this.config.apiKey;
+    if (this.config.accessToken) headers["Authorization"] = `Bearer ${this.config.accessToken}`;
+    if (!this.config.apiKey && !this.config.accessToken) {
+      throw new Error("ConversationClient requires either apiKey or accessToken");
+    }
     if (this.config.endUserId) headers["X-End-User-Id"] = this.config.endUserId;
     if (this.config.llmApiKey) headers["X-Llm-Api-Key"] = this.config.llmApiKey;
     if (this.config.llmEndpoint) headers["X-Llm-Endpoint"] = this.config.llmEndpoint;
     if (this.config.llmModel) headers["X-Llm-Model"] = this.config.llmModel;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 12e4);
+    const onExternalAbort = () => controller.abort();
+    opts?.signal?.addEventListener("abort", onExternalAbort, { once: true });
     try {
       const res = await fetch(`${this.baseUrl}/api/v1/agent/runs`, {
         method: "POST",
@@ -6919,6 +6926,7 @@ var ConversationClient = class {
       }
     } finally {
       clearTimeout(timeout);
+      opts?.signal?.removeEventListener("abort", onExternalAbort);
     }
   }
   /**
