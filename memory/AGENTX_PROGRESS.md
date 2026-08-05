@@ -1,5 +1,8 @@
 # AgentX Progress Tracker
 
+> ⚠️ **已归档（2026-08-05）**：本文件停止维护，统一进度文档迁移至 **[docs/PROGRESS.md](../docs/PROGRESS.md)**。
+> 下方内容为 2026-07-14 历史快照，仅存档参考。
+
 > Last updated: 2026-07-14 03:53 (P3 #22 done, NetworkSwitcher OxaChain L1 name fixed)
 
 ---
