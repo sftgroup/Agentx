@@ -82,6 +82,70 @@ export interface ConversationChatResult {
   iterations?: number
 }
 
+// ── Tasks (parallel runs, P8) ─────────────────────────────────────────────
+
+export type ConversationTaskStatus = 'queued' | 'running' | 'done' | 'error' | 'cancelled'
+
+export interface ConversationTask {
+  id: string
+  sessionId: string
+  tenant: string
+  agentId?: number | null
+  endUserId?: string | null
+  message: string
+  status: ConversationTaskStatus
+  enableMemory: boolean
+  history?: unknown
+  prompt?: string | null
+  skills?: unknown
+  result?: string | null
+  error?: string | null
+  usage?: unknown
+  iterations?: number | null
+  createdAt: string
+  startedAt?: string | null
+  finishedAt?: string | null
+}
+
+export interface ConversationCreateTaskParams {
+  sessionId: string
+  /** AgentX agent id (omit when using inline prompt/skills mode) */
+  agentId?: number
+  message: string
+  enableMemory?: boolean
+  /** Full conversation history (optional) */
+  history?: { role: 'user' | 'assistant'; content: string }[]
+  /** Inline mode: caller-supplied system prompt */
+  prompt?: string
+  /** Inline mode: caller-supplied tools */
+  skills?: ConversationSkillDef[]
+  /** BYOK: id of a stored tenant-owned API key */
+  tenantKeyId?: string
+}
+
+export interface ConversationCreateSessionParams {
+  sessionId?: string
+  agentId?: number
+  endUserId?: string
+  title?: string
+}
+
+/**
+ * Thrown by task APIs when the platform rejects the request.
+ * `code === 'PARALLEL_TASKS_DISABLED'` (HTTP 403) means the integrator/tenant
+ * is configured to disallow multi-task / sub-agent (P9).
+ */
+export class ConversationTaskError extends Error {
+  readonly status: number
+  readonly code?: string
+  constructor(status: number, message: string, code?: string) {
+    super(message)
+    this.name = 'ConversationTaskError'
+    this.status = status
+    this.code = code
+  }
+}
+
 export class ConversationClient {
   private readonly baseUrl: string
 
@@ -89,11 +153,8 @@ export class ConversationClient {
     this.baseUrl = config.gatewayUrl.replace(/\/$/, '')
   }
 
-  /**
-   * Stream an agent conversation (SSE). Yields parsed events.
-   * @param opts.signal external AbortSignal — aborts the stream (e.g. user "stop")
-   */
-  async *stream(params: ConversationChatParams, opts?: { signal?: AbortSignal }): AsyncGenerator<ConversationSSEEvent> {
+  /** Common auth/tenant headers for all Gateway API calls. */
+  private _headers(): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
@@ -106,6 +167,15 @@ export class ConversationClient {
     if (this.config.llmApiKey) headers['X-Llm-Api-Key'] = this.config.llmApiKey
     if (this.config.llmEndpoint) headers['X-Llm-Endpoint'] = this.config.llmEndpoint
     if (this.config.llmModel) headers['X-Llm-Model'] = this.config.llmModel
+    return headers
+  }
+
+  /**
+   * Stream an agent conversation (SSE). Yields parsed events.
+   * @param opts.signal external AbortSignal — aborts the stream (e.g. user "stop")
+   */
+  async *stream(params: ConversationChatParams, opts?: { signal?: AbortSignal }): AsyncGenerator<ConversationSSEEvent> {
+    const headers = this._headers()
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 120_000)
@@ -199,5 +269,95 @@ export class ConversationClient {
     }
 
     return result
+  }
+
+  // ── Sessions & Tasks (parallel runs) ────────────────────────────────────
+
+  /**
+   * Query the integrator's capability flags (P9). When `parallelTasks` is false,
+   * `createTask` will be rejected with HTTP 403 `PARALLEL_TASKS_DISABLED` —
+   * callers should degrade to single-turn `chat()` in that case.
+   */
+  async getCapabilities(): Promise<{ parallelTasks: boolean; parallelTasksOverride: boolean | null }> {
+    const res = await fetch(`${this.baseUrl}/api/v1/tenant/me`, { headers: this._headers() })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, body?.error || `Capability lookup failed (HTTP ${res.status})`)
+    }
+    return {
+      parallelTasks: body?.capabilities?.parallel_tasks ?? true,
+      parallelTasksOverride: body?.capabilities?.parallel_tasks_override ?? null,
+    }
+  }
+
+  /**
+   * Create a session (dialog container that owns many tasks). Idempotent.
+   */
+  async createSession(params: ConversationCreateSessionParams): Promise<{ id: string; tenant: string; agentId?: number | null; endUserId?: string | null; title?: string | null }> {
+    const res = await fetch(`${this.baseUrl}/api/v1/sessions`, {
+      method: 'POST',
+      headers: this._headers(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, `Session creation failed (HTTP ${res.status})`)
+    }
+    return res.json()
+  }
+
+  /**
+   * Create a task — returns immediately with the task row (`status: queued`);
+   * execution happens in the background. Throws `ConversationTaskError` with
+   * `code === 'PARALLEL_TASKS_DISABLED'` (HTTP 403) when the tenant/plan is
+   * configured to disallow multi-task / sub-agent.
+   */
+  async createTask(params: ConversationCreateTaskParams): Promise<ConversationTask> {
+    const res = await fetch(`${this.baseUrl}/api/v1/sessions/${params.sessionId}/tasks`, {
+      method: 'POST',
+      headers: this._headers(),
+      body: JSON.stringify(params),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new ConversationTaskError(
+        res.status,
+        body?.error || `Task creation failed (HTTP ${res.status})`,
+        body?.code,
+      )
+    }
+    return body as ConversationTask
+  }
+
+  /** Fetch a single task by id. */
+  async getTask(taskId: string): Promise<ConversationTask> {
+    const res = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}`, { headers: this._headers() })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, body?.error || `Task lookup failed (HTTP ${res.status})`, body?.code)
+    }
+    return body as ConversationTask
+  }
+
+  /** List tasks of a session. */
+  async listTasks(sessionId: string): Promise<ConversationTask[]> {
+    const res = await fetch(`${this.baseUrl}/api/v1/sessions/${sessionId}/tasks`, { headers: this._headers() })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, body?.error || `Task list failed (HTTP ${res.status})`, body?.code)
+    }
+    return (body.tasks ?? []) as ConversationTask[]
+  }
+
+  /** Cancel a task (queued → cancelled directly, running → aborted). */
+  async cancelTask(taskId: string): Promise<ConversationTask> {
+    const res = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}`, {
+      method: 'DELETE',
+      headers: this._headers(),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, body?.error || `Task cancel failed (HTTP ${res.status})`, body?.code)
+    }
+    return body as ConversationTask
   }
 }
