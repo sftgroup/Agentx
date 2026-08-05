@@ -248,6 +248,15 @@
   - 5 个调用方均有配置模板（含占位）
 - 实现记录：迁移 014 `integration_partners` + admin 5 端点（列表/创建=自动建租户 `partner-<slug>` + 签发 key/编辑/轮换/删除）+ 前端 Integrations Tab（创建/编辑/轮换/复制，明文 key 仅一次）+ 5 个调用方 key 全部签发并分发（aitrader/aihunter-saas 本地 `.env`，aiservicer/autoops 生产服务器 `.env`，aiops-saas 无项目仅占位文档 [docs/integration-callers.md](integration-callers.md)）。生产冒烟 10/10 PASS（列表/创建/API-key 鉴权/编辑/轮换旧 key 401 新 key 200/删除清理），5 key 有效性与 /tenant/me 验证 5/5（enterprise plan）。附加修复：生产 Redis 未运行导致 gateway 每请求阻塞 ~10s（ioredis 重连队列），启动 `agentx-redis` 容器（redis:7-alpine，6379）后恢复。部署：迁移已执行、gateway/frontend 均已 build + pm2 restart。
 
+**R12 MCP 补充对话与任务管理工具（新需求）** —— 优先级：高 · ✅ 完成（2026-08-06 · commit `c224317`）
+- 来源：SDK/MCP 覆盖检查（2026-08-06）：MCP 33 个工具全部为链上 + 网关只读（tenant/health），MCP 客户端无法发起对话/创建查询取消任务，无法消费 P8/P9 并行能力
+- 平台侧：
+  1. 新增 6 个 MCP 工具：`agentx_gateway_chat`（单轮对话，SSE 聚合为 reply+tool_calls）/ `create_session`（幂等）/ `create_task`（立即返回 taskId）/ `get_task` / `list_tasks` / `cancel_task`，工具总数 33→38
+  2. 鉴权：每个工具支持 `api_key`（X-Api-Key）或 `access_token`（JWT）参数二选一（MCP 公开路由无 HTTP 头鉴权）；参数 snake_case，handler 转 camelCase 经 `127.0.0.1:config.port` 内部转发 gateway REST，P9 gate 403 透传
+- 测试：新增 [gateway/test/mcp.test.ts](../../gateway/test/mcp.test.ts) 11 用例（tools/list 注册/参数校验/两种鉴权模式/SSE 聚合/错误事件），gateway 全量 27/27 通过
+- 文档：MCP_SETUP.md（38 tools + Conversation & Tasks 表 + curl 示例）、mcp/README.md、[docs/sdk-vs-mcp.md](sdk-vs-mcp.md)（对话/任务行双通道等价）、README.md、docs/sdk-integration-example.md、[docs/integration-callers.md](integration-callers.md)（新增 §7.5 MCP 接入）
+- 验证：生产部署 + 冒烟 7/7 PASS（tools/list=38 / create_session / create_task→running→done / get_task / list_tasks / cancel_task / chat 聚合）；任务执行错误 `Missing or invalid Authorization header` 为既有 R3 平台兜底 LLM key 未生效问题（非本次引入）
+
 ---
 
 ## 三、生产环境

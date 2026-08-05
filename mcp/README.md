@@ -1,13 +1,14 @@
 # @agentxv2/mcp
 
-**AgentX MCP 客户端包** — 类型化访问 AgentX Gateway 的 MCP 服务（32 个工具）：IdentityRegistry 读取、订阅套餐/操作、A2A、信誉、配置、端点。
+**AgentX MCP 客户端包** — 类型化访问 AgentX Gateway 的 MCP 服务（38 个工具）：IdentityRegistry 读取、订阅套餐/操作、A2A、信誉、配置、端点、**对话与并行任务管理**。
 
 ```
 第三方服务 ── @agentxv2/mcp ──► POST <GATEWAY>/mcp (MCP JSON-RPC 2.0)
                                  ├─ agentx_identity_*     链上 Agent 读取
                                  ├─ agentx_subscription_* 订阅套餐 / 写操作描述
                                  ├─ agentx_a2a_* / reputation / config / endpoint
-                                 └─ agentx_gateway_health / tenant
+                                 ├─ agentx_gateway_health / tenant
+                                 └─ agentx_gateway_chat / create_session / create_task / get_task / list_tasks / cancel_task
 ```
 
 > 与 [@agentxv2/sdk](https://www.npmjs.com/package/@agentxv2/sdk) 的区别：SDK 直连区块链（读/写/事件），本包走 Gateway MCP 协议（工具化调用，无需 RPC 端点，生产地址由 Gateway 提供）。
@@ -33,7 +34,7 @@ const info = await mcp.initialize()
 console.log('server:', info)                // { name, version }
 
 const tools = await mcp.listTools()
-console.log('工具数:', tools.length)         // 32
+console.log('工具数:', tools.length)         // 38
 
 // 批量查询 Agent（等价 SDK getAllAgents）
 const { agents, total } = await mcp.listAgents({ fromId: 1, toId: total, activeOnly: true })
@@ -59,7 +60,7 @@ const status = await mcp.callTool('agentx_gateway_health', {})
 
 ## 鉴权
 
-Gateway MCP 公开无鉴权（读取与 WRITE 描述）。租户相关工具（如 `agentx_gateway_tenant`）需带 `X-Api-Key`：
+Gateway MCP 公开无鉴权（读取与 WRITE 描述）。租户相关工具（`agentx_gateway_tenant` 与全部对话/任务工具）需在调用参数中带 `api_key`（`X-Api-Key`）或 `access_token`（JWT）：
 
 ```typescript
 const mcp = new McpClient({
@@ -86,6 +87,7 @@ const mcp = new McpClient({
 | `subscriptionDetail(id)` / `mySubscriptions(addr)` | `agentx_subscription_detail/my_list` | 订阅详情/列表 |
 | `platformFee(chain?)` | `agentx_subscription_fee` | 平台费率（bps） |
 | `gatewayHealth()` / `gatewayTenant()` | `agentx_gateway_health/tenant` | Gateway 状态 |
+| 对话/任务（`callTool`） | `agentx_gateway_chat` / `..._create_session` / `..._create_task` / `..._get_task` / `..._list_tasks` / `..._cancel_task` | 单轮对话与并行任务管理（需 `api_key`/`access_token` 参数） |
 
 ## 关键约定
 

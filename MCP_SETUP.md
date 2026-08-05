@@ -1,12 +1,12 @@
 # AgentX MCP Server
 
-> v0.8.0 · Platform: `POST /mcp` (32 tools) · Agent Export: `POST /mcp/agent/:id` · Standard MCP JSON-RPC 2.0
+> v0.8.0 · Platform: `POST /mcp` (38 tools) · Agent Export: `POST /mcp/agent/:id` · Standard MCP JSON-RPC 2.0
 
 ---
 
 ## Overview
 
-AgentX exposes its entire platform (6 smart contracts + Gateway API) as a standard **MCP (Model Context Protocol) Server**. Any MCP-compatible client — Claude Desktop, Cursor, VS Code, custom agents — can directly read on-chain data and interact with AgentX contracts through 32 built-in tools.
+AgentX exposes its entire platform (6 smart contracts + Gateway API) as a standard **MCP (Model Context Protocol) Server**. Any MCP-compatible client — Claude Desktop, Cursor, VS Code, custom agents — can directly read on-chain data, interact with AgentX contracts, run conversations and manage parallel tasks through 38 built-in tools.
 
 ```
 Claude Desktop / Cursor / Any MCP Client
@@ -17,7 +17,7 @@ Claude Desktop / Cursor / Any MCP Client
 │ AgentX Gateway (:3090)              │
 │ ┌───────────────────────────────┐   │
 │ │ POST /mcp                     │   │
-│ │   tools/list    → 32 tools    │   │
+│ │   tools/list    → 38 tools    │   │
 │ │   tools/call    → execute     │   │
 │ │   initialize    → handshake   │   │
 │ └───────────────────────────────┘   │
@@ -112,11 +112,16 @@ curl -s -X POST http://43.159.60.46:3090/mcp \
 curl -s -X POST http://43.159.60.46:3090/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"agentx_gateway_health","arguments":{}}}'
+
+# Single-turn conversation (auth via api_key in arguments)
+curl -s -X POST http://43.159.60.46:3090/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"agentx_gateway_chat","arguments":{"api_key":"agentx_...","message":"hi","agent_id":1}}}'
 ```
 
 ---
 
-## All 32 Tools
+## All 38 Tools
 
 ### IdentityRegistry (7)
 
@@ -184,6 +189,19 @@ curl -s -X POST http://43.159.60.46:3090/mcp \
 |------|------|-------------|
 | `agentx_gateway_tenant` | READ | Tenant profile + quota |
 | `agentx_gateway_health` | READ | Server health + chain info |
+
+### Gateway Conversation & Tasks (6)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `agentx_gateway_chat` | WRITE | Single-turn conversation; SSE aggregated into `{reply, tool_calls}` |
+| `agentx_gateway_create_session` | WRITE | Create a conversation session (idempotent) |
+| `agentx_gateway_create_task` | WRITE | Create a background task (returns `taskId` immediately) |
+| `agentx_gateway_get_task` | READ | Get task detail (status / result / error) |
+| `agentx_gateway_list_tasks` | READ | List all tasks of a session |
+| `agentx_gateway_cancel_task` | WRITE | Cancel a task (idempotent on terminal states) |
+
+> Conversation & task tools require `api_key` or `access_token` passed inside tool `arguments` (snake_case, e.g. `session_id`, `task_id`, `agent_id`).
 
 > **READ** tools execute immediately and return JSON data.  
 > **WRITE** tools return a transaction payload that the MCP client must sign and submit on-chain.
@@ -304,7 +322,7 @@ const mcp = new MCPConnector({
   url: 'http://43.159.60.46:3090/mcp',
 })
 
-// List all 32 platform tools
+// List all 38 platform tools
 const tools = await mcp.listTools()
 
 // Query on-chain data

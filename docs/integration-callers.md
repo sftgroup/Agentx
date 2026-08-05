@@ -215,6 +215,38 @@ for await (const event of stream) {
 |---|---|---|
 | POST | `/api/v1/agent/runs` | 单轮对话，SSE 流式返回 |
 
+## 7.5 MCP 接入（JSON-RPC）
+
+平台暴露标准 MCP 端点 `POST <GATEWAY>/mcp`（共 38 个工具）。除链上数据外，还包含对话与并行任务管理工具：
+
+| 工具 | 说明 | 鉴权 |
+|---|---|---|
+| `agentx_gateway_chat` | 单轮对话（SSE 聚合为 `{reply, tool_calls}`） | `api_key` 或 `access_token` |
+| `agentx_gateway_create_session` | 创建会话（幂等） | 同上 |
+| `agentx_gateway_create_task` | 创建后台任务（立即返回 taskId） | 同上 |
+| `agentx_gateway_get_task` | 查询任务状态/结果 | 同上 |
+| `agentx_gateway_list_tasks` | 会话内任务列表 | 同上 |
+| `agentx_gateway_cancel_task` | 取消任务（终态幂等） | 同上 |
+
+对话/任务工具的参数使用 snake_case（`api_key`/`access_token`/`session_id`/`task_id`/`agent_id`），鉴权凭据直接放在 `arguments` 中：
+
+```bash
+curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
+  "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+  "params": {
+    "name": "agentx_gateway_create_task",
+    "arguments": {
+      "api_key": "agentx_<your-key>",
+      "session_id": "<session-id>",
+      "message": "分析最近一周的交易",
+      "agent_id": 1
+    }
+  }
+}'
+```
+
+> 完整工具清单与 Claude Desktop 配置见仓库 `MCP_SETUP.md`。
+
 ## 8. 错误码
 
 | HTTP | Code | 说明 | 处理 |

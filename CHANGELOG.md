@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-08-06
+
+### Gateway — MCP 新增对话与任务管理工具（33→38）
+
+**新特性**：MCP 端点 `/mcp` 工具数 33→38，补齐对话与并行任务管理能力（此前仅链上 + 网关只读，MCP 客户端无法消费 P8/P9 并行能力）。
+
+- **`agentx_gateway_chat`** — 单轮对话；经 Gateway 调用 `POST /agent/runs`，将 SSE 流聚合为 `{ reply, tool_calls }` 返回
+- **`agentx_gateway_create_session` / `create_task` / `get_task` / `list_tasks` / `cancel_task`** — 会话幂等创建、后台任务提交（立即返回 taskId）、任务查询/列表/取消（终态幂等）
+- **鉴权**：MCP 为公开路由，对话/任务工具在工具 `arguments` 中接受 `api_key`（`X-Api-Key`）或 `access_token`（JWT）二选一；参数 snake_case，handler 转 camelCase 内部转发 gateway REST，P9 gate 403（`PARALLEL_TASKS_DISABLED`）透传
+- 测试：新增 `gateway/test/mcp.test.ts` 11 用例，gateway 全量 27/27 通过
+- 文档：`MCP_SETUP.md`、`mcp/README.md`、`docs/sdk-vs-mcp.md`、`docs/integration-callers.md`（§7.5 MCP 接入）、`README.md` 同步更新
+
 ## 2026-08-05
 
 ### Gateway v0.2.1 — SDK-based ChainDataReader + 实时链上读取 API
