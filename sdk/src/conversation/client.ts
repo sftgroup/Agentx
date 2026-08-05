@@ -4,15 +4,19 @@
 // Wraps the hosted Conversation Service via the Gateway:
 //   POST /api/v1/agent/runs  (SSE stream)
 //
-// Auth:    X-Api-Key: agentx_xxx  (tenant API Key issued after registration)
+// Auth (either one is required):
+//   - Tenant API Key:  X-Api-Key: agentx_xxx  (issued after registration)
+//   - Gateway JWT:     Authorization: Bearer <accessToken>  (wallet-signed login)
 // Isolation: X-End-User-Id (per end-user memory isolation within a tenant)
 // ---------------------------------------------------------------------------
 
 export interface ConversationClientConfig {
   /** Gateway base URL, e.g. http://43.159.60.46:3090 */
   gatewayUrl: string
-  /** Tenant API Key (agentx_...) issued after registration */
-  apiKey: string
+  /** Tenant API Key (agentx_...) issued after registration (alternative to accessToken) */
+  apiKey?: string
+  /** Gateway JWT access token from wallet-signed login (alternative to apiKey) */
+  accessToken?: string
   /** End-user ID for memory isolation within the tenant (optional) */
   endUserId?: string
   /** LLM API Key override — uses the caller's key instead of the tenant's (optional) */
@@ -61,9 +65,10 @@ export interface ConversationSSEEvent {
   toolName?: string
   toolArgs?: Record<string, unknown>
   toolResult?: unknown
+  /** Attached to tool_result when tool execution failed */
+  error?: string
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
   iterations?: number
-  error?: string
 }
 
 export interface ConversationChatResult {
@@ -84,11 +89,16 @@ export class ConversationClient {
 
   /**
    * Stream an agent conversation (SSE). Yields parsed events.
+   * @param opts.signal external AbortSignal — aborts the stream (e.g. user "stop")
    */
-  async *stream(params: ConversationChatParams): AsyncGenerator<ConversationSSEEvent> {
+  async *stream(params: ConversationChatParams, opts?: { signal?: AbortSignal }): AsyncGenerator<ConversationSSEEvent> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'X-Api-Key': this.config.apiKey,
+    }
+    if (this.config.apiKey) headers['X-Api-Key'] = this.config.apiKey
+    if (this.config.accessToken) headers['Authorization'] = `Bearer ${this.config.accessToken}`
+    if (!this.config.apiKey && !this.config.accessToken) {
+      throw new Error('ConversationClient requires either apiKey or accessToken')
     }
     if (this.config.endUserId) headers['X-End-User-Id'] = this.config.endUserId
     if (this.config.llmApiKey) headers['X-Llm-Api-Key'] = this.config.llmApiKey
@@ -97,6 +107,8 @@ export class ConversationClient {
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 120_000)
+    const onExternalAbort = () => controller.abort()
+    opts?.signal?.addEventListener('abort', onExternalAbort, { once: true })
 
     try {
       const res = await fetch(`${this.baseUrl}/api/v1/agent/runs`, {
@@ -149,6 +161,7 @@ export class ConversationClient {
       }
     } finally {
       clearTimeout(timeout)
+      opts?.signal?.removeEventListener('abort', onExternalAbort)
     }
   }
 

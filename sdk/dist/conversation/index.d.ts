@@ -1,8 +1,10 @@
 interface ConversationClientConfig {
     /** Gateway base URL, e.g. http://43.159.60.46:3090 */
     gatewayUrl: string;
-    /** Tenant API Key (agentx_...) issued after registration */
-    apiKey: string;
+    /** Tenant API Key (agentx_...) issued after registration (alternative to accessToken) */
+    apiKey?: string;
+    /** Gateway JWT access token from wallet-signed login (alternative to apiKey) */
+    accessToken?: string;
     /** End-user ID for memory isolation within the tenant (optional) */
     endUserId?: string;
     /** LLM API Key override — uses the caller's key instead of the tenant's (optional) */
@@ -51,13 +53,14 @@ interface ConversationSSEEvent {
     toolName?: string;
     toolArgs?: Record<string, unknown>;
     toolResult?: unknown;
+    /** Attached to tool_result when tool execution failed */
+    error?: string;
     usage?: {
         promptTokens: number;
         completionTokens: number;
         totalTokens: number;
     };
     iterations?: number;
-    error?: string;
 }
 interface ConversationChatResult {
     text: string;
@@ -81,8 +84,11 @@ declare class ConversationClient {
     constructor(config: ConversationClientConfig);
     /**
      * Stream an agent conversation (SSE). Yields parsed events.
+     * @param opts.signal external AbortSignal — aborts the stream (e.g. user "stop")
      */
-    stream(params: ConversationChatParams): AsyncGenerator<ConversationSSEEvent>;
+    stream(params: ConversationChatParams, opts?: {
+        signal?: AbortSignal;
+    }): AsyncGenerator<ConversationSSEEvent>;
     /**
      * Run a conversation and collect the full result.
      */
