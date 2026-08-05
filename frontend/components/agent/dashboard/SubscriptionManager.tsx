@@ -76,7 +76,8 @@ export function SubscriptionManager() {
     { value: BillingPeriod.Daily, label: '每日', days: 1 },
     { value: BillingPeriod.Weekly, label: '每周', days: 7 },
     { value: BillingPeriod.Monthly, label: '每月', days: 30 },
-    { value: BillingPeriod.Quarterly, label: '每季度', days: 90 },
+    // Quarterly intentionally omitted — the on-chain contract only supports
+    // day/week/month/year (see BILLING_PERIOD_TO_ONCHAIN).
     { value: BillingPeriod.Yearly, label: '每年', days: 365 }
   ]
 
