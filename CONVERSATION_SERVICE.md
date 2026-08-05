@@ -95,6 +95,10 @@ PGPASSWORD=your-password psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversat
   -f migrations/002_traces.sql
 PGPASSWORD=your-password psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation \
   -f migrations/003_tenant_llm_config.sql
+PGPASSWORD=your-password psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation \
+  -f migrations/004_chat_sessions.sql
+PGPASSWORD=your-password psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation \
+  -f migrations/005_chat_tasks.sql
 ```
 
 ### 4. Build & Start
@@ -133,6 +137,8 @@ All values via environment variables. Copy `.env.example` to `.env`:
 | `CLARIFICATION_MODEL` | `gpt-4o-mini` | LLM model used by the clarification gate |
 | `GATEWAY_URL` | `http://localhost:3090` | AgentX Gateway URL (last-resort fallback) |
 | `MASTER_ENCRYPTION_KEY` | — | 64-char hex key for tenant API key encryption |
+| `TASK_MAX_CONCURRENT` | `4` | Max background tasks executed in parallel (DeerFlow Run model) |
+| `TASK_TIMEOUT_MS` | `900000` | Per-task timeout (15 min); on timeout the task is aborted and marked `error` |
 | `RPC_URL` | Sepolia public RPC | Blockchain RPC for agent data |
 | `IDENTITY_REGISTRY` | Sepolia | IdentityRegistry contract address |
 
@@ -274,6 +280,86 @@ curl http://localhost:8100/health
 
 ---
 
+## Sessions & Tasks — Parallel Runs (DeerFlow Thread/Run Model)
+
+A **session** is a dialog container that owns many **tasks** (runs). Tasks execute
+**in the background and in parallel** — `POST` returns a `taskId` immediately
+(`queued`), the queue is pumped up to `TASK_MAX_CONCURRENT` at once, and every SSE
+event is persisted so a client can replay a task's stream after disconnect.
+
+```
+Task state machine:
+  queued ─▶ running ─▶ done
+              │  └──▶ error   (run failure)
+              └──▶ cancelled  (DELETE while queued/running)
+```
+
+All endpoints are behind the Gateway (`/api/v1/...`) and proxied to this service —
+the internal routes below are what the Gateway calls.
+
+### POST /sessions — Create a Session
+
+```bash
+curl -X POST {gateway}/api/v1/sessions \
+  -H "Authorization: Bearer <JWT>" \
+  -d '{"sessionId":"sess_123","agentId":42,"endUserId":"user_1","title":"Audit"}'
+# → 201 {"id":"sess_123","tenant":"0x...","agent_id":42,"end_user_id":"user_1","title":"Audit",...}
+```
+
+`sessionId` is optional; if omitted the service generates one. Creating the same id
+twice is idempotent (existing row is returned).
+
+### POST /sessions/:sessionId/tasks — Create a Task (Immediate `taskId`)
+
+```bash
+curl -X POST {gateway}/api/v1/sessions/sess_123/tasks \
+  -H "Authorization: Bearer <JWT>" \
+  -H "X-Llm-Api-Key: sk-..." \
+  -H "X-Llm-Endpoint: https://api.deepseek.com/v1" \
+  -H "X-Llm-Model: deepseek-chat" \
+  -d '{"message":"Analyze this contract","enableMemory":false}'
+# → 201 {"id":"<taskId>","sessionId":"sess_123","status":"queued",...}
+```
+
+Task creation returns immediately with the task row (`status: queued`). Execution
+starts in the background as soon as a concurrency slot frees up. Same request shape
+as `/runs`: `agentId` or inline `prompt`/`skills`, plus `history`, `enableMemory`.
+BYOK (`X-Llm-*` headers) is AES-encrypted at rest per task, so the background
+executor can decrypt and run it later without keeping the plaintext in memory.
+
+### GET /sessions/:sessionId/tasks — List Tasks
+
+```bash
+curl {gateway}/api/v1/sessions/sess_123/tasks \
+  -H "Authorization: Bearer <JWT>"
+# → {"tasks":[{"id":"...","status":"done","result":"...",...}]}
+```
+
+### GET /tasks/:taskId — Task Detail
+
+Returns the task row including `status`, `result`, `error`, `usage`, `iterations`,
+`startedAt`/`finishedAt`.
+
+### GET /tasks/:taskId/events — SSE Event Stream (Replay + Live)
+
+Streams the same event types as `/runs` (`text`, `tool_call`, `tool_result`,
+`thinking`, `clarification`, `done`, `error`). On connect the server first **replays
+all persisted events** (deduplicated by `seq`), then continues with live events;
+when the task is already terminal the stream closes 500ms after replay. Heartbeats
+(`: ping`) every 30s keep proxies from closing idle connections.
+
+### DELETE /tasks/:taskId — Cancel a Task
+
+```bash
+curl -X DELETE {gateway}/api/v1/tasks/<taskId> -H "Authorization: Bearer <JWT>"
+# → 200 {"id":"<taskId>","status":"cancelled",...}
+```
+
+Queued tasks are cancelled directly; running tasks are aborted via `AbortController`
+→ `AgentLoop.abort()`. Already-terminal tasks return their current status (idempotent).
+
+---
+
 ## LLM Key Resolution (Plan C)
 
 The service supports hybrid LLM key resolution, allowing tenants to choose between convenience and cost:
@@ -322,6 +408,45 @@ Priority chain:
 | encrypted_key | TEXT | AES-256-GCM encrypted API key |
 | model | VARCHAR(50) | Override model (optional) |
 | endpoint_url | VARCHAR(255) | Custom endpoint (optional) |
+
+### chat_sessions
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(64) PK | Session id (client- or server-generated) |
+| tenant | VARCHAR(42) | Tenant wallet |
+| agent_id | INTEGER | Agent the session belongs to |
+| end_user_id | VARCHAR(64) | Per end-user isolation (default `default`) |
+| title | TEXT | Optional dialog title |
+| created_at / updated_at | TIMESTAMPTZ | Timestamps |
+
+### chat_tasks
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(64) PK | Task id (uuid, returned immediately) |
+| session_id | VARCHAR(64) FK | Owning session (`ON DELETE CASCADE`) |
+| tenant / agent_id / end_user_id | — | Run identity (same semantics as `/runs`) |
+| message | TEXT | User message |
+| status | VARCHAR(16) | `queued` / `running` / `done` / `error` / `cancelled` |
+| enable_memory | BOOLEAN | Memory enabled for this run |
+| history | JSONB | Short-term conversation history |
+| prompt / skills | JSONB | Inline-mode system prompt + tools |
+| llm_api_key_enc | TEXT | Stateless BYOK key, AES-encrypted at rest |
+| llm_endpoint / llm_model | TEXT | BYOK endpoint / model |
+| result | TEXT | Final assistant text |
+| error | TEXT | Error message when `status = error` |
+| usage | JSONB | Token usage |
+| iterations | INTEGER | Loop iterations |
+| created_at / started_at / finished_at | TIMESTAMPTZ | Lifecycle timestamps |
+
+### chat_task_events
+| Column | Type | Description |
+|--------|------|-------------|
+| id | BIGSERIAL PK | Event id |
+| task_id | VARCHAR(64) FK | Owning task (`ON DELETE CASCADE`) |
+| seq | INTEGER | Monotonic sequence per task (dedupe on replay) |
+| type | VARCHAR(32) | `text` / `tool_call` / `tool_result` / `thinking` / `clarification` / `done` / `error` |
+| payload | JSONB | Event payload |
+| created_at | TIMESTAMPTZ | Event time |
 
 ---
 

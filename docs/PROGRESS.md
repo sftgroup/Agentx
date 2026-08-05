@@ -90,17 +90,35 @@
 
 > P7 决策备忘：实施范围=按阶段全部做（①LLM key 双轨 → ②渠道结算 → ③B 端申请），已全部完成并生产部署。
 
+### P8 对话多任务并行管理（✅ 完成，2026-08-06 · commits `9129031` / `051b4a6` / `151e67b`）
+> 参考 DeerFlow 的 Thread/Run 模型：会话（session）为对话框容器，任务（task）为一次后台执行；
+> 提交即返回 taskId，队列并行执行，事件持久化 + SSE 重放，可取消。
+
+| # | 任务 | 状态 |
+|---|------|:--:|
+| P8-1 | 迁移 004 `chat_sessions`（会话容器）+ 005 `chat_tasks`（任务）+ `chat_task_events`（事件日志，task FK 级联删除），生产已执行 | ✅ |
+| P8-2 | conversation-service `TaskManager`：状态机 `queued→running→done/error/cancelled`，队列 + 并发信号量（`TASK_MAX_CONCURRENT` 默认 4），超时 abort（`TASK_TIMEOUT_MS` 默认 15min），BYOK key 加密落盘按任务解密 | ✅ |
+| P8-3 | sessions/tasks REST + SSE 路由：`POST /sessions`（幂等）、`POST /sessions/:id/tasks`（201 返回 taskId）、`GET /sessions/:id/tasks`、`GET /tasks/:id`、`DELETE /tasks/:id`（取消）、`GET /tasks/:id/events`（先重放持久化事件再续实时，30s 心跳，终态自动关闭） | ✅ |
+| P8-4 | gateway 代理 `/api/v1/sessions` + `/api/v1/tasks`（JWT/API-key 认证，存储式 BYOK 服务端解密，SSE 流式转发） | ✅ |
+| P8-5 | agent-runner 支持外部 `AbortSignal`（取消 → `AgentLoop.abort()`） | ✅ |
+| P8-6 | 生产部署 + 冒烟 6/6 PASS（session 创建 / task 立即返回 / 终态 / 列表 / SSE 事件重放 / DELETE 契约） | ✅ |
+
+> P8 排障记录：①gateway chat-tasks 路由曾挂载在 `/sessions` `/tasks` 双前缀导致路径重复 404，改挂根路径修复（`051b4a6`）；②`rowToTask` 对 pg 已解析的 JSONB 值二次 `JSON.parse`（空数组→空串→`Unexpected end of JSON input`），改类型感知解析修复（`151e67b`）。
+> 验证备注：生产平台兜底 LLM key 无效（401），任务瞬间终态，真实 LLM 输出与 running 态取消的运行时验证需有效 BYOK key（与链路改造无关，见验证记录）。
+
 ---
 
 ## 二、当前状态
 
 - **进行中**：无阻塞项
 - **待办（规划）**：
-  - **P7 平台商业化能力**（2026-08-06 加入清单，未实施）：①用户自加 LLM key 前端接通（预置 provider+端点）+ 平台 key 管理增强；②渠道 CRUD/结算/明细报表；③B 端申请独立页面。详见「P7」章节
+  - 对话多任务前端接入（useAgentChat / 前端聊天页切换到 sessions+tasks 模型，支持并行任务列表与取消）
+  - `scripts/agentx-integration-test.mjs` 集成测试补 task 并行链路
 - **待办（外部前提）**：
   - 法币订阅：提供 Stripe 商户账号 → 配置 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`
   - x402：提供结算通道与收款钱包 → 配置 `X402_ENABLED=true` / `X402_PAY_TO`
   - 渠道归因：向 `channels` 表插入渠道配置即可启用（零外部依赖）
+  - 平台兜底 LLM key 有效值：conversation-service `OPENAI_API_KEY` 当前 401（影响非 BYOK 任务真实执行）
 - **技术债（🔵 可选优化）**：
   - 8 个 >760 行大文件待拆分（`gateway/src/routes/mcp.ts`、前端 hooks/组件等）——审查 #9，单独排期
   - 主入口仍 re-export react hooks（useAgentRunner），导致后端用户也需安装 wagmi——可后续拆分为独立子路径
@@ -160,6 +178,7 @@
 | 管理后台 | system/revenue/payments 200，日志输出 ip/query/耗时/结果 |
 | 代码审查修复回归（90bddc0） | gateway/frontend typecheck+build 全绿；MCP 迁移后 identity_total_count=62 / subscription_plans / identity_list_all(过滤) / subscription_my_list=[1,2,3] 正常；skills review 无 key→401、带 key→404(业务语义)；生产三服务 online，frontend 200 |
 | 对话链路统一回归（5675346） | 三服务 SDK 均为 0.8.5；JWT（现场签名）→ gateway `/api/v1/agent/runs` → conversation-service SSE 流式事件正常返回（text/done）；直连 `/runs`（X-Internal-Token）SSE 同样正常。LLM 层因生产未配置平台 key（`platform_api_keys` 0 行）报 `Missing or invalid Authorization header`——为既有凭据配置状态，与链路改造无关 |
+| P8 多任务并行冒烟（9129031） | 生产 6/6 PASS：POST /sessions 201 → POST /sessions/:id/tasks 立即返回 taskId → 轮询终态（done）→ GET /sessions/:id/tasks 列表 → GET /tasks/:id/events 返回持久化 `data:` 事件 → DELETE /tasks/:id 200+状态字段。测试数据已清理（smoke- 前缀 5 session 级联删除）。任务执行因平台兜底 key 401 瞬间终态，未验证真实 LLM 输出与 running 态取消（需有效 BYOK key） |
 
 ---
 
