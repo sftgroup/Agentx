@@ -77,11 +77,26 @@
 | P6-5 | 生产部署：三服务 `npm install@^0.8.5` + build + pm2 restart，均 online；SDK 版本验证 3/3 为 0.8.5 | ✅ |
 | P6-6 | 回归验证：JWT → gateway `/api/v1/agent/runs` → conversation-service SSE 流式事件正常返回（text/done） | ✅ |
 
+### P7 平台商业化能力（⏳ 规划中，2026-08-06 已加入任务清单，未实施）
+> 用户需求整理（现状调研已完成，见下），待排期实施。
+
+| # | 需求 | 现状 | 缺口 | 状态 |
+|---|------|------|------|:--:|
+| P7-1 | 付费用户使用平台 LLM（平台 key 在管理后台添加） | admin「LLM Keys」Tab 可增删平台 key（`GET/POST/DELETE /platform-keys`，AES-256-GCM 加密存储、按套餐绑定）；对话链路已通 | 无编辑/启停/权重调整端点与 UI | ⏳ |
+| P7-2 | 普通/付费用户自加 LLM key（预置常见 provider+端点，可自定义） | 后端 `GET/POST/DELETE /tenant/keys` + `validate` 完整；`tenant_api_keys` 表就绪 | **前端零调用**：settings 页 BYOK 表单仅存 localStorage；聊天链路未传 `tenant_key_id`；无预置 provider/端点库 | ⏳ |
+| P7-3 | 管理后台监控平台收入/用户 | admin Tenants（分页）/Usage/System/Revenue/Payments Tab 齐全 | 基本满足，可增量增强 | ✅ |
+| P7-4 | 渠道分成追踪 + 收益提成分配 | `/channel/attribute` + `/channel/report`（share_bps 计算）+ admin 聚合展示；`channels`/`channel_attributions` 表就绪 | 渠道无 CRUD 端点/UI（仅 SQL 插表）；`/channel/report` 无消费方；`settled` 结算/打款流程未实现 | ⏳ |
+| P7-5 | 独立页面供 B 端申请（入驻） | 无 | 无页面、无端点、无表；`channels` 全靠手工 SQL | ⏳ |
+
+> P7 决策备忘：实施范围=按阶段全部做（①LLM key 双轨 → ②渠道结算 → ③B 端申请）；B 端申请深度与渠道结算深度待后续确认。
+
 ---
 
 ## 二、当前状态
 
 - **进行中**：无阻塞项
+- **待办（规划）**：
+  - **P7 平台商业化能力**（2026-08-06 加入清单，未实施）：①用户自加 LLM key 前端接通（预置 provider+端点）+ 平台 key 管理增强；②渠道 CRUD/结算/明细报表；③B 端申请独立页面。详见「P7」章节
 - **待办（外部前提）**：
   - 法币订阅：提供 Stripe 商户账号 → 配置 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`
   - x402：提供结算通道与收款钱包 → 配置 `X402_ENABLED=true` / `X402_PAY_TO`
