@@ -39,7 +39,9 @@ interface OwnKeyInfo {
   provider: string
   model: string
   label: string | null
+  endpoint?: string | null
   is_active: boolean
+  last_validated?: string | null
 }
 
 export interface GatewayContext {

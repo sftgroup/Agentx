@@ -30,6 +30,8 @@ interface AgentChatOptions {
   accessToken: string
   /** Ephemeral API key for BYOK mode (X-Llm-Api-Key header) */
   llmApiKey?: string
+  /** BYOK: id of a stored tenant-owned API key (resolved server-side by the Gateway) */
+  tenantKeyId?: string
   enableMemory?: boolean
   contextBudget?: number
   onTextDelta?: (delta: string, fullText: string) => void
@@ -81,6 +83,7 @@ export function useAgentChat() {
         enableMemory: options.enableMemory ?? false,
         contextBudget: options.contextBudget,
         history,
+        tenantKeyId: options.tenantKeyId,
       }, { signal: abort.signal })
 
       for await (const event of stream) {

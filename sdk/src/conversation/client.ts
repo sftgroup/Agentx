@@ -55,6 +55,8 @@ export interface ConversationChatParams {
   prompt?: string
   /** Inline mode: caller-supplied tools (MCP/HTTP), injected into the run */
   skills?: ConversationSkillDef[]
+  /** BYOK: id of a stored tenant-owned API key (resolved server-side by the Gateway) */
+  tenantKeyId?: string
 }
 
 export interface ConversationSSEEvent {
