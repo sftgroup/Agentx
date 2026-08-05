@@ -6852,6 +6852,16 @@ function findElement(selector, description) {
 }
 
 // src/conversation/client.ts
+var ConversationTaskError = class extends Error {
+  status;
+  code;
+  constructor(status, message, code) {
+    super(message);
+    this.name = "ConversationTaskError";
+    this.status = status;
+    this.code = code;
+  }
+};
 var ConversationClient = class {
   constructor(config) {
     this.config = config;
@@ -6859,11 +6869,8 @@ var ConversationClient = class {
   }
   config;
   baseUrl;
-  /**
-   * Stream an agent conversation (SSE). Yields parsed events.
-   * @param opts.signal external AbortSignal — aborts the stream (e.g. user "stop")
-   */
-  async *stream(params, opts) {
+  /** Common auth/tenant headers for all Gateway API calls. */
+  _headers() {
     const headers = {
       "Content-Type": "application/json"
     };
@@ -6876,6 +6883,14 @@ var ConversationClient = class {
     if (this.config.llmApiKey) headers["X-Llm-Api-Key"] = this.config.llmApiKey;
     if (this.config.llmEndpoint) headers["X-Llm-Endpoint"] = this.config.llmEndpoint;
     if (this.config.llmModel) headers["X-Llm-Model"] = this.config.llmModel;
+    return headers;
+  }
+  /**
+   * Stream an agent conversation (SSE). Yields parsed events.
+   * @param opts.signal external AbortSignal — aborts the stream (e.g. user "stop")
+   */
+  async *stream(params, opts) {
+    const headers = this._headers();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 12e4);
     const onExternalAbort = () => controller.abort();
@@ -6960,6 +6975,89 @@ var ConversationClient = class {
     }
     return result;
   }
+  // ── Sessions & Tasks (parallel runs) ────────────────────────────────────
+  /**
+   * Query the integrator's capability flags (P9). When `parallelTasks` is false,
+   * `createTask` will be rejected with HTTP 403 `PARALLEL_TASKS_DISABLED` —
+   * callers should degrade to single-turn `chat()` in that case.
+   */
+  async getCapabilities() {
+    const res = await fetch(`${this.baseUrl}/api/v1/tenant/me`, { headers: this._headers() });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, body?.error || `Capability lookup failed (HTTP ${res.status})`);
+    }
+    return {
+      parallelTasks: body?.capabilities?.parallel_tasks ?? true,
+      parallelTasksOverride: body?.capabilities?.parallel_tasks_override ?? null
+    };
+  }
+  /**
+   * Create a session (dialog container that owns many tasks). Idempotent.
+   */
+  async createSession(params) {
+    const res = await fetch(`${this.baseUrl}/api/v1/sessions`, {
+      method: "POST",
+      headers: this._headers(),
+      body: JSON.stringify(params)
+    });
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, `Session creation failed (HTTP ${res.status})`);
+    }
+    return res.json();
+  }
+  /**
+   * Create a task — returns immediately with the task row (`status: queued`);
+   * execution happens in the background. Throws `ConversationTaskError` with
+   * `code === 'PARALLEL_TASKS_DISABLED'` (HTTP 403) when the tenant/plan is
+   * configured to disallow multi-task / sub-agent.
+   */
+  async createTask(params) {
+    const res = await fetch(`${this.baseUrl}/api/v1/sessions/${params.sessionId}/tasks`, {
+      method: "POST",
+      headers: this._headers(),
+      body: JSON.stringify(params)
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new ConversationTaskError(
+        res.status,
+        body?.error || `Task creation failed (HTTP ${res.status})`,
+        body?.code
+      );
+    }
+    return body;
+  }
+  /** Fetch a single task by id. */
+  async getTask(taskId) {
+    const res = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}`, { headers: this._headers() });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, body?.error || `Task lookup failed (HTTP ${res.status})`, body?.code);
+    }
+    return body;
+  }
+  /** List tasks of a session. */
+  async listTasks(sessionId) {
+    const res = await fetch(`${this.baseUrl}/api/v1/sessions/${sessionId}/tasks`, { headers: this._headers() });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, body?.error || `Task list failed (HTTP ${res.status})`, body?.code);
+    }
+    return body.tasks ?? [];
+  }
+  /** Cancel a task (queued → cancelled directly, running → aborted). */
+  async cancelTask(taskId) {
+    const res = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}`, {
+      method: "DELETE",
+      headers: this._headers()
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new ConversationTaskError(res.status, body?.error || `Task cancel failed (HTTP ${res.status})`, body?.code);
+    }
+    return body;
+  }
 };
 export {
   A2ADaemon,
@@ -6976,6 +7074,7 @@ export {
   ConfigurationRegistry,
   ContextCompactor,
   ConversationClient,
+  ConversationTaskError,
   FactExtractor,
   GatewayProvider,
   HttpTraceEmitter,

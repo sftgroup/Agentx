@@ -80,10 +80,67 @@ interface ConversationChatResult {
     };
     iterations?: number;
 }
+type ConversationTaskStatus = 'queued' | 'running' | 'done' | 'error' | 'cancelled';
+interface ConversationTask {
+    id: string;
+    sessionId: string;
+    tenant: string;
+    agentId?: number | null;
+    endUserId?: string | null;
+    message: string;
+    status: ConversationTaskStatus;
+    enableMemory: boolean;
+    history?: unknown;
+    prompt?: string | null;
+    skills?: unknown;
+    result?: string | null;
+    error?: string | null;
+    usage?: unknown;
+    iterations?: number | null;
+    createdAt: string;
+    startedAt?: string | null;
+    finishedAt?: string | null;
+}
+interface ConversationCreateTaskParams {
+    sessionId: string;
+    /** AgentX agent id (omit when using inline prompt/skills mode) */
+    agentId?: number;
+    message: string;
+    enableMemory?: boolean;
+    /** Full conversation history (optional) */
+    history?: {
+        role: 'user' | 'assistant';
+        content: string;
+    }[];
+    /** Inline mode: caller-supplied system prompt */
+    prompt?: string;
+    /** Inline mode: caller-supplied tools */
+    skills?: ConversationSkillDef[];
+    /** BYOK: id of a stored tenant-owned API key */
+    tenantKeyId?: string;
+}
+interface ConversationCreateSessionParams {
+    sessionId?: string;
+    agentId?: number;
+    endUserId?: string;
+    title?: string;
+}
+/**
+ * Thrown by task APIs when the platform rejects the request.
+ * `code === 'PARALLEL_TASKS_DISABLED'` (HTTP 403) means the integrator/tenant
+ * is configured to disallow multi-task / sub-agent (P9).
+ */
+declare class ConversationTaskError extends Error {
+    readonly status: number;
+    readonly code?: string;
+    constructor(status: number, message: string, code?: string);
+}
 declare class ConversationClient {
     private readonly config;
     private readonly baseUrl;
     constructor(config: ConversationClientConfig);
+    /** Common auth/tenant headers for all Gateway API calls. */
+    private _headers;
     /**
      * Stream an agent conversation (SSE). Yields parsed events.
      * @param opts.signal external AbortSignal — aborts the stream (e.g. user "stop")
@@ -95,6 +152,38 @@ declare class ConversationClient {
      * Run a conversation and collect the full result.
      */
     chat(params: ConversationChatParams): Promise<ConversationChatResult>;
+    /**
+     * Query the integrator's capability flags (P9). When `parallelTasks` is false,
+     * `createTask` will be rejected with HTTP 403 `PARALLEL_TASKS_DISABLED` —
+     * callers should degrade to single-turn `chat()` in that case.
+     */
+    getCapabilities(): Promise<{
+        parallelTasks: boolean;
+        parallelTasksOverride: boolean | null;
+    }>;
+    /**
+     * Create a session (dialog container that owns many tasks). Idempotent.
+     */
+    createSession(params: ConversationCreateSessionParams): Promise<{
+        id: string;
+        tenant: string;
+        agentId?: number | null;
+        endUserId?: string | null;
+        title?: string | null;
+    }>;
+    /**
+     * Create a task — returns immediately with the task row (`status: queued`);
+     * execution happens in the background. Throws `ConversationTaskError` with
+     * `code === 'PARALLEL_TASKS_DISABLED'` (HTTP 403) when the tenant/plan is
+     * configured to disallow multi-task / sub-agent.
+     */
+    createTask(params: ConversationCreateTaskParams): Promise<ConversationTask>;
+    /** Fetch a single task by id. */
+    getTask(taskId: string): Promise<ConversationTask>;
+    /** List tasks of a session. */
+    listTasks(sessionId: string): Promise<ConversationTask[]>;
+    /** Cancel a task (queued → cancelled directly, running → aborted). */
+    cancelTask(taskId: string): Promise<ConversationTask>;
 }
 
-export { type ConversationChatParams, type ConversationChatResult, ConversationClient, type ConversationClientConfig, type ConversationSSEEvent, type ConversationSkillDef };
+export { type ConversationChatParams, type ConversationChatResult, ConversationClient, type ConversationClientConfig, type ConversationCreateSessionParams, type ConversationCreateTaskParams, type ConversationSSEEvent, type ConversationSkillDef, type ConversationTask, ConversationTaskError, type ConversationTaskStatus };
