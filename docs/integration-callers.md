@@ -102,19 +102,33 @@ curl -H "X-Api-Key: $AGENTX_CONVERSATION_API_KEY" \
 ```json
 {
   "tenant": {
+    "id": "…",
     "wallet_address": "partner-<your-slug>",
-    "plan_id": "…",
-    "status": "active",
-    "quota_daily": 0,
-    "rate_limit_rpm": 100
+    "status": "active"
   },
-  "plan": { "slug": "enterprise", "features": { "parallel_tasks": true } },
-  "capabilities": { "parallel_tasks": true }
+  "plan": {
+    "name": "Enterprise",
+    "slug": "enterprise",
+    "quota_daily": 5000000,
+    "quota_used": 0,
+    "platform_models": [],
+    "byok_enabled": true,
+    "rate_limit_rpm": 100,
+    "max_concurrent": 10,
+    "features": { "parallel_tasks": true }
+  },
+  "capabilities": {
+    "parallel_tasks": true,
+    "parallel_tasks_override": null
+  },
+  "own_keys": [],
+  "usage_today": { "total_tokens": 0, "total_tool_calls": 0 }
 }
 ```
 
-- `wallet_address` 为 `partner-<slug>` → 配置正确
+- `tenant.wallet_address` 为 `partner-<slug>` → 配置正确
 - 返回 `401` → Key 错误或已被轮换（见 [错误码](#8-错误码)）
+- 配额 / 限流 / 并发等数值以 `plan` 对象为准（随套餐不同而不同）
 
 ## 6. SDK 接入示例
 
@@ -209,7 +223,7 @@ for await (const event of stream) {
 | 403 | `PARALLEL_TASKS_DISABLED` | 该租户禁用了多任务 / 子 Agent | 回退单轮对话，或联系管理员在 Plans / Tenants 开启 |
 | 404 | — | 会话 / 任务不存在 | 确认 ID 正确 |
 | 409 | — | 冲突（如重复操作） | 按响应 detail 处理 |
-| 429 | — | 触发限流（默认 100 RPM） | 降低频率，或联系管理员调高配额 |
+| 429 | — | 触发限流（RPM 随套餐而定：Free=5 / Pro=30 / Enterprise=100，租户可覆盖） | 降低频率，或联系管理员调高配额 |
 | 500 | — | 服务端异常 | 联系平台运维 |
 
 ## 9. 常见问题
