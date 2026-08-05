@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @agentxv2/sdk — Chain-Data Read/Write Example (v0.8.2)
+// @agentxv2/sdk — Chain-Data Read/Write Example (v0.8.6)
 // ---------------------------------------------------------------------------
 // 完整展示 SDK 直连区块链能力：
 //   读  ：totalAgents / getAllAgents（批量 + 筛选）/ getAgentMetadata / getPlan

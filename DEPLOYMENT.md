@@ -1,7 +1,7 @@
 # AgentX Deployment Guide
 
-> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-04
-> Server code: `~/Agentx` @ `7efc505` (main) · SDK published: `@agentxv2/sdk@0.8.0`
+> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-06
+> Server code: `~/Agentx` @ `279bb57` (main) · SDK published: `@agentxv2/sdk@0.8.6`
 
 ---
 
@@ -26,9 +26,9 @@
 ```
 43.159.60.46
 ├── :3100 → Next.js Frontend (standalone, calls Gateway API for agent data)
-├── :3090 → Express Gateway (wallet auth / rate-limit / LLM proxy / MCP / Agents API)
+├── :3090 → Express Gateway (wallet auth / rate-limit / LLM proxy / MCP / Agents API / Admin)
 ├── :8100 → Conversation Service (agent dialogue microservice, SSE)
-└── :5432 → PostgreSQL (localhost only, agentx_gateway DB)
+└── :5433 → PostgreSQL (localhost only, agentx_gateway + agentx_conversation DBs)
 ```
 
 ### Firewall — Ports to Open
@@ -307,7 +307,7 @@ pm2 restart agentx-conversation
 
 ```
 PORT=8100
-DATABASE_URL=postgresql://agentx:AgentX2024!Gateway@localhost:5432/agentx_conversation
+DATABASE_URL=postgresql://agentx:AgentX2024!Gateway@localhost:5433/agentx_conversation
 INTERNAL_AUTH_TOKEN=<same value as gateway CONVERSATION_SERVICE_TOKEN>
 GATEWAY_URL=http://localhost:3090
 OPENAI_API_KEY=sk-...                # platform fallback LLM key
@@ -340,23 +340,29 @@ sudo systemctl start postgresql
 sudo systemctl enable postgresql
 sudo -u postgres psql -c "CREATE USER agentx WITH PASSWORD 'AgentX2024!Gateway' CREATEDB;"
 sudo -u postgres psql -c "CREATE DATABASE agentx_gateway OWNER agentx;"
-psql -U agentx -d agentx_gateway -f db/migrations/001_init.sql
-psql -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
-psql -U agentx -d agentx_gateway -f db/migrations/003_a2a_results.sql
+sudo -u postgres psql -c "CREATE DATABASE agentx_conversation OWNER agentx;"
+for f in db/migrations/*.sql; do psql -U agentx -d agentx_gateway -f "$f"; done
 ```
 
-### Schema (8 tables)
+### Schema (15 tables, gateway DB)
 
 | Table | Purpose |
 |-------|---------|
 | `plans` | Free / Pro tiers |
 | `tenants` | Wallet address → plan binding |
-| `platform_api_keys` | Encrypted platform keys |
-| `tenant_api_keys` | BYOK keys (encrypted) |
+| `platform_api_keys` | Encrypted platform LLM keys |
+| `tenant_api_keys` | BYOK keys (encrypted, AES-256-GCM) |
 | `usage_logs` | Per-request token + tool call tracking |
 | `chat_messages` | Conversation history |
 | `agents` | Agent metadata index from IdentityRegistry chain sync |
 | `a2a_task_results` | Gateway A2A Worker LLM processing results (tenant-isolated) |
+| `subscription_plans` | On-chain plan index (PlanCreated events) |
+| `channels` | Distribution channels (revenue-share bps) |
+| `channel_attributions` | Per-subscription channel attribution (+ `settled`/`settled_at`/`settlement_id`) |
+| `channel_settlements` | Settlement ledger — one row per payout batch (tx_hash auditable) |
+| `partner_applications` | B-end onboarding applications (pending/approved/rejected) |
+| `fiat_subscriptions` | Stripe fiat subscriptions |
+| `x402_payments` | x402 pay-per-call payments |
 
 ---
 
@@ -452,7 +458,22 @@ npm version patch
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.8.0`
+Current: `@agentxv2/sdk@0.8.6`
+
+### SDK v0.8.6 New Features
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| **Stored BYOK (`tenantKeyId`)** | `@agentxv2/sdk/conversation` | `ConversationChatParams` gains optional `tenantKeyId` — use a tenant-owned API key stored & AES-encrypted on the Gateway (`/tenant/keys`, managed via Settings → Own LLM Keys); the Gateway resolves it server-side and injects it as `X-Llm-Api-Key` (plaintext key never leaves the server) |
+
+### SDK v0.8.4 / v0.8.5 New Features
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| **Gateway JWT auth** | `@agentxv2/sdk/conversation` | `ConversationClient` supports `accessToken` (`Authorization: Bearer`, wallet-signed login) as alternative to `apiKey` |
+| **External abort** | `@agentxv2/sdk/conversation` | `stream(params, { signal })` supports `AbortController` — user "Stop" button |
+| **tool_result error field** | `@agentxv2/sdk/conversation` | optional `error` field on `tool_result` events |
+| **v0.8.5** | — | Docs sync (same code as 0.8.4) |
 
 ### SDK v0.7.1 New Features
 
@@ -528,11 +549,23 @@ ADMIN_KEY=agentx-admin-key-2026
 |--------|------|-------------|
 | `GET` | `/api/v1/admin/platform-keys` | List platform LLM keys |
 | `POST` | `/api/v1/admin/platform-keys` | Add platform LLM key |
+| `PATCH` | `/api/v1/admin/platform-keys/:id` | Edit key (provider/endpoint/api_key/models/weight/is_active/plan_slugs) |
 | `DELETE` | `/api/v1/admin/platform-keys/:id` | Delete platform LLM key |
 | `GET` | `/api/v1/admin/plans` | List subscription plans |
 | `GET` | `/api/v1/admin/tenants?page=1&limit=20` | List tenants (paginated) |
 | `PATCH` | `/api/v1/admin/tenants/:id` | Update tenant plan/status |
 | `GET` | `/api/v1/admin/usage` | Usage stats (30-day) |
+| `GET` | `/api/v1/admin/system` | System health overview |
+| `GET` | `/api/v1/admin/revenue` | Revenue aggregation (on-chain fees) |
+| `GET` | `/api/v1/admin/payments` | Payments overview (Stripe / x402 / channels) |
+| `GET` | `/api/v1/admin/channels` | List channels (with attribution counts) |
+| `POST` | `/api/v1/admin/channels` | Create channel (id/name/share_bps/wallet) |
+| `PATCH` | `/api/v1/admin/channels/:id` | Update channel (name/share_bps/wallet/active) |
+| `DELETE` | `/api/v1/admin/channels/:id` | Delete channel (deactivates if it has attributions) |
+| `GET` | `/api/v1/admin/channels/:id/report` | Channel detail report (attributions + settlement ledger) |
+| `POST` | `/api/v1/admin/channels/:id/settle` | Record settlement batch (`tx_hash`) → `channel_settlements` + settled markers |
+| `GET` | `/api/v1/admin/applications?status=` | List B-end partner applications |
+| `POST` | `/api/v1/admin/applications/:id/decide` | Approve/reject (approval auto-creates the channel) |
 
 Auth: `Authorization: Bearer <ADMIN_KEY>` or `X-Admin-Key: <ADMIN_KEY>`
 
@@ -555,17 +588,28 @@ curl -X POST http://43.159.60.46:3090/api/v1/admin/platform-keys \
 
 ## 9. Database Migrations
 
-### Initial Setup
+### Gateway (`gateway/db/migrations/`)
 
 ```bash
 cd /home/ubuntu/Agentx/gateway
 export PGPASSWORD='AgentX2024!Gateway'
-psql -h localhost -U agentx -d agentx_gateway -f db/migrations/001_init.sql
-psql -h localhost -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
-psql -h localhost -U agentx -d agentx_gateway -f db/migrations/003_a2a_results.sql
+for f in db/migrations/*.sql; do
+  psql -h localhost -U agentx -d agentx_gateway -f "$f"
+done
 ```
 
-Creates tables: `plans`, `tenants`, `platform_api_keys`, `tenant_api_keys`, `usage_logs`, `chat_messages`, `agents`, `a2a_task_results`
+Migration files (011): `001_init` (core auth/billing) → `002_agents` → `003_a2a_results` → `004_tenant_platform_api_key` → `005_agents_structured` → `006_plans` → `007_channel_attributions` (channels + attributions) → `008_fiat_subscriptions` → `009_x402` → `010_channel_admin` (**P7**: `channel_settlements` ledger + `settled_at`/`settlement_id` on attributions) → `011_partner_applications` (**P7**: B-end onboarding applications).
+
+### Conversation Service (`conversation-service/migrations/`)
+
+```bash
+cd /home/ubuntu/Agentx/conversation-service
+for f in migrations/*.sql; do
+  psql -h localhost -U agentx -d agentx_conversation -f "$f"
+done
+```
+
+Migration files (004): `001_memory` (pgvector) → `002_traces` → `003_tenant_llm_config` → `004_end_user_isolation`.
 
 ---
 

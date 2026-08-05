@@ -1,7 +1,7 @@
 # AgentX Integration Guide
 
 > SDK / Contracts / Integration for third-party developers
-> Version: v8 · Updated: 2026-08-04 (SDK v0.8.0, stateless BYOK key+endpoint+model, on-chain batch query)
+> Version: v8 · Updated: 2026-08-06 (SDK v0.8.6, stateless + stored BYOK, on-chain batch query)
 
 ## Overview
 
@@ -61,9 +61,9 @@ Subscriber  →  decrypts  →  injects prompt into LLM  →  executes skills (l
 ### Installation
 
 ```bash
-npm install @agentxv2/sdk@0.8.0
+npm install @agentxv2/sdk@0.8.6
 # or
-pnpm add @agentxv2/sdk@0.8.0
+pnpm add @agentxv2/sdk@0.8.6
 ```
 
 ### Core API
@@ -243,7 +243,7 @@ try {
 
 ---
 
-## On-Chain Data & Subscription Writes (v0.8.0)
+## On-Chain Data & Subscription Writes (v0.8.6)
 
 Chain-agnostic read/write via viem: pass a `PublicClient` for reads and a `WalletClient` for writes. No manual ABI, no manual `parseLog`, no binary search.
 
@@ -592,12 +592,12 @@ const {
 
 ---
 
-## Hosted Conversation Service (v0.7.4)
+## Hosted Conversation Service (v0.8.6)
 
 Don't want to run AgentLoop locally? Call our hosted Conversation Service through the SDK's `ConversationClient`. No chain sync, IPFS, or key management needed — the service loads the agent context, runs the ReAct loop, and streams results.
 
 ```bash
-npm install @agentxv2/sdk@0.8.0
+npm install @agentxv2/sdk@0.8.6
 ```
 
 ```typescript
@@ -618,6 +618,7 @@ const result = await client.chat({
   message: 'Analyze this contract',
   history: [...],            // caller maintains per-user short-term context
   enableMemory: true,
+  tenantKeyId: 'key-01HX...', // v0.8.6: stored BYOK — a tenant-owned key saved in Settings (plaintext key never leaves the server)
 })
 
 // Streaming (SSE events)
@@ -658,6 +659,7 @@ const ragResult = await client.chat({
 - Auth: SDK sends `X-Api-Key: agentx_...` automatically (tenant API Key, not wallet JWT)
 - Isolation: pass `endUserId` → long-term memory scoped to `(tenant + agent + end_user)`
 - LLM key: pass `llmApiKey` + `llmEndpoint` + `llmModel` → forwarded as `X-Llm-Api-Key` / `X-Llm-Endpoint` / `X-Llm-Model` (stateless BYOK — your key, your provider, your model; nothing stored on AgentX side)
+- Stored BYOK (v0.8.6): pass `tenantKeyId` per chat/stream request → the Gateway uses a tenant-owned key already AES-encrypted in its DB (`/tenant/keys`), injected server-side (priority over request headers); complement to the stateless `llmApiKey` override
 - Inline mode: omit `agentId`, pass `prompt` + `skills` → no AgentX registration needed; skills run via `execution.type` (`mcp` / `http` / `a2a`)
 - Tool endpoint auth: your RAG MCP/HTTP `execution.endpoint` stays under your control — secure it with your own auth; the service only forwards the call (30s timeout), it never proxies your tool credentials
 - Full API reference: [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md)
@@ -667,7 +669,7 @@ const ragResult = await client.chat({
 ## Repository
 
 - **GitHub (Main)**: [github.com/sftgroup/Agentx](https://github.com/sftgroup/Agentx)
-- **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.8.0`](https://www.npmjs.com/package/@agentxv2/sdk)
+- **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.8.6`](https://www.npmjs.com/package/@agentxv2/sdk)
 - **Contracts**: `agentx/contracts/` — Foundry + Solidity 0.8.20-0.8.24
 - **Frontend**: `agentx/frontend/` — Next.js 14 + wagmi 2.x
 - **Production**: `http://43.159.60.46:3100`
