@@ -82,6 +82,9 @@ interface TaskRow {
 }
 
 function rowToTask(row: TaskRow): TaskRecord {
+  // pg auto-parses jsonb columns into JS values — only stringify-parse when raw
+  const parseJson = <T,>(raw: unknown, fallback: T): T =>
+    typeof raw === 'string' ? JSON.parse(raw) as T : ((raw ?? fallback) as T)
   return {
     id: row.id,
     sessionId: row.session_id,
@@ -91,9 +94,9 @@ function rowToTask(row: TaskRow): TaskRecord {
     message: row.message,
     status: row.status,
     enableMemory: row.enable_memory,
-    history: row.history ? JSON.parse(row.history) : [],
+    history: parseJson<{ role: 'user' | 'assistant'; content: string }[]>(row.history, []),
     prompt: row.prompt,
-    skills: row.skills ? JSON.parse(row.skills) : null,
+    skills: parseJson<unknown[] | null>(row.skills, null),
     llmApiKeyEnc: row.llm_api_key_enc,
     llmEndpoint: row.llm_endpoint,
     llmModel: row.llm_model,
