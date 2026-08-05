@@ -153,10 +153,37 @@ router.get('/plans', async (_req: Request, res: Response) => {
     const pool = getPool()
     const result = await pool.query(
       `SELECT id, name, slug, price_monthly, quota_daily, quota_monthly,
-              byok_enabled, rate_limit_rpm, max_concurrent, platform_models, is_active
+              byok_enabled, rate_limit_rpm, max_concurrent, platform_models, features, is_active
        FROM plans ORDER BY price_monthly ASC`
     )
     res.json({ plans: result.rows })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PATCH /api/v1/admin/plans/:id — edit plan capability features
+// Body: { features: { parallel_tasks: false } } — deep-merged into plans.features JSONB
+router.patch('/plans/:id', async (req: Request, res: Response) => {
+  try {
+    const { features } = req.body || {}
+    if (!features || typeof features !== 'object' || Array.isArray(features)) {
+      res.status(400).json({ error: 'features object is required' })
+      return
+    }
+    const pool = getPool()
+    const result = await pool.query(
+      `UPDATE plans
+         SET features = COALESCE(features, '{}'::jsonb) || $1::jsonb
+       WHERE id = $2
+       RETURNING id, name, slug, features`,
+      [JSON.stringify(features), req.params.id]
+    )
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Plan not found' })
+      return
+    }
+    res.json({ plan: result.rows[0] })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
@@ -176,6 +203,7 @@ router.get('/tenants', async (req: Request, res: Response) => {
       pool.query(
         `SELECT t.id, t.wallet_address, t.status,
                 t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
+                t.allow_parallel_tasks,
                 t.created_at, t.updated_at,
                 p.slug as plan_slug, p.name as plan_name
          FROM tenants t
@@ -199,7 +227,7 @@ router.get('/tenants', async (req: Request, res: Response) => {
 
 router.patch('/tenants/:id', async (req: Request, res: Response) => {
   try {
-    const { plan_slug, status } = req.body
+    const { plan_slug, status, allow_parallel_tasks } = req.body
     const pool = getPool()
 
     if (plan_slug) {
@@ -216,6 +244,13 @@ router.patch('/tenants/:id', async (req: Request, res: Response) => {
     if (status) {
       await pool.query(`UPDATE tenants SET status = $1, updated_at = NOW() WHERE id = $2`,
         [status, req.params.id])
+    }
+
+    // P9: tenant-level override for parallel tasks (null/omitted → inherit plan)
+    if (allow_parallel_tasks !== undefined) {
+      const value = allow_parallel_tasks === null ? null : Boolean(allow_parallel_tasks)
+      await pool.query(`UPDATE tenants SET allow_parallel_tasks = $1, updated_at = NOW() WHERE id = $2`,
+        [value, req.params.id])
     }
 
     res.json({ success: true })

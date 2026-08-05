@@ -22,6 +22,10 @@ export interface TenantContext {
   rateLimitRpm: number
   maxConcurrent: number
   status: string
+  /** P9: tenant-level override for parallel tasks (NULL = inherit plan.features.parallel_tasks) */
+  allowParallelTasks: boolean | null
+  /** P9: plan.features JSONB — contains parallel_tasks capability bit */
+  planFeatures: Record<string, unknown> | null
 }
 
 declare global {
@@ -133,7 +137,8 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
   const existing = await pool.query(
     `SELECT t.id, t.wallet_address, t.status, t.api_key,
             t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
-            p.id as plan_id, p.slug as plan_slug
+            t.allow_parallel_tasks,
+            p.id as plan_id, p.slug as plan_slug, p.features as plan_features
      FROM tenants t
      LEFT JOIN plans p ON t.plan_id = p.id
      WHERE LOWER(t.wallet_address) = $1`,
@@ -162,10 +167,12 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
       rateLimitRpm: row.rate_limit_rpm,
       maxConcurrent: row.max_concurrent,
       status: row.status,
+      allowParallelTasks: row.allow_parallel_tasks ?? null,
+      planFeatures: row.plan_features ?? null,
     }
     ;(tenant as any).apiKey = apiKey
   } else {
-    const freePlan = await pool.query(`SELECT id FROM plans WHERE slug = 'free' LIMIT 1`)
+    const freePlan = await pool.query(`SELECT id, features FROM plans WHERE slug = 'free' LIMIT 1`)
     const planId = freePlan.rows[0]?.id || null
     const apiKey = 'agentx_' + crypto.randomBytes(16).toString('hex')
 
@@ -185,6 +192,8 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
       rateLimitRpm: 5,
       maxConcurrent: 1,
       status: 'active',
+      allowParallelTasks: null,
+      planFeatures: freePlan.rows[0]?.features ?? null,
     }
     // Return api_key on first registration only
     ;(tenant as any).apiKey = apiKey
@@ -230,7 +239,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     .query(
       `SELECT t.id, t.wallet_address, t.status,
               t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
-              p.id as plan_id, p.slug as plan_slug
+              t.allow_parallel_tasks,
+              p.id as plan_id, p.slug as plan_slug, p.features as plan_features
        FROM tenants t
        LEFT JOIN plans p ON t.plan_id = p.id
        WHERE t.id = $1`,
@@ -256,6 +266,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
         rateLimitRpm: row.rate_limit_rpm,
         maxConcurrent: row.max_concurrent,
         status: row.status,
+        allowParallelTasks: row.allow_parallel_tasks ?? null,
+        planFeatures: row.plan_features ?? null,
       }
       next()
     })
@@ -300,7 +312,8 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
   pool.query(
     `SELECT t.id, t.wallet_address, t.status,
             t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
-            p.id as plan_id, p.slug as plan_slug
+            t.allow_parallel_tasks,
+            p.id as plan_id, p.slug as plan_slug, p.features as plan_features
      FROM tenants t
      LEFT JOIN plans p ON t.plan_id = p.id
      WHERE t.api_key = $1`,
@@ -326,6 +339,8 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
         rateLimitRpm: row.rate_limit_rpm,
         maxConcurrent: row.max_concurrent,
         status: row.status,
+        allowParallelTasks: row.allow_parallel_tasks ?? null,
+        planFeatures: row.plan_features ?? null,
       }
       next()
     })

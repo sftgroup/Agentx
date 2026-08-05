@@ -1,5 +1,55 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.8.6 → v0.8.7
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Parallel Tasks client** | `ConversationClient` gains session/task APIs: `createSession()`, `createTask()`, `getTask()`, `listTasks()`, `cancelTask()`, `getCapabilities()`. `createTask()` returns immediately with the task row (`status: queued`); execution runs in the background (DeerFlow Thread/Run model). |
+| **Integrator capability gate (P9)** | `GET /api/v1/tenant/me` now returns `capabilities.parallel_tasks` + `parallel_tasks_override`. When the effective flag is false (plan feature or tenant override), `createTask()` is rejected with **HTTP 403** `{ error, code: "PARALLEL_TASKS_DISABLED" }` — surfaced as `ConversationTaskError` with `.status`/`.code`. Callers should degrade to single-turn `chat()`. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.8.7
+```
+
+### Use Parallel Tasks
+
+```ts
+import { ConversationClient, ConversationTaskError } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({ gatewayUrl: 'https://...', accessToken })
+
+// (optional) check the integrator's capability first
+const caps = await client.getCapabilities()
+if (!caps.parallelTasks) {
+  // tenant/plan disallows multi-task → fall back to single-turn client.chat(...)
+}
+
+const session = await client.createSession({ title: 'Audit' })
+const task = await client.createTask({
+  sessionId: session.id,
+  agentId: 42,
+  message: 'Analyze this contract',
+  enableMemory: false,
+})
+// task.status === 'queued' — poll getTask() or stream SSE events
+
+try {
+  await client.cancelTask(task.id)
+} catch (err) {
+  if (err instanceof ConversationTaskError && err.code === 'PARALLEL_TASKS_DISABLED') {
+    // tenant not allowed to run parallel tasks
+  }
+}
+```
+
+### Breaking Changes
+
+None — all additions are new methods.
+
 ## v0.8.0 → v0.8.6
 
 ### What's New (0.8.1 → 0.8.6)

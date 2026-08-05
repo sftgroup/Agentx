@@ -97,6 +97,17 @@ router.post('/sessions/:sessionId/tasks', async (req: Request, res: ExpressRespo
       return res.status(400).json({ error: 'agentId or inline prompt/skills is required' })
     }
 
+    // P9 capability gate: integrators can disable multi-task / sub-agent.
+    // effective = tenant.allow_parallel_tasks ?? plan.features.parallel_tasks ?? true
+    const planBit = req.tenant?.planFeatures?.parallel_tasks
+    const effective = req.tenant?.allowParallelTasks ?? (typeof planBit === 'boolean' ? planBit : true)
+    if (!effective) {
+      return res.status(403).json({
+        error: 'Parallel tasks are disabled for this tenant',
+        code: 'PARALLEL_TASKS_DISABLED',
+      })
+    }
+
     // Stored BYOK: resolve the tenant's own key server-side (never leaves the gateway)
     const { key: headerApiKey, endpoint, model } = await resolveStoredKey(req, tenantKeyId)
     const upstream = await getConversationProxy().createTask({

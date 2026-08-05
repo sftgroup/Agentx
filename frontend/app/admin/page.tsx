@@ -259,6 +259,16 @@ function PlansTab({ headers }: { headers: Record<string, string> }) {
       .then(r => r.json()).then(d => setPlans(d.plans || [])).catch(() => { }).finally(() => setLoading(false))
   }, [])
 
+  // P9: plan-level capability bit — parallel tasks / sub-agents
+  const toggleParallelTasks = async (p: any) => {
+    const next = p.features?.parallel_tasks === false
+    await globalThis.fetch(`${GATEWAY}/api/v1/admin/plans/${p.id}`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ features: { parallel_tasks: next } }),
+    })
+    setPlans(prev => prev.map(x => x.id === p.id ? { ...x, features: { ...(x.features || {}), parallel_tasks: next } } : x))
+  }
+
   return (
     <div className="space-y-2">
       {loading ? <Loader2 className="w-6 h-6 animate-spin mx-auto text-text-muted" /> : plans.map(p => (
@@ -274,6 +284,13 @@ function PlansTab({ headers }: { headers: Record<string, string> }) {
             <div>Monthly: {p.quota_monthly.toLocaleString()}</div>
             <div>BYOK: {p.byok_enabled ? <Check className="w-3 h-3 text-green-400 inline" /> : <X className="w-3 h-3 text-red-400 inline" />}</div>
             <div>Active: {p.is_active ? <Check className="w-3 h-3 text-green-400 inline" /> : <X className="w-3 h-3 text-red-400 inline" />}</div>
+            <div className="flex items-center gap-1.5">
+              Parallel Tasks:
+              <button onClick={() => toggleParallelTasks(p)}
+                className={`text-xs px-2 py-0.5 rounded ${p.features?.parallel_tasks !== false ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}`}>
+                {p.features?.parallel_tasks !== false ? 'ON' : 'OFF'}
+              </button>
+            </div>
           </div>
           <div className="flex gap-1 mt-2">
             {(p.platform_models || []).map((m: any) => (
@@ -303,10 +320,10 @@ function TenantsTab({ headers }: { headers: Record<string, string> }) {
   }
   useEffect(() => { fetch(page) }, [page])
 
-  const updateTenant = async (id: string, plan_slug?: string, status?: string) => {
+  const updateTenant = async (id: string, plan_slug?: string, status?: string, allow_parallel_tasks?: boolean | null) => {
     await globalThis.fetch(`${GATEWAY}/api/v1/admin/tenants/${id}`, {
       method: 'PATCH', headers,
-      body: JSON.stringify({ plan_slug, status })
+      body: JSON.stringify({ plan_slug, status, allow_parallel_tasks })
     })
     fetch(page)
   }
@@ -333,6 +350,17 @@ function TenantsTab({ headers }: { headers: Record<string, string> }) {
                     <option value="free">Free</option>
                     <option value="pro">Pro</option>
                     <option value="enterprise">Enterprise</option>
+                  </select>
+                  {/* P9: tenant-level override for parallel tasks / sub-agents */}
+                  <select
+                    value={t.allow_parallel_tasks == null ? 'inherit' : (t.allow_parallel_tasks ? 'allow' : 'block')}
+                    onChange={e => updateTenant(t.id, undefined, undefined,
+                      e.target.value === 'inherit' ? null : e.target.value === 'allow')}
+                    title="Parallel tasks / sub-agents override"
+                    className="text-xs px-2 py-1 bg-white/5 border border-white/5 rounded focus:outline-none">
+                    <option value="inherit">Parallel: inherit</option>
+                    <option value="allow">Parallel: allow</option>
+                    <option value="block">Parallel: block</option>
                   </select>
                   {t.status === 'active' ? (
                     <button onClick={() => updateTenant(t.id, undefined, 'suspended')} className="text-xs text-red-400/60 hover:text-red-400">Suspend</button>

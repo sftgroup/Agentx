@@ -21,6 +21,10 @@ router.get('/me', async (req: Request, res: Response) => {
   ])
 
   const platformModels = planRow.rows[0] ? planRow.rows[0].platform_models : []
+  const planFeatures = planRow.rows[0] ? (planRow.rows[0].features || {}) : {}
+  const planParallelTasks = typeof planFeatures.parallel_tasks === 'boolean' ? planFeatures.parallel_tasks : true
+  // P9: effective capability = tenant override ?? plan.features.parallel_tasks ?? true
+  const parallelTasks = req.tenant!.allowParallelTasks ?? planParallelTasks
   const ownKeys = keysRow.rows.map(r => ({
     id: r.id,
     provider: r.provider,
@@ -47,7 +51,13 @@ router.get('/me', async (req: Request, res: Response) => {
       byok_enabled: planRow.rows[0].byok_enabled,
       rate_limit_rpm: planRow.rows[0].rate_limit_rpm,
       max_concurrent: planRow.rows[0].max_concurrent,
+      features: planFeatures,
     } : null,
+    capabilities: {
+      // Integrator-level gate for multi-task / sub-agent (P9)
+      parallel_tasks: parallelTasks,
+      parallel_tasks_override: req.tenant!.allowParallelTasks,
+    },
     own_keys: ownKeys,
     usage_today: {
       total_tokens: parseInt(usageRow.rows[0]?.total_tokens || '0', 10),

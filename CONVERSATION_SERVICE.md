@@ -327,6 +327,22 @@ as `/runs`: `agentId` or inline `prompt`/`skills`, plus `history`, `enableMemory
 BYOK (`X-Llm-*` headers) is AES-encrypted at rest per task, so the background
 executor can decrypt and run it later without keeping the plaintext in memory.
 
+### Integrator Capability Gate — Parallel Tasks / Sub-agents (P9)
+
+Integrators can be configured to disallow multi-task (and future sub-agents):
+
+- `plans.features.parallel_tasks` (`boolean`, default `true`) — plan-level capability,
+  managed via `PATCH /api/v1/admin/plans/:id` `{ features: { parallel_tasks: false } }`
+- `tenants.allow_parallel_tasks` (`boolean`, `NULL` = inherit plan) — tenant-level
+  override, managed via `PATCH /api/v1/admin/tenants/:id` `{ allow_parallel_tasks }`
+
+Effective value: `tenant.allow_parallel_tasks ?? plan.features.parallel_tasks ?? true`.
+When `false`, `POST /sessions/:sessionId/tasks` returns **403**
+`{ error: "Parallel tasks are disabled for this tenant", code: "PARALLEL_TASKS_DISABLED" }`.
+Existing tasks remain queryable/cancellable; only creation is gated. The same bit will
+gate future sub-agent spawning. Integrators can read their own flag via
+`GET /api/v1/tenant/me → capabilities.parallel_tasks`.
+
 ### GET /sessions/:sessionId/tasks — List Tasks
 
 ```bash
