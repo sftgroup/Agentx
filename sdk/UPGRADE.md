@@ -1,5 +1,68 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.8.0 → v0.8.6
+
+### What's New (0.8.1 → 0.8.6)
+
+| Version | Feature | Description |
+|---------|---------|-------------|
+| **0.8.6** | **Stored BYOK (`tenantKeyId`)** | `ConversationChatParams` gains `tenantKeyId` — use a tenant-owned API key already saved & AES-encrypted on the Gateway (managed via Settings → Own LLM Keys, backed by `/tenant/keys`). The Gateway resolves the key server-side and injects it as `X-Llm-Api-Key` (priority over request-level headers) — the plaintext key never leaves the server. Complements the stateless `llmApiKey` override (request-level, highest priority). |
+| **0.8.5** | Docs sync | Re-published with updated README (same code as 0.8.4). |
+| **0.8.4** | Gateway JWT auth + abort + tool_result error | `ConversationClient` supports Gateway JWT auth (`accessToken` → `Authorization: Bearer`, alternative to `apiKey`) and external abort (`stream(params, { signal })`); `tool_result` event gains optional `error` field. |
+| **0.8.3** | Install fix | `wagmi` promoted from optional to required peer dependency — directly usable via `npm install @agentxv2/sdk@0.8.3` (no manual `wagmi` install). |
+| **0.8.2** | Write-op signing fix | `createPlan()` / `subscribe()` / `releaseFunds()` / `cancel()` resolve the full viem `walletClient.account` instead of a bare address string — local/private-key signers now work (`eth_sendRawTransaction`). |
+| **0.8.1** | Fault-tolerant tokenURI | `parseTokenURIJSON()` aligned with Gateway indexer: base64 trailing garbage cleanup, unterminated JSON repair, regex fallback, explicit `ipfs://` handling. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.8.6
+```
+
+### Use Stored BYOK (v0.8.6)
+
+```ts
+import { ConversationClient } from '@agentxv2/sdk/conversation'
+
+const client = new ConversationClient({
+  gatewayUrl: 'https://gateway.example.com',
+  apiKey: 'agentx_...',
+})
+
+// Use a tenant-owned key already saved in Settings → Own LLM Keys
+// (plaintext key never leaves the server — Gateway decrypts and injects it)
+const result = await client.chat({
+  agentId: 42,
+  message: 'Analyze this contract',
+  tenantKeyId: 'key-01HX...',   // NEW: stored BYOK
+})
+
+// Streaming with external abort (v0.8.4) + stored BYOK
+const controller = new AbortController()
+for await (const event of client.stream(
+  { agentId: 42, message: 'hello', tenantKeyId: 'key-01HX...' },
+  { signal: controller.signal }
+)) {
+  if (event.type === 'text') console.log(event.content)
+}
+```
+
+**LLM key resolution order (current)**:
+
+```
+1. tenantKeyId (stored tenant-owned key, server-side) — priority over request headers
+2. X-Llm-Api-Key + X-Llm-Endpoint + X-Llm-Model (request-level, stateless BYOK — highest priority)
+3. tenant_llm_configs (tenant-persisted key, encrypted storage)
+4. OPENAI_API_KEY env (AgentX official key)
+5. AgentX Gateway fallback
+```
+
+### Breaking Changes
+
+None. 0.8.1 → 0.8.6 are purely additive — existing calls behave as before.
+
+---
+
 ## v0.7.5 → v0.8.0
 
 ### What's New
