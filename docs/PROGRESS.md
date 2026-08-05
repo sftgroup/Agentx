@@ -127,9 +127,10 @@
 
 ## 二、当前状态
 
-- **进行中**：无阻塞项
+- **进行中**：R2（集成测试补 task 并行链路）
 - **待办**：遗留待办已整理为具体开发任务清单，见下「### 开发任务清单 R」
-  - R1-R3 = 可立即开发的规划任务
+  - R1 ✅ 已完成（2026-08-06 · commit `0f5c30d`；SDK 0.8.7 已发布 npm）
+  - R2-R3 = 可立即开发的规划任务
   - R4-R6 = 待外部前提任务（R4/R5 需业务方提供凭据，R6 零依赖）
   - R7-R9 = 技术债（🔵 可选优化）
 
@@ -137,9 +138,9 @@
 
 > 来源：P2/P8/P9 章节遗留 + 原「当前状态」待办。每项含：来源 / 优先级 / 涉及文件 / 实施要点 / 验收标准。
 
-**R1 前端聊天页接入 sessions+tasks 模型（并行任务列表与取消）** —— 优先级：高
+**R1 前端聊天页接入 sessions+tasks 模型（并行任务列表与取消）** —— 优先级：高 · ✅ 完成（2026-08-06 · commit `0f5c30d`）
 - 来源：P9 遗留（原 P8 待办「对话多任务前端接入」）
-- 涉及：[frontend/app/hooks/useAgentChat.ts](file:///home/ubuntu/Agentx/frontend/app/hooks/useAgentChat.ts)、前端聊天页组件、`@agentxv2/sdk@0.8.7` `ConversationClient`
+- 涉及：[frontend/app/hooks/useAgentChat.ts](file:///home/ubuntu/Agentx/frontend/hooks/useAgentChat.ts)、前端聊天页组件、`@agentxv2/sdk@0.8.7` `ConversationClient`（0.8.7 已发布 npm，三服务依赖升至 ^0.8.7）
 - 实施要点：
   1. `useAgentChat` 底层切为 sessions+tasks：进入会话先 `createSession()`（幂等），发消息走 `createTask()` 立即返回 taskId，不再走单轮 `chat()`
   2. 任务列表：`listTasks()` 渲染并行任务卡片（status: queued/running/done/error/cancelled + 结果/错误摘要）
@@ -150,6 +151,7 @@
   - 单会话可同时运行 ≥2 个任务互不阻塞，卡片状态实时刷新
   - 取消运行中任务 → 状态 cancelled，终态任务取消幂等
   - P9 禁用租户前端自动回退单轮对话，无 403 报错
+- 实现记录：useAgentChat 双模式（并行 task 模式默认启用 + 单轮 SSE 回退），createTask 403 `PARALLEL_TASKS_DISABLED` 自动降级单轮；任务完成结果自动上屏为 assistant 消息；session 按 agent+wallet 持久化于 localStorage，刷新恢复任务列表；2s 轮询非终态任务。生产冒烟 7/7 PASS（capability/session/双任务并行/list/cancel/poll 终态/错误类映射），测试数据已清理。
 
 **R2 集成测试补 task 并行链路** —— 优先级：高
 - 来源：原「当前状态」待办第 2 条
