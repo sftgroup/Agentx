@@ -106,21 +106,22 @@
 > P8 排障记录：①gateway chat-tasks 路由曾挂载在 `/sessions` `/tasks` 双前缀导致路径重复 404，改挂根路径修复（`051b4a6`）；②`rowToTask` 对 pg 已解析的 JSONB 值二次 `JSON.parse`（空数组→空串→`Unexpected end of JSON input`），改类型感知解析修复（`151e67b`）。
 > 验证备注：生产平台兜底 LLM key 无效（401），任务瞬间终态，真实 LLM 输出与 running 态取消的运行时验证需有效 BYOK key（与链路改造无关，见验证记录）。
 
-### P9 集成方可配置禁用多 task / 子 agent（⏳ 待开发，2026-08-06 需求已细化）
+### P9 集成方可配置禁用多 task / 子 agent（✅ 完成，2026-08-06 · commit `8023e6e`）
 > 背景：P8 上线多 task 并行后，部分集成方（租户）不希望开放多 task/子 agent 能力，需要平台侧可配置禁用。
 > 决策（已确认）：①配置粒度=套餐级 + 租户级覆盖；②一个 `parallel_tasks` 开关同时约束「多 task 并行」与未来「子 agent」；③禁用行为=完全禁用（创建 task 返回 403）。
 
-**细化需求：**
+| # | 条目 | 状态 |
+|---|------|:--:|
+| P9-1 | 配置模型：迁移 012 `tenants.allow_parallel_tasks`（NULL=继承）+ plans.features 回填 `parallel_tasks=true`；auth 三处查询注入 `allow_parallel_tasks` + `plan_features` | ✅ |
+| P9-2 | 门卫：`POST /sessions/:sessionId/tasks` 计算 `effective = tenant ?? plan ?? true`，false 返回 403 `{code: 'PARALLEL_TASKS_DISABLED'}`；已有任务查询/取消不受影响 | ✅ |
+| P9-3 | 管理入口：`PATCH /admin/plans/:id`（features JSONB 合并）+ `PATCH /admin/tenants/:id`（allow_parallel_tasks 三态）；GET 列表返回新字段；admin 前端 Plans Tab 开关 + Tenants Tab 三态下拉 | ✅ |
+| P9-4 | 租户可见性：`GET /tenant/me → capabilities.parallel_tasks` + `parallel_tasks_override` | ✅ |
+| P9-5 | 子 agent 预留：同一 effective 位，未来 Subagent 实现读取；本次未实现本体 | ✅ |
+| P9-6 | SDK 0.8.7：`ConversationClient` 新增 `createSession/createTask/getTask/listTasks/cancelTask/getCapabilities`，403 映射 `ConversationTaskError.code`；CONVERSATION_SERVICE.md / UPGRADE.md 更新 | ✅ |
+| P9-7 | 验证：生产冒烟 8/8 PASS（默认可建 → 套餐关 403 → 套餐开恢复 → 租户覆盖 false 403 → true 恢复 → /tenant/me 透出 → 旧任务可查）；测试数据已清理 | ✅ |
 
-| # | 条目 | 明细 |
-|---|------|------|
-| P9-1 | 配置模型 | `plans.features.parallel_tasks: boolean` 默认 `true`（套餐级）；`tenants.allow_parallel_tasks BOOLEAN DEFAULT NULL`（租户级覆盖，NULL=继承套餐）；`effective = tenant.allow_parallel_tasks ?? plan.features.parallel_tasks ?? true`。迁移：`ALTER TABLE tenants ADD COLUMN allow_parallel_tasks BOOLEAN` |
-| P9-2 | 门卫行为 | gateway `POST /api/v1/sessions/:sessionId/tasks` 前解析 effective 位，`false` 时返回 **403** `{ "error": "Parallel tasks are disabled for this tenant", "code": "PARALLEL_TASKS_DISABLED" }`；只拦截「新建」，已存在任务的查询/SSE 重放/删除保持可用 |
-| P9-3 | 管理入口 | 新增 `PATCH /api/v1/admin/plans/:id`（编辑 `features.parallel_tasks` 等）；扩展 `PATCH /api/v1/admin/tenants/:id` 支持 `allow_parallel_tasks`（含清空回 NULL=继承）；`GET /admin/plans`、`/admin/tenants` 返回该字段；前端 Plans Tab / Tenants Tab 加开关 |
-| P9-4 | 租户可见性 | `GET /api/v1/tenant/me` 返回 `plan.features.parallel_tasks` 与租户级 `allow_parallel_tasks` 覆盖值，集成方在 SDK/前端可感知自身能力 |
-| P9-5 | 子 agent 预留 | 未来实现子 agent（DeerFlow Subagent）时读取同一 effective 位，`false` 禁止 spawn；本次不实现子 agent 本体 |
-| P9-6 | SDK/文档 | ConversationClient `createTask` 对 403 返回明确错误（映射 code）；CONVERSATION_SERVICE.md / UPGRADE.md 说明配置与 403 语义 |
-| P9-7 | 验证 | 生产冒烟：默认套餐可建 task → 关闭套餐 features 后 403 → 租户覆盖 true 恢复 → 覆盖 false 再禁；查询/取消不受影响 |
+> P9 验证备注：①`adminAuth` 优先取 `Authorization: Bearer`，同时携带 JWT 与 X-Admin-Key 时 admin 请求 401——冒烟脚本 admin 请求不带 JWT（既有行为，非本次引入）；②测试租户在 enterprise plan，冒烟需操作其所属 plan 而非 free plan。
+> 遗留：前端聊天页接入 sessions+tasks 模型（含并行列表/取消）仍为待办；SDK 侧「子 agent」= 客户端本地 A2A 委托（链上执行），不受平台 gate 约束，P9 gate 面向平台托管执行（conversation-service task）。
 
 ---
 
@@ -128,7 +129,6 @@
 
 - **进行中**：无阻塞项
 - **待办（规划）**：
-  - **P9 集成方可配置禁用多 task/子 agent**（2026-08-06 加入，需求已细化）：套餐级 `features.parallel_tasks` + 租户级 `allow_parallel_tasks` 覆盖；禁用后创建 task 403；admin 编辑入口 + 租户可见性 + SDK/文档。详见「P9」章节
   - 对话多任务前端接入（useAgentChat / 前端聊天页切换到 sessions+tasks 模型，支持并行任务列表与取消）
   - `scripts/agentx-integration-test.mjs` 集成测试补 task 并行链路
 - **待办（外部前提）**：

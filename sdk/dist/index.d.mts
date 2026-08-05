@@ -13,7 +13,7 @@ export { C as ChainConfig, a as ConfigRegistryOpts, b as ConfigurationRegistry, 
 export { MemoryConfig, MemoryFact, MemoryProvider } from './memory/index.mjs';
 export { HttpTraceEmitter, NoopTraceEmitter, TraceConfig, TraceEmitter, TraceEvent } from './traces/index.mjs';
 export { BrowserAction, BrowserActionResult, executeBrowserAction, extractAccessibleDOM } from './skills/index.mjs';
-export { ConversationChatParams, ConversationChatResult, ConversationClient, ConversationClientConfig, ConversationSSEEvent, ConversationSkillDef } from './conversation/index.mjs';
+export { ConversationChatParams, ConversationChatResult, ConversationClient, ConversationClientConfig, ConversationCreateSessionParams, ConversationCreateTaskParams, ConversationSSEEvent, ConversationSkillDef, ConversationTask, ConversationTaskError, ConversationTaskStatus } from './conversation/index.mjs';
 export { bytesToHex, hexToBytes } from '@noble/ciphers/utils.js';
 import 'events';
 
