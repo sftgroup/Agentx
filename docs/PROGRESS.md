@@ -128,19 +128,81 @@
 ## 二、当前状态
 
 - **进行中**：无阻塞项
-- **待办（规划）**：
-  - 对话多任务前端接入（useAgentChat / 前端聊天页切换到 sessions+tasks 模型，支持并行任务列表与取消）
-  - `scripts/agentx-integration-test.mjs` 集成测试补 task 并行链路
-- **待办（外部前提）**：
-  - 法币订阅：提供 Stripe 商户账号 → 配置 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`
-  - x402：提供结算通道与收款钱包 → 配置 `X402_ENABLED=true` / `X402_PAY_TO`
-  - 渠道归因：向 `channels` 表插入渠道配置即可启用（零外部依赖）
-  - 平台兜底 LLM key 有效值：conversation-service `OPENAI_API_KEY` 当前 401（影响非 BYOK 任务真实执行）
-- **技术债（🔵 可选优化）**：
-  - 8 个 >760 行大文件待拆分（`gateway/src/routes/mcp.ts`、前端 hooks/组件等）——审查 #9，单独排期
-  - 主入口仍 re-export react hooks（useAgentRunner），导致后端用户也需安装 wagmi——可后续拆分为独立子路径
-  - admin/revenue 链上平台费目前只展示原生代币（OXA/ETH），ERC20 付费的按 token 展示扩展点已预留
-  - 上游依赖 `@coinbase/cdp-sdk → axios` 存在 high 级通用 DoS 漏洞，待上游发版修复（与 SDK 代码无关）
+- **待办**：遗留待办已整理为具体开发任务清单，见下「### 开发任务清单 R」
+  - R1-R3 = 可立即开发的规划任务
+  - R4-R6 = 待外部前提任务（R4/R5 需业务方提供凭据，R6 零依赖）
+  - R7-R9 = 技术债（🔵 可选优化）
+
+### 开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）
+
+> 来源：P2/P8/P9 章节遗留 + 原「当前状态」待办。每项含：来源 / 优先级 / 涉及文件 / 实施要点 / 验收标准。
+
+**R1 前端聊天页接入 sessions+tasks 模型（并行任务列表与取消）** —— 优先级：高
+- 来源：P9 遗留（原 P8 待办「对话多任务前端接入」）
+- 涉及：[frontend/app/hooks/useAgentChat.ts](file:///home/ubuntu/Agentx/frontend/app/hooks/useAgentChat.ts)、前端聊天页组件、`@agentxv2/sdk@0.8.7` `ConversationClient`
+- 实施要点：
+  1. `useAgentChat` 底层切为 sessions+tasks：进入会话先 `createSession()`（幂等），发消息走 `createTask()` 立即返回 taskId，不再走单轮 `chat()`
+  2. 任务列表：`listTasks()` 渲染并行任务卡片（status: queued/running/done/error/cancelled + 结果/错误摘要）
+  3. 取消：`cancelTask()` 按钮（运行中 abort，终态幂等）
+  4. 事件流：`getTask()` 轮询或 `GET /tasks/:id/events` SSE 增量刷新
+  5. 能力降级：`getCapabilities().parallelTasks === false` 时回退单轮 `chat()`，UI 隐藏多任务/取消入口（对接 P9 gate）
+- 验收标准：
+  - 单会话可同时运行 ≥2 个任务互不阻塞，卡片状态实时刷新
+  - 取消运行中任务 → 状态 cancelled，终态任务取消幂等
+  - P9 禁用租户前端自动回退单轮对话，无 403 报错
+
+**R2 集成测试补 task 并行链路** —— 优先级：高
+- 来源：原「当前状态」待办第 2 条
+- 涉及：[scripts/agentx-integration-test.mjs](file:///home/ubuntu/Agentx/scripts/agentx-integration-test.mjs)
+- 实施要点：
+  1. sessions 幂等创建 + 查询
+  2. 同一会话并发创建多个 task，全部到达终态（done/error/cancelled）
+  3. `GET /tasks/:id/events` SSE 事件重放断言
+  4. `DELETE /tasks/:id` 取消契约（运行中/终态）
+  5. P9 gate 用例：禁用的租户创建 task → 断言 403 `PARALLEL_TASKS_DISABLED`（复用 P9 冒烟脚本思路）
+  6. 用例数据清理（smoke- 前缀删除）
+- 验收标准：脚本在测试环境全绿，可作为回归冒烟
+
+**R3 平台兜底 LLM key 有效化（解除任务真实执行阻塞）** —— 优先级：中
+- 来源：原「当前状态」外部前提第 4 条 + P8 验证备注
+- 涉及：conversation-service 环境变量（`OPENAI_API_KEY` 当前 401），非代码改动
+- 实施要点：
+  1. 配置有效 `OPENAI_API_KEY`（或经 admin 添加平台 key 入 `platform_api_keys`）
+  2. 补验 P8 未覆盖场景：非 BYOK 任务真实 LLM 输出 + running 态取消
+- 验收标准：P8 冒烟注记中的「真实 LLM 输出与 running 态取消的运行时验证」补验通过
+
+**R4 法币订阅（Stripe）上线** —— 优先级：中 · 前提：Stripe 商户账号
+- 来源：P2-2（⏸ 待 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`）
+- 实施要点：配置两个环境变量 → 启用 Stripe Checkout / webhook（HMAC 验签）/ status API 链路 → 端到端验证（创建订阅 → webhook 回调 → status 查询）
+- 验收标准：订阅全链路可支付、webhook 幂等处理、状态正确流转
+
+**R5 x402 支付门卫启用** —— 优先级：中 · 前提：结算通道 + 收款钱包
+- 来源：P2-3（⏸ 待 `X402_ENABLED=true` + `X402_PAY_TO`）
+- 实施要点：配置两个环境变量 → 验证 `POST /agent/runs` 402 门卫（返回 `x-price/x-pay-to/x-network`）→ 支付后余额账本记账
+- 验收标准：未支付请求 402 + 响应头齐全，支付后请求放行且账本正确
+
+**R6 渠道归因启用** —— 优先级：低 · 前提：无（零外部依赖）
+- 来源：原「当前状态」外部前提第 3 条
+- 实施要点：向 `channels` 表插入渠道配置 → 前端 `?ref=` 归因上报 → report/settle 链路走通
+- 验收标准：归因幂等、report 分成计算正确（复用 P7 smoke 已验证逻辑）
+
+**R7 大文件拆分（🔵 技术债）** —— 优先级：低
+- 来源：原「当前状态」技术债第 1 条
+- 涉及：8 个 >760 行文件（`gateway/src/routes/mcp.ts`、前端 hooks/组件等）
+- 实施要点：按模块拆分（链读/写、MCP 工具分组、组件拆分），保持对外 API 不变
+- 验收标准：typecheck + build 全绿，行为无回归
+
+**R8 SDK 主入口拆分子路径（🔵 技术债）** —— 优先级：低
+- 来源：原「当前状态」技术债第 2 条
+- 涉及：[sdk/src/index.ts](file:///home/ubuntu/Agentx/sdk/src/index.ts)（re-export `useAgentRunner`）
+- 实施要点：react hooks 移入独立子路径（如 `@agentxv2/sdk/react`），主入口去除 wagmi 依赖
+- 验收标准：纯后端用户安装后无需 wagmi；前端用法不变
+
+**R9 revenue ERC20 平台费展示（🔵 技术债）** —— 优先级：低
+- 来源：原「当前状态」技术债第 3 条
+- 涉及：gateway `admin/revenue` 端点 + 前端 admin RevenueTab
+- 实施要点：ERC20 付费按 token 计价展示（预留扩展点已就绪），原生代币（OXA/ETH）展示不变
+- 验收标准：混用代币付费时 revenue 按 token 分组展示正确
 
 ---
 
