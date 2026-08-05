@@ -64,6 +64,19 @@
 | P5-7 | 安全 | `.gitignore` 忽略 `.env.local` / `.env.*.local`（含钱包私钥的本地环境文件，此前未被忽略） | ✅ |
 | P5-8 | 生产修复 | 执行已有 migration `001_skills.sql` 补建生产 `skills` 表（缺失导致 skills 端点 500，review 端点此前从未真正可用） | ✅ |
 
+### P6 对话链路统一（✅ 完成，2026-08-06 · commit `5675346`）
+> 背景：前端 `useAgentChat` 自研 fetch+SSE 解析，与 SDK `ConversationClient` 是同链路的双实现，且 conversation-service SDK 停留在 `^0.8.1`。
+> 方案：统一为「SDK ConversationClient 单一实现」——前端不再手写 SSE，三服务 SDK 版本拉齐。
+
+| # | 任务 | 状态 |
+|---|------|:--:|
+| P6-1 | SDK 0.8.4：`ConversationClient` 鉴权支持 JWT Bearer（`accessToken`，与 `apiKey` 二选一）；`stream(params, { signal })` 支持外部 AbortController 停止；`ConversationSSEEvent` 新增 `error` 字段（tool_result 失败） | ✅ |
+| P6-2 | SDK 0.8.5：README 快照修正后重新发布（npm 元数据与仓库对齐） | ✅ |
+| P6-3 | 前端 `useAgentChat` 改用 `new ConversationClient({ gatewayUrl, accessToken, llmApiKey })` 流式消费，删除约 100 行手写 fetch/SSE 解析，对外 API（ChatMessage/stopStreaming/clearMessages）不变 | ✅ |
+| P6-4 | 三项目依赖统一 `^0.8.5`：gateway（0.8.1→0.8.5）/ conversation-service（0.8.1→0.8.5）/ frontend（0.8.3→0.8.5）；typecheck + build 全绿 | ✅ |
+| P6-5 | 生产部署：三服务 `npm install@^0.8.5` + build + pm2 restart，均 online；SDK 版本验证 3/3 为 0.8.5 | ✅ |
+| P6-6 | 回归验证：JWT → gateway `/api/v1/agent/runs` → conversation-service SSE 流式事件正常返回（text/done） | ✅ |
+
 ---
 
 ## 二、当前状态
@@ -88,7 +101,7 @@
 | 服务器 | 43.159.60.46（SSH: ubuntu） |
 | 服务 | agentx-gateway:3090 · agentx-conversation:8100 · agentx-frontend:3100（pm2） |
 | 数据库 | agentx_gateway（索引层）+ agentx_conversation（对话，端口 5433） |
-| SDK | `@agentxv2/sdk@0.8.3`（npm latest） |
+| SDK | `@agentxv2/sdk@0.8.5`（npm latest；gateway/conversation/frontend 三服务一致） |
 | 文档站点 | http://43.159.60.46:3100/docs/sdk（实时渲染 README） |
 | 管理后台 | http://43.159.60.46:3100/admin（X-Admin-Key） |
 | 测试钱包 | `0x52Ec58173042E8d0C9be0BdA81e95a8CbB5B8e06`（OXA 余额充足，私钥在本地 `.env.local`，已被 gitignore 保护） |
@@ -128,6 +141,7 @@
 | period 数据清洗 | 生产 38 个套餐全部为标准值；130s 同步周期后无回写 |
 | 管理后台 | system/revenue/payments 200，日志输出 ip/query/耗时/结果 |
 | 代码审查修复回归（90bddc0） | gateway/frontend typecheck+build 全绿；MCP 迁移后 identity_total_count=62 / subscription_plans / identity_list_all(过滤) / subscription_my_list=[1,2,3] 正常；skills review 无 key→401、带 key→404(业务语义)；生产三服务 online，frontend 200 |
+| 对话链路统一回归（5675346） | 三服务 SDK 均为 0.8.5；JWT（现场签名）→ gateway `/api/v1/agent/runs` → conversation-service SSE 流式事件正常返回（text/done）；直连 `/runs`（X-Internal-Token）SSE 同样正常。LLM 层因生产未配置平台 key（`platform_api_keys` 0 行）报 `Missing or invalid Authorization header`——为既有凭据配置状态，与链路改造无关 |
 
 ---
 
