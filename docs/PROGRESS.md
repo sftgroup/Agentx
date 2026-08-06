@@ -127,10 +127,10 @@
 
 ## 二、当前状态
 
-- **进行中**：R2（集成测试补 task 并行链路）
+- **当前**：可立即开发任务已清零（R2 ✅ 2026-08-06）
 - **待办**：遗留待办已整理为具体开发任务清单，见下「### 开发任务清单 R」
   - R1 ✅ 已完成（2026-08-06 · commit `0f5c30d`；SDK 0.8.7 已发布 npm）
-  - R2 = 可立即开发的规划任务
+  - R2 ✅ 已完成（2026-08-06 · 集成测试补 task 并行链路，生产 28/28 通过）
   - R4-R5 = 待外部前提任务（R4/R5 需业务方提供凭据）
   - R6-R9 = 技术债（🔵 可选优化）
   - R10 = 用户定时任务（新需求，2026-08-06 用户确认补充，需求已细化待开发）
@@ -159,17 +159,17 @@
   - P9 禁用租户前端自动回退单轮对话，无 403 报错
 - 实现记录：useAgentChat 双模式（并行 task 模式默认启用 + 单轮 SSE 回退），createTask 403 `PARALLEL_TASKS_DISABLED` 自动降级单轮；任务完成结果自动上屏为 assistant 消息；session 按 agent+wallet 持久化于 localStorage，刷新恢复任务列表；2s 轮询非终态任务。生产冒烟 7/7 PASS（capability/session/双任务并行/list/cancel/poll 终态/错误类映射），测试数据已清理。
 
-**R2 集成测试补 task 并行链路** —— 优先级：高
+**R2 集成测试补 task 并行链路** —— 优先级：高 · ✅ 完成（2026-08-06）
 - 来源：原「当前状态」待办第 2 条
 - 涉及：[scripts/agentx-integration-test.mjs](file:///home/ubuntu/Agentx/scripts/agentx-integration-test.mjs)
-- 实施要点：
-  1. sessions 幂等创建 + 查询
-  2. 同一会话并发创建多个 task，全部到达终态（done/error/cancelled）
-  3. `GET /tasks/:id/events` SSE 事件重放断言
-  4. `DELETE /tasks/:id` 取消契约（运行中/终态）
-  5. P9 gate 用例：禁用的租户创建 task → 断言 403 `PARALLEL_TASKS_DISABLED`（复用 P9 冒烟脚本思路）
-  6. 用例数据清理（smoke- 前缀删除）
-- 验收标准：脚本在测试环境全绿，可作为回归冒烟
+- 实施：新增 [6] Task 并行链路用例组（REST 直测 gateway 代理层，JWT 认证，测试租户=TEST_TENANT_ID）：
+  1. **6.1 Session 幂等**：无 id 创建返回 sessionId；同 sessionId 重复创建幂等；新会话列表为空
+  2. **6.2 并发多任务**：Promise.all 并发建 3 任务 → 3 个不同 taskId 立即返回 → 轮询全部终态（3/3 done）、≥2 done（并行真实执行）、result + usage 非空（真实 LLM，DeepSeek 平台 key）
+  3. **6.3 SSE 重放**：`GET /tasks/:id/events` → text/event-stream，事件序列含 done 无 error
+  4. **6.4 取消契约**：运行中任务 DELETE → cancelled；终态任务重复 DELETE 幂等（非 4xx/5xx）
+  5. **6.5 P9 gate**：临时 UPDATE `allow_parallel_tasks=false` → POST task 403 `PARALLEL_TASKS_DISABLED` → 恢复原值 → 回归任务 done
+  6. **6.6 清理**：取消运行中任务 + conversation DB 删本次 session（级联 tasks/events）+ gateway DB 删本次 usage_logs（时间窗口）+ 恢复租户原值；require 提升模块级（createRequire）
+- 验收：生产全量 **28/28 通过**（[1]-[5] 原有 + [6] 14 项）；残留检查 0（smoke-r2 session 无）；脚本可作回归冒烟（退出码 0/1）
 
 **R3 平台兜底 LLM key 有效化（解除任务真实执行阻塞）** —— 优先级：中 · ✅ 完成（2026-08-06）
 - 来源：原「当前状态」外部前提第 4 条 + P8 验证备注
