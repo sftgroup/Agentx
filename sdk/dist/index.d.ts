@@ -11,7 +11,7 @@ export { ConfigEntry, ConfigurationClient, ConfigurationConfig } from './configu
 export { IPFSUploadResult, IPFSUploader, IPFSUploaderConfig, defaultIPFSUploader } from './ipfs/index.js';
 export { MemoryConfig, MemoryFact, MemoryProvider } from './memory/index.js';
 export { HttpTraceEmitter, NoopTraceEmitter, TraceConfig, TraceEmitter, TraceEvent } from './traces/index.js';
-export { BrowserAction, BrowserActionResult, executeBrowserAction, extractAccessibleDOM } from './skills/index.js';
+export { BrowserAction, BrowserActionResult, executeBrowserAction, extractAccessibleDOM, sleep } from './skills/index.js';
 export { ConversationChatParams, ConversationChatResult, ConversationClient, ConversationClientConfig, ConversationCreateSessionParams, ConversationCreateTaskParams, ConversationSSEEvent, ConversationSkillDef, ConversationTask, ConversationTaskError, ConversationTaskStatus } from './conversation/index.js';
 export { C as ChainConfig, a as ConfigRegistryOpts, b as ConfigurationRegistry, K as KNOWN_CHAINS } from './config-BFeSR_GK.js';
 export { bytesToHex, hexToBytes } from '@noble/ciphers/utils.js';

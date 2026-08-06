@@ -1,5 +1,36 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.8.9 → v0.9.0
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Browser Skill — more actions** | `executeBrowserAction()` gains `hover`, `press` (keyboard events), `select` (SELECT value / checkbox+radio checked), `back` / `forward` (history), `getInfo` (url/title/readyState/viewport/scrollY) |
+| **Richer DOM snapshot** | `extractAccessibleDOM()` now annotates `name` / `role` / `aria-label`, form `value` (input/textarea/select), `checked` state for checkbox/radio, and `target` for anchors — the snapshot is actionable for the agent |
+| **Async pacing helper** | new `sleep(ms)` export for agent loops that need delays between actions |
+| **Better element matching** | `findElement` fallback also matches the `name` attribute, not just text/placeholder/aria-label |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.9.0
+```
+
+### Use the extended skills
+
+```ts
+import { executeBrowserAction, extractAccessibleDOM, sleep } from '@agentxv2/sdk/skills'
+
+executeBrowserAction({ type: 'hover', description: 'settings menu' })
+executeBrowserAction({ type: 'select', selector: '#chain', value: 'oxachain' })
+executeBrowserAction({ type: 'press', value: 'Enter' })
+executeBrowserAction({ type: 'getInfo' })   // → { url, title, viewport, ... }
+await sleep(300)
+```
+
+No breaking changes — all additions are new action types / fields; existing calls behave as before.
+
 ## v0.8.8 → v0.8.9
 
 ### What's New

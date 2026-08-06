@@ -620,6 +620,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.9.0** | 2026-08-06 | Browser Control Skill extension: new actions `hover` / `press` / `select` (select+checkbox+radio) / `back` / `forward` / `getInfo` (url/title/viewport); `extractAccessibleDOM` now includes `name`/`role`/`aria-label`/input `value`/checkbox `checked`/anchor `target`; new `sleep(ms)` async pacing helper; `findElement` also matches `name` attr |
 | **0.8.9** | 2026-08-06 | Docs sync — Installation section points at v0.8.8 ("just install to use the new capabilities"); same code as 0.8.8 |
 | **0.8.8** | 2026-08-06 | Docs sync — README updated for 0.8.7 (sessions & parallel tasks section) |
 | **0.8.7** | 2026-08-06 | `ConversationClient` gains sessions & parallel tasks: `createSession()` / `createTask()` (returns `taskId` immediately, background execution) / `getTask()` / `listTasks()` / `cancelTask()` / `getCapabilities()`. New `ConversationTaskError` (`.status` / `.code`) — `createTask()` on a P9-disabled tenant/plan rejects with HTTP 403 `PARALLEL_TASKS_DISABLED`; used by the frontend parallel-task chat UI |
