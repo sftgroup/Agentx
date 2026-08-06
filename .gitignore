@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Foundry deploy receipts
+contracts/broadcast/
+
 # Build output
 contracts/cache/
 contracts/out/
@@ -31,6 +34,9 @@ sdk/.npmrc
 e2e_*.js
 package-lock.json
 package.json
+# Exception: `payments/` is a standalone npm package — its package.json must be
+# tracked so the gateway `file:../payments` dependency resolves from a fresh clone.
+!payments/package.json
 
 # Knowledge Graph — track core files, ignore intermediates
 .ua/intermediate/

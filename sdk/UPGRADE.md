@@ -29,6 +29,14 @@ const a2a = new A2AClient(base)          // two-phase paymentId
 const period = new PeriodClient(base)    // period authorizations
 ```
 
+### Engine 0.2.1 — browser / bundler compatibility
+
+`@agentxv2/payments` `^0.2.0` resolves to **0.2.1** (a patch release). It removes every Node built-in module usage (`node:crypto` / `Buffer`) in favour of the **Web Crypto API** (`crypto.randomUUID` / `getRandomValues` / `crypto.subtle` HMAC / pure-base64 helpers) — the engine is now safe to bundle with webpack / Next.js. Previously, the SDK root re-export pulled `node:crypto` into the browser module graph and failed with `UnhandledSchemeError: Reading from "node:crypto" is not handled by plugins`.
+
+- **No SDK API change** — `SubscriptionPayments` and the re-exported protocol clients are unaffected.
+- **One 0.2.x internal change**: `StripeAdapter.verifyWebhookSignature()` is now `async` (Web Crypto `subtle` is asynchronous). Direct `StripeAdapter` consumers need `await`; the Gateway's `handleWebhook` already does.
+- `PAYMENT_VERSION` stays `'0.2.0'` — the engine API surface did not change between 0.2.0 and 0.2.1.
+
 ## v0.8.11 → v0.9.2
 
 ### What's New

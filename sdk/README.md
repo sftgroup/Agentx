@@ -10,7 +10,7 @@ Agent = Prompt + Skills[] + MCP
 
 ## Installation
 
-The current release **0.9.3** routes fiat / x402 / access through the Gateway's unified `/api/v1/payments` endpoint via the decoupled `@agentxv2/payments` engine (auto-installed, `^0.2.0`, adds MPP channels / stablecoin EIP-3009 / period authorizations / a2a-pay clients) — on top of the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
+The current release **0.9.3** routes fiat / x402 / access through the Gateway's unified `/api/v1/payments` endpoint via the decoupled `@agentxv2/payments` engine (auto-installed, `^0.2.0` → resolves to **0.2.1**, adds MPP channels / stablecoin EIP-3009 / period authorizations / a2a-pay clients) — on top of the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
 
 ```bash
 # latest (recommended) — 0.9.3, unified payments endpoint
@@ -667,7 +667,7 @@ const uni    = new PaymentsClient(base) // unified create / verify / access / in
 | `X402Client` | `/api/v1/x402/{info,verify,balance}`, `quote`/`pay` (v2 headers) | `quote(url)` fetches the `PAYMENT-REQUIRED` challenge; `pay({ url, walletClient, account })` funds + signs + replays in one call |
 | `PaymentsClient` | `/api/v1/payments` + `/verify` `/access` `/info` `/quote` | `create({ method: 'fiat'|'x402'|... })`, `verify(txHash)`, `access(subscriber, agentId)`, `info()` rails discovery |
 
-> **Dependency note**: the clients come from [`@agentxv2/payments`](https://www.npmjs.com/package/@agentxv2/payments) `^0.2.0`, auto-installed as a dependency of `@agentxv2/sdk`. `PAYMENT_VERSION` (`'0.2.0'`) is also exported from the SDK root to track the aligned engine version. Endpoints must be exposed by the Gateway the client points at (MPP/period/a2a routes exist on AgentX Gateway `/api/v1/payments/*`).
+> **Dependency note**: the clients come from [`@agentxv2/payments`](https://www.npmjs.com/package/@agentxv2/payments) `^0.2.0` (currently **0.2.1**), auto-installed as a dependency of `@agentxv2/sdk`. `PAYMENT_VERSION` (`'0.2.0'` — the aligned engine API version) is also exported from the SDK root. **Browser/bundler safe**: since 0.2.1 the engine uses only the Web Crypto API — no Node built-ins (`node:crypto` / `Buffer`) — so webpack/Next.js builds no longer fail on `UnhandledSchemeError`. Endpoints must be exposed by the Gateway the client points at (MPP/period/a2a routes exist on AgentX Gateway `/api/v1/payments/*`).
 
 ---
 

@@ -22,6 +22,7 @@ import channelRouter from './routes/channel'
 import developerRouter from './routes/developer'
 import fiatRouter from './routes/fiat'
 import x402Router from './routes/x402'
+import paymentsRouter from './routes/payments'
 import a2aRouter from './routes/a2a'
 import adminRouter from './routes/admin'
 import agentRunsRouter from './routes/agent-runs'
@@ -127,6 +128,11 @@ app.use('/api/v1/fiat', fiatRouter)
 // ── x402 pay-per-request (A2; inert unless enabled) ────────────────────────
 
 app.use('/api/v1/x402', x402Router)
+
+// ── Unified payments endpoint (P5): one transport for every rail ───────────
+// Auth is public by default (payment security rests on on-chain credentials).
+
+app.use('/api/v1/payments', paymentsRouter)
 
 // ── Skills Marketplace (mixed: GET public, POST/PUT/DELETE protected) ──────
 
