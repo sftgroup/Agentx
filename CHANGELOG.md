@@ -20,8 +20,6 @@
 - 测试：`developer.test.ts` 4 用例，gateway 全量 31/31 通过；生产冒烟 4/4 PASS
 - 详细变更说明见 [docs/R13-change-notes.md](docs/R13-change-notes.md)
 
-## 2026-08-06
-
 ### Gateway — MCP 新增对话与任务管理工具（33→38）
 
 **新特性**：MCP 端点 `/mcp` 工具数 33→38，补齐对话与并行任务管理能力（此前仅链上 + 网关只读，MCP 客户端无法消费 P8/P9 并行能力）。
@@ -31,6 +29,17 @@
 - **鉴权**：MCP 为公开路由，对话/任务工具在工具 `arguments` 中接受 `api_key`（`X-Api-Key`）或 `access_token`（JWT）二选一；参数 snake_case，handler 转 camelCase 内部转发 gateway REST，P9 gate 403（`PARALLEL_TASKS_DISABLED`）透传
 - 测试：新增 `gateway/test/mcp.test.ts` 11 用例，gateway 全量 27/27 通过
 - 文档：`MCP_SETUP.md`、`mcp/README.md`、`docs/sdk-vs-mcp.md`、`docs/integration-callers.md`（§7.5 MCP 接入）、`README.md` 同步更新
+
+### SDK v0.9.0 — Browser Control Skill 扩展
+
+**新特性**：`@agentxv2/sdk/skills` 面向 Agent 浏览器控制的动作集扩展。
+
+- `executeBrowserAction()` 新增动作：`hover`（悬停）、`press`（键盘事件）、`select`（SELECT 值 / checkbox+radio checked）、`back` / `forward`（历史导航）、`getInfo`（url/title/readyState/viewport/scrollY）
+- `extractAccessibleDOM()` 快照增强：补充 `name` / `role` / `aria-label`、表单 `value`（input/textarea/select）、checkbox/radio `checked`、anchor `target`，让快照对 agent 可直接行动
+- 新增 `sleep(ms)` 异步节奏辅助函数；`findElement` 回退匹配新增 `name` 属性
+- 向后兼容：全部为新增动作/字段，无破坏性变更
+
+---
 
 ## 2026-08-05
 
