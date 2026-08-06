@@ -9,6 +9,7 @@
 import { Router, Request, Response } from 'express'
 import { chainDataReader, log } from '../services/chain-data-reader'
 import type { ChainKey } from '../services/chain-data-reader'
+import { hasSubscriptionAccess } from '../services/subscription-access'
 
 const router = Router()
 
@@ -116,7 +117,7 @@ router.get('/check-subscription', async (req: Request, res: Response, next) => {
       res.status(400).json({ error: 'subscriber and agentId are required' })
       return
     }
-    const active = await chainDataReader.hasActiveSubscription(chain, subscriber as `0x${string}`, agentId)
+    const active = await hasSubscriptionAccess(subscriber, agentId, chain)
     log.info(`GET /chain/check-subscription (chain=${chain}, subscriber=${subscriber}, agentId=${agentId}) → active=${active} in ${Date.now() - t0}ms`)
     res.json({ chain, subscriber, agentId, active })
   } catch (err) {

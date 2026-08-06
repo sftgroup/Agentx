@@ -5,6 +5,52 @@
 
 ---
 
+## 2026-08-07 — 生产升级 sdk@0.9.3 + payments@0.2.1
+
+### @agentxv2/payments@0.2.1 — 浏览器/bundler 兼容修复
+
+**问题**：`@agentxv2/payments@0.2.0` 在 `service.ts` / `client.ts` / `stripe.ts` / `x402-v2.ts` 顶层引用了 Node 内置模块（`node:crypto` 的 `randomUUID`/`randomBytes`/`createHmac`/`timingSafeEqual` 与 `Buffer` base64）。SDK 0.9.3 re-export 该包根导出后，前端（webpack/Next.js）构建报 `UnhandledSchemeError: Reading from "node:crypto" is not handled by plugins`。
+
+**修复**：
+- 新增 `payments/src/crypto.ts`（纯 Web Crypto：`randomUUID` / `getRandomValues` / 手写 base64 / `hmacSha256Hex` / `timingSafeEqualStr`），替换 4 处 Node 内置用法，引擎在 Node ≥19 与浏览器均可运行
+- `StripeAdapter.verifyWebhookSignature()` 改为 `async`（Web Crypto `subtle.sign` 异步）；`PaymentsService.handleWebhook` 与单测同步 `await`，对外契约不变
+- 本地 tsc build + 87/87 vitest 全绿；`dist` 无任何 `node:`/`Buffer` 引用
+- 已发布 npm `@agentxv2/payments@0.2.1`（sdk `^0.2.0` semver 自动兼容，**无需重发 sdk**）
+
+**生产部署**（43.159.60.46，pm2）：
+- gateway：重链 `file:../payments` → 0.2.1 → build → `pm2 restart agentx-gateway` ✅
+- frontend：显式安装 payments@0.2.1 → `next build` 成功 → `pm2 restart agentx-frontend` ✅
+- 最终：gateway = `@agentxv2/sdk@0.9.3` + `@agentxv2/payments@0.2.1`（file:）；frontend 同版本；三服务 online，`/api/v1/payments/info` 正常
+
+---
+
+## 2026-08-07
+
+### SDK v0.8.11 — 三轨订阅支付（chain / fiat / x402）
+
+**新特性**（npm `@agentxv2/sdk@0.8.11`）：统一支付层，让集成的 B 端与 AgentX 前端都能用多种方式订阅：
+
+- **`SubscriptionPayments` 类（主入口）** — `pay({ method, planId, agentId, subscriber, ... })` 按三轨分发：
+  - `chain` → 链上 SubscriptionManager（原生代币/ERC20 escrow，可指定 `valueWei` / `approveTokenFirst`）
+  - `fiat` → Stripe 信用卡订阅，返回 checkout URL 重定向（无需钱包）
+  - `x402` → 原生代币周期支付，Gateway 验 tx 后写入 `fiat_subscriptions(provider='x402')` 注册访问
+- **`hasAccess(agentId, subscriber)`** — 统一访问检查（链上 OR fiat/x402），走 Gateway `/api/v1/chain/check-subscription`
+- **`fetchX402Info()`** — x402 协议发现（priceWei / payTo / network / chain）
+- **fiat `amountCents` 可选** — Gateway 按 planId 自动从链上套餐定价换算美元（`FIAT_TOKEN_USD_PRICE`）；显式传 `amountCents` 仍优先
+- **x402 自动支付** — 未传 `txHash` 时自动用 `walletClient` 转账（max(plan price, protocol price)）并注册
+
+**Gateway 配套**（本机同步到生产）：
+- `POST /api/v1/x402/subscribe`（新增）— 幂等验 tx + 订阅续期（复用 `fiat_subscriptions`，无新表）
+- `POST /api/v1/fiat/checkout` — 支持 planId 自动定价；`invoice.paid` 空行 bug 修复
+- `hasSubscriptionAccess` 服务 — 统一「链上 OR fiat/x402」访问控制，接入 `check-subscription` 与 MCP `agentx_subscription_check`
+
+**前端**：订阅详情页续费支持三选一支付方式（钱包 / 信用卡 / x402），复用 SDK `SubscriptionPayments`。
+
+- 验证：SDK tsc 0 错误 + vitest 29/29 ✓（payment 12/12）；Gateway tsc 0 错误 + vitest 35/35 ✓
+- 文档：`sdk/UPGRADE.md`（v0.8.10→v0.8.11）、`sdk/README.md`（Multi-Rail 章节 + 版本表）
+
+---
+
 ## 2026-08-06
 
 ### SDK v0.8.10 — 主密钥加解密 + subscription 状态映射修正
