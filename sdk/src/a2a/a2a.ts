@@ -221,9 +221,9 @@ export class A2AProtocol {
 
   // ── Task ────────────────────────────────────────────────────────────────
 
-  async createTask(agentId: number, taskType: string, input: Record<string, unknown>): Promise<{ taskId: number; txHash: Hash }> {
+  async createTask(agentId: number, taskType: string, input: string | Record<string, unknown>): Promise<{ taskId: number; txHash: Hash }> {
     const acct = await this.account
-    const inputStr = JSON.stringify(input)
+    const inputStr = typeof input === 'string' ? input : JSON.stringify(input)
     const { request } = await this.publicClient.simulateContract({
       account: acct,
       address: this.address,

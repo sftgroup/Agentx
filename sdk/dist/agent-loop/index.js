@@ -27,9 +27,11 @@ __export(crypto_exports, {
   aesEncrypt: () => aesEncrypt,
   bytesToHex: () => import_utils.bytesToHex,
   decryptPayload: () => decryptPayload,
+  decryptWithKey: () => decryptWithKey,
   eciesDecrypt: () => eciesDecrypt,
   eciesEncrypt: () => eciesEncrypt,
   encryptPayload: () => encryptPayload,
+  encryptWithKey: () => encryptWithKey,
   generateAesKey: () => generateAesKey,
   generateKeyPair: () => generateKeyPair,
   getPublicKey: () => getPublicKey,
@@ -81,6 +83,33 @@ function aesDecrypt(encryptedBase64, keyHex) {
   const iv = combined.subarray(0, IV_SIZE);
   const ciphertext = combined.subarray(IV_SIZE, -TAG_SIZE);
   const authTag = combined.subarray(-TAG_SIZE);
+  const cipher = (0, import_aes.gcm)(key, iv);
+  const ciphertextWithTag = new Uint8Array(ciphertext.length + TAG_SIZE);
+  ciphertextWithTag.set(ciphertext, 0);
+  ciphertextWithTag.set(authTag, ciphertext.length);
+  const decrypted = cipher.decrypt(ciphertextWithTag);
+  return new TextDecoder().decode(decrypted);
+}
+function encryptWithKey(plaintext, keyHex) {
+  const key = (0, import_utils.hexToBytes)(keyHex);
+  const iv = randomBytes(IV_SIZE);
+  const plainBytes = new TextEncoder().encode(plaintext);
+  const cipher = (0, import_aes.gcm)(key, iv);
+  const encrypted = cipher.encrypt(plainBytes);
+  const ciphertext = encrypted.subarray(0, -TAG_SIZE);
+  const authTag = encrypted.subarray(-TAG_SIZE);
+  const combined = new Uint8Array(IV_SIZE + TAG_SIZE + ciphertext.length);
+  combined.set(iv, 0);
+  combined.set(authTag, IV_SIZE);
+  combined.set(ciphertext, IV_SIZE + TAG_SIZE);
+  return toBase64(combined);
+}
+function decryptWithKey(encryptedBase64, keyHex) {
+  const key = (0, import_utils.hexToBytes)(keyHex);
+  const combined = fromBase64(encryptedBase64);
+  const iv = combined.subarray(0, IV_SIZE);
+  const authTag = combined.subarray(IV_SIZE, IV_SIZE + TAG_SIZE);
+  const ciphertext = combined.subarray(IV_SIZE + TAG_SIZE);
   const cipher = (0, import_aes.gcm)(key, iv);
   const ciphertextWithTag = new Uint8Array(ciphertext.length + TAG_SIZE);
   ciphertextWithTag.set(ciphertext, 0);
