@@ -10,14 +10,7 @@ import {
 } from 'wagmi'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 
-// 生产级环境变量验证
-const validateAddress = (address: string | undefined): `0x${string}` => {
-  if (!address || !address.startsWith('0x') || address.length !== 42) {
-    console.error('Invalid contract address:', address)
-    return '0x0000000000000000000000000000000000000000'
-  }
-  return address as `0x${string}`
-}
+import { validateAddress } from './contract-address'
 
 const CONFIGURATION_REGISTRY_ADDRESS = validateAddress(process.env.NEXT_PUBLIC_CONFIGURATION_REGISTRY_ADDRESS)
 

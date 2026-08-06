@@ -19,19 +19,14 @@
 //     → Agent A's LLM aggregates all results → final output
 // ---------------------------------------------------------------------------
 
-import { ethers } from 'ethers'
+import { createPublicClient, createWalletClient, http } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import type { Address, Hex } from 'viem'
+import { A2AProtocol } from '@agentxv2/sdk'
+import type { A2ATaskStatus } from '@agentxv2/sdk'
 import { getPool } from '../lib/db'
 import { config } from '../config'
 import { decryptApiKey } from '../lib/crypto'
-
-// ── A2A Contract ABI ──────────────────────────────────────────────────────
-
-const A2A_ABI = [
-  'function getAgentTasks(uint256 agentId) view returns (tuple(uint256,uint256,string,string,string,uint256,address,uint256,uint256,bytes32)[])',
-  'function getTask(uint256 taskId) view returns (uint256,uint256,string,string,string,uint256,address,uint256,uint256)',
-  'function createTask(uint256 agentId, string taskType, string inputData) returns (uint256)',
-  'event TaskCreated(uint256 indexed taskId, uint256 indexed agentId, address indexed client, string taskType, uint256 status)',
-]
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -87,8 +82,7 @@ async function pollAndProcess(): Promise<void> {
   if (isRunning) { console.log('[A2A Worker] Previous poll still running, skipping'); return }
   isRunning = true
   try {
-    const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
-    const a2aContract = new ethers.Contract(config.a2aProtocolOxaChain, A2A_ABI, provider)
+    const a2a = getA2AReadonly()
     const pool = getPool()
     const { rows: agents } = await pool.query(`SELECT id, name, owner, description FROM agents ORDER BY id`)
     if (agents.length === 0) { isRunning = false; return }
@@ -111,17 +105,22 @@ async function pollAndProcess(): Promise<void> {
       const completedTaskIds = new Set(existingResults.map((r: any) => r.task_id))
 
       try {
-        const tasks: any[] = await a2aContract.getAgentTasks(agentId)
+        const tasks = await a2a.getAgentTasks(agentId)
         for (const task of tasks) {
           if (processedCount >= MAX_BATCH_SIZE) break
-          const taskId = Number(task[0])
-          const status = Number(task[5])
-          if (status > 1 || completedTaskIds.has(taskId) || processingSet.has(taskId)) continue
+          const taskId = task.taskId
+          if (task.status === 'in_progress' || task.status === 'completed' || task.status === 'failed'
+            || completedTaskIds.has(taskId) || processingSet.has(taskId)) continue
 
           const onChainTask: A2ATaskOnChain = {
-            taskId, agentId: Number(task[1]), taskType: String(task[2] || ''),
-            inputData: String(task[3] || ''), outputData: String(task[4] || ''),
-            status, clientAddress: String(task[6] || ''), createdAt: Number(task[7] || 0),
+            taskId,
+            agentId: task.targetAgentId,
+            taskType: task.taskType,
+            inputData: task.input,
+            outputData: task.result ?? '',
+            status: A2A_STATUS_INDEX[task.status] ?? 0,
+            clientAddress: task.creator,
+            createdAt: task.createdAt,
           }
 
           processingSet.add(taskId); processedCount++
@@ -307,14 +306,11 @@ async function processTask(
             const queryId = Number(args.taskId)
             if (!queryId || isNaN(queryId)) { toolResult = 'Error: taskId required'; break }
             try {
-              const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
-              const a2aContract = new ethers.Contract(config.a2aProtocolOxaChain, A2A_ABI, provider)
-              const t = await a2aContract.getTask(queryId)
-              const statusMap = ['Created', 'Accepted', 'InProgress', 'Completed', 'Failed']
+              const t = await getA2AReadonly().getTask(queryId)
+              if (!t) { toolResult = `Task #${queryId} not found`; break }
               toolResult = JSON.stringify({
-                taskId: Number(t[0]), agentId: Number(t[1]), taskType: String(t[2]),
-                status: statusMap[Number(t[5])] || 'Unknown',
-                outputData: String(t[4] || ''),
+                taskId: t.taskId, agentId: t.targetAgentId, taskType: t.taskType,
+                status: t.status, outputData: t.result ?? '',
               })
             } catch { toolResult = `Task #${queryId} not found` }
             break
@@ -361,26 +357,53 @@ async function processTask(
   }
 }
 
-// ── On-Chain Helpers ──────────────────────────────────────────────────────
+// ── On-Chain A2A Client (SDK) ─────────────────────────────────────────────
+// Single source of truth for the A2A protocol ABI: the @agentxv2/sdk
+// `A2AProtocol` wrapper. The worker only needs `getAgentTasks` / `getTask`
+// (read-only) and `createTask` (signer). Clients are cached per process.
+
+const A2A_STATUS_INDEX: Record<A2ATaskStatus, number> = {
+  created: 0, accepted: 1, in_progress: 2, completed: 3, failed: 4,
+}
+
+let a2aReadonly: A2AProtocol | null = null
+let a2aSigner: A2AProtocol | null = null
+
+function getA2AReadonly(): A2AProtocol {
+  if (!a2aReadonly) {
+    const publicClient = createPublicClient({ transport: http(config.rpcUrlOxaChain) })
+    // No account — never signs; only readContract paths are exercised.
+    const walletClient = createWalletClient({ transport: http(config.rpcUrlOxaChain) })
+    a2aReadonly = new A2AProtocol({
+      contractAddress: config.a2aProtocolOxaChain as Address,
+      publicClient,
+      walletClient,
+    })
+  }
+  return a2aReadonly
+}
+
+function getA2ASigner(): A2AProtocol {
+  if (!a2aSigner) {
+    const pk = config.a2aWorkerPrivateKey
+    if (!pk) throw new Error('A2A_WORKER_PRIVATE_KEY not configured — cannot create sub-tasks')
+    const publicClient = createPublicClient({ transport: http(config.rpcUrlOxaChain) })
+    const walletClient = createWalletClient({
+      account: privateKeyToAccount(pk as Hex),
+      transport: http(config.rpcUrlOxaChain),
+    })
+    a2aSigner = new A2AProtocol({
+      contractAddress: config.a2aProtocolOxaChain as Address,
+      publicClient,
+      walletClient,
+    })
+  }
+  return a2aSigner
+}
 
 async function createTaskOnChain(agentId: number, taskType: string, inputData: string): Promise<number> {
-  const workerPk = process.env.A2A_WORKER_PRIVATE_KEY
-  if (!workerPk) throw new Error('A2A_WORKER_PRIVATE_KEY not configured — cannot create sub-tasks')
-
-  const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
-  const wallet = new ethers.Wallet(workerPk, provider)
-  const a2aContract = new ethers.Contract(config.a2aProtocolOxaChain, A2A_ABI, wallet)
-
-  const tx = await a2aContract.createTask(agentId, taskType, inputData)
-  const receipt = await tx.wait()
-
-  // Parse TaskCreated event to get taskId
-  for (const log of receipt.logs) {
-    if (log.topics.length >= 2) {
-      try { return Number(log.topics[1]) } catch { /* */ }
-    }
-  }
-  throw new Error('Could not parse taskId from createTask tx')
+  const { taskId } = await getA2ASigner().createTask(agentId, taskType, inputData)
+  return taskId
 }
 
 // ── LLM Helpers ────────────────────────────────────────────────────────────

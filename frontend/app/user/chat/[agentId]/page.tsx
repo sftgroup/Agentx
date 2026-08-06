@@ -5,90 +5,24 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { SubscriptionGuard } from '@/components/guard/SubscriptionGuard'
-import { ToolCallBubble } from '@/components/chat/ToolCallBubble'
-import { useAccount } from 'wagmi'
+import { MessageBubble } from '@/components/chat/MessageBubble'
+import { ModelSelector } from '@/components/chat/ModelSelector'
+import { TaskCard } from '@/components/chat/TaskCard'
 import { useAgentDetail } from '@/hooks/aimarket/useAgentRegistry'
 import { useAgentRunner } from '@agentxv2/sdk/react'
-import { AgentLoop, GatewayProvider, OpenAIProvider } from '@agentxv2/sdk'
-import type { AgentRunContext, RunnableSkill, ToolCallStart, ToolCallResult, AgentLoopResult } from '@agentxv2/sdk'
+import { AgentLoop, OpenAIProvider } from '@agentxv2/sdk'
+import type { RunnableSkill, ToolCallStart, ToolCallResult } from '@agentxv2/sdk'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
-import type { GatewayContext } from '@/hooks/useGatewayAuth'
 import { useAgentChat, type ChatMessage } from '@/hooks/useAgentChat'
-import type { ConversationTask } from '@agentxv2/sdk/conversation'
-import { Send, Brain, AlertCircle, Sparkles, ArrowLeft, Loader2, Trash2, Square, Wrench, X } from 'lucide-react'
+import { Send, Brain, AlertCircle, ArrowLeft, Loader2, Trash2, Square, Wrench } from 'lucide-react'
 import Link from 'next/link'
-
-// ── Parallel task card (R1) ──────────────────────────────────────────────
-const TASK_STATUS_STYLE: Record<string, string> = {
-  queued: 'bg-white/5 text-text-muted',
-  running: 'bg-accent-cyan/10 text-accent-cyan',
-  done: 'bg-green-400/10 text-green-400',
-  error: 'bg-red-400/10 text-red-400',
-  cancelled: 'bg-white/5 text-text-muted',
-}
-
-function TaskCard({ task, onCancel }: { task: ConversationTask; onCancel: (taskId: string) => void }) {
-  const terminal = task.status === 'done' || task.status === 'error' || task.status === 'cancelled'
-  return (
-    <div className="rounded-xl border border-white/5 bg-white/5 px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-text-secondary truncate">{task.message}</p>
-          <p className="text-[11px] text-text-muted/60 mt-0.5">
-            #{task.id.slice(0, 8)} · {new Date(task.createdAt).toLocaleTimeString()}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`text-[11px] px-2 py-0.5 rounded-full ${TASK_STATUS_STYLE[task.status] || ''}`}>
-            {task.status === 'running' ? '● running' : task.status}
-          </span>
-          {!terminal && (
-            <button onClick={() => onCancel(task.id)} title="Cancel task"
-              className="p-1.5 rounded-lg hover:bg-red-400/10 text-text-muted hover:text-red-400 transition-colors">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-      {task.status === 'done' && task.result && (
-        <p className="mt-2 text-xs text-text-secondary whitespace-pre-wrap line-clamp-3">{task.result as string}</p>
-      )}
-      {task.status === 'error' && (
-        <p className="mt-2 text-xs text-red-400 line-clamp-2">{task.error || 'Task failed'}</p>
-      )}
-    </div>
-  )
-}
-
-interface ModelOption {
-  id: string
-  provider: string
-  model: string
-  label?: string
-  source: 'platform' | 'tenant_owned'
-  tenantKeyId?: string
-}
-
-const HISTORY_KEY_PREFIX = 'agentx-chat-history-'
-
-// Read the active LLM key stored locally by the settings page (stateless BYOK fallback).
-function llmApiKeyFromLocalStorage(): string | undefined {
-  try {
-    const configs = JSON.parse(localStorage.getItem('aiConfigs') || '[]') as { apiKey: string; isActive: boolean }[]
-    const active = configs.find(c => c.isActive) || configs[0]
-    return active?.apiKey || undefined
-  } catch {
-    return undefined
-  }
-}
+import { ModelOption, HISTORY_KEY_PREFIX, llmApiKeyFromLocalStorage } from './chat-utils'
+import { GATEWAY_URL_OPTIONAL as gatewayUrl } from '@/lib/gateway'
 
 export default function ChatPage() {
   const params = useParams()
-  const { isConnected } = useAccount()
   const agentId = Number(params.agentId)
   const historyKey = `${HISTORY_KEY_PREFIX}${agentId}`
-
-  const gatewayUrl = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || ''
 
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -398,40 +332,6 @@ export default function ChatPage() {
     }
   }, [clarification, clarificationAnswer, gatewayCtx, sseMessages, gatewayUrl, agentId, sendSseMessage])
 
-  // ── Render helpers ───────────────────────────────────────────────────
-  const renderMessage = (msg: ChatMessage) => {
-    if (msg.role === 'tool_call' || msg.role === 'tool_result') {
-      return (
-        <ToolCallBubble
-          key={msg.id}
-          toolName={msg.toolName || 'unknown'}
-          input={msg.toolInput}
-          result={msg.toolResult}
-          error={msg.toolError}
-          status={msg.toolStatus || 'pending'}
-          durationMs={msg.toolDurationMs}
-        />
-      )
-    }
-
-    return (
-      <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-        <div className={`max-w-2xl rounded-2xl px-4 py-3 ${
-          msg.role === 'user'
-            ? 'bg-accent-purple/20 border border-accent-purple/20'
-            : 'bg-white/5 border border-white/5'
-        }`}>
-          <div className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content || '...'}</div>
-          <div className="text-xs mt-2 opacity-40">{new Date(msg.timestamp).toLocaleTimeString()}</div>
-        </div>
-      </div>
-    )
-  }
-
-  const selectedLabel = selectedModel
-    ? (selectedModel.label || selectedModel.model)
-    : 'Select model'
-
   const isLoadingState = isLoading || isSseStreaming
   const currentThinking = sseThinking
   const displayMessages = sseMessages
@@ -491,41 +391,13 @@ export default function ChatPage() {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
-              {modelOptions.length > 0 && (
-                <div className="relative">
-                  <button onClick={() => setShowModelSelector(!showModelSelector)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/5 text-sm text-text-secondary hover:text-text-primary transition-colors max-w-[200px]">
-                    <Brain className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{selectedLabel}</span>
-                  </button>
-                  {showModelSelector && (
-                    <div className="absolute top-full right-0 mt-2 glass-card p-2 w-72 z-50 max-h-80 overflow-y-auto">
-                      {modelOptions.some(m => m.source === 'platform') && (
-                        <>
-                          <div className="text-xs font-medium text-text-muted px-2 py-1">Platform Models</div>
-                          {modelOptions.filter(m => m.source === 'platform').map(m => (
-                            <button key={m.id} onClick={() => { setSelectedModel(m); setShowModelSelector(false) }}
-                              className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 transition-colors ${selectedModel?.id === m.id ? 'bg-accent-purple/10 text-accent-purple' : ''}`}>
-                              <div className="font-medium">{m.model}</div>
-                              <div className="text-xs text-text-muted">{m.provider}</div>
-                            </button>
-                          ))}
-                          {modelOptions.some(m => m.source === 'tenant_owned') && (
-                            <div className="border-t border-white/5 my-1" />
-                          )}
-                        </>
-                      )}
-                      {modelOptions.filter(m => m.source === 'tenant_owned').map(m => (
-                        <button key={m.id} onClick={() => { setSelectedModel(m); setShowModelSelector(false) }}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 transition-colors ${selectedModel?.id === m.id ? 'bg-accent-purple/10 text-accent-purple' : ''}`}>
-                          <div className="font-medium">{m.label || m.model}</div>
-                          <div className="text-xs text-text-muted">{m.provider} · 🔑 Own Key</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <ModelSelector
+                options={modelOptions}
+                selected={selectedModel}
+                open={showModelSelector}
+                onToggle={() => setShowModelSelector(!showModelSelector)}
+                onSelect={(m) => { setSelectedModel(m); setShowModelSelector(false) }}
+              />
             </div>
           </div>
 
@@ -573,7 +445,7 @@ export default function ChatPage() {
                 )}
               </div>
             ) : (
-              displayMessages.map(msg => renderMessage(msg))
+              displayMessages.map(msg => <MessageBubble key={msg.id} msg={msg} />)
             )}
             {isLoadingState && !currentThinking && (
               <div className="flex justify-start">

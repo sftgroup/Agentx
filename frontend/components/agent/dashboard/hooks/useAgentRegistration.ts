@@ -89,7 +89,6 @@ export function useAgentRegistration() {
   // ---- Registration confirmation ----
   useEffect(() => {
     if (!isConfirmed || !transactionHash) return
-    console.log('🎉 Agent 注册成功，启动多重自动刷新机制...')
     setSuccessMessage('Agent 注册成功！正在自动刷新数据...')
     setShowRegistrationForm(false)
     setRegistrationForm(DEFAULT_REGISTRATION)
@@ -115,7 +114,6 @@ export function useAgentRegistration() {
   // ---- Metadata update confirmation ----
   useEffect(() => {
     if (!isConfirmed || !transactionHash || !showMetadataForm || isSettingMetadata) return
-    console.log('🎉 元数据更新成功，自动关闭弹框...')
     setSuccessMessage('元数据更新成功！正在刷新数据...')
     setShowMetadataForm(false)
     setSelectedAgentId(null)

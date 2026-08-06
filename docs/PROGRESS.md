@@ -319,6 +319,20 @@
 > R7 决策备忘：拆分采用「类型/常量/纯函数抽取 + 展示子组件拆分 + 主组件保留状态与 handlers」模式，行为零变更；hooks 拆分后主文件 re-export 类型保持消费方兼容（`isolatedModules: true`）。
 > R10 决策备忘：daemon 单飞采用乐观锁 `UPDATE schedules SET next_run_at = ... WHERE id = ? AND next_run_at = 旧值` 防重入；调度触发 P9 禁用租户时记录 `schedule_runs.failed`（含 error code），不中断其他调度。
 
+### R7 收尾（✅ 2026-08-06 · 会话内，无 commit）
+
+> 大文件拆分后的收尾整理，全部通过三项目验证（frontend tsc / sdk tsc+vitest 17/17 / gateway tsc+vitest 35/35）。
+
+| # | 任务 | 涉及文件 | 状态 |
+|---|------|---------|:--:|
+| #12 | hooks 收尾：`validateAddress` 去重到共享 `contract-address.ts`（`ZERO_ADDRESS` + 非法地址 fallback address(0)）；7 个 hooks/type 文件统一引用 | `components/agent/hooks/contract-address.ts`（新增） | ✅ |
+| #14 | `useAgentRegistry` 刷新精简：去掉按区块强制刷新（`useBlockNumber({watch:true})`/`forceRefresh`/1s 节流/`transactionHashRef`），改 `refetchInterval: 30_000` + 交易确认后主动 refetch；全仓 console.log 清理（仅保留 IPFS 调试日志） | `useAgentRegistry` / `useAgentFactory` / `usePaymentGateway` / `useAgentRegistration` / `useAgentCards` / `useUserSubscriptions` | ✅ |
+| #10 | chat 页面拆分 658→530 行：`TaskCard`/`MessageBubble`/`ModelSelector` → `components/chat/`，`ModelOption`/`HISTORY_KEY_PREFIX`/`llmApiKeyFromLocalStorage` → `chat-utils.ts` | `app/user/chat/[agentId]/` | ✅ |
+| #11 | a2a 页面拆分 582→330 行：`CreateTaskPanel`/`CompleteTaskModal`/`TaskItem` → `components/a2a/`，类型/常量/`friendlyError` → `a2a-utils.ts` | `app/a2a/` | ✅ |
+| #13 | Gateway URL 统一：新增 `lib/gateway.ts`（`GATEWAY_URL` 默认 localhost 回退 + `GATEWAY_URL_OPTIONAL` 保留 feature-detect 语义 + `gatewayFetch`），9 处直接读 `NEXT_PUBLIC_AGENTX_GATEWAY_URL` 全部改为导入 | `lib/gateway.ts`（新增）+ 8 个调用文件 | ✅ |
+
+> #13 决策备忘：未配置 dev 环境须保留「未配置即禁用 Gateway 功能」语义（chat 离线 AgentLoop fallback），故提供 `GATEWAY_URL_OPTIONAL`（未配置时为 `''`）供 feature-detect 站点使用，避免本地无 env 时误走 SSE 模式。
+
 ---
 
 ## 三、生产环境

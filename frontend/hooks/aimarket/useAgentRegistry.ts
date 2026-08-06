@@ -4,6 +4,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
+import { GATEWAY_URL } from '@/lib/gateway'
 
 export interface AgentInfo {
   id: number
@@ -36,8 +37,6 @@ export interface UseAgentRegistryReturn {
   refetch: () => void
   fetchMore: (count: number) => Promise<void>
 }
-
-const GATEWAY_URL = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
 
 function mapAgent(row: any): AgentInfo {
   return {
