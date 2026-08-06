@@ -89,35 +89,39 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       const encrypted: EncryptedPayload = encryptPayload(privatePayload, aesKey)
       packAgentForPublish(agentPayload, '', aesKey)
 
-      const pinataJwt = process.env.NEXT_PUBLIC_PINATA_JWT || ''
+      // 加密负载上传到 IPFS（经服务端代理，Pinata JWT 由服务端持有，浏览器不接触密钥）
       let cid: string
-      if (pinataJwt) {
-        const res = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+      try {
+        const res = await fetch('/api/ipfs/upload-json', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${pinataJwt}`, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pinataContent: {
-              encrypted_data: encrypted.data,
-              metadata: {
-                name: form.name, description: form.description,
-                tags: tagList,
-                pricing: { type: form.pricingType, amount: form.price || '0', currency: 'ETH' },
-                version: '1.0.0',
-              },
-              schema_version: 'agentx/v2',
-            }
+            encrypted_data: encrypted.data,
+            metadata: {
+              name: form.name, description: form.description,
+              tags: tagList,
+              pricing: { type: form.pricingType, amount: form.price || '0', currency: 'ETH' },
+              version: '1.0.0',
+            },
+            schema_version: 'agentx/v2',
           })
         })
-        const data = await res.json()
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as { error?: string } | null
+          throw new Error(body?.error || `IPFS 上传失败: HTTP ${res.status}`)
+        }
+        const data = (await res.json()) as { IpfsHash?: string }
+        if (!data.IpfsHash) throw new Error('IPFS 返回数据缺少 CID')
         cid = data.IpfsHash
-      } else {
+      } catch (err) {
+        console.warn('IPFS 上传失败，降级为 data URI 发布:', err)
         cid = `local-${Date.now()}`
       }
       setIpfsHash(cid)
 
-      const tokenURI = pinataJwt
-        ? `https://indigo-peaceful-mackerel-164.mypinata.cloud/ipfs/${cid}`
-        : `data:application/json,${encodeURIComponent(encrypted.data)}`
+      const tokenURI = cid.startsWith('local-')
+        ? `data:application/json,${encodeURIComponent(encrypted.data)}`
+        : `https://indigo-peaceful-mackerel-164.mypinata.cloud/ipfs/${cid}`
 
       const metadataPairs = [
         { key: 'name', value: `0x${Buffer.from(form.name, 'utf8').toString('hex')}` },
