@@ -1,4 +1,6 @@
 // components/agent/dashboard/EndpointManager.tsx
+// R7 拆分：主组件（状态 + handlers），展示部分拆至 EndpointCard / EndpointFormModal，
+// 纯逻辑拆至 endpoint-utils / endpoint-status
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -6,42 +8,21 @@ import { useAccount } from 'wagmi'
 import {
   Globe,
   Plus,
-  Edit,
-  Trash2,
-  Play,
-  StopCircle,
-  TestTube,
-  Shield,
-  Zap,
-  Server,
   CheckCircle,
-  XCircle,
   RefreshCw,
-  AlertTriangle,
-  ArrowLeft
+  XCircle
 } from 'lucide-react'
-import { useMultiEndpoint, type Endpoint, type ProtocolConfig, type EndpointStats } from '../hooks/useMultiEndpoint'
+import { useMultiEndpoint, type Endpoint } from '../hooks/useMultiEndpoint'
 import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
-
-interface EndpointFormData {
-  name: string
-  endpointType: string
-  protocol: string
-  url: string
-  description: string
-}
-
-interface EndpointTestResult {
-  success: boolean
-  responseTime?: number
-  statusCode?: number
-  error?: string
-}
-
-interface ValidationResult {
-  isValid: boolean
-  message: string
-}
+import { checkEndpointStatus } from './endpoint-status'
+import {
+  validateForm,
+  type EndpointFormData,
+  type EndpointTestResult,
+  type ValidationResult
+} from './endpoint-utils'
+import { EndpointCard } from './EndpointCard'
+import { EndpointFormModal } from './EndpointFormModal'
 
 export function EndpointManager() {
   const { address, isConnected } = useAccount()
@@ -87,21 +68,6 @@ export function EndpointManager() {
   } = useMultiEndpoint()
 
   const { userAgents, refetchAgents } = useAgentRegistry()
-
-  const endpointTypes = [
-    { value: 'API', label: 'API端点', icon: Server },
-    { value: 'WebSocket', label: 'WebSocket', icon: Zap },
-    { value: 'gRPC', label: 'gRPC', icon: Globe },
-    { value: 'A2A', label: 'A2A协议', icon: Shield }
-  ]
-
-  const protocols = [
-    { value: 'HTTP', label: 'HTTP' },
-    { value: 'HTTPS', label: 'HTTPS' },
-    { value: 'WebSocket', label: 'WebSocket' },
-    { value: 'gRPC', label: 'gRPC' },
-    { value: 'IPFS', label: 'IPFS' }
-  ]
 
   useEffect(() => {
     if (selectedAgentId) {
@@ -163,141 +129,9 @@ export function EndpointManager() {
     setEndpointStatuses(newStatuses)
   }
 
-  const checkEndpointStatus = async (endpoint: Endpoint): Promise<string> => {
-    if (!endpoint.isActive) {
-      return '未激活'
-    }
-
-    try {
-      switch (endpoint.protocol.toUpperCase()) {
-        case 'HTTP':
-        case 'HTTPS':
-          return await checkHttpEndpoint(endpoint.url)
-        case 'WEBSOCKET':
-          return await checkWebSocketEndpoint(endpoint.url)
-        case 'GRPC':
-          return await checkGrpcEndpoint(endpoint.url)
-        case 'IPFS':
-          return await checkIpfsEndpoint(endpoint.url)
-        default:
-          return '未测试'
-      }
-    } catch (error) {
-      console.error(`Endpoint ${endpoint.endpointId} status check failed:`, error)
-      return '检查失败'
-    }
-  }
-
-  const checkHttpEndpoint = async (url: string): Promise<string> => {
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000)
-
-      const response = await fetch(url, {
-        method: 'HEAD',
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'AI-Agent-Endpoint-Manager/1.0'
-        }
-      })
-
-      clearTimeout(timeoutId)
-
-      if (response.ok) {
-        return '运行正常'
-      } else {
-        return `HTTP ${response.status}`
-      }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        return '请求超时'
-      }
-      return '连接失败'
-    }
-  }
-
-  const checkWebSocketEndpoint = async (url: string): Promise<string> => {
-    return new Promise((resolve) => {
-      try {
-        const ws = new WebSocket(url)
-        let resolved = false
-
-        const timeoutId = setTimeout(() => {
-          if (!resolved) {
-            ws.close()
-            resolve('连接超时')
-          }
-        }, 5000)
-
-        ws.onopen = () => {
-          resolved = true
-          clearTimeout(timeoutId)
-          ws.close()
-          resolve('运行正常')
-        }
-
-        ws.onerror = () => {
-          resolved = true
-          clearTimeout(timeoutId)
-          resolve('连接失败')
-        }
-
-        ws.onclose = () => {
-          if (!resolved) {
-            resolved = true
-            clearTimeout(timeoutId)
-            resolve('连接关闭')
-          }
-        }
-      } catch (error) {
-        resolve('连接失败')
-      }
-    })
-  }
-
-  const checkGrpcEndpoint = async (url: string): Promise<string> => {
-    return '未测试'
-  }
-
-  const checkIpfsEndpoint = async (url: string): Promise<string> => {
-    try {
-      const testUrl = url.replace(/\/ipfs\/[^/]+$/, '/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn')
-      const response = await fetch(testUrl, { method: 'HEAD' })
-      return response.ok ? '运行正常' : '连接失败'
-    } catch (error) {
-      return '连接失败'
-    }
-  }
-
-  const validateForm = (): ValidationResult => {
-    if (!formData.name.trim()) {
-      return { isValid: false, message: '端点名称不能为空' }
-    }
-
-    if (!formData.endpointType.trim()) {
-      return { isValid: false, message: '端点类型不能为空' }
-    }
-
-    if (!formData.protocol.trim()) {
-      return { isValid: false, message: '协议不能为空' }
-    }
-
-    if (!formData.url.trim()) {
-      return { isValid: false, message: 'URL不能为空' }
-    }
-
-    try {
-      new URL(formData.url)
-    } catch {
-      return { isValid: false, message: '无效的URL格式' }
-    }
-
-    return { isValid: true, message: '' }
-  }
-
   useEffect(() => {
     if (formData.name && formData.url) {
-      setValidation(validateForm())
+      setValidation(validateForm(formData))
     } else {
       setValidation({ isValid: true, message: '' })
     }
@@ -327,7 +161,7 @@ export function EndpointManager() {
       return
     }
 
-    const validationResult = validateForm()
+    const validationResult = validateForm(formData)
     if (!validationResult.isValid) {
       setValidation(validationResult)
       return
@@ -378,7 +212,7 @@ export function EndpointManager() {
     }
 
     if (!selectedAgentId) {
-      alert('请先选择Agent')
+      alert('请选择Agent')
       return
     }
 
@@ -470,11 +304,6 @@ export function EndpointManager() {
     }
   }
 
-  const getEndpointTypeIcon = (type: string) => {
-    const endpointType = endpointTypes.find(t => t.value === type)
-    return endpointType ? endpointType.icon : Globe
-  }
-
   const getEndpointStatusColor = (endpoint: Endpoint) => {
     if (!endpoint.isActive) return 'bg-gray-100 text-gray-800'
 
@@ -503,10 +332,6 @@ export function EndpointManager() {
 
     const status = endpointStatuses[Number(endpoint.endpointId)]
     return status || '检查中...'
-  }
-
-  const formatTimestamp = (timestamp: bigint) => {
-    return new Date(Number(timestamp) * 1000).toLocaleDateString('zh-CN')
   }
 
   const isFormLoading = isCreatingEndpoint || isUpdatingEndpoint || isConfirming
@@ -639,144 +464,25 @@ export function EndpointManager() {
           ) : (
             <div className="grid grid-cols-1 gap-6">
               {agentEndpoints.map((endpoint) => {
-                const EndpointTypeIcon = getEndpointTypeIcon(endpoint.endpointType)
                 const testResult = testResults[Number(endpoint.endpointId)]
                 const currentStatus = endpointStatuses[Number(endpoint.endpointId)]
 
                 return (
-                  <div
+                  <EndpointCard
                     key={endpoint.endpointId.toString()}
-                    className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-all duration-300"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4">
-                        <div className="bg-blue-100 rounded-xl p-3">
-                          <EndpointTypeIcon className="w-6 h-6 text-blue-600" />
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-900">
-                              {endpoint.name}
-                            </h4>
-                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getEndpointStatusColor(endpoint)}`}>
-                              {getEndpointStatusText(endpoint)}
-                            </span>
-                            {testResult?.responseTime && (
-                              <span className="text-xs text-gray-500">
-                                {testResult.responseTime}ms
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="text-gray-600 mb-2">{endpoint.description}</p>
-
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Globe className="w-4 h-4" />
-                              {endpoint.url}
-                            </span>
-                            <span>协议: {endpoint.protocol}</span>
-                            <span>类型: {endpoint.endpointType}</span>
-                          </div>
-
-                          <div className="flex items-center gap-4 text-xs text-gray-400 mt-2">
-                            <span>创建于: {formatTimestamp(endpoint.createdAt)}</span>
-                            <span>更新于: {formatTimestamp(endpoint.updatedAt)}</span>
-                            <span>创建者: {endpoint.createdBy.slice(0, 8)}...{endpoint.createdBy.slice(-6)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => testEndpoint(endpoint)}
-                          disabled={testingEndpoint === Number(endpoint.endpointId) || !endpoint.isActive}
-                          className="p-2 text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50"
-                          title={endpoint.isActive ? "测试端点" : "端点未激活"}
-                        >
-                          <TestTube className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={() => handleToggleStatus(endpoint)}
-                          className="p-2 text-gray-400 hover:text-green-600 transition-colors disabled:opacity-50"
-                          title={endpoint.isActive ? '停用端点' : '端点已停用'}
-                          disabled={isDeactivatingEndpoint}
-                        >
-                          {endpoint.isActive ? (
-                            <StopCircle className="w-4 h-4" />
-                          ) : (
-                            <Play className="w-4 h-4" />
-                          )}
-                        </button>
-
-                        <button
-                          onClick={() => handleEdit(endpoint)}
-                          className="p-2 text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50"
-                          title="编辑端点"
-                          disabled={isUpdatingEndpoint}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={() => handleDelete(endpoint)}
-                          className="p-2 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                          title="删除端点"
-                          disabled={isDeactivatingEndpoint}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* 状态详情 */}
-                    {currentStatus && currentStatus !== '运行正常' && currentStatus !== '未测试' && (
-                      <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <div className="flex items-center gap-2 text-sm text-yellow-700">
-                          <AlertTriangle className="w-4 h-4" />
-                          <span>状态详情: {currentStatus}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 测试结果 */}
-                    {testResult && (
-                      <div className={`mt-3 p-3 rounded-lg text-sm ${
-                        testResult.success
-                          ? 'bg-green-50 text-green-700 border border-green-200'
-                          : 'bg-red-50 text-red-700 border border-red-200'
-                      }`}>
-                        {testResult.success ? (
-                          <div className="flex items-center gap-2">
-                            <span>✅ 测试成功</span>
-                            {testResult.responseTime && (
-                              <span>响应时间: {testResult.responseTime}ms</span>
-                            )}
-                            {testResult.statusCode && (
-                              <span>状态码: {testResult.statusCode}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span>❌ 测试失败</span>
-                            {testResult.error && <span>{testResult.error}</span>}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* 测试中状态 */}
-                    {testingEndpoint === Number(endpoint.endpointId) && (
-                      <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-center gap-2 text-sm text-blue-700">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                          测试端点中...
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    endpoint={endpoint}
+                    testResult={testResult}
+                    statusText={getEndpointStatusText(endpoint)}
+                    statusColor={getEndpointStatusColor(endpoint)}
+                    currentStatus={currentStatus}
+                    isTesting={testingEndpoint === Number(endpoint.endpointId)}
+                    isDeactivating={isDeactivatingEndpoint}
+                    isUpdating={isUpdatingEndpoint}
+                    onTest={testEndpoint}
+                    onToggleStatus={handleToggleStatus}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
                 )
               })}
             </div>
@@ -786,164 +492,19 @@ export function EndpointManager() {
 
       {/* 端点表单弹窗 */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <button
-                  onClick={handleCancel}
-                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  {editingEndpoint ? '编辑端点' : '创建端点'}
-                </h3>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      端点名称 *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      placeholder="例如：主要API端点"
-                      required
-                      disabled={isFormLoading}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        端点类型 *
-                      </label>
-                      <select
-                        value={formData.endpointType}
-                        onChange={(e) => setFormData(prev => ({ ...prev, endpointType: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        disabled={isFormLoading}
-                      >
-                        {endpointTypes.map(type => (
-                          <option key={type.value} value={type.value}>
-                            {type.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        协议 *
-                      </label>
-                      <select
-                        value={formData.protocol}
-                        onChange={(e) => setFormData(prev => ({ ...prev, protocol: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        disabled={isFormLoading}
-                      >
-                        {protocols.map(protocol => (
-                          <option key={protocol.value} value={protocol.value}>
-                            {protocol.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      端点URL *
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.url}
-                      onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors font-mono text-sm"
-                      placeholder="https://api.example.com/v1/endpoint"
-                      required
-                      disabled={isFormLoading}
-                    />
-                    {!validation.isValid && (
-                      <p className="text-xs text-red-600 mt-2">{validation.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      描述
-                    </label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      placeholder="描述此端点的用途和功能"
-                      disabled={isFormLoading}
-                    />
-                  </div>
-                </div>
-
-                {/* 交易状态显示 */}
-                {transactionHash && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                    <div className="flex items-center gap-2 text-sm text-blue-700">
-                      {isConfirming ? (
-                        <>
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
-                          <span>交易确认中...</span>
-                        </>
-                      ) : isConfirmed ? (
-                        <>
-                          <CheckCircle className="w-4 h-4" />
-                          <span>交易已确认</span>
-                        </>
-                      ) : null}
-                    </div>
-                    {transactionHash && (
-                      <p className="text-xs text-blue-600 mt-2 font-mono break-all">
-                        Tx: {transactionHash}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors font-medium"
-                    disabled={isFormLoading}
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isFormDisabled}
-                    className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                  >
-                    {isFormLoading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        {isConfirming ? '确认中...' : '保存中...'}
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-5 h-5" />
-                        {editingEndpoint ? '更新端点' : '创建端点'}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <EndpointFormModal
+          editingEndpoint={editingEndpoint}
+          formData={formData}
+          setFormData={setFormData}
+          validation={validation}
+          transactionHash={transactionHash}
+          isConfirming={isConfirming}
+          isConfirmed={isConfirmed}
+          isFormLoading={isFormLoading}
+          isFormDisabled={isFormDisabled}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+        />
       )}
 
       {/* 错误显示 */}
@@ -958,4 +519,3 @@ export function EndpointManager() {
     </div>
   )
 }
-

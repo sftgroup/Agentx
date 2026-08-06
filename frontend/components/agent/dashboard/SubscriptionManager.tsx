@@ -1,4 +1,6 @@
 // components/agent/dashboard/SubscriptionManager.tsx
+// R7 拆分：主组件（状态 + handlers），展示部分拆至 SubscriptionPlanCard / SubscriptionPlanModal，
+// 纯逻辑拆至 subscription-utils
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -6,16 +8,13 @@ import { useAccount } from 'wagmi'
 import {
   CreditCard,
   Plus,
-  Edit,
   Users,
   TrendingUp,
   DollarSign,
   CheckCircle,
   XCircle,
   RefreshCw,
-  AlertCircle,
-  PauseCircle,
-  Play
+  AlertCircle
 } from 'lucide-react'
 import {
   useSubscription,
@@ -23,20 +22,14 @@ import {
   BillingPeriod
 } from '../hooks/useSubscription'
 import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
-
-interface PlanFormData {
-  name: string
-  description: string
-  price: number
-  billingPeriod: BillingPeriod
-  token: string
-  maxUsage: number
-}
-
-interface ValidationResult {
-  isValid: boolean
-  message: string
-}
+import {
+  validateForm,
+  TOKENS,
+  type PlanFormData,
+  type ValidationResult
+} from './subscription-utils'
+import { SubscriptionPlanCard } from './SubscriptionPlanCard'
+import { SubscriptionPlanModal } from './SubscriptionPlanModal'
 
 export function SubscriptionManager() {
   const { address, isConnected } = useAccount()
@@ -72,21 +65,6 @@ export function SubscriptionManager() {
 
   const { userAgents } = useAgentRegistry()
 
-  const billingPeriods = [
-    { value: BillingPeriod.Daily, label: '每日', days: 1 },
-    { value: BillingPeriod.Weekly, label: '每周', days: 7 },
-    { value: BillingPeriod.Monthly, label: '每月', days: 30 },
-    // Quarterly intentionally omitted — the on-chain contract only supports
-    // day/week/month/year (see BILLING_PERIOD_TO_ONCHAIN).
-    { value: BillingPeriod.Yearly, label: '每年', days: 365 }
-  ]
-
-  const tokens = [
-    { value: '0x0000000000000000000000000000000000000000', label: 'ETH', decimals: 18 },
-    { value: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', label: 'USDC', decimals: 6 },
-    { value: '0x6B175474E89094C44Da98b954EedeAC495271d0F', label: 'DAI', decimals: 18 }
-  ]
-
   useEffect(() => {
     if (selectedAgentId) {
       loadData()
@@ -113,29 +91,9 @@ export function SubscriptionManager() {
     }
   }, [isConfirmed, selectedAgentId, resetState, showPlanForm])
 
-  const validateForm = (): ValidationResult => {
-    if (!formData.name.trim()) {
-      return { isValid: false, message: '计划名称不能为空' }
-    }
-
-    if (!formData.description.trim()) {
-      return { isValid: false, message: '计划描述不能为空' }
-    }
-
-    if (formData.price <= 0) {
-      return { isValid: false, message: '价格必须大于0' }
-    }
-
-    if (formData.maxUsage <= 0) {
-      return { isValid: false, message: '最大使用量必须大于0' }
-    }
-
-    return { isValid: true, message: '' }
-  }
-
   useEffect(() => {
     if (formData.name && formData.description && formData.price > 0 && formData.maxUsage > 0) {
-      setValidation(validateForm())
+      setValidation(validateForm(formData))
     } else {
       setValidation({ isValid: true, message: '' })
     }
@@ -165,7 +123,7 @@ export function SubscriptionManager() {
       return
     }
 
-    const validationResult = validateForm()
+    const validationResult = validateForm(formData)
     if (!validationResult.isValid) {
       setValidation(validationResult)
       return
@@ -203,7 +161,7 @@ export function SubscriptionManager() {
   const handleEditPlan = (plan: SubscriptionPlan) => {
     setEditingPlan(plan)
 
-    const tokenConfig = tokens.find(t => t.value === plan.token)
+    const tokenConfig = TOKENS.find(t => t.value === plan.token)
     const decimals = tokenConfig?.decimals || 18
     const priceInToken = Number(plan.price) / Math.pow(10, decimals)
 
@@ -284,28 +242,6 @@ export function SubscriptionManager() {
     } catch (error) {
       console.error('Failed to activate plan:', error)
     }
-  }
-
-  const formatPrice = (price: bigint, tokenAddress: string) => {
-    const tokenConfig = tokens.find(t => t.value === tokenAddress)
-    const decimals = tokenConfig?.decimals || 18
-    const formattedPrice = Number(price) / Math.pow(10, decimals)
-    const symbol = tokenConfig?.label || 'ETH'
-    return `${formattedPrice.toFixed(4)} ${symbol}`
-  }
-
-  const getBillingPeriodLabel = (billingPeriod: BillingPeriod) => {
-    const period = billingPeriods.find(p => p.value === billingPeriod)
-    return period ? period.label : `${billingPeriod}天`
-  }
-
-  const getTokenSymbol = (tokenAddress: string) => {
-    const token = tokens.find(t => t.value === tokenAddress)
-    return token ? token.label : 'Unknown'
-  }
-
-  const formatTimestamp = (timestamp: bigint) => {
-    return new Date(Number(timestamp) * 1000).toLocaleDateString('zh-CN')
   }
 
   // 计算统计数据
@@ -458,294 +394,35 @@ export function SubscriptionManager() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {agentPlans.map((plan) => {
-                // 修复：通过最大使用量判断计划是否停用
-                const isPlanDeactivated = Number(plan.maxUsage) === 0
-
-                return (
-                  <div
-                    key={plan.planId.toString()}
-                    className={`bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow ${
-                      isPlanDeactivated
-                        ? 'border-gray-300 bg-gray-50 opacity-75'
-                        : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h4 className={`text-lg font-semibold ${
-                          isPlanDeactivated ? 'text-gray-500' : 'text-gray-900'
-                        }`}>
-                          {plan.name}
-                          {isPlanDeactivated && (
-                            <span className="ml-2 text-xs text-gray-500">(已停用)</span>
-                          )}
-                        </h4>
-                        <p className={`text-sm mt-1 ${
-                          isPlanDeactivated ? 'text-gray-400' : 'text-gray-600'
-                        }`}>
-                          {plan.description}
-                        </p>
-                      </div>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        isPlanDeactivated
-                          ? 'bg-gray-100 text-gray-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {isPlanDeactivated ? '已停用' : '活跃'}
-                      </span>
-                    </div>
-
-                    <div className={`space-y-3 mb-4 ${
-                      isPlanDeactivated ? 'text-gray-500' : ''
-                    }`}>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">价格</span>
-                        <span className="font-semibold">
-                          {formatPrice(plan.price, plan.token ?? '0x0000000000000000000000000000000000000000')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">计费周期</span>
-                        <span className="text-sm">
-                          {getBillingPeriodLabel(plan.billingPeriod ?? BillingPeriod.Monthly)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">最大使用量</span>
-                        <span className="text-sm">
-                          {isPlanDeactivated ? '0' : Number(plan.maxUsage).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">代币</span>
-                        <span className="text-sm">
-                          {getTokenSymbol(plan.token ?? '0x0000000000000000000000000000000000000000')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">创建时间</span>
-                        <span className="text-xs text-gray-500">
-                          {formatTimestamp(BigInt(plan.createdAt ?? 0))}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 修复：统一按钮大小和样式，支持停用和启用 */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditPlan(plan)}
-                        className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                        disabled={isUpdatingPlan}
-                      >
-                        <Edit className="w-4 h-4" />
-                        {isUpdatingPlan ? '更新中...' : '编辑'}
-                      </button>
-
-                      {isPlanDeactivated ? (
-                        <button
-                          onClick={() => handleActivatePlan(plan)}
-                          className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                          disabled={isUpdatingPlan}
-                          title="启用此计划"
-                        >
-                          <Play className="w-4 h-4" />
-                          {isUpdatingPlan ? '启用中...' : '启用'}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleDeactivatePlan(plan)}
-                          className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                          disabled={isUpdatingPlan}
-                          title="停用此计划"
-                        >
-                          <PauseCircle className="w-4 h-4" />
-                          {isUpdatingPlan ? '停用中...' : '停用'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+              {agentPlans.map((plan) => (
+                <SubscriptionPlanCard
+                  key={plan.planId.toString()}
+                  plan={plan}
+                  isUpdating={isUpdatingPlan}
+                  onEdit={handleEditPlan}
+                  onActivate={handleActivatePlan}
+                  onDeactivate={handleDeactivatePlan}
+                />
+              ))}
             </div>
           )}
         </div>
       )}
 
       {showPlanForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                {editingPlan ? '编辑订阅计划' : '创建订阅计划'}
-              </h3>
-
-              <form onSubmit={handleSubmitPlan} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    计划名称 *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="例如：基础套餐、专业套餐"
-                    required
-                    disabled={isFormLoading}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    描述 *
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="描述此计划包含的功能和服务"
-                    required
-                    disabled={isFormLoading}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      价格 (ETH) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      value={formData.price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="0.00"
-                      required
-                      disabled={isFormLoading}
-                    />
-                  </div>
-
-                  {!editingPlan && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        代币 *
-                      </label>
-                      <select
-                        value={formData.token}
-                        onChange={(e) => setFormData(prev => ({ ...prev, token: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        disabled={isFormLoading}
-                      >
-                        {tokens.map(token => (
-                          <option key={token.value} value={token.value}>
-                            {token.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      计费周期 *
-                    </label>
-                    <select
-                      value={formData.billingPeriod}
-                      onChange={(e) => setFormData(prev => ({ ...prev, billingPeriod: parseInt(e.target.value) as BillingPeriod }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      disabled={isFormLoading}
-                    >
-                      {billingPeriods.map(period => (
-                        <option key={period.value} value={period.value}>
-                          {period.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      最大使用量 *
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.maxUsage}
-                      onChange={(e) => setFormData(prev => ({ ...prev, maxUsage: parseInt(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="1000"
-                      required
-                      disabled={isFormLoading}
-                    />
-                  </div>
-                </div>
-
-                {!validation.isValid && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700">{validation.message}</p>
-                  </div>
-                )}
-
-                {transactionHash && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-blue-700">
-                      {isConfirming ? (
-                        <>
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
-                          <span>交易确认中...</span>
-                        </>
-                      ) : isConfirmed ? (
-                        <>
-                          <CheckCircle className="w-4 h-4" />
-                          <span>交易已确认</span>
-                        </>
-                      ) : null}
-                    </div>
-                    {transactionHash && (
-                      <p className="text-xs text-blue-600 mt-1 font-mono break-all">
-                        Tx: {transactionHash}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={handleCancelPlan}
-                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                    disabled={isFormLoading}
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isFormDisabled}
-                    className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isFormLoading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        {isConfirming ? '确认中...' : '保存中...'}
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4" />
-                        {editingPlan ? '更新计划' : '创建计划'}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <SubscriptionPlanModal
+          editingPlan={editingPlan}
+          formData={formData}
+          setFormData={setFormData}
+          validation={validation}
+          transactionHash={transactionHash}
+          isConfirming={isConfirming}
+          isConfirmed={isConfirmed}
+          isFormLoading={isFormLoading}
+          isFormDisabled={isFormDisabled}
+          onSubmit={handleSubmitPlan}
+          onCancel={handleCancelPlan}
+        />
       )}
 
       {error && (
@@ -759,5 +436,3 @@ export function SubscriptionManager() {
     </div>
   )
 }
-
-
