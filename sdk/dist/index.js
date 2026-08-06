@@ -2477,6 +2477,7 @@ var init_decodeAbiParameters = __esm({
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
+  A2AClient: () => import_payments3.A2AClient,
   A2ADaemon: () => A2ADaemon,
   A2AProtocol: () => A2AProtocol,
   A2A_VERSION: () => A2A_VERSION,
@@ -2501,16 +2502,22 @@ __export(index_exports, {
   LoopTraceEmitter: () => LoopTraceEmitter,
   MCPConnector: () => MCPConnector,
   MCP_VERSION: () => MCP_VERSION,
+  MPPClient: () => import_payments3.MPPClient,
   MultiEndpointClient: () => MultiEndpointClient,
   NoopTraceEmitter: () => NoopTraceEmitter,
   OpenAIProvider: () => OpenAIProvider,
+  PAYMENT_VERSION: () => PAYMENT_VERSION,
+  PaymentsClient: () => import_payments3.PaymentsClient,
+  PeriodClient: () => import_payments3.PeriodClient,
   REGISTRY_VERSION: () => REGISTRY_VERSION,
   REPUTATION_VERSION: () => REPUTATION_VERSION,
   ReputationRegistry: () => ReputationRegistry,
   SUBSCRIPTION_PERIODS: () => SUBSCRIPTION_PERIODS,
   SUBSCRIPTION_VERSION: () => SUBSCRIPTION_VERSION,
   SubscriptionManager: () => SubscriptionManager,
+  SubscriptionPayments: () => SubscriptionPayments,
   ToolExecutor: () => ToolExecutor,
+  X402Client: () => import_payments3.X402Client,
   ZERO_ADDRESS: () => ZERO_ADDRESS2,
   aesDecrypt: () => aesDecrypt,
   aesEncrypt: () => aesEncrypt,
@@ -5627,6 +5634,167 @@ var AgentX402 = class {
 // src/subscription/index.ts
 var SUBSCRIPTION_VERSION = "0.3.0";
 
+// src/payment/payments.ts
+var import_payments = require("@agentxv2/payments");
+var PERIODS = ["day", "week", "month", "year"];
+var SubscriptionPayments = class {
+  constructor(config) {
+    this.config = config;
+    this.client = config.gatewayUrl ? new import_payments.PaymentsClient({ baseUrl: config.gatewayUrl, accessToken: config.accessToken }) : null;
+  }
+  config;
+  client;
+  // ── Public API ──────────────────────────────────────────────────────────
+  /** Pay for (or renew) a subscription using the chosen rail. */
+  async pay(input) {
+    switch (input.method) {
+      case "chain":
+        return this._payChain(input);
+      case "fiat":
+        return this._payFiat(input);
+      case "x402":
+        return this._payX402(input);
+    }
+  }
+  /**
+   * Unified access check across all rails (chain OR fiat/x402) via the
+   * unified /api/v1/payments/access endpoint.
+   */
+  async hasAccess(agentId, subscriber) {
+    if (!this.client) {
+      throw new Error("hasAccess() requires a gatewayUrl");
+    }
+    const res = await this.client.access(subscriber, agentId, this.config.chain ?? "oxachain");
+    return res.active === true;
+  }
+  /** x402 protocol discovery (price / pay-to wallet / network). */
+  async fetchX402Info() {
+    if (!this.client) {
+      throw new Error("fetchX402Info() requires a gatewayUrl");
+    }
+    const info = await this.client.info();
+    return {
+      enabled: Boolean(info.x402?.enabled),
+      priceWei: info.x402?.priceWei ?? "0",
+      payTo: info.x402?.payTo ?? "",
+      network: info.x402?.network ?? "",
+      chain: info.x402?.chain ?? this.config.chain ?? "oxachain"
+    };
+  }
+  // ── Rails ───────────────────────────────────────────────────────────────
+  async _payChain(input) {
+    const sm = this.config.subscriptionManager;
+    if (!sm) throw new Error('method "chain" requires a SubscriptionManager in the config');
+    const result = await sm.subscribe(input.planId, {
+      valueWei: input.valueWei,
+      approveTokenFirst: input.approveTokenFirst
+    });
+    return { method: "chain", subscriptionId: result.subscriptionId, txHash: result.txHash };
+  }
+  async _payFiat(input) {
+    if (!this.client) throw new Error('method "fiat" requires a gatewayUrl');
+    if (!input.subscriber) throw new Error('method "fiat" requires a subscriber address');
+    const data = await this.client.create({
+      method: "fiat",
+      subscriber: input.subscriber,
+      period: input.period ?? "month",
+      currency: input.currency ?? "usd",
+      chain: this.config.chain ?? "oxachain",
+      // amountCents is optional — the Gateway derives the USD amount from the
+      // on-chain plan price when omitted (FIAT_TOKEN_USD_PRICE on the Gateway).
+      amountCents: input.amountCents,
+      pricing: { planId: input.planId },
+      // AgentX business context rides in metadata (the unified endpoint reads
+      // it back out — the generic module never interprets it).
+      metadata: { agentId: input.agentId, planId: input.planId },
+      successUrl: input.successUrl,
+      cancelUrl: input.cancelUrl
+    });
+    if (data.method !== "fiat" || !data.sessionUrl) {
+      throw new Error("Fiat checkout returned no redirect URL");
+    }
+    return { method: "fiat", sessionUrl: data.sessionUrl, sessionId: data.sessionId, redirect: true };
+  }
+  async _payX402(input) {
+    if (!this.client) throw new Error('method "x402" requires a gatewayUrl');
+    if (!input.subscriber) throw new Error('method "x402" requires a subscriber address');
+    if (!PERIODS.includes(input.period ?? "month")) {
+      throw new Error("period must be one of: day | week | month | year");
+    }
+    let txHash = input.txHash;
+    if (!txHash) {
+      txHash = await this._autoFundX402(input);
+    }
+    const data = await this._fetchJson("/api/v1/payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        method: "x402",
+        subscriber: input.subscriber,
+        agentId: input.agentId,
+        planId: input.planId,
+        period: input.period ?? "month",
+        txHash,
+        chain: this.config.chain ?? "oxachain"
+      })
+    });
+    return {
+      method: "x402",
+      subscriptionId: data.subscriptionId,
+      txHash,
+      creditedWei: data.creditedWei
+    };
+  }
+  /** Send the on-chain native transfer to the platform wallet (x402 rail). */
+  async _autoFundX402(input) {
+    const { walletClient, subscriptionManager } = this.config;
+    if (!walletClient || !subscriptionManager) {
+      throw new Error("x402 automatic payment needs a txHash, or a walletClient + subscriptionManager in the config");
+    }
+    const info = await this.fetchX402Info();
+    if (!info.enabled || !info.payTo) {
+      throw new Error("x402 is not enabled on the Gateway (X402_ENABLED / X402_PAY_TO missing)");
+    }
+    const plan = await subscriptionManager.getPlan(input.planId);
+    const priceWei = BigInt(info.priceWei || "0");
+    const amount = plan.price > priceWei ? plan.price : priceWei;
+    let account = walletClient.account?.address;
+    if (!account) {
+      const [addr] = await walletClient.getAddresses();
+      account = addr;
+    }
+    if (!account) throw new Error("Wallet not connected for x402 payment");
+    const hash2 = await walletClient.sendTransaction({
+      to: info.payTo,
+      value: amount,
+      chain: void 0,
+      account
+    });
+    return hash2;
+  }
+  // ── HTTP helpers ────────────────────────────────────────────────────────
+  async _fetchJson(path, init) {
+    const base = (this.config.gatewayUrl ?? "").replace(/\/$/, "");
+    const headers = { ...init?.headers };
+    if (this.config.accessToken) headers.Authorization = `Bearer ${this.config.accessToken}`;
+    const resp = await fetch(`${base}${path}`, { ...init, headers });
+    if (!resp.ok) {
+      let message = `Gateway request failed (${resp.status}): ${path}`;
+      try {
+        const body = await resp.json();
+        if (body.error) message = body.error;
+      } catch {
+      }
+      throw new Error(message);
+    }
+    return await resp.json();
+  }
+};
+
+// src/payment/index.ts
+var import_payments3 = require("@agentxv2/payments");
+var PAYMENT_VERSION = "0.2.0";
+
 // src/a2a/a2a.ts
 var A2A_ABI = {
   createAgentCard: {
@@ -7010,6 +7178,7 @@ var ConversationClient = class {
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  A2AClient,
   A2ADaemon,
   A2AProtocol,
   A2A_VERSION,
@@ -7034,16 +7203,22 @@ var ConversationClient = class {
   LoopTraceEmitter,
   MCPConnector,
   MCP_VERSION,
+  MPPClient,
   MultiEndpointClient,
   NoopTraceEmitter,
   OpenAIProvider,
+  PAYMENT_VERSION,
+  PaymentsClient,
+  PeriodClient,
   REGISTRY_VERSION,
   REPUTATION_VERSION,
   ReputationRegistry,
   SUBSCRIPTION_PERIODS,
   SUBSCRIPTION_VERSION,
   SubscriptionManager,
+  SubscriptionPayments,
   ToolExecutor,
+  X402Client,
   ZERO_ADDRESS,
   aesDecrypt,
   aesEncrypt,
