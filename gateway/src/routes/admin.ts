@@ -40,6 +40,14 @@ const router = Router()
 // All admin routes require admin auth
 router.use(adminAuth)
 
+// R9: known ERC20 token symbols for platform-fee display (per chain).
+// Unlisted tokens fall back to a short address label.
+const KNOWN_ERC20: Record<string, string> = {
+  '0x1c7d4b196cb0c7b01d743fbc6116a902379c7238': 'USDC', // Sepolia USDC
+}
+const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
+const tokenLabel = (a: string) => KNOWN_ERC20[a.toLowerCase()] || shortAddr(a)
+
 // ── Platform API Keys ─────────────────────────────────────────────────────
 
 // List all platform keys (masked)
@@ -369,7 +377,7 @@ router.get('/revenue', async (req: Request, res: Response) => {
   log.info(`admin/revenue called (ip=${req.ip}, query=${JSON.stringify(req.query)}, ua=${req.headers['user-agent'] ?? '-'})`)
   try {
     const pool = getPool()
-    const [sepoliaFees, oxaFees, feeBps, fiatResult, channelResult, x402Payments, x402Balances] = await Promise.all([
+    const [sepoliaFees, oxaFees, feeBps, fiatResult, channelResult, x402Payments, x402Balances, erc20Tokens] = await Promise.all([
       chainDataReader.platformFeesCollected('sepolia').then(f => f.toString()).catch(() => null),
       chainDataReader.platformFeesCollected('oxachain').then(f => f.toString()).catch(() => null),
       chainDataReader.platformFeeBps('oxachain').catch(() => null),
@@ -392,13 +400,31 @@ router.get('/revenue', async (req: Request, res: Response) => {
         `SELECT COUNT(*) AS payments, COALESCE(SUM(amount_wei::numeric), 0) AS total_wei FROM x402_payments`
       ),
       pool.query(`SELECT COALESCE(SUM(balance_wei::numeric), 0) AS outstanding_wei FROM x402_balances`),
+      pool.query(
+        `SELECT DISTINCT pay_token FROM subscription_plans WHERE pay_token IS NOT NULL AND pay_token <> ''`
+      ),
     ])
+
+    // R9: platform fees held per ERC20 token (native sentinel = address(0) handled by
+    // the native queries above). Grouped by chain so the admin UI can show token-wise revenue.
+    const erc20 = await Promise.all(
+      (['sepolia', 'oxachain'] as const).flatMap((chain) =>
+        erc20Tokens.rows.map(async (r: any) => {
+          const fees = await chainDataReader
+            .platformFeesCollected(chain, r.pay_token)
+            .then((f) => f.toString())
+            .catch(() => null)
+          return { chain, token: r.pay_token, symbol: tokenLabel(r.pay_token), feesWei: fees }
+        })
+      )
+    )
 
     const result = {
       onChain: {
         platformFeeBps: feeBps,
         sepolia: { nativeFeesWei: sepoliaFees },
         oxachain: { nativeFeesWei: oxaFees },
+        erc20,
       },
       fiat: fiatResult.rows[0],
       channel: channelResult.rows[0],

@@ -539,6 +539,7 @@ function RevenueTab({ headers }: { headers: Record<string, string> }) {
   const fi = data?.fiat || {}
   const ch = data?.channel || {}
   const x4 = data?.x402 || {}
+  const erc20 = oc.erc20 || []
 
   const cards = [
     {
@@ -546,6 +547,7 @@ function RevenueTab({ headers }: { headers: Record<string, string> }) {
       rows: [
         ['OxaChain L1 (native)', fmtWei(oc.oxachain?.nativeFeesWei)],
         ['Sepolia (testnet)', fmtWei(oc.sepolia?.nativeFeesWei)],
+        ...erc20.map((e: any) => [`${e.symbol} (${e.chain})`, fmtWei(e.feesWei)]),
       ],
     },
     {
@@ -1012,6 +1014,7 @@ function ApplicationsTab({ headers }: { headers: Record<string, string> }) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [note, setNote] = useState<Record<string, string>>({})
+  const [issuedKey, setIssuedKey] = useState<{ id: string; key: string; slug: string } | null>(null)
 
   const fetchApps = async () => {
     setLoading(true)
