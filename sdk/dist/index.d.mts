@@ -12,7 +12,7 @@ export { ConfigEntry, ConfigurationClient, ConfigurationConfig } from './configu
 export { IPFSUploadResult, IPFSUploader, IPFSUploaderConfig, defaultIPFSUploader } from './ipfs/index.mjs';
 export { MemoryConfig, MemoryFact, MemoryProvider } from './memory/index.mjs';
 export { HttpTraceEmitter, NoopTraceEmitter, TraceConfig, TraceEmitter, TraceEvent } from './traces/index.mjs';
-export { BrowserAction, BrowserActionResult, executeBrowserAction, extractAccessibleDOM } from './skills/index.mjs';
+export { BrowserAction, BrowserActionResult, executeBrowserAction, extractAccessibleDOM, sleep } from './skills/index.mjs';
 export { ConversationChatParams, ConversationChatResult, ConversationClient, ConversationClientConfig, ConversationCreateSessionParams, ConversationCreateTaskParams, ConversationSSEEvent, ConversationSkillDef, ConversationTask, ConversationTaskError, ConversationTaskStatus } from './conversation/index.mjs';
 export { A2AClient, ClientOptions, MPPClient, PaymentsClient, PeriodClient, X402Client } from '@agentxv2/payments';
 export { C as ChainConfig, a as ConfigRegistryOpts, b as ConfigurationRegistry, K as KNOWN_CHAINS } from './config-BFeSR_GK.mjs';
