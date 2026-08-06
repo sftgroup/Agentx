@@ -1,4 +1,3 @@
-import { a as AgentRunContext } from './agent-runner-BTiZ6St-.mjs';
 import { Address, PublicClient, WalletClient, Hash } from 'viem';
 
 interface ChainConfig {
@@ -31,18 +30,4 @@ declare class ConfigurationRegistry {
     getAll(): Promise<Record<string, string>>;
 }
 
-interface UseAgentRunnerConfig {
-    agentId: number;
-    chainConfig?: ChainConfig;
-    ipfsGateways?: string[];
-}
-interface UseAgentRunnerResult {
-    ctx: AgentRunContext | null;
-    isLoading: boolean;
-    error: Error | null;
-    /** Re-trigger the load (e.g. after connecting wallet or subscribing) */
-    refetch: () => void;
-}
-declare function useAgentRunner(config: UseAgentRunnerConfig): UseAgentRunnerResult;
-
-export { type ChainConfig as C, KNOWN_CHAINS as K, type UseAgentRunnerConfig as U, type ConfigRegistryOpts as a, ConfigurationRegistry as b, type UseAgentRunnerResult as c, useAgentRunner as u };
+export { type ChainConfig as C, KNOWN_CHAINS as K, type ConfigRegistryOpts as a, ConfigurationRegistry as b };

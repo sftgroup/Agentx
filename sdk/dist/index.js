@@ -2511,7 +2511,6 @@ __export(index_exports, {
   randomBytes: () => randomBytes,
   subscribeToEvents: () => subscribeToEvents,
   unpackAgent: () => unpackAgent,
-  useAgentRunner: () => useAgentRunner,
   wrapPlatformToolsAsSkills: () => wrapPlatformToolsAsSkills
 });
 module.exports = __toCommonJS(index_exports);
@@ -6584,172 +6583,6 @@ var IPFSUploader = class _IPFSUploader {
 };
 var defaultIPFSUploader = new IPFSUploader();
 
-// src/react/useAgentRunner.ts
-var import_react = require("react");
-var import_wagmi = require("wagmi");
-var IDENTITY_REGISTRY_ABI2 = [
-  // getAgentMetadata returns MetadataEntry[] with key+value strings
-  {
-    name: "getAgentMetadata",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "agentId", type: "uint256" }],
-    outputs: [
-      {
-        name: "",
-        type: "tuple[]",
-        components: [
-          { name: "key", type: "string" },
-          { name: "value", type: "bytes" }
-        ]
-      }
-    ]
-  }
-];
-var SUBSCRIPTION_MANAGER_ABI = [
-  {
-    name: "hasActiveSubscription",
-    type: "function",
-    stateMutability: "view",
-    inputs: [
-      { name: "subscriber", type: "address" },
-      { name: "agentId", type: "uint256" }
-    ],
-    outputs: [{ name: "", type: "bool" }]
-  }
-];
-var ViemOnChainReader = class {
-  constructor(publicClient, chainConfig) {
-    this.publicClient = publicClient;
-    this.chainConfig = chainConfig;
-  }
-  publicClient;
-  chainConfig;
-  async getTokenURI(_agentId) {
-    return "";
-  }
-  async getAttributes(agentId) {
-    if (!this.publicClient) throw new Error("Public client not available");
-    const entries = await this.publicClient.readContract({
-      address: this.chainConfig.contracts.identityRegistry,
-      abi: IDENTITY_REGISTRY_ABI2,
-      functionName: "getAgentMetadata",
-      args: [BigInt(agentId)]
-    });
-    const attrs = {};
-    for (const entry of entries) {
-      const hexStr = entry.value;
-      if (hexStr && hexStr !== "0x") {
-        attrs[entry.key] = hexToStringUTF8(hexStr);
-      } else {
-        attrs[entry.key] = "";
-      }
-    }
-    return attrs;
-  }
-  async hasActiveSubscription(address, agentId) {
-    if (!this.publicClient) return false;
-    try {
-      return await this.publicClient.readContract({
-        address: this.chainConfig.contracts.subscriptionManager,
-        abi: SUBSCRIPTION_MANAGER_ABI,
-        functionName: "hasActiveSubscription",
-        args: [address, BigInt(agentId)]
-      });
-    } catch {
-      return false;
-    }
-  }
-};
-function hexToStringUTF8(hex) {
-  if (!hex.startsWith("0x")) return hex;
-  const hexClean = hex.slice(2);
-  if (hexClean.length === 0) return "";
-  try {
-    const bytes = new Uint8Array(hexClean.length / 2);
-    for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = parseInt(hexClean.substring(i * 2, i * 2 + 2), 16);
-    }
-    return new TextDecoder().decode(bytes);
-  } catch {
-    return hex;
-  }
-}
-function useAgentRunner(config) {
-  const { agentId, chainConfig: chainConfigOverride, ipfsGateways } = config;
-  const publicClient = (0, import_wagmi.usePublicClient)();
-  const { data: walletClient } = (0, import_wagmi.useWalletClient)();
-  const [ctx, setCtx] = (0, import_react.useState)(null);
-  const [isLoading, setIsLoading] = (0, import_react.useState)(false);
-  const [error, setError] = (0, import_react.useState)(null);
-  const [refetchKey, setRefetchKey] = (0, import_react.useState)(0);
-  const runnerRef = (0, import_react.useRef)(null);
-  const mountedRef = (0, import_react.useRef)(true);
-  (0, import_react.useEffect)(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-  (0, import_react.useEffect)(() => {
-    if (!publicClient || !walletClient) {
-      setError(new Error("Wallet not connected"));
-      return;
-    }
-    const chainConfig = chainConfigOverride ?? (publicClient.chain?.id ? KNOWN_CHAINS[publicClient.chain.id] : void 0);
-    if (!chainConfig) {
-      setError(new Error(`Chain ${publicClient.chain?.id} not supported`));
-      return;
-    }
-    const reader = new ViemOnChainReader(publicClient, chainConfig);
-    const signer = {
-      async signMessage(message) {
-        if (!walletClient.account) throw new Error("Wallet not connected");
-        return walletClient.signMessage({ account: walletClient.account, message });
-      },
-      async getAddress() {
-        if (!walletClient.account) throw new Error("Wallet not connected");
-        return walletClient.account.address;
-      },
-      async getPrivateKey() {
-        throw new Error(
-          'Private key not available via wagmi. Use window.ethereum.request({ method: "eth_private_key" }) or inject getPrivateKey via custom WalletSigner.'
-        );
-      }
-    };
-    const ipfsFetcher = new IPFSFetcher({
-      fallbackGateways: ipfsGateways ?? chainConfig.ipfsGateways ?? [
-        "gateway.pinata.cloud",
-        "dweb.link",
-        "cf-ipfs.com"
-      ]
-    });
-    runnerRef.current = new AgentRunner({
-      reader,
-      wallet: signer,
-      ipfsFetcher
-    });
-    setIsLoading(true);
-    setError(null);
-    runnerRef.current.useAgent(agentId).then((result) => {
-      if (mountedRef.current) {
-        setCtx(result);
-        setIsLoading(false);
-      }
-    }).catch((err) => {
-      if (mountedRef.current) {
-        setError(err instanceof Error ? err : new Error(String(err)));
-        setIsLoading(false);
-      }
-    });
-    return () => {
-      mountedRef.current = false;
-    };
-  }, [agentId, publicClient?.chain?.id, publicClient, walletClient, refetchKey]);
-  const refetch = () => setRefetchKey((k) => k + 1);
-  return { ctx, isLoading, error, refetch };
-}
-
 // src/traces/types.ts
 var NoopTraceEmitter = class {
   emit(_event) {
@@ -7202,7 +7035,6 @@ var ConversationClient = class {
   randomBytes,
   subscribeToEvents,
   unpackAgent,
-  useAgentRunner,
   wrapPlatformToolsAsSkills
 });
 //# sourceMappingURL=index.js.map
