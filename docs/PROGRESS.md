@@ -130,11 +130,15 @@
 - **进行中**：R2（集成测试补 task 并行链路）
 - **待办**：遗留待办已整理为具体开发任务清单，见下「### 开发任务清单 R」
   - R1 ✅ 已完成（2026-08-06 · commit `0f5c30d`；SDK 0.8.7 已发布 npm）
-  - R2-R3 = 可立即开发的规划任务
-  - R4-R6 = 待外部前提任务（R4/R5 需业务方提供凭据，R6 零依赖）
-  - R7-R9 = 技术债（🔵 可选优化）
+  - R2 = 可立即开发的规划任务
+  - R4-R5 = 待外部前提任务（R4/R5 需业务方提供凭据）
+  - R6-R9 = 技术债（🔵 可选优化）
   - R10 = 用户定时任务（新需求，2026-08-06 用户确认补充，需求已细化待开发）
   - R11 = 多调用方接入配置管理（新需求，2026-08-06 完成：迁移 014 + admin Integrations 端点 + 前端 Tab + 5 调用方 key 签发分发，见下）
+  - R3 ✅ 已完成（2026-08-06 · DeepSeek 平台 key 配置 + conversation-service LLM_ENDPOINT/LLM_MODEL，非 BYOK 任务真实 LLM 输出补验通过）
+  - R12 ✅ 已完成（2026-08-06 · commit `c224317`，MCP 6 工具）
+  - R13 ✅ 已完成（2026-08-06 · 开发者自助申请）
+  - R14 ✅ 已完成（2026-08-06 · B 端仅对话 + MCP 仅注册用户）
 
 ### 开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）
 
@@ -167,13 +171,13 @@
   6. 用例数据清理（smoke- 前缀删除）
 - 验收标准：脚本在测试环境全绿，可作为回归冒烟
 
-**R3 平台兜底 LLM key 有效化（解除任务真实执行阻塞）** —— 优先级：中
+**R3 平台兜底 LLM key 有效化（解除任务真实执行阻塞）** —— 优先级：中 · ✅ 完成（2026-08-06）
 - 来源：原「当前状态」外部前提第 4 条 + P8 验证备注
-- 涉及：conversation-service 环境变量（`OPENAI_API_KEY` 当前 401），非代码改动
-- 实施要点：
-  1. 配置有效 `OPENAI_API_KEY`（或经 admin 添加平台 key 入 `platform_api_keys`）
-  2. 补验 P8 未覆盖场景：非 BYOK 任务真实 LLM 输出 + running 态取消
-- 验收标准：P8 冒烟注记中的「真实 LLM 输出与 running 态取消的运行时验证」补验通过
+- 涉及：conversation-service 配置 + 平台兜底 LLM key
+- 实施：
+  1. 2026-08-06 配置正式 DeepSeek 平台 key：生产 gateway `.env` `DEEPSEEK_API_KEY` + admin API 写入 `platform_api_keys`（provider=deepseek，绑定 pro/enterprise，加密存储）——覆盖 gateway 侧平台模式
+  2. conversation-service 平台兜底（非 BYOK 任务）：config 新增 `LLM_ENDPOINT` / `LLM_MODEL` env；`TenantLLMResolver` 第 3 级（AgentX 官方 key）支持自定义 OpenAI 兼容端点——生产 `.env` 配置 `OPENAI_API_KEY=<正式key>` + `LLM_ENDPOINT=https://api.deepseek.com/v1` + `LLM_MODEL=deepseek-chat`
+- 验收标准（补验通过）：非 BYOK 租户（无 tenant_llm_configs / 无 header key）创建任务 → `status=done`，`result="2"`（1+1=2，DeepSeek 真实输出，`llmApiKeyEnc:null`，22 tokens，~1.3s）；running 态取消 → `status=cancelled`；smoke 数据已清理
 
 **R4 法币订阅（Stripe）上线** —— 优先级：中 · 前提：Stripe 商户账号
 - 来源：P2-2（⏸ 待 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`）
