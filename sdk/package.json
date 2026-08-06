@@ -1,6 +1,6 @@
 {
   "name": "@agentxv2/sdk",
-  "version": "0.8.10",
+  "version": "0.9.3",
   "description": "AgentX — Decentralized AI Agent SDK with ReAct AgentLoop + Multi-Tenant LLM Providers",
   "main": "dist/index.js",
   "types": "dist/index.d.mts",
@@ -88,6 +88,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@agentxv2/payments": "^0.2.0",
     "@noble/ciphers": "^1.0.0",
     "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.5.0"
@@ -98,9 +99,15 @@
     "wagmi": "^2.0.0"
   },
   "peerDependenciesMeta": {
-    "@tanstack/react-query": { "optional": true },
-    "react": { "optional": true },
-    "wagmi": { "optional": true }
+    "@tanstack/react-query": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "wagmi": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

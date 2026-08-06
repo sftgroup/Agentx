@@ -3,7 +3,8 @@ export { c as A2AAgentCard, d as A2ASkillExecution, e as A2ATask, f as A2ATaskSt
 export { PublishAgentConfig, PublishAgentResult, aesDecrypt, aesEncrypt, decryptPayload, decryptWithKey, eciesDecrypt, eciesEncrypt, encryptPayload, encryptWithKey, generateAesKey, generateKeyPair, getPublicKey, packAgentForPublish, publishAgent, randomBytes, unpackAgent } from './core/index.mjs';
 import { Hash, Address, PublicClient, WalletClient } from 'viem';
 export { a as A2ASkillResult, A as AgentRunContext, b as AgentRunner, c as AgentRunnerConfig, I as IPFSFetcher, d as IPFSFetcherConfig, O as OnChainReader, R as RunnableSkill, W as WalletSigner, e as defaultIPFSFetcher } from './agent-runner-BF6qaWKG.mjs';
-export { A as A2AConfig, a as A2ADaemon, b as A2ADaemonConfig, c as A2AProtocol, d as A2ATaskResult, e as AgentLoop, f as AgentRegistry, g as AgentRegistryConfig, h as AgentSummary, i as AgentSummaryMetadata, C as ContextCompactor, j as CreatePlanParams, k as CreatePlanResult, F as FactExtractor, G as GetAllAgentsOptions, L as LoopTraceEmitter, P as PlanDetail, l as PlatformToolContext, m as PlatformToolDef, S as SUBSCRIPTION_PERIODS, n as StructuredAgentMetadata, o as SubscribeResult, p as SubscriptionConfig, q as SubscriptionDetail, r as SubscriptionManager, s as SubscriptionPeriod, T as ToolExecutor, Z as ZERO_ADDRESS, t as buildPlatformTools, u as buildSystemPrompt, v as buildTools, w as cidFromURI, x as executePlatformTool, y as getAllPlatformToolNames, z as guardSubscription, B as parseTokenURIJSON, D as wrapPlatformToolsAsSkills } from './index-B3nAhQrZ.mjs';
+import { S as SubscriptionManager } from './index-BeeWpJaR.mjs';
+export { A as A2AConfig, a as A2ADaemon, b as A2ADaemonConfig, c as A2AProtocol, d as A2ATaskResult, e as AgentLoop, f as AgentRegistry, g as AgentRegistryConfig, h as AgentSummary, i as AgentSummaryMetadata, C as ContextCompactor, j as CreatePlanParams, k as CreatePlanResult, F as FactExtractor, G as GetAllAgentsOptions, L as LoopTraceEmitter, P as PlanDetail, l as PlatformToolContext, m as PlatformToolDef, n as SUBSCRIPTION_PERIODS, o as StructuredAgentMetadata, p as SubscribeResult, q as SubscriptionConfig, r as SubscriptionDetail, s as SubscriptionPeriod, T as ToolExecutor, Z as ZERO_ADDRESS, t as buildPlatformTools, u as buildSystemPrompt, v as buildTools, w as cidFromURI, x as executePlatformTool, y as getAllPlatformToolNames, z as guardSubscription, B as parseTokenURIJSON, D as wrapPlatformToolsAsSkills } from './index-BeeWpJaR.mjs';
 export { A as AgentLoopConfig, a as AgentLoopResult, C as ChatRequest, b as ChatStreamEvent, L as LLMMessage, c as LLMProvider, d as LLMToolCall, e as LoopRunContext, O as OpenAIToolDef, T as ToolCallRecord, f as ToolCallResult, g as ToolCallStart } from './types-BKnF5A2A.mjs';
 export { GatewayProvider, GatewayProviderConfig, OpenAIProvider, OpenAIProviderConfig, ProviderFactoryConfig, createLLMProvider } from './llm/index.mjs';
 export { EndpointRecord, MultiEndpointClient, MultiEndpointConfig } from './endpoint/index.mjs';
@@ -13,6 +14,7 @@ export { MemoryConfig, MemoryFact, MemoryProvider } from './memory/index.mjs';
 export { HttpTraceEmitter, NoopTraceEmitter, TraceConfig, TraceEmitter, TraceEvent } from './traces/index.mjs';
 export { BrowserAction, BrowserActionResult, executeBrowserAction, extractAccessibleDOM } from './skills/index.mjs';
 export { ConversationChatParams, ConversationChatResult, ConversationClient, ConversationClientConfig, ConversationCreateSessionParams, ConversationCreateTaskParams, ConversationSSEEvent, ConversationSkillDef, ConversationTask, ConversationTaskError, ConversationTaskStatus } from './conversation/index.mjs';
+export { A2AClient, ClientOptions, MPPClient, PaymentsClient, PeriodClient, X402Client } from '@agentxv2/payments';
 export { C as ChainConfig, a as ConfigRegistryOpts, b as ConfigurationRegistry, K as KNOWN_CHAINS } from './config-BFeSR_GK.mjs';
 export { bytesToHex, hexToBytes } from '@noble/ciphers/utils.js';
 import 'events';
@@ -77,6 +79,91 @@ declare class AgentX402 {
 }
 
 declare const SUBSCRIPTION_VERSION = "0.3.0";
+
+type SubscriptionPaymentMethod = 'chain' | 'fiat' | 'x402';
+type SubscriptionPeriod = 'day' | 'week' | 'month' | 'year';
+type ChainKey = 'oxachain' | 'sepolia';
+interface SubscriptionPaymentsConfig {
+    /** AgentX Gateway base URL (required for fiat / x402 rails). */
+    gatewayUrl?: string;
+    /** Optional gateway bearer token. */
+    accessToken?: string;
+    /** Chain rail — required for `method: 'chain'` and for automatic x402 payment. */
+    subscriptionManager?: SubscriptionManager;
+    /** Wallet used to automatically fund an x402 payment (if txHash is not supplied). */
+    walletClient?: WalletClient;
+    /** Which chain to verify x402 payments on (default: oxachain). */
+    chain?: ChainKey;
+}
+interface PaySubscriptionInput {
+    planId: number;
+    agentId: number;
+    method: SubscriptionPaymentMethod;
+    /** Buyer wallet. Required for fiat / x402; chain resolves from the wallet client. */
+    subscriber?: Address;
+    /** Chain rail: native value override (defaults to the plan price). */
+    valueWei?: bigint;
+    /** Chain rail: approve the ERC20 token before subscribing. */
+    approveTokenFirst?: boolean;
+    /** Fiat rail: amount in minor units (cents). Optional — the Gateway
+     *  auto-prices from the on-chain plan when planId is sent without it. */
+    amountCents?: number;
+    /** Fiat rail: currency code (default 'usd'). */
+    currency?: string;
+    /** Fiat rail: redirect targets after Stripe checkout. */
+    successUrl?: string;
+    cancelUrl?: string;
+    /** x402 rail: already-sent on-chain payment tx. When omitted and a wallet
+     *  client is configured, the payment is sent automatically. */
+    txHash?: string;
+    /** Billing period (default 'month'). */
+    period?: SubscriptionPeriod;
+}
+type PaySubscriptionResult = {
+    method: 'chain';
+    subscriptionId: number;
+    txHash: Hash;
+} | {
+    method: 'fiat';
+    sessionUrl: string;
+    sessionId: string;
+    redirect: true;
+} | {
+    method: 'x402';
+    subscriptionId: number;
+    txHash: string;
+    creditedWei?: string;
+};
+/** x402 protocol discovery returned by the unified endpoint. */
+interface X402Info {
+    enabled: boolean;
+    priceWei: string;
+    payTo: string;
+    network: string;
+    chain: ChainKey;
+}
+declare class SubscriptionPayments {
+    private config;
+    private client;
+    constructor(config: SubscriptionPaymentsConfig);
+    /** Pay for (or renew) a subscription using the chosen rail. */
+    pay(input: PaySubscriptionInput): Promise<PaySubscriptionResult>;
+    /**
+     * Unified access check across all rails (chain OR fiat/x402) via the
+     * unified /api/v1/payments/access endpoint.
+     */
+    hasAccess(agentId: number, subscriber: Address): Promise<boolean>;
+    /** x402 protocol discovery (price / pay-to wallet / network). */
+    fetchX402Info(): Promise<X402Info>;
+    private _payChain;
+    private _payFiat;
+    private _payX402;
+    /** Send the on-chain native transfer to the platform wallet (x402 rail). */
+    private _autoFundX402;
+    private _fetchJson;
+}
+
+declare const PAYMENT_VERSION = "0.2.0";
 
 declare const A2A_VERSION = "0.1.0";
 
@@ -152,4 +239,4 @@ declare const REPUTATION_VERSION = "0.1.0";
 
 declare const CONFIG_VERSION = "0.1.0";
 
-export { A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, subscribeToEvents };
+export { A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, PAYMENT_VERSION, type PaySubscriptionInput, type PaySubscriptionResult, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, SubscriptionManager, type SubscriptionPaymentMethod, SubscriptionPayments, type SubscriptionPaymentsConfig, type X402Info, subscribeToEvents };

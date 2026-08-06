@@ -1,5 +1,130 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.9.2 → v0.9.3
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Generic engine 0.2.0** | `@agentxv2/payments` upgraded to `^0.2.0` — adds **MPP payment channels**, **stablecoin rails (EIP-3009 / Permit2)**, **period authorizations** (one-time N-period pre-authorization, no re-signing) and **a2a-pay** (two-phase paymentId). |
+| **New protocol clients re-exported** | `MPPClient` (open/voucher/topUp/settle/close), `A2AClient` (create/settle), `PeriodClient` (charge/authorization), plus `X402Client` / `PaymentsClient`, are now exported from the SDK root for integrators who drive those rails directly. |
+| **No breaking changes** | `SubscriptionPayments` API is unchanged (chain / fiat / x402 / hasAccess / fetchX402Info). The new exports are additive. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.9.3   # or: npm install @agentxv2/sdk (latest = 0.9.3)
+```
+
+The Gateway you point at must run the matching payments release (MPP/period/a2a endpoints under `/api/v1/payments/mpp/*`, `/api/v1/payments/a2a/*`, `/api/v1/payments/period/*`).
+
+### Drive the new rails
+
+```ts
+import { SubscriptionPayments, MPPClient, A2AClient, PeriodClient } from '@agentxv2/sdk'
+
+const base = { baseUrl: 'https://gw.example.com' }
+const mpp = new MPPClient(base)          // payment channels
+const a2a = new A2AClient(base)          // two-phase paymentId
+const period = new PeriodClient(base)    // period authorizations
+```
+
+## v0.8.11 → v0.9.2
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Unified payments endpoint** | `SubscriptionPayments` now talks to the Gateway's unified endpoint `/api/v1/payments` for the **fiat** rail (checkout with auto-pricing), the **x402** rail (native-token period subscription) and the **access** check (`hasAccess()`). Under the hood it uses `PaymentsClient` from the new generic engine [`@agentxv2/payments`](https://www.npmjs.com/package/@agentxv2/payments) (`^0.1.0`, installed automatically as a dependency). |
+| **One transport for every rail** | fiat / x402 / access all hit `/api/v1/payments/*`; `chain` still subscribes directly on the `SubscriptionManager` contract (no Gateway needed). `fetchX402Info()` now reads the unified `/api/v1/payments/info` rails-discovery payload. |
+| **Decoupled payment engine** | `@agentxv2/payments` is a zero-AgentX-dependency module (chain / Stripe / x402 adapters, PaymentError codes, intent lifecycle, event queue) — the same engine the Gateway itself embeds. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.9.2   # or simply: npm install @agentxv2/sdk (latest = 0.9.2)
+```
+
+The Gateway you point at must expose the unified endpoint (`/api/v1/payments`) — upgrade your Gateway to the matching release. The old `/api/v1/fiat/*`, `/api/v1/x402/*` and `/api/v1/chain/check-subscription` endpoints remain for backward compatibility.
+
+### Use Multi-Rail Payments (unchanged API)
+
+```ts
+import { SubscriptionManager, SubscriptionPayments } from '@agentxv2/sdk'
+
+const sm = new SubscriptionManager({ contractAddress, publicClient, walletClient })
+const payments = new SubscriptionPayments({
+  gatewayUrl: 'https://gw.example.com', // required for fiat / x402 rails
+  subscriptionManager: sm,              // required for chain rail & x402 auto-funding
+  walletClient,
+  chain: 'oxachain',
+})
+
+// chain rail — on-chain escrow subscription
+await payments.pay({ method: 'chain', planId: 1, agentId: 3 })
+
+// fiat rail — returns a Stripe checkout URL (amount auto-priced from the plan)
+const { sessionUrl } = await payments.pay({ method: 'fiat', planId: 1, agentId: 3, subscriber: '0xabc' })
+window.location.assign(sessionUrl)
+
+// x402 rail — auto-funds the native-token payment, then registers access
+await payments.pay({ method: 'x402', planId: 1, agentId: 3, subscriber: '0xabc' })
+
+// unified access check across all rails
+const ok = await payments.hasAccess(3, '0xabc')
+```
+
+### Breaking Changes
+
+None — `pay()`, `hasAccess()`, `fetchX402Info()` and all result types are unchanged. The only behavioral difference is that fiat / x402 / access requests are routed through `/api/v1/payments` (requires the upgraded Gateway).
+
+## v0.8.10 → v0.8.11
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-rail subscription payments** | New `SubscriptionPayments` class — a single entry point for subscribing across all AgentX payment rails: `chain` (on-chain SubscriptionManager, native/ERC20 escrow), `fiat` (Stripe card checkout via the Gateway — no wallet needed), `x402` (native-token period payment verified by the Gateway). `pay({ method, planId, agentId, subscriber, ... })` dispatches to the right rail; `hasAccess()` runs the unified chain-OR-fiat/x402 access check; `fetchX402Info()` discovers the x402 price/pay-to wallet. |
+| **Fiat checkout without hardcoded amounts** | `_payFiat()` no longer requires `amountCents` — the Gateway derives the USD amount from the on-chain plan price (`/api/v1/fiat/checkout` with `planId`, priced via `FIAT_TOKEN_USD_PRICE`). Explicit `amountCents` still wins when supplied (backward compatible). |
+| **x402 auto-funding** | When no `txHash` is supplied, `pay({ method: 'x402', ... })` automatically sends the native-token payment from a configured `walletClient` (max of plan price / protocol price), then registers the subscription via the Gateway. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.8.11   # or simply: npm install @agentxv2/sdk (latest = 0.8.11)
+```
+
+### Use Multi-Rail Payments
+
+```ts
+import { SubscriptionManager, SubscriptionPayments } from '@agentxv2/sdk'
+
+const sm = new SubscriptionManager({ contractAddress, publicClient, walletClient })
+const payments = new SubscriptionPayments({
+  gatewayUrl: 'https://gw.example.com', // required for fiat / x402 rails
+  subscriptionManager: sm,              // required for chain rail & x402 auto-funding
+  walletClient,
+  chain: 'oxachain',
+})
+
+// chain rail — on-chain escrow subscription
+await payments.pay({ method: 'chain', planId: 1, agentId: 3 })
+
+// fiat rail — returns a Stripe checkout URL (amount auto-priced from the plan)
+const { sessionUrl } = await payments.pay({ method: 'fiat', planId: 1, agentId: 3, subscriber: '0xabc' })
+window.location.assign(sessionUrl)
+
+// x402 rail — auto-funds the native-token payment, then registers access
+await payments.pay({ method: 'x402', planId: 1, agentId: 3, subscriber: '0xabc' })
+
+// unified access check across all rails
+const ok = await payments.hasAccess(3, '0xabc')
+```
+
+### Breaking Changes
+
+None — all additions are new exports; `amountCents` became optional (it was previously required, but supplying it still works identically).
+
 ## v0.8.9 → v0.8.10
 
 ### What's New
