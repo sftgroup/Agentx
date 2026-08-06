@@ -28,6 +28,26 @@
     "test": "vitest run"
   },
   "license": "MIT",
+  "author": "AgentX (sftgroup)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sftgroup/Agentx.git"
+  },
+  "homepage": "https://github.com/sftgroup/Agentx/tree/main/payments",
+  "bugs": {
+    "url": "https://github.com/sftgroup/Agentx/issues"
+  },
+  "keywords": [
+    "agentx",
+    "payments",
+    "x402",
+    "payment-channel",
+    "mpp",
+    "a2a",
+    "stablecoin",
+    "stripe",
+    "web3"
+  ],
   "dependencies": {
     "pg": "^8.13.0",
     "viem": "^2.55.0"

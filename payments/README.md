@@ -2,6 +2,8 @@
 
 零业务耦合的通用支付引擎（chain / Stripe / x402 / MPP 支付通道 / 稳定币 / period 授权制 / a2a-pay）。
 
+> **维护**：由 **AgentX**（GitHub [sftgroup/Agentx](https://github.com/sftgroup/Agentx)）团队维护；源码位于仓库 [`payments/`](https://github.com/sftgroup/Agentx/tree/main/payments) 目录，npm 包 `@agentxv2/payments` 由 AgentX 账号发布与维护。集成方可作为独立库使用，但问题的修复与演进统一由 AgentX 负责。
+
 > **集成到独立项目**：完整部署步骤（安装 / 数据库 / 合约 / 代码接入 / 验证 / 生产注意）见 [`DEPLOY.md`](./DEPLOY.md)。
 
 - **嵌入式服务**：作为宿主 Gateway 的内部引擎（AgentX 当前用法，见 `gateway/src/services/payments.ts`）
