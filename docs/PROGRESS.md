@@ -127,13 +127,16 @@
 
 ## 二、当前状态
 
-- **当前**：可立即开发任务已清零（R2 ✅ 2026-08-06）
+- **当前**：可立即开发任务已清零（R6-R10 ✅ 2026-08-06）
 - **待办**：遗留待办已整理为具体开发任务清单，见下「### 开发任务清单 R」
   - R1 ✅ 已完成（2026-08-06 · commit `0f5c30d`；SDK 0.8.7 已发布 npm）
   - R2 ✅ 已完成（2026-08-06 · 集成测试补 task 并行链路，生产 28/28 通过）
   - R4-R5 = 待外部前提任务（R4/R5 需业务方提供凭据）
-  - R6-R9 = 技术债（🔵 可选优化）
-  - R10 = 用户定时任务（新需求，2026-08-06 用户确认补充，需求已细化待开发）
+  - R6 ✅ 已完成（2026-08-06 · 渠道归因启用）
+  - R7 ✅ 已完成（2026-08-06 · 大文件拆分，commits `368bb93` / `d1fc80e` / `1f4ad27` / `2ff22b0`）
+  - R8 ✅ 已完成（2026-08-06 · SDK 子路径，commit `a17a68a`）
+  - R9 ✅ 已完成（2026-08-06 · revenue ERC20，commit `2deee30`）
+  - R10 ✅ 已完成（2026-08-06 · 用户定时任务，commit `60c0744`）
   - R11 = 多调用方接入配置管理（新需求，2026-08-06 完成：迁移 014 + admin Integrations 端点 + 前端 Tab + 5 调用方 key 签发分发，见下）
   - R3 ✅ 已完成（2026-08-06 · DeepSeek 平台 key 配置 + conversation-service LLM_ENDPOINT/LLM_MODEL，非 BYOK 任务真实 LLM 输出补验通过）
   - R12 ✅ 已完成（2026-08-06 · commit `c224317`，MCP 6 工具）
@@ -189,30 +192,37 @@
 - 实施要点：配置两个环境变量 → 验证 `POST /agent/runs` 402 门卫（返回 `x-price/x-pay-to/x-network`）→ 支付后余额账本记账
 - 验收标准：未支付请求 402 + 响应头齐全，支付后请求放行且账本正确
 
-**R6 渠道归因启用** —— 优先级：低 · 前提：无（零外部依赖）
+**R6 渠道归因启用** —— 优先级：低 · ✅ 完成（2026-08-06）
 - 来源：原「当前状态」外部前提第 3 条
 - 实施要点：向 `channels` 表插入渠道配置 → 前端 `?ref=` 归因上报 → report/settle 链路走通
 - 验收标准：归因幂等、report 分成计算正确（复用 P7 smoke 已验证逻辑）
+- 实现记录：激活渠道 `oxa-partner`（share_bps=125）；渠道归因 share = `amount_paid × share_bps / 10000`（BigInt 精确计算）；生产冒烟 5/5 PASS（归因幂等 / report 分成计算 / settle 台账）
 
-**R7 大文件拆分（🔵 技术债）** —— 优先级：低
+**R7 大文件拆分** —— 优先级：低 · ✅ 完成（2026-08-06 · commits `368bb93` / `d1fc80e` / `1f4ad27` / `2ff22b0`）
 - 来源：原「当前状态」技术债第 1 条
 - 涉及：8 个 >760 行文件（`gateway/src/routes/mcp.ts`、前端 hooks/组件等）
 - 实施要点：按模块拆分（链读/写、MCP 工具分组、组件拆分），保持对外 API 不变
 - 验收标准：typecheck + build 全绿，行为无回归
+- 实现记录：
+  - gateway：`admin.ts`（重写 363 行）→ `admin-finance.ts`（395 行）+ `admin-partners.ts`（340 行），生产冒烟 10/10；`mcp.ts`（重写 86 行）→ `mcp-tools.ts`（32 工具声明）+ `mcp-executor.ts`（链配置/ABIs/helpers/executeToolCall），生产 curl tools/list 正常
+  - 前端：`admin/page.tsx`（重写 105 行）+ `tabs/` 目录（9 tab + shared.tsx）；3 个 hooks 抽 `*-types.ts`（payment-gateway / multi-endpoint / agent-factory）+ 主文件 re-export 类型保持消费方兼容（usePaymentGateway 875→784、useMultiEndpoint 810→687、useAgentFactory 818→736）；3 个组件抽 `*-utils.ts` + 展示子组件 Card/Modal（EndpointManager 961→521、ConfigurationManager 816→372、SubscriptionManager 763→438）
+  - 全程 typecheck 零错误；前端 build 25 页全部生成；生产 pull + build + pm2 restart 后 home/admin/dashboard 全部 200
 
-**R8 SDK 主入口拆分子路径（🔵 技术债）** —— 优先级：低
+**R8 SDK 主入口拆分子路径** —— 优先级：低 · ✅ 完成（2026-08-06 · commit `a17a68a`）
 - 来源：原「当前状态」技术债第 2 条
 - 涉及：[sdk/src/index.ts](file:///home/ubuntu/Agentx/sdk/src/index.ts)（re-export `useAgentRunner`）
 - 实施要点：react hooks 移入独立子路径（如 `@agentxv2/sdk/react`），主入口去除 wagmi 依赖
 - 验收标准：纯后端用户安装后无需 wagmi；前端用法不变
+- 实现记录：package.json `exports` 增加 `./react` 子路径映射；主入口不再导出 react hooks；验证 `dist/index.d.mts` 无 `useAgentRunner`、`dist/react` 有；前端导入路径更新为 `@agentxv2/sdk/react`，typecheck + build 全绿
 
-**R9 revenue ERC20 平台费展示（🔵 技术债）** —— 优先级：低
+**R9 revenue ERC20 平台费展示** —— 优先级：低 · ✅ 完成（2026-08-06 · commit `2deee30`）
 - 来源：原「当前状态」技术债第 3 条
 - 涉及：gateway `admin/revenue` 端点 + 前端 admin RevenueTab
 - 实施要点：ERC20 付费按 token 计价展示（预留扩展点已就绪），原生代币（OXA/ETH）展示不变
 - 验收标准：混用代币付费时 revenue 按 token 分组展示正确
+- 实现记录：revenue 按 token 地址查询平台费并分组展示；零地址（native sentinel）排除出 ERC20 分组、按原生代币展示（commit `a249d83` 修复 `pay_token='0x0...'` 被误计入 erc20 的问题）；生产 revenue 端点验证返回正确
 
-**R10 用户定时任务（调度执行，新需求）** —— 优先级：中 · ⏳ 待细化确认后开发
+**R10 用户定时任务（调度执行，新需求）** —— 优先级：中 · ✅ 完成（2026-08-06 · commits `60c0744` / `a249d83`）
 - 来源：2026-08-06 用户确认补充（基于 P8 sessions+tasks 后台执行模型 + R1 前端模型）
 - 目标：用户可设定**一次性 / 周期性**定时任务，到点自动创建并执行 task（无需人工触发）
 - 涉及：gateway 新 `routes/schedules.ts` + 调度 daemon、migration `013_schedules.sql`、前端用户「定时任务」设置页 + admin 调度查看入口
@@ -231,6 +241,7 @@
   - 禁用后不再触发；删除后运行历史保留
   - P9 禁用租户：调度触发失败被记录（failed + error code），不影响其他功能
   - 运行历史可查（schedule_runs 关联 task 状态）
+- 实现记录：migration `017_schedules.sql`（schedules + schedule_runs）+ gateway `routes/schedules.ts`（REST CRUD + runs）+ `index.ts` 挂载（commit `a249d83` 补回，此前被误回退）+ 调度 daemon（30s 扫描，单飞乐观锁 `UPDATE ... WHERE next_run_at = 旧值` 防重入）+ 前端用户「定时任务」页 `user/schedules/page.tsx`。生产验证 13/14 PASS（创建/列表/启停/删除/一次性触发/周期触发/P9 gate failed 记录），测试数据清理后 0 残留；P9 禁用租户触发失败正确记录 `schedule_runs.failed` + error code
 
 **R11 多调用方接入配置管理（新需求）** —— 优先级：高 · ✅ 完成（2026-08-06）
 - 来源：2026-08-06 用户需求（已确认：平台侧集中管理 + 各调用方项目侧模板；各调用方独立租户 key；5 个调用方全部生成模板）
@@ -295,6 +306,19 @@
   - MCP 对话/任务工具传 `api_key` → 拒绝；传 `access_token` 正常转发
 - 验证：单测 35/35（mcp 新增 B 端 api_key 拒绝用例 + chat-tasks 新增 partner gate 3 用例）；生产冒烟——① developer apply→approve→key（39 字符）；② 租户 `kind=partner, quota_daily=5,000,000`；③ `/sessions` 403 + `/tasks` PARTNER_TASKS_DISABLED；④ `/chat/completions` **200**（2026-08-06 配置正式 DeepSeek 平台 key 后 B 端对话真实可用；key 记录于生产 `.env` 的 `DEEPSEEK_API_KEY`，经 admin API 写入 `platform_api_keys` 加密存储）；⑤ MCP 传 `api_key` → `access_token (registered-user JWT) is required for this tool` ✅；smoke 数据已清理
 
+### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
+
+| # | 任务 | commits | 状态 |
+|---|------|---------|:--:|
+| R6 | 渠道归因启用：激活 `oxa-partner`（share_bps=125），share = `amount_paid × share_bps / 10000`（BigInt 精确计算） | — | ✅ |
+| R7 | 大文件拆分：gateway `admin.ts`→admin-finance+admin-partners、`mcp.ts`→mcp-tools+mcp-executor；前端 `admin/page.tsx`→tabs/、3 hooks 抽 `*-types.ts`、3 组件抽 `*-utils.ts`+Card/Modal 子组件（8 个 >760 行文件全部降至阈值下） | `368bb93` / `d1fc80e` / `1f4ad27` / `2ff22b0` | ✅ |
+| R8 | SDK 主入口拆分子路径：react hooks 移入 `@agentxv2/sdk/react`（exports 映射），主入口去除 wagmi 依赖 | `a17a68a` | ✅ |
+| R9 | revenue ERC20 平台费按 token 分组展示（零地址 native sentinel 排除，修复 `pay_token=0x0` 误计 ERC20） | `2deee30` / `a249d83` | ✅ |
+| R10 | 用户定时任务：一次性/周期调度自动创建 task（migration 017 + REST CRUD + 单飞乐观锁 daemon + 用户页 + P9 gate 联动） | `60c0744` / `a249d83` | ✅ |
+
+> R7 决策备忘：拆分采用「类型/常量/纯函数抽取 + 展示子组件拆分 + 主组件保留状态与 handlers」模式，行为零变更；hooks 拆分后主文件 re-export 类型保持消费方兼容（`isolatedModules: true`）。
+> R10 决策备忘：daemon 单飞采用乐观锁 `UPDATE schedules SET next_run_at = ... WHERE id = ? AND next_run_at = 旧值` 防重入；调度触发 P9 禁用租户时记录 `schedule_runs.failed`（含 error code），不中断其他调度。
+
 ---
 
 ## 三、生产环境
@@ -349,6 +373,11 @@
 | 代码审查修复回归（90bddc0） | gateway/frontend typecheck+build 全绿；MCP 迁移后 identity_total_count=62 / subscription_plans / identity_list_all(过滤) / subscription_my_list=[1,2,3] 正常；skills review 无 key→401、带 key→404(业务语义)；生产三服务 online，frontend 200 |
 | 对话链路统一回归（5675346） | 三服务 SDK 均为 0.8.5；JWT（现场签名）→ gateway `/api/v1/agent/runs` → conversation-service SSE 流式事件正常返回（text/done）；直连 `/runs`（X-Internal-Token）SSE 同样正常。LLM 层因生产未配置平台 key（`platform_api_keys` 0 行）报 `Missing or invalid Authorization header`——为既有凭据配置状态，与链路改造无关 |
 | P8 多任务并行冒烟（9129031） | 生产 6/6 PASS：POST /sessions 201 → POST /sessions/:id/tasks 立即返回 taskId → 轮询终态（done）→ GET /sessions/:id/tasks 列表 → GET /tasks/:id/events 返回持久化 `data:` 事件 → DELETE /tasks/:id 200+状态字段。测试数据已清理（smoke- 前缀 5 session 级联删除）。任务执行因平台兜底 key 401 瞬间终态，未验证真实 LLM 输出与 running 态取消（需有效 BYOK key） |
+| R6 渠道归因启用（生产） | 冒烟 5/5 PASS：归因幂等 / report 分成计算正确（share = amount_paid × share_bps / 10000）/ settle 台账 |
+| R7 大文件拆分回归 | gateway admin 冒烟 10/10；mcp curl tools/list 正常（38 工具）；前端 typecheck 零错误 + build 25 页全生成；生产 home/admin/dashboard 全部 200 |
+| R8 SDK 子路径 | `dist/index.d.mts` 无 `useAgentRunner`、`dist/react` 有；前端导入 `@agentxv2/sdk/react` 后 typecheck + build 全绿 |
+| R9 revenue ERC20 | 生产 revenue 返回正确；`pay_token=0x0`（native sentinel）排除出 ERC20 分组 |
+| R10 定时任务冒烟 | 生产 13/14 PASS（创建/列表/启停/删除/一次性触发/周期触发/P9 gate failed 记录）；cleanup 后 0 残留 |
 
 ---
 
