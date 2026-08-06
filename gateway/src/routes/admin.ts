@@ -401,7 +401,9 @@ router.get('/revenue', async (req: Request, res: Response) => {
       ),
       pool.query(`SELECT COALESCE(SUM(balance_wei::numeric), 0) AS outstanding_wei FROM x402_balances`),
       pool.query(
-        `SELECT DISTINCT pay_token FROM subscription_plans WHERE pay_token IS NOT NULL AND pay_token <> ''`
+        `SELECT DISTINCT pay_token FROM subscription_plans
+         WHERE pay_token IS NOT NULL AND pay_token <> ''
+           AND lower(pay_token) <> '0x0000000000000000000000000000000000000000'`
       ),
     ])
 

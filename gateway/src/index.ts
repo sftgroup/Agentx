@@ -29,6 +29,7 @@ import chatTasksRouter from './routes/chat-tasks'
 import tracesRouter from './routes/traces'
 import skillsRouter from './routes/skills'
 import agentMcpRouter from './routes/agent-mcp'
+import schedulesRouter from './routes/schedules'
 
 const app = express()
 
@@ -175,6 +176,8 @@ api.use('/traces', tracesRouter)
 // Chat sessions + parallel tasks (proxied to conversation-service).
 // Router declares full paths (/sessions..., /tasks...) so mount at root.
 api.use('/', chatTasksRouter)
+// User scheduled tasks (R10) — triggers chat tasks automatically.
+api.use('/schedules', schedulesRouter)
 
 app.use('/api/v1', api)
 
