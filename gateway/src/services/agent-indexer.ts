@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { ethers } from 'ethers'
+import { parseTokenURIJSON } from '@agentxv2/sdk'
 import { getPool } from '../lib/db'
 import { config } from '../config'
 
@@ -25,47 +26,16 @@ const SUBSCRIPTION_ABI = [
   'event PlanCreated(uint256 indexed planId, uint256 indexed agentId, uint256 price, string period, address payToken, uint256 trialDays)',
 ]
 
+// Subscription struct: (subscriptionId, subscriber, agentId, status, startedAt,
+// expiresAt, period, payToken, amountPaid, trialActive, trialEndsAt, fundsReleased)
+const SUBSCRIPTION_DETAIL_ABI = [
+  'function getSubscriptionDetail(uint256 subscriptionId) view returns ((uint256,address,uint256,uint8,uint256,uint256,string,address,uint256,bool,uint256,bool))',
+  'event Subscribed(uint256 indexed subscriptionId, address indexed subscriber, uint256 indexed agentId, uint256 expiresAt)',
+  'event SubscriptionCancelled(uint256 indexed subscriptionId)',
+  'event SubscriptionExpired(uint256 indexed subscriptionId)',
+]
+
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-
-// Parse base64 data URI tokenURI → JSON metadata object
-// Exported for reuse by the MCP server (single source of truth for tokenURI parsing).
-export function parseTokenURIToJSON(tokenURI: string): Record<string, unknown> | null {
-  if (!tokenURI) return null
-  if (tokenURI.startsWith('ipfs://')) return null
-
-  const match = tokenURI.match(/^data:application\/json;base64,(.+)$/i)
-  if (!match) return null
-
-  // Clean up malformed base64: trim everything after the last "==" padding
-  let b64 = match[1]
-  const lastDoubleEq = b64.lastIndexOf('==')
-  if (lastDoubleEq > 0 && lastDoubleEq < b64.length - 2) {
-    b64 = b64.substring(0, lastDoubleEq + 2)
-  }
-
-  try {
-    const decoded = Buffer.from(b64, 'base64').toString('utf-8')
-    // Try JSON parse first
-    try {
-      return JSON.parse(decoded)
-    } catch {
-      // Unterminated JSON (contract bug): append missing closing quotes/braces
-      let fixed = decoded
-      // Count unclosed quotes
-      const quoteCount = (fixed.match(/"/g) || []).length
-      if (quoteCount % 2 !== 0) fixed += '"'
-      // Count unclosed braces
-      const openBraces = (fixed.match(/\{/g) || []).length
-      const closeBraces = (fixed.match(/\}/g) || []).length
-      for (let i = closeBraces; i < openBraces; i++) fixed += '}'
-      try { return JSON.parse(fixed) } catch { /* ok */ }
-    }
-    // Regex fallback
-    const nameM = decoded.match(/"name"\s*:\s*"([^"]*)/)
-    if (nameM) return { name: nameM[1] }
-    return null
-  } catch { return null }
-}
 
 // ── Structured metadata extraction ──────────────────────────────────────────
 
@@ -111,7 +81,7 @@ async function fetchAndUpsertAgent(agentId: number, contract: ethers.Contract): 
   ])
   if (!owner || owner === ZERO_ADDRESS || !tokenURI) return false
 
-  const parsed = parseTokenURIToJSON(tokenURI)
+  const parsed = parseTokenURIJSON(tokenURI)
   const { name, description, tags, capabilities, skills, isActive, agentCreatedAt } =
     extractMetadata(parsed, agentId)
 
@@ -288,4 +258,86 @@ export function startPlanSyncWatcher(): void {
   })
 
   console.log('[agent-indexer] Plan sync watcher started')
+}
+
+// ── Subscriptions sync (SubscriptionManager) ────────────────────────────────
+// The v2 contract has no "list subscriptions by agent" view, so the per-agent
+// stats endpoint (GET /agents/:id/stats) cannot enumerate chain subscriptions
+// directly. We maintain the chain_subscriptions table from Subscribed /
+// SubscriptionCancelled / SubscriptionExpired events (same pattern as plans).
+
+/** Fetch one subscription from chain and upsert it into chain_subscriptions. */
+async function fetchAndUpsertSubscription(subscriptionId: number, contract: ethers.Contract): Promise<boolean> {
+  const pool = getPool()
+
+  const raw = await contract.getSubscriptionDetail(subscriptionId).catch(() => null)
+  if (!raw) return false
+  const [sid, subscriber, agentId, status, startedAt, expiresAt, period, payToken, amountPaid, , , fundsReleased] = raw as [
+    bigint, string, bigint, bigint, bigint, bigint, string, string, bigint, boolean, bigint, boolean,
+  ]
+
+  await pool.query(
+    `INSERT INTO chain_subscriptions (subscription_id, agent_id, subscriber, status, started_at, expires_at, period, pay_token, amount_wei, funds_released, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())
+     ON CONFLICT (subscription_id) DO UPDATE SET
+       agent_id = EXCLUDED.agent_id,
+       subscriber = EXCLUDED.subscriber,
+       status = EXCLUDED.status,
+       started_at = EXCLUDED.started_at,
+       expires_at = EXCLUDED.expires_at,
+       period = EXCLUDED.period,
+       pay_token = EXCLUDED.pay_token,
+       amount_wei = EXCLUDED.amount_wei,
+       funds_released = EXCLUDED.funds_released,
+       updated_at = NOW()`,
+    [subscriptionId, Number(agentId), subscriber, Number(status), Number(startedAt), Number(expiresAt), period, payToken, amountPaid.toString(), fundsReleased]
+  )
+  return true
+}
+
+/** Backfill chain_subscriptions from Subscribed history (runs once on boot). */
+export async function syncSubscriptionHistory(): Promise<number> {
+  const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
+  const contract = new ethers.Contract(config.subscriptionManagerOxaChain, SUBSCRIPTION_DETAIL_ABI, provider)
+
+  const fromBlock = config.subscriptionsSyncFromBlock
+  const filter = contract.filters.Subscribed()
+  const logs = (await contract.queryFilter(filter, fromBlock).catch(() => [])) as readonly ethers.EventLog[]
+  if (logs.length === 0) return 0
+
+  const results = await Promise.allSettled(
+    logs.map((log) => fetchAndUpsertSubscription(Number(log.args.subscriptionId), contract))
+  )
+  const ok = results.filter(r => r.status === 'fulfilled' && r.value).length
+  console.log(`[agent-indexer] Subscription history sync: ${ok}/${logs.length} (from block ${fromBlock})`)
+  return ok
+}
+
+/** Watch SubscriptionManager lifecycle events → keep chain_subscriptions fresh. */
+export function startSubscriptionSyncWatcher(): void {
+  const provider = new ethers.JsonRpcProvider(config.rpcUrlOxaChain)
+  const contract = new ethers.Contract(config.subscriptionManagerOxaChain, SUBSCRIPTION_DETAIL_ABI, provider)
+
+  // Fresh subscribe → full detail read (reflects current status at read time).
+  contract.on('Subscribed', (subscriptionId: bigint | number) => {
+    fetchAndUpsertSubscription(Number(subscriptionId), contract).then(ok => {
+      if (!ok) console.warn(`[agent-indexer] subscription sync returned nothing for #${subscriptionId}`)
+    }).catch(err =>
+      console.error(`[agent-indexer] subscription sync failed for #${subscriptionId}:`, err.message)
+    )
+  })
+
+  // Status transitions are cheap SQL updates — no chain read needed.
+  const setStatus = (subscriptionId: bigint | number, status: number) => {
+    getPool().query(
+      `UPDATE chain_subscriptions SET status = $1, updated_at = NOW() WHERE subscription_id = $2`,
+      [status, Number(subscriptionId)]
+    ).catch(err =>
+      console.error(`[agent-indexer] subscription status update failed for #${subscriptionId}:`, err.message)
+    )
+  }
+  contract.on('SubscriptionCancelled', (subscriptionId: bigint | number) => setStatus(subscriptionId, 3))
+  contract.on('SubscriptionExpired', (subscriptionId: bigint | number) => setStatus(subscriptionId, 2))
+
+  console.log('[agent-indexer] Subscription sync watcher started')
 }

@@ -38,6 +38,10 @@ export const config = {
   // (0 = scan from genesis; set to the SubscriptionManager deploy block to save RPC)
   plansSyncFromBlock: parseInt(process.env.PLANS_SYNC_FROM_BLOCK || '0', 10),
 
+  // Block number to start scanning Subscribed history from on boot
+  // (0 = scan from genesis; set to the SubscriptionManager deploy block to save RPC)
+  subscriptionsSyncFromBlock: parseInt(process.env.SUBSCRIPTIONS_SYNC_FROM_BLOCK || '0', 10),
+
   subscriptionManager: process.env.SUBSCRIPTION_MANAGER || '0xC15fE80b9d800abb72121F353a6ae6d6E9077E63',
   subscriptionManagerOxaChain: process.env.SUBSCRIPTION_MANAGER_OXACHAIN || '0x019AC9d945467478Dd371CDbD70cb2f325800E6B',
 

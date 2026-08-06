@@ -132,9 +132,7 @@ export function useAgentCards() {
   // ---- Data loading ----
   const loadAgentData = useCallback(async (agentId: number) => {
     try {
-      console.log('🔄 加载Agent数据:', agentId)
       await Promise.all([getAgentCard(agentId), getAgentSkills(agentId), getAllSkills()])
-      console.log('✅ Agent数据加载完成')
     } catch (err) {
       console.error('❌ 加载Agent数据失败:', err)
     }
@@ -223,7 +221,6 @@ export function useAgentCards() {
     if (!validationResult.isValid) { setValidation(validationResult); return }
 
     try {
-      console.log('🔄 开始创建Agent卡片...')
       await createAgentCard(
         selectedAgentId, formData.name, formData.description, formData.version,
         formData.capabilities, formData.supportedTasks, formData.communicationProtocol,
@@ -297,12 +294,10 @@ export function useAgentCards() {
     if (!skillConfigData.skillEndpoint.trim()) { alert('请填写服务端点'); return }
 
     try {
-      console.log('🔄 开始配置技能端点...')
       await addAgentSkill(
         selectedAgentId, skillConfigData.skillId, skillConfigData.skillEndpoint,
         skillConfigData.version, skillConfigData.price, skillConfigData.priceToken
       )
-      console.log('✅ 技能端点配置成功')
 
       setTimeout(async () => {
         await getAgentSkills(selectedAgentId)

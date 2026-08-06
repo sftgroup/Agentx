@@ -5,8 +5,7 @@ import { useState } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Check, Loader2, ArrowRight, Building2, User, Mail, Globe, MessageSquare, Wallet, Percent, KeyRound, Server, Zap } from 'lucide-react'
 import Link from 'next/link'
-
-const GATEWAY = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || ''
+import { GATEWAY_URL_OPTIONAL as GATEWAY } from '@/lib/gateway'
 
 export default function ApplyPage() {
   const [kind, setKind] = useState<'channel' | 'developer'>('channel')

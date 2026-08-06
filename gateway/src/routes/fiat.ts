@@ -12,10 +12,32 @@ import { Router, Request, Response } from 'express'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { getPool } from '../lib/db'
 import { config } from '../config'
-import { log } from '../services/chain-data-reader'
+import { chainDataReader, log } from '../services/chain-data-reader'
 
 const router = Router()
 const STRIPE_API = 'https://api.stripe.com/v1'
+
+// Platform cut for fiat (Stripe) billing follows the on-chain SubscriptionManager
+// `platformFeeBps` (single source of truth), cached briefly since the webhook
+// path runs per invoice. Falls back to the historical 2.5% reference if the
+// RPC read fails.
+let platformFeeBpsCache: { bps: number; at: number } | null = null
+const PLATFORM_FEE_BPS_TTL_MS = 5 * 60_000
+const PLATFORM_FEE_BPS_FALLBACK = 250
+
+async function resolvePlatformFeeBps(): Promise<number> {
+  const now = Date.now()
+  if (platformFeeBpsCache && now - platformFeeBpsCache.at < PLATFORM_FEE_BPS_TTL_MS) {
+    return platformFeeBpsCache.bps
+  }
+  try {
+    const bps = await chainDataReader.platformFeeBps('oxachain')
+    platformFeeBpsCache = { bps, at: now }
+    return bps
+  } catch {
+    return PLATFORM_FEE_BPS_FALLBACK
+  }
+}
 
 function fiatEnabled(): boolean {
   return Boolean(config.stripeSecretKey)
@@ -143,7 +165,7 @@ router.post('/webhook', async (req: Request, res: Response, next) => {
         // Record a per-period payout row for creator/platform reconciliation.
         if (sub && Number(sub.agent_id) > 0) {
           const creator = await pool.query('SELECT creator FROM subscription_plans WHERE agent_id = $1 LIMIT 1', [sub.agent_id])
-          const platformCut = Math.floor((amountCents * 250) / 10000) // 2.5% reference (platformFeeBps)
+          const platformCut = Math.floor((amountCents * await resolvePlatformFeeBps()) / 10000)
           await pool.query(
             `INSERT INTO fiat_payouts (subscription_id, creator, agent_id, amount_cents, currency, platform_cut_cents, invoice_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7)`,

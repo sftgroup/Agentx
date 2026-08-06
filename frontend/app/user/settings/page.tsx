@@ -8,6 +8,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Settings, Plus, Trash2, Check, X, Zap, Key, Copy, Eye, EyeOff, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
+import { GATEWAY_URL_OPTIONAL } from '@/lib/gateway'
 
 // Preset OpenAI-compatible providers (endpoint base, no /chat/completions suffix).
 // Users may also pick "custom" and enter their own endpoint + model.
@@ -28,7 +29,7 @@ const PROVIDERS: ProviderPreset[] = [
   { id: 'custom', name: 'Custom', endpoint: '', models: [] },
 ]
 
-const GATEWAY = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || ''
+const GATEWAY = GATEWAY_URL_OPTIONAL
 
 export default function SettingsPage() {
   const { isConnected } = useAccount()
@@ -303,7 +304,7 @@ function PlatformApiKey() {
   const [showKey, setShowKey] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const gatewayUrl = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || ''
+  const gatewayUrl = GATEWAY_URL_OPTIONAL
 
   const fetchApiKey = useCallback(async () => {
     if (!gatewayUrl || !isConnected || !address || !walletClient) return

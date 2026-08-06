@@ -9,7 +9,7 @@ import {
   usePublicClient,
   useBlockNumber
 } from 'wagmi'
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
 // R7 拆分：类型、常量与合约地址移入独立模块
 import { AGENT_FACTORY_ADDRESS } from './agent-factory-types'
@@ -31,11 +31,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
   const [agentTemplates, setAgentTemplates] = useState<Record<number, number[]>>({})
   const [error, setError] = useState<Error | null>(null)
   const [transactionHash, setTransactionHash] = useState<`0x${string}` | undefined>()
-  const [lastRefetchTime, setLastRefetchTime] = useState<number>(0)
   const [forceRefresh, setForceRefresh] = useState<number>(0)
-  
-  // 使用 ref 来存储最新的交易哈希，避免闭包问题
-  const transactionHashRef = useRef<`0x${string}` | undefined>()
 
   // 创建模板交易
   const { 
@@ -148,8 +144,6 @@ export function useAgentFactory(): UseAgentFactoryReturn {
   useEffect(() => {
     if (templatesData) {
       try {
-        console.log('🔄 原始模板数据从合约读取:', templatesData)
-        
         // 处理从合约返回的模板数据
         const processedTemplates = (templatesData as any[]).map((template, index) => {
           // 确保所有字段都有默认值，避免 undefined
@@ -169,19 +163,16 @@ export function useAgentFactory(): UseAgentFactoryReturn {
             createdAt: Number(template.createdAt) || Math.floor(Date.now() / 1000),
             createdBy: template.createdBy || '0x0000000000000000000000000000000000000000'
           }
-          
-          console.log(`✅ 处理模板 ${index + 1}:`, processedTemplate)
+
           return processedTemplate
         }).filter(template => template.isActive) // 只显示活跃模板
-        
-        console.log('🎯 最终处理的模板数据:', processedTemplates)
+
         setTemplates(processedTemplates)
       } catch (err) {
         console.error('❌ 处理模板数据错误:', err)
         setTemplates([])
       }
     } else {
-      console.log('⚠️ 模板数据为空，合约可能没有模板或网络连接问题')
       setTemplates([])
     }
   }, [templatesData, forceRefresh])
@@ -190,7 +181,6 @@ export function useAgentFactory(): UseAgentFactoryReturn {
   useEffect(() => {
     if (totalTemplatesData !== undefined) {
       const newTotal = Number(totalTemplatesData)
-      console.log('🔄 模板总数更新:', totalTemplates, '->', newTotal)
       if (newTotal !== totalTemplates) {
         setTotalTemplates(newTotal)
       }
@@ -200,7 +190,6 @@ export function useAgentFactory(): UseAgentFactoryReturn {
   // 监听区块高度变化，自动刷新数据
   useEffect(() => {
     if (blockNumber) {
-      console.log('📦 新区块:', blockNumber, '触发工厂数据刷新')
       setForceRefresh(prev => prev + 1)
     }
   }, [blockNumber])
@@ -208,15 +197,11 @@ export function useAgentFactory(): UseAgentFactoryReturn {
   // 监听交易确认，强制刷新所有数据
   useEffect(() => {
     if (isConfirmed && receipt) {
-      console.log('🎉 工厂交易确认成功，强制刷新所有数据')
-      console.log('📄 工厂交易收据:', receipt)
-      
       // 强制刷新所有数据
       setForceRefresh(prev => prev + 1)
-      
+
       // 立即重新获取数据
       setTimeout(() => {
-        console.log('🔄 立即重新获取工厂数据...')
         refetchTemplatesQuery()
         refetchTotalTemplates()
       }, 1000)
@@ -253,8 +238,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
       }
 
       setError(null)
-      
-      console.log('🔄 开始创建模板...', templateData)
+
       const hash = await createTemplateAsync({
         address: AGENT_FACTORY_ADDRESS,
         abi: AGENT_FACTORY_ABI,
@@ -273,9 +257,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
         ]
       })
 
-      console.log('✅ 创建模板交易提交成功，哈希:', hash)
       setTransactionHash(hash)
-      transactionHashRef.current = hash
       return hash
     } catch (err) {
       const error = err instanceof Error ? err : new Error('创建模板失败')
@@ -309,8 +291,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
       }
 
       setError(null)
-      
-      console.log('🔄 开始更新模板...', templateId, templateData)
+
       const hash = await updateTemplateAsync({
         address: AGENT_FACTORY_ADDRESS,
         abi: AGENT_FACTORY_ABI,
@@ -330,9 +311,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
         ]
       })
 
-      console.log('✅ 更新模板交易提交成功，哈希:', hash)
       setTransactionHash(hash)
-      transactionHashRef.current = hash
       return hash
     } catch (err) {
       const error = err instanceof Error ? err : new Error('更新模板失败')
@@ -357,8 +336,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
       }
 
       setError(null)
-      
-      console.log('🔄 设置模板激活状态...', templateId, isActive)
+
       const hash = await setTemplateActiveAsync({
         address: AGENT_FACTORY_ADDRESS,
         abi: AGENT_FACTORY_ABI,
@@ -366,9 +344,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
         args: [BigInt(templateId), isActive]
       })
 
-      console.log('✅ 设置模板激活状态交易提交成功，哈希:', hash)
       setTransactionHash(hash)
-      transactionHashRef.current = hash
       return hash
     } catch (err) {
       const error = err instanceof Error ? err : new Error('设置模板激活状态失败')
@@ -398,8 +374,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
       }
 
       setError(null)
-      
-      console.log('🔄 从模板创建 Agent...', templateId)
+
       const hash = await createAgentAsync({
         address: AGENT_FACTORY_ADDRESS,
         abi: AGENT_FACTORY_ABI,
@@ -408,9 +383,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
         value: BigInt(1000000000000000), // 0.001 ETH
       })
 
-      console.log('✅ 创建 Agent 交易提交成功，哈希:', hash)
       setTransactionHash(hash)
-      transactionHashRef.current = hash
       return hash
     } catch (err) {
       const error = err instanceof Error ? err : new Error('从模板创建 Agent 失败')
@@ -445,13 +418,11 @@ export function useAgentFactory(): UseAgentFactoryReturn {
       }
 
       setError(null)
-      
-      console.log('🔄 批量创建 Agents...', templateId, count)
-      
+
       // 修复：正确的 BigInt 乘法操作
       const baseValue = BigInt(1000000000000000) // 0.001 ETH
       const totalValue = baseValue * BigInt(count)
-      
+
       const hash = await createAgentsAsync({
         address: AGENT_FACTORY_ADDRESS,
         abi: AGENT_FACTORY_ABI,
@@ -460,9 +431,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
         value: totalValue, // 0.001 ETH * count
       })
 
-      console.log('✅ 批量创建 Agents 交易提交成功，哈希:', hash)
       setTransactionHash(hash)
-      transactionHashRef.current = hash
       return hash
     } catch (err) {
       const error = err instanceof Error ? err : new Error('批量创建 Agents 失败')
@@ -511,8 +480,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
       })
 
       const template = result as any
-      console.log('📋 获取单个模板数据:', template)
-      
+
       return {
         templateId: Number(template.templateId),
         name: template.name,
@@ -612,28 +580,15 @@ export function useAgentFactory(): UseAgentFactoryReturn {
   // 重新获取模板
   const refetchTemplates = useCallback(async (): Promise<void> => {
     try {
-      const now = Date.now()
-      // 防止频繁调用：1秒内只能调用一次
-      if (now - lastRefetchTime < 1000) {
-        console.log('⏰ 防重复调用：跳过重复的模板 refetch')
-        return
-      }
-      
-      setLastRefetchTime(now)
-      console.log('🔄 开始重新获取模板列表...')
-      
-      const result = await refetchTemplatesQuery()
-      console.log('✅ 重新获取模板列表结果:', result)
-      
+      await refetchTemplatesQuery()
     } catch (err) {
       console.error('❌ Refetch templates error:', err)
     }
-  }, [refetchTemplatesQuery, lastRefetchTime])
+  }, [refetchTemplatesQuery])
 
   // 重新获取所有数据
   const refetchAllData = useCallback(async (): Promise<void> => {
     try {
-      console.log('🔄 重新获取所有工厂数据...')
       await Promise.all([
         refetchTemplatesQuery(),
         refetchTotalTemplates()
@@ -647,7 +602,6 @@ export function useAgentFactory(): UseAgentFactoryReturn {
   const resetState = useCallback((): void => {
     setError(null)
     setTransactionHash(undefined)
-    transactionHashRef.current = undefined
     resetCreateTemplate()
     resetUpdateTemplate()
     resetSetTemplateActive()

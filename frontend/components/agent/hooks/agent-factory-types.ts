@@ -1,14 +1,7 @@
 // components/agent/hooks/agent-factory-types.ts
 // R7 拆分：useAgentFactory 的类型、常量与合约地址（供 hook 与外部消费方引用）
 
-// 生产级环境变量验证
-const validateAddress = (address: string | undefined): `0x${string}` => {
-  if (!address || !address.startsWith('0x') || address.length !== 42) {
-    console.error('Invalid contract address:', address)
-    return '0x0000000000000000000000000000000000000000'
-  }
-  return address as `0x${string}`
-}
+import { validateAddress } from './contract-address'
 
 export const AGENT_FACTORY_ADDRESS = validateAddress(process.env.NEXT_PUBLIC_AGENT_FACTORY_ADDRESS)
 

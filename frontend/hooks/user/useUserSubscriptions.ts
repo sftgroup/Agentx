@@ -170,8 +170,6 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
       }
 
       try {
-        console.log('🔄 获取用户订阅数据...', { address })
-
         // 获取基础订阅信息
         const subscriptionData = await publicClient.readContract({
           address: subscriptionManagerAddress,
@@ -180,13 +178,8 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
           args: [address]
         }) as any[]
 
-        console.log('📦 获取到原始订阅数据:', subscriptionData)
-
         // 转换数据格式
         const transformedData = transformSubscriptionData(subscriptionData)
-        console.log('🔄 转换后的订阅数据:', transformedData)
-
-        console.log('✅ 用户订阅数据加载完成:', transformedData.length)
         return transformedData
       } catch (err) {
         console.error('❌ 获取用户订阅失败:', err)
@@ -290,8 +283,6 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
     }
 
     try {
-      console.log('🔄 处理订阅支付:', { subscriptionId, planDetails })
-
       setError(null)
 
       // 修复：正确构建 writeContract 参数
@@ -307,14 +298,11 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
         // 如果代币地址是零地址，表示使用原生代币（ETH）
         if (planDetails.token === '0x0000000000000000000000000000000000000000') {
           contractConfig.value = planDetails.price
-          console.log('使用原生代币支付，金额:', contractConfig.value.toString())
         }
       }
       
       const hash = await writeContractAsync(contractConfig)
 
-      console.log('✅ 支付交易已提交:', hash)
-      
       // 等待交易确认后刷新数据
       setTimeout(() => {
         refetch()
@@ -336,8 +324,6 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
     }
 
     try {
-      console.log('🔄 取消订阅:', { subscriptionId })
-
       setError(null)
       
       const hash = await writeContractAsync({
@@ -347,8 +333,6 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
         args: [BigInt(subscriptionId)]
       })
 
-      console.log('✅ 取消订阅交易已提交:', hash)
-      
       // 等待交易确认后刷新数据
       setTimeout(() => {
         refetch()
@@ -396,8 +380,6 @@ export function useSubscriptionDetail(subscriptionId: number) {
           functionName: 'getSubscription',
           args: [BigInt(subscriptionId)]
         }) as any
-
-        console.log('📦 获取到单个订阅数据:', subscriptionData)
 
         if (!subscriptionData || Number(subscriptionData.subscriptionId) === 0) {
           return null

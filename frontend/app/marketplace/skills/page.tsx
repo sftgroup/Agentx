@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
 import { Wrench, Search, Plus, CheckCircle, Clock, XCircle, Filter, Upload } from 'lucide-react'
+import { GATEWAY_URL_OPTIONAL as gatewayUrl } from '@/lib/gateway'
 
 interface SkillItem {
   id: number
@@ -23,7 +24,6 @@ interface SkillItem {
 const CATEGORIES = ['all', 'defi', 'nft', 'security', 'data', 'utility', 'trading', 'governance']
 
 export default function SkillsPage() {
-  const gatewayUrl = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || ''
   const { isAuthenticated, context } = useGatewayAuth(gatewayUrl)
 
   const [skills, setSkills] = useState<SkillItem[]>([])

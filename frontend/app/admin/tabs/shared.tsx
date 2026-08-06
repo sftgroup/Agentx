@@ -1,7 +1,9 @@
 // Shared helpers for admin tabs (split from app/admin/page.tsx, R7)
 'use client'
 
-export const GATEWAY = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
+import { GATEWAY_URL } from '@/lib/gateway'
+
+export const GATEWAY = GATEWAY_URL
 
 export const fmtWei = (w?: string | number | null) =>
   w === null || w === undefined ? '—' : Number(w) / 1e18 > 0 && Number(w) / 1e18 < 0.0001
