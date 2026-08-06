@@ -1,17 +1,14 @@
 // app/api/ipfs/upload/route.ts
+// 服务端代理：上传文件到 Pinata（legacy pinning API，无需客户端 JWT）。
+// 不依赖 pinata SDK，理由见 upload-json/route.ts（v3 API 拒绝 legacy scoped key）。
 import { NextRequest, NextResponse } from 'next/server'
-import { PinataSDK } from 'pinata'
 
-// 初始化 Pinata SDK
-const pinata = new PinataSDK({
-  pinataJwt: process.env.PINATA_JWT!,
-  pinataGateway: process.env.GATEWAY_URL || process.env.NEXT_PUBLIC_IPFS_GATEWAY!
-})
+const PINATA_PIN_FILE = 'https://api.pinata.cloud/pinning/pinFileToIPFS'
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    const file = formData.get('file') as File | null
 
     if (!file) {
       return NextResponse.json(
@@ -20,19 +17,45 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 使用正确的链式调用上传文件
-    const upload = await pinata.upload.public
-      .file(file)
-      .name(file.name)
-      .keyvalues({
+    const jwt = process.env.PINATA_JWT ?? ''
+    if (!jwt) {
+      return NextResponse.json(
+        { error: '服务器未配置 PINATA_JWT' },
+        { status: 503 }
+      )
+    }
+
+    const pinataForm = new FormData()
+    pinataForm.append('file', file, file.name)
+    pinataForm.append('pinataMetadata', JSON.stringify({
+      name: `agent-asset-${Date.now()}`,
+      keyvalues: {
         type: 'agent-asset',
-        timestamp: Date.now().toString()
-      })
+        timestamp: Date.now().toString(),
+      },
+    }))
+
+    const res = await fetch(PINATA_PIN_FILE, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwt}`,
+      },
+      body: pinataForm,
+    })
+
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      console.error('IPFS上传错误:', data)
+      return NextResponse.json(
+        { error: `Pinata 上传失败: ${JSON.stringify(data)}` },
+        { status: 502 }
+      )
+    }
 
     return NextResponse.json({
-      IpfsHash: upload.cid,
-      PinSize: upload.size,
-      Timestamp: new Date().toISOString()
+      IpfsHash: data.IpfsHash,
+      PinSize: data.PinSize,
+      Timestamp: data.Timestamp,
     })
 
   } catch (error) {
