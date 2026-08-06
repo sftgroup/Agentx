@@ -13,6 +13,11 @@ export const config = {
 
   openaiApiKey: process.env.OPENAI_API_KEY || '',
 
+  // Platform fallback LLM (non-BYOK tasks) — OpenAI-compatible provider,
+  // e.g. DeepSeek via LLM_ENDPOINT=https://api.deepseek.com/v1 + LLM_MODEL=deepseek-chat
+  llmEndpoint: process.env.LLM_ENDPOINT || '',
+  llmModel: process.env.LLM_MODEL || 'gpt-4o',
+
   // Embedding configuration (for pgvector memory)
   embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-ada-002',
   embeddingApiUrl: process.env.EMBEDDING_API_URL || 'https://api.openai.com/v1/embeddings',

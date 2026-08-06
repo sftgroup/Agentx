@@ -68,11 +68,13 @@ export class TenantLLMResolver {
       console.warn(`[TenantLLM] Failed to load/decrypt tenant key for ${tenantAddress}:`, (err as Error).message)
     }
 
-    // 3. Fallback: AgentX official key
+    // 3. Fallback: AgentX official key (OpenAI-compatible; optional LLM_ENDPOINT/LLM_MODEL
+    //    envs let the platform default to e.g. DeepSeek instead of api.openai.com)
     if (config.openaiApiKey) {
       return new OpenAIProvider({
         apiKey: config.openaiApiKey,
-        model: ctx.model || 'gpt-4o',
+        model: ctx.model || config.llmModel || 'gpt-4o',
+        endpoint: config.llmEndpoint || undefined,
       })
     }
 
