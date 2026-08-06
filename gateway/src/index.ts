@@ -149,7 +149,7 @@ app.post('/api/v1/agents-sync', async (_req, res, next) => {
 // ── Protected routes (auth + rate-limit only on known paths) ─────────────
 
 // Known protected API path prefixes (anything else under /api/v1 returns 404)
-const PROTECTED_PREFIXES = ['/chat/completions', '/tenant/', '/agent/', '/traces/', '/auth/api-key', '/sessions', '/tasks']
+const PROTECTED_PREFIXES = ['/chat/completions', '/tenant/', '/agent/', '/traces/', '/auth/api-key', '/sessions', '/tasks', '/schedules']
 
 app.use('/api/v1', (req, _res, next) => {
   if (PROTECTED_PREFIXES.some(p => req.path.startsWith(p))) {
@@ -202,6 +202,13 @@ app.listen(config.port, () => {
     console.log('[AgentX Gateway] A2A Worker started')
   }).catch(err => {
     console.error('[AgentX Gateway] Failed to start A2A Worker:', err.message)
+  })
+
+  // Start schedule daemon (R10): poll due user schedules → create chat tasks
+  import('./services/schedule-daemon').then(({ startScheduleDaemon }) => {
+    startScheduleDaemon()
+  }).catch(err => {
+    console.error('[AgentX Gateway] Failed to start schedule daemon:', err.message)
   })
 
   // Start agent sync event watcher (incremental on-chain updates)

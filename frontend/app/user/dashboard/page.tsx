@@ -9,7 +9,7 @@ import { useAgentRegistry } from '@/hooks/aimarket/useAgentRegistry'
 import { useMyAgentIds } from '@/hooks/user/useMyAgentIds'
 import {
   Brain, CreditCard, BarChart3, MessageSquare, RefreshCw, AlertCircle,
-  CheckCircle, Clock, Settings, Sparkles, TrendingUp, Activity,
+  CheckCircle, Clock, Settings, Sparkles, TrendingUp, Activity, CalendarClock,
   Loader2, Wallet, Users
 } from 'lucide-react'
 import Link from 'next/link'
@@ -101,6 +101,7 @@ export default function UserDashboard() {
           </div>
           <div className="flex gap-3">
             <Link href="/user/plans" className="btn-secondary text-sm py-2"><CreditCard className="w-4 h-4" /> Plans</Link>
+            <Link href="/user/schedules" className="btn-secondary text-sm py-2"><CalendarClock className="w-4 h-4" /> Schedules</Link>
             <Link href="/user/settings" className="btn-secondary text-sm py-2"><Settings className="w-4 h-4" /> Settings</Link>
             <Link href="/marketplace" className="btn-primary text-sm py-2"><Sparkles className="w-4 h-4" /> Explore</Link>
           </div>
