@@ -5,6 +5,17 @@
 
 ---
 
+## 待发布（Pending）
+
+### @agentxv2/payments@0.2.2 — 归属元数据（随下次功能迭代一起发）
+
+- **目的**：让 npm registry 展示 AgentX 归属信息（当前 0.2.1 的 package.json 元数据变更尚未发布，`npm view` 的 `author/repository/homepage` 仍为空）
+- **内容**：`author: "AgentX (sftgroup)"`、`repository: github.com/sftgroup/Agentx`、`homepage`、`bugs`、`keywords`；README 维护声明（源码位于 `sftgroup/Agentx/payments`）
+- **无代码/API 变化**：不 bump sdk（sdk `^0.2.0` 范围兼容）
+- 代码已在 main（commit `c65d2c4`），仅待 npm 发版
+
+---
+
 ## 2026-08-07 — 生产升级 sdk@0.9.3 + payments@0.2.1
 
 ### @agentxv2/payments@0.2.1 — 浏览器/bundler 兼容修复
