@@ -620,6 +620,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.8.10** | 2026-08-06 | Master-key crypto helpers `encryptWithKey()` / `decryptWithKey()` (AES-256-GCM, `base64(IV‖tag‖ciphertext)`, byte-compatible with Gateway at-rest key encryption); `parseTokenURIJSON` exported from the main entry; `A2AProtocol.createTask()` accepts raw string `input`; **subscription status mapping fix** (on-chain enum `0/1/2/3` → `pending/active/expired/cancelled`, previously shifted) |
 | **0.8.9** | 2026-08-06 | Docs sync — Installation section points at v0.8.8 ("just install to use the new capabilities"); same code as 0.8.8 |
 | **0.8.8** | 2026-08-06 | Docs sync — README updated for 0.8.7 (sessions & parallel tasks section) |
 | **0.8.7** | 2026-08-06 | `ConversationClient` gains sessions & parallel tasks: `createSession()` / `createTask()` (returns `taskId` immediately, background execution) / `getTask()` / `listTasks()` / `cancelTask()` / `getCapabilities()`. New `ConversationTaskError` (`.status` / `.code`) — `createTask()` on a P9-disabled tenant/plan rejects with HTTP 403 `PARALLEL_TASKS_DISABLED`; used by the frontend parallel-task chat UI |

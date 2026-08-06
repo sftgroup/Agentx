@@ -114,6 +114,53 @@ export function aesDecrypt(encryptedBase64: string, keyHex: string): string {
 }
 
 /**
+ * Encrypt with AES-256-GCM — master-key wire format.
+ * Layout: base64( IV[12] || authTag[16] || ciphertext ).
+ * Kept byte-for-byte compatible with the Gateway's legacy at-rest key
+ * encryption (`gateway/src/lib/crypto.ts`) so existing stored rows decrypt
+ * unchanged. New code should prefer `aesEncrypt`/`aesDecrypt` unless data
+ * written in this layout must be read.
+ */
+export function encryptWithKey(plaintext: string, keyHex: string): string {
+  const key = hexToBytes(keyHex)
+  const iv = randomBytes(IV_SIZE)
+  const plainBytes = new TextEncoder().encode(plaintext)
+
+  const cipher = gcm(key, iv)
+  const encrypted = cipher.encrypt(plainBytes)
+  const ciphertext = encrypted.subarray(0, -TAG_SIZE)
+  const authTag = encrypted.subarray(-TAG_SIZE)
+
+  const combined = new Uint8Array(IV_SIZE + TAG_SIZE + ciphertext.length)
+  combined.set(iv, 0)
+  combined.set(authTag, IV_SIZE)
+  combined.set(ciphertext, IV_SIZE + TAG_SIZE)
+
+  return toBase64(combined)
+}
+
+/**
+ * Decrypt AES-256-GCM — master-key wire format
+ * (base64( IV[12] || authTag[16] || ciphertext )).
+ */
+export function decryptWithKey(encryptedBase64: string, keyHex: string): string {
+  const key = hexToBytes(keyHex)
+  const combined = fromBase64(encryptedBase64)
+
+  const iv = combined.subarray(0, IV_SIZE)
+  const authTag = combined.subarray(IV_SIZE, IV_SIZE + TAG_SIZE)
+  const ciphertext = combined.subarray(IV_SIZE + TAG_SIZE)
+
+  const cipher = gcm(key, iv)
+  const ciphertextWithTag = new Uint8Array(ciphertext.length + TAG_SIZE)
+  ciphertextWithTag.set(ciphertext, 0)
+  ciphertextWithTag.set(authTag, ciphertext.length)
+
+  const decrypted = cipher.decrypt(ciphertextWithTag)
+  return new TextDecoder().decode(decrypted)
+}
+
+/**
  * Generate a cryptographically random AES-256 key (hex, 64 chars).
  */
 export function generateAesKey(): string {

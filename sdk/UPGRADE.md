@@ -1,5 +1,35 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.8.9 → v0.8.10
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Master-key crypto helpers** | `encryptWithKey()` / `decryptWithKey()` — AES-256-GCM with wire format `base64(IV[12] ‖ authTag[16] ‖ ciphertext)`, byte-for-byte compatible with the Gateway's legacy at-rest key encryption (`gateway/src/lib/crypto.ts`). Use them to read/write tenant key material stored encrypted with the Gateway master key. New code should prefer `aesEncrypt`/`aesDecrypt` unless data in this layout must be read. |
+| **`parseTokenURIJSON` exported** | `import { parseTokenURIJSON } from '@agentxv2/sdk'` — the fault-tolerant tokenURI parser is now public (previously internal to the Gateway indexer / SDK `AgentRegistry`). |
+| **`createTask()` raw-string input** | `A2AProtocol.createTask(agentId, taskType, input)` now accepts `input: string \| Record<string, unknown>`. Pass pre-serialized JSON or plain text directly; objects are still JSON-stringified. Fully backward compatible. |
+| **Subscription status mapping fix** | `SubscriptionManager.getSubscription()` now maps the on-chain enum (`0=Inactive, 1=Active, 2=Expired, 3=Cancelled`) to the typed `AgentSubscription['status']` correctly. The previous positional array `['active','expired','cancelled','pending']` mislabeled `Inactive` as `active`, `Active` as `expired`, `Expired` as `cancelled`, and `Cancelled` as `pending` — a wrong status on essentially every subscription. Now `pending` / `active` / `expired` / `cancelled` match the contract. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.8.10   # or simply: npm install @agentxv2/sdk (latest = 0.8.10)
+```
+
+### Use Master-Key Crypto
+
+```ts
+import { encryptWithKey, decryptWithKey } from '@agentxv2/sdk'
+
+const ciphertext = encryptWithKey(plaintext, masterKeyHex)   // base64(IV ‖ tag ‖ ciphertext)
+const plain = decryptWithKey(ciphertext, masterKeyHex)
+```
+
+### Breaking Changes
+
+None — all additions are new exports; the `createTask` input type is a widening, and the subscription status fix only corrects values that were previously wrong.
+
 ## v0.8.8 → v0.8.9
 
 ### What's New

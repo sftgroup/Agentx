@@ -7,6 +7,20 @@
 
 ## 2026-08-06
 
+### SDK v0.8.10 — 主密钥加解密 + subscription 状态映射修正
+
+**新特性**（npm `@agentxv2/sdk@0.8.10`，此前 0.8.8/0.8.9 均为 docs-sync，不含这些改动）：
+
+- **`encryptWithKey()` / `decryptWithKey()`** — AES-256-GCM 主密钥线格式 `base64(IV[12] ‖ authTag[16] ‖ ciphertext)`，与 Gateway at-rest key 加密（`gateway/src/lib/crypto.ts`）字节级兼容；Gateway 已改由 SDK 提供此实现
+- **`parseTokenURIJSON` 公开导出** — 容错 tokenURI 解析器现可从主入口导入（此前仅内部使用）
+- **`A2AProtocol.createTask()` 支持原始字符串 input** — `input: string | Record`，向后兼容
+- **Subscription 状态映射修正** — 链上 enum（`0=Inactive,1=Active,2=Expired,3=Cancelled`）此前被错误的位置数组映射（错位一位，几乎所有订阅状态都返回错误值），现修正为 `pending/active/expired/cancelled`
+
+- 验证：SDK tsc 0 错误 + vitest 17/17 ✓；构建产物 dist 已更新
+- 文档：`sdk/UPGRADE.md`（v0.8.9→v0.8.10）、`sdk/README.md` 版本表已更新
+
+## 2026-08-06
+
 ### Gateway — R13 外部项目方自助申请 API Key
 
 **新特性**：外部项目方可在 `/apply` 页自助提交 API 接入申请，admin 审批后**自动**创建集成租户并签发 `agentx_` key（复用 P7-5 申请模型 + R11 自动建租户逻辑）。

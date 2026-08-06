@@ -200,6 +200,17 @@ export interface SubscriptionDetail {
   fundsReleased: boolean
 }
 
+// On-chain `SubscriptionStatus` enum (contracts/src/SubscriptionManager.sol):
+//   0=Inactive, 1=Active, 2=Expired, 3=Cancelled
+// Mapped to the typed SubscriptionStatus string; Inactive is surfaced as
+// 'pending' (SubscriptionStatus has no 'inactive' member).
+const SUBSCRIPTION_STATUS_NAMES: Record<number, AgentSubscription['status']> = {
+  0: 'pending',
+  1: 'active',
+  2: 'expired',
+  3: 'cancelled',
+}
+
 // ── Period ─────────────────────────────────────────────────────────────────
 // On-chain `_periodToSeconds` only recognizes day/week/month/year; any other
 // string silently falls back to 30 days. Typed here so consumers cannot pass
@@ -482,7 +493,7 @@ export class SubscriptionManager {
       subscriptionId: Number(subId),
       subscriber: sub as Address,
       agentId: Number(aId),
-      status: ['active', 'expired', 'cancelled', 'pending'][status] as AgentSubscription['status'],
+      status: SUBSCRIPTION_STATUS_NAMES[status] ?? 'pending',
       startedAt: Number(started),
       expiresAt: Number(expires),
       period,

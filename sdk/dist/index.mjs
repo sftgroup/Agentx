@@ -21,9 +21,11 @@ __export(crypto_exports, {
   aesEncrypt: () => aesEncrypt,
   bytesToHex: () => bytesToHex,
   decryptPayload: () => decryptPayload,
+  decryptWithKey: () => decryptWithKey,
   eciesDecrypt: () => eciesDecrypt,
   eciesEncrypt: () => eciesEncrypt,
   encryptPayload: () => encryptPayload,
+  encryptWithKey: () => encryptWithKey,
   generateAesKey: () => generateAesKey,
   generateKeyPair: () => generateKeyPair,
   getPublicKey: () => getPublicKey,
@@ -81,6 +83,33 @@ function aesDecrypt(encryptedBase64, keyHex) {
   const iv = combined.subarray(0, IV_SIZE);
   const ciphertext = combined.subarray(IV_SIZE, -TAG_SIZE);
   const authTag = combined.subarray(-TAG_SIZE);
+  const cipher = gcm(key, iv);
+  const ciphertextWithTag = new Uint8Array(ciphertext.length + TAG_SIZE);
+  ciphertextWithTag.set(ciphertext, 0);
+  ciphertextWithTag.set(authTag, ciphertext.length);
+  const decrypted = cipher.decrypt(ciphertextWithTag);
+  return new TextDecoder().decode(decrypted);
+}
+function encryptWithKey(plaintext, keyHex) {
+  const key = hexToBytes(keyHex);
+  const iv = randomBytes(IV_SIZE);
+  const plainBytes = new TextEncoder().encode(plaintext);
+  const cipher = gcm(key, iv);
+  const encrypted = cipher.encrypt(plainBytes);
+  const ciphertext = encrypted.subarray(0, -TAG_SIZE);
+  const authTag = encrypted.subarray(-TAG_SIZE);
+  const combined = new Uint8Array(IV_SIZE + TAG_SIZE + ciphertext.length);
+  combined.set(iv, 0);
+  combined.set(authTag, IV_SIZE);
+  combined.set(ciphertext, IV_SIZE + TAG_SIZE);
+  return toBase64(combined);
+}
+function decryptWithKey(encryptedBase64, keyHex) {
+  const key = hexToBytes(keyHex);
+  const combined = fromBase64(encryptedBase64);
+  const iv = combined.subarray(0, IV_SIZE);
+  const authTag = combined.subarray(IV_SIZE, IV_SIZE + TAG_SIZE);
+  const ciphertext = combined.subarray(IV_SIZE + TAG_SIZE);
   const cipher = gcm(key, iv);
   const ciphertextWithTag = new Uint8Array(ciphertext.length + TAG_SIZE);
   ciphertextWithTag.set(ciphertext, 0);
@@ -5073,6 +5102,12 @@ var ERC20_ABI = {
     type: "function"
   }
 };
+var SUBSCRIPTION_STATUS_NAMES = {
+  0: "pending",
+  1: "active",
+  2: "expired",
+  3: "cancelled"
+};
 var SUBSCRIPTION_PERIODS = ["day", "week", "month", "year"];
 var SubscriptionManager = class {
   address;
@@ -5287,7 +5322,7 @@ var SubscriptionManager = class {
       subscriptionId: Number(subId),
       subscriber: sub,
       agentId: Number(aId),
-      status: ["active", "expired", "cancelled", "pending"][status],
+      status: SUBSCRIPTION_STATUS_NAMES[status] ?? "pending",
       startedAt: Number(started),
       expiresAt: Number(expires),
       period
@@ -5710,7 +5745,7 @@ var A2AProtocol = class {
   // ── Task ────────────────────────────────────────────────────────────────
   async createTask(agentId, taskType, input) {
     const acct = await this.account;
-    const inputStr = JSON.stringify(input);
+    const inputStr = typeof input === "string" ? input : JSON.stringify(input);
     const { request } = await this.publicClient.simulateContract({
       account: acct,
       address: this.address,
@@ -6938,11 +6973,13 @@ export {
   cidFromURI,
   createLLMProvider,
   decryptPayload,
+  decryptWithKey,
   defaultIPFSFetcher,
   defaultIPFSUploader,
   eciesDecrypt,
   eciesEncrypt,
   encryptPayload,
+  encryptWithKey,
   executeBrowserAction,
   executePlatformTool,
   extractAccessibleDOM,
@@ -6953,6 +6990,7 @@ export {
   guardSubscription,
   hexToBytes,
   packAgentForPublish,
+  parseTokenURIJSON,
   publishAgent,
   randomBytes,
   subscribeToEvents,
