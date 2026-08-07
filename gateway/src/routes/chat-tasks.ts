@@ -146,6 +146,16 @@ router.post('/sessions/:sessionId/tasks', async (req: Request, res: ExpressRespo
 
     // P9 capability gate is enforced once at router.use(parallelTaskGate).
 
+    // B-end budget guard: partner tasks must carry their own LLM key (BYOK) so
+    // background/parallel work never consumes the platform fallback key budget.
+    const hasByok = !!req.headers['x-llm-api-key'] || !!tenantKeyId || !!req.body?.llmApiKey
+    if (req.tenant?.kind === 'partner' && !hasByok) {
+      return res.status(400).json({
+        error: 'Partner tasks require a BYOK LLM key (X-Llm-Api-Key header or tenantKeyId)',
+        code: 'LLM_KEY_REQUIRED',
+      })
+    }
+
     // Stored BYOK: resolve the tenant's own key server-side (never leaves the gateway)
     const { key: headerApiKey, endpoint, model } = await resolveStoredKey(req, tenantKeyId)
     const upstream = await getConversationProxy().createTask({

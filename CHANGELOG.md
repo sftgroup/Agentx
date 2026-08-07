@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-08-08 — B 端（partner）并行任务强制 BYOK（预算约束）
+
+**背景**：B 端需求第 2 点——防止 partner 用平台 LLM 预算跑后台任务（并行/后台任务消耗平台兜底 key）。
+
+**实现**（[gateway/src/routes/chat-tasks.ts](gateway/src/routes/chat-tasks.ts)）：
+- partner 租户创建任务（`POST /sessions/:id/tasks`）必须携带 LLM Key：`X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId`（存储式）三者之一，否则 `400 { code: "LLM_KEY_REQUIRED" }`
+- 对话（chat，`/agent/runs`）与 user 类租户不受此限制（维持平台兜底 key 行为）
+- **测试**：gateway 46/46（新增 4 个 BYOK 守卫用例：partner 无 BYOK 400 / header 放行 / tenantKeyId 放行 / user 不受影响）；同时修正 2 个既有 partner 用例补 BYOK header、mock `lib/db` + `lib/crypto` 支撑 tenantKeyId 用例
+- **文档**：integration-callers.md（§6 强制 BYOK 说明 + FAQ LLM_KEY_REQUIRED）、sdk README / UPGRADE 同步
+
+---
+
 ## 2026-08-08 — B 端端用户订阅转发（B-end subscription proxying）
 
 **背景**：B 端集成方需要「我的最终用户已订阅某 Agent → 我可代为对话」。原授权模型按**调用方租户**（`partner-...`）判定，端用户订阅无法传递（partner 地址非链地址，恒 403）。
