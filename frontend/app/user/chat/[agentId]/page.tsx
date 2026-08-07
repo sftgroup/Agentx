@@ -13,7 +13,8 @@ import { useAgentRunner } from '@agentxv2/sdk/react'
 import { AgentLoop, OpenAIProvider } from '@agentxv2/sdk'
 import type { RunnableSkill, ToolCallStart, ToolCallResult } from '@agentxv2/sdk'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
-import { useAgentChat, type ChatMessage } from '@/hooks/useAgentChat'
+import { useAgentChat, type ChatMessage, type OnChainApprovalPayload } from '@/hooks/useAgentChat'
+import { OnchainApprovalModal } from '@/components/a2a/OnchainApprovalModal'
 import { Send, Brain, AlertCircle, ArrowLeft, Loader2, Trash2, Square, Wrench, Terminal } from 'lucide-react'
 import Link from 'next/link'
 import { ModelOption, HISTORY_KEY_PREFIX, llmApiKeyFromLocalStorage } from './chat-utils'
@@ -32,6 +33,7 @@ export default function ChatPage() {
   const [useSseStreaming, setUseSseStreaming] = useState(true) // SSE via Gateway (primary) or AgentLoop (fallback)
   const [clarification, setClarification] = useState<string | null>(null) // pending clarifying question from Conversation Service
   const [clarificationAnswer, setClarificationAnswer] = useState('')
+  const [onchainApproval, setOnchainApproval] = useState<OnChainApprovalPayload | null>(null) // pending on-chain delegation approval
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const loopRef = useRef<AgentLoop | null>(null)
@@ -189,6 +191,7 @@ export default function ChatPage() {
             // Optional: track usage
           },
           onClarification: (question) => setClarification(question),
+          onOnchainApproval: (approval) => setOnchainApproval(approval),
         }, history)
         return
       }
@@ -528,6 +531,13 @@ export default function ChatPage() {
           </div>
         </div>
     </SubscriptionGuard>
+    {onchainApproval && (
+      <OnchainApprovalModal
+        approval={onchainApproval}
+        gatewayUrl={gatewayUrl}
+        onClose={() => setOnchainApproval(null)}
+      />
+    )}
     </AppLayout>
   )
 }
