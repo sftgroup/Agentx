@@ -108,8 +108,19 @@ async function fetchAndUpsertAgent(agentId: number, contract: ethers.Contract): 
   const parsed = parseTokenURIJSON(tokenURI)
   const parsedCategory = typeof parsed?.category === 'string' && parsed.category ? String(parsed.category) : ''
   const category = parsedCategory || attrs.category || 'other'
+
+  // tokenURI JSON may be unreadable — Studio publishes an *encrypted* IPFS
+  // payload behind an auth-gated gateway, so parseTokenURIJSON returns nothing.
+  // The publish flow mirrors name/description/category/tags into the on-chain
+  // attrs precisely to cover that case; merge them in as fallbacks so the
+  // agents table (and derived prompts) always carry the real display data.
+  const mergedParsed: Record<string, unknown> = { ...(parsed ?? {}) }
+  for (const k of ['name', 'description', 'category', 'tags'] as const) {
+    const v = attrs[k]
+    if (v && !mergedParsed[k]) mergedParsed[k] = k === 'tags' ? v.split(',').filter(Boolean) : v
+  }
   const { name, description, tags, capabilities, skills, isActive, agentCreatedAt } =
-    extractMetadata(parsed, agentId)
+    extractMetadata(mergedParsed, agentId)
 
   await pool.query(
     `INSERT INTO agents (id, owner, name, description, tags, capabilities, skills, category, is_active, agent_created_at, token_uri, metadata_json, synced_at, updated_at)
