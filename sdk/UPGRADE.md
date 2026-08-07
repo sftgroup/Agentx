@@ -1,5 +1,26 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.9.4 → v0.9.5
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Fix: streaming tool_call parameter deltas dropped** | DeepSeek / OpenAI streaming `tool_calls` chunks only carry an `index` on argument-delta chunks (the first chunk carries the `id`). The SDK previously built `callId` as `tc.id ?? call_${tc.index}`, which stopped matching the `tool_call_start` id on later deltas — so **accumulated tool arguments were silently discarded** and tool calls failed with incomplete/malformed arguments. Both `GatewayProvider` and `OpenAIProvider` now maintain an `index → id` map, so argument deltas attach to the real call id and all parameters are preserved. |
+| **No breaking changes** | Pure bug fix. `LLMProvider` stream event contract unchanged. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.9.5   # or: npm install @agentxv2/sdk (latest = 0.9.5)
+```
+
+### Related: server-side orchestration layering
+
+No SDK API change, but the Conversation Service now defaults multi-agent orchestration to the **off-chain rail** (`agentx_delegate`, synchronous, zero cost) and only uses the **on-chain rail** (A2A task with `taskId` audit trail) when the user explicitly requests audit / settlement. See the SDK README → *Multi-Agent Orchestration Layering*.
+
+---
+
 ## v0.9.3 → v0.9.4
 
 ### What's New
