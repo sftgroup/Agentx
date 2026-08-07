@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-08-08 — 发布 sdk@0.9.5（流式 tool_call 参数修复）
+
+### @agentxv2/sdk@0.9.5 — 流式 tool_call 参数增量 chunk callId 丢失修复
+
+**问题**：DeepSeek / OpenAI 流式响应中，`tool_calls` 的首个 chunk 带 `id` + `function.name`，后续参数增量 chunk 只带 `index`（无 `id`）。原实现以 `tc.id ?? call_${tc.index}` 构造 callId，后续 delta 与 `tool_call_start` 的 id 无法匹配，`toolCallsAccum` 找不到对应调用 → **累积的工具参数被静默丢弃**，工具调用以残缺参数失败。
+
+**修复**（commit af94585）：`sdk/src/llm/gateway-provider.ts` + `sdk/src/llm/openai-provider.ts` 维护 `callIdsByIndex: Map<index, id>`，delta 通过映射关联到真实 callId，参数完整保留。
+
+**兼容性**：纯 bug fix，无 breaking changes（`LLMProvider` 流事件契约不变）。已发布 npm。
+
+---
+
 ## 2026-08-07 — 多 Agent 编排分层（链下默认 / 链上可选）+ 发布 sdk@0.9.4、payments@0.2.2
 
 ### 多 Agent 编排分层（Conversation Service + Gateway，仓库级）

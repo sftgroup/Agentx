@@ -1,4 +1,4 @@
-# @agentxv2/sdk v0.9.4
+# @agentxv2/sdk v0.9.5
 
 **Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query, hosted conversation sessions & parallel tasks, agent application categories.
 
@@ -10,14 +10,14 @@ Agent = Prompt + Skills[] + MCP
 
 ## Installation
 
-The current release **0.9.4** adds the **agent application category** (`category` / `AGENT_CATEGORIES`) to publishing & querying, on top of the unified `/api/v1/payments` endpoint for fiat / x402 / access via the decoupled `@agentxv2/payments` engine (auto-installed, `^0.2.0` → resolves to **0.2.2**, adds MPP channels / stablecoin EIP-3009 / period authorizations / a2a-pay clients) and the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
+The current release **0.9.5** is a **streaming bug fix**: DeepSeek / OpenAI tool-call argument deltas (which carry only an `index`, not an `id`) are now correctly re-attached to the originating `tool_call_start` — previously the accumulated tool arguments could be silently dropped, breaking multi-turn tool use. No breaking changes. It builds on **0.9.4** (agent application categories + unified `/api/v1/payments` endpoint via the decoupled `@agentxv2/payments` engine, `^0.2.0` → resolves to **0.2.2**) and the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
 
 ```bash
-# latest (recommended) — 0.9.4, agent categories + unified payments endpoint
+# latest (recommended) — 0.9.5, streaming tool_call fix + agent categories + unified payments endpoint
 npm install @agentxv2/sdk
 
 # or pin the exact release
-npm install @agentxv2/sdk@0.9.4
+npm install @agentxv2/sdk@0.9.5
 ```
 
 ### Peer Dependencies
@@ -704,6 +704,7 @@ ORCHESTRATE_MAX_DEPTH=4               # max nested delegation depth
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.9.5** | 2026-08-08 | **Fix: streaming tool_call arguments dropped** — DeepSeek/OpenAI argument-delta chunks carry only an `index` (no `id`); `GatewayProvider` / `OpenAIProvider` now keep an `index→id` map so accumulated tool arguments attach to the real call (previously silently discarded). **No breaking changes** (see UPGRADE.md) |
 | **0.9.4** | 2026-08-07 | **Agent application categories** — `AgentPayload.category` + `AGENT_CATEGORIES` / `AgentCategory` (13 enums); written to public metadata + on-chain attrs; `getAllAgents()` / `getAgentMetadata()` resolve `category`; Gateway `?category=` filter + byCategory aggregation; frontend Studio requires it, Marketplace categorizes by it. `@agentxv2/payments` resolved to **0.2.2** (ownership metadata). **No breaking changes** (see UPGRADE.md) |
 | **0.9.3** | 2026-08-07 | **P2-P4 rails aligned** — `@agentxv2/payments` bumped to `^0.2.0` (MPP payment channels / stablecoin EIP-3009+Permit2 / period authorizations / a2a-pay); re-exports `MPPClient` / `A2AClient` / `PeriodClient` / `X402Client` / `PaymentsClient` from the SDK root. **No breaking changes** — `SubscriptionPayments` API unchanged (see UPGRADE.md) |
 | **0.9.2** | 2026-08-07 | **Unified payments endpoint** — `SubscriptionPayments` fiat / x402 / `hasAccess()` now go through the Gateway's `/api/v1/payments` via the decoupled `@agentxv2/payments` engine (`^0.1.0`, new dependency); `fetchX402Info()` reads the rails-discovery `/info`. **No breaking changes** — `pay()` / `hasAccess()` / result types unchanged (see UPGRADE.md) |
