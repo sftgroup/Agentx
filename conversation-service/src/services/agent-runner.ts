@@ -81,7 +81,12 @@ export class AgentRunnerService {
 
       // 1.5 Platform tools: off-chain / on-chain multi-agent orchestration.
       //     Injected only while the depth budget allows further delegation.
-      const skills = [...(loadedCtx.skills || []), ...this.buildOrchestrationSkills(request, depth)]
+      //     If the caller already injected same-named orchestration skills
+      //     (e.g. our platform inline agentx_list_agents/agentx_delegate backed
+      //     by the local subscription table), skip the Gateway-based ones to
+      //     avoid duplicate tool definitions.
+      const loadedNames = new Set((loadedCtx.skills || []).map((s) => s.name))
+      const skills = [...(loadedCtx.skills || []), ...this.buildOrchestrationSkills(request, depth, loadedNames)]
 
       // 2. Resolve LLM provider — tenant key > header key > AgentX key
       const llmProvider = await this.llmResolver.resolve(
@@ -194,8 +199,16 @@ export class AgentRunnerService {
    *   - agentx_delegate     — delegate a sub-task (off-chain by default,
    *                           on-chain when the user requests audit/settlement)
    */
-  private buildOrchestrationSkills(request: AgentRunRequest, depth: number): RunnableSkill[] {
+  private buildOrchestrationSkills(
+    request: AgentRunRequest,
+    depth: number,
+    loadedNames?: Set<string>,
+  ): RunnableSkill[] {
     if (!this.orchestrator || !this.orchestrator.configured || depth >= config.orchestrateMaxDepth) {
+      return []
+    }
+    // 平台 inline skills 已提供同名工具 (本地订阅表授权) → 跳过官方 Gateway 编排, 避免工具重名
+    if (loadedNames && (loadedNames.has('agentx_list_agents') || loadedNames.has('agentx_delegate'))) {
       return []
     }
 
