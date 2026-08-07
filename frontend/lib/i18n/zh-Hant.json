@@ -203,7 +203,7 @@
   },
   "a2a": {
     "title": "A2A 任務",
-    "desc": "鏈上代理間協作任務",
+    "desc": "多代理編排任務——當您的代理在對話中委派給其他代理時自動建立",
     "upgradeNote": "建議升級至 A2A 合約 v2 以獲得完整任務歷史。目前使用循序任務掃描。",
     "filterAll": "全部",
     "filterActive": "進行中",
@@ -307,6 +307,8 @@
     "studio": "工作室",
     "dashboard": "儀表板",
     "dashboardDesc": "管理您的代理",
+    "chat": "我的對話",
+    "chatDesc": "與您的代理對話",
     "a2a": "A2A 任務",
     "a2aDesc": "代理協作"
   },

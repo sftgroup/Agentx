@@ -9,6 +9,7 @@
 
 import { Router, type Request, type Response as ExpressResponse } from 'express'
 import { getConversationProxy } from '../services/conversation-proxy'
+import { canAccessAgent } from '../services/agent-access'
 import { getPool } from '../lib/db'
 import { decryptApiKey } from '../lib/crypto'
 import { config } from '../config'
@@ -86,6 +87,16 @@ async function pipeSSE(upstream: globalThis.Response, res: ExpressResponse): Pro
 router.post('/sessions', async (req: Request, res: ExpressResponse) => {
   try {
     const { sessionId, agentId, endUserId, title } = req.body || {}
+
+    // Access boundary: sessions may only be created for agents the caller
+    // owns or has an active subscription to.
+    if (agentId !== undefined && agentId !== null && agentId !== '') {
+      const ok = await canAccessAgent(req.tenant?.walletAddress || 'unknown', Number(agentId))
+      if (!ok) {
+        return res.status(403).json({ error: 'No subscription access to this agent', code: 'AGENT_ACCESS_DENIED' })
+      }
+    }
+
     const upstream = await getConversationProxy().createSession({
       sessionId,
       agentId,
@@ -113,6 +124,15 @@ router.post('/sessions/:sessionId/tasks', async (req: Request, res: ExpressRespo
     const hasInline = typeof prompt === 'string' || (Array.isArray(skills) && skills.length > 0)
     if (!hasAgentId && !hasInline) {
       return res.status(400).json({ error: 'agentId or inline prompt/skills is required' })
+    }
+
+    // Access boundary: tasks may only run for agents the caller owns or is
+    // subscribed to. Inline mode (no agentId) is unaffected.
+    if (hasAgentId && !hasInline) {
+      const ok = await canAccessAgent(req.tenant?.walletAddress || 'unknown', Number(agentId))
+      if (!ok) {
+        return res.status(403).json({ error: 'No subscription access to this agent', code: 'AGENT_ACCESS_DENIED' })
+      }
     }
 
     // P9 capability gate: integrators can disable multi-task / sub-agent.
