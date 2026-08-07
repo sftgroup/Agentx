@@ -16,7 +16,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { ConversationClient, ConversationTaskError } from '@agentxv2/sdk/conversation'
-import type { ConversationTask } from '@agentxv2/sdk/conversation'
+import type { ConversationTask, OnChainApprovalRequest } from '@agentxv2/sdk/conversation'
 
 export interface ChatMessage {
   id: string
@@ -32,11 +32,7 @@ export interface ChatMessage {
 }
 
 /** Rail: onchain — the user's wallet must create the A2A task (they pay the gas). */
-export interface OnChainApprovalPayload {
-  targetAgentId: number
-  taskType: string
-  inputData: string
-}
+export type OnChainApprovalPayload = OnChainApprovalRequest
 
 interface AgentChatOptions {
   agentId: number
@@ -347,16 +343,14 @@ export function useAgentChat() {
             options.onError?.(event.error ?? '')
             break
 
-          default: {
-            // The SDK forwards unknown SSE events verbatim; the on-chain
-            // delegation approval payload is one of them (typed loosely until
-            // a future SDK release adds the event to ConversationSSEEvent).
-            const ev = event as unknown as { type?: string; approval?: OnChainApprovalPayload }
-            if (ev.type === 'onchain_approval_required' && ev.approval) {
-              options.onOnchainApproval?.(ev.approval)
+          case 'onchain_approval_required':
+            if (event.approval) {
+              options.onOnchainApproval?.(event.approval)
             }
             break
-          }
+
+          default:
+            break
         }
       }
     } catch (err: any) {

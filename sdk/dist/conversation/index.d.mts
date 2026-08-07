@@ -47,8 +47,18 @@ interface ConversationChatParams {
     /** BYOK: id of a stored tenant-owned API key (resolved server-side by the Gateway) */
     tenantKeyId?: string;
 }
+/**
+ * On-chain rail (2026-08-08): the user's own wallet must create the A2A task —
+ * they pay the gas and become the on-chain client. Emitted by the Conversation
+ * Service when a run requests an auditable / settled delegation.
+ */
+interface OnChainApprovalRequest {
+    targetAgentId: number;
+    taskType: string;
+    inputData: string;
+}
 interface ConversationSSEEvent {
-    type: 'text' | 'tool_call' | 'tool_result' | 'thinking' | 'done' | 'error' | 'clarification';
+    type: 'text' | 'tool_call' | 'tool_result' | 'thinking' | 'done' | 'error' | 'clarification' | 'onchain_approval_required';
     content?: string;
     /** Clarification question when the service decides the request needs disambiguation */
     question?: string;
@@ -57,6 +67,8 @@ interface ConversationSSEEvent {
     toolResult?: unknown;
     /** Attached to tool_result when tool execution failed */
     error?: string;
+    /** On-chain rail: the agent requested an A2A delegation the user must approve in their wallet */
+    approval?: OnChainApprovalRequest;
     usage?: {
         promptTokens: number;
         completionTokens: number;
@@ -186,4 +198,4 @@ declare class ConversationClient {
     cancelTask(taskId: string): Promise<ConversationTask>;
 }
 
-export { type ConversationChatParams, type ConversationChatResult, ConversationClient, type ConversationClientConfig, type ConversationCreateSessionParams, type ConversationCreateTaskParams, type ConversationSSEEvent, type ConversationSkillDef, type ConversationTask, ConversationTaskError, type ConversationTaskStatus };
+export { type ConversationChatParams, type ConversationChatResult, ConversationClient, type ConversationClientConfig, type ConversationCreateSessionParams, type ConversationCreateTaskParams, type ConversationSSEEvent, type ConversationSkillDef, type ConversationTask, ConversationTaskError, type ConversationTaskStatus, type OnChainApprovalRequest };
