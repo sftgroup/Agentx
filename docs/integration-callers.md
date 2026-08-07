@@ -1,7 +1,7 @@
 # AgentX 调用方接入指南（通用版）
 
 > 面向各业务团队 / 调用方的接入文档。适用于通过 SDK 或 HTTP 直接调用 AgentX 平台能力的场景。
-> 适用 SDK：`@agentxv2/sdk >= 0.8.8`（含 sessions / tasks 能力）
+> 适用 SDK：`@agentxv2/sdk >= 0.9.4`（含 sessions / tasks 能力、三轨订阅支付、Agent 应用分类）
 > 本文件为**通用文档**，Key 以占位符 `agentx_<your-key>` 表示，请勿在此提交真实 Key。
 
 ---
@@ -135,13 +135,13 @@ curl -H "X-Api-Key: $AGENTX_CONVERSATION_API_KEY" \
 ### 安装
 
 ```bash
-npm install @agentxv2/sdk@^0.8.8
+npm install @agentxv2/sdk@^0.9.4
 ```
 
 ### 初始化
 
 ```ts
-import { ConversationClient } from '@agentxv2/sdk'
+import { ConversationClient } from '@agentxv2/sdk/conversation'
 
 const client = new ConversationClient({
   gatewayUrl: process.env.AGENTX_GATEWAY_URL!,

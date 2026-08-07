@@ -22,6 +22,7 @@ import channelRouter from './routes/channel'
 import developerRouter from './routes/developer'
 import fiatRouter from './routes/fiat'
 import x402Router from './routes/x402'
+import internalOrchestrateRouter from './routes/internal-orchestrate'
 import paymentsRouter from './routes/payments'
 import a2aRouter from './routes/a2a'
 import adminRouter from './routes/admin'
@@ -133,6 +134,11 @@ app.use('/api/v1/x402', x402Router)
 // Auth is public by default (payment security rests on on-chain credentials).
 
 app.use('/api/v1/payments', paymentsRouter)
+
+// ── Internal orchestration (off-chain multi-agent delegation) ──────────────
+// Protected by X-Orchestrate-Token — only the Conversation Service calls this.
+
+app.use('/api/v1/internal/orchestrate', internalOrchestrateRouter)
 
 // ── Skills Marketplace (mixed: GET public, POST/PUT/DELETE protected) ──────
 

@@ -8,7 +8,8 @@ import type { LLMProvider, LLMMessage } from '@agentxv2/sdk/agent-loop'
 import { MemoryEngine } from './memory-engine'
 import { TenantLLMResolver } from './tenant-llm-resolver'
 import { AgentContextLoader } from './agent-context-loader'
-import type { AgentSkillDef } from './agent-context-loader'
+import type { AgentSkillDef, RunnableSkill } from './agent-context-loader'
+import { OrchestratorService } from './orchestrator'
 import { config } from '../config'
 
 export interface AgentRunRequest {
@@ -47,10 +48,25 @@ export class AgentRunnerService {
     private readonly memoryEngine: MemoryEngine,
     private readonly llmResolver: TenantLLMResolver,
     private readonly contextLoader: AgentContextLoader,
+    private readonly orchestrator?: OrchestratorService,
   ) {}
 
-  async *streamRun(request: AgentRunRequest, opts?: { signal?: AbortSignal }): AsyncGenerator<AgentRunSSEEvent> {
+  /**
+   * Run an agent to completion and return its final text (off-chain delegation
+   * entry point). Used by OrchestratorService for nested sub-agent runs.
+   */
+  async runToText(request: AgentRunRequest, opts?: { signal?: AbortSignal; depth?: number }): Promise<string> {
+    let text = ''
+    for await (const event of this.streamRun(request, opts)) {
+      if (event.type === 'text') text += event.content || ''
+      if (event.type === 'error') throw new Error(event.error || 'Nested agent run failed')
+    }
+    return text
+  }
+
+  async *streamRun(request: AgentRunRequest, opts?: { signal?: AbortSignal; depth?: number }): AsyncGenerator<AgentRunSSEEvent> {
     const sessionId = uuidv4()
+    const depth = opts?.depth ?? 0
     let loop: AgentLoop | null = null
     const onAbort = () => loop?.abort()
 
@@ -63,6 +79,10 @@ export class AgentRunnerService {
         : await this.contextLoader.load(request.agentId as number)
       const runAgentId = hasInline ? 0 : (request.agentId as number)
 
+      // 1.5 Platform tools: off-chain / on-chain multi-agent orchestration.
+      //     Injected only while the depth budget allows further delegation.
+      const skills = [...(loadedCtx.skills || []), ...this.buildOrchestrationSkills(request, depth)]
+
       // 2. Resolve LLM provider — tenant key > header key > AgentX key
       const llmProvider = await this.llmResolver.resolve(
         { agentId: runAgentId, prompt: loadedCtx.prompt, skills: [] },
@@ -73,8 +93,10 @@ export class AgentRunnerService {
       )
 
       // 2.5 Clarification gate — interrupt ambiguous requests before spending
-      //     tool calls / memory writes on guesswork (enabled by default, off via env)
-      if (config.clarificationEnabled) {
+      //     tool calls / memory writes on guesswork (enabled by default, off via env).
+      //     Skipped for nested (depth > 0) runs — a sub-agent cannot dialog with
+      //     the user, so it executes as-is.
+      if (config.clarificationEnabled && depth === 0) {
         const question = await this.checkClarification(llmProvider, loadedCtx.prompt, request.message)
         if (question) {
           yield { type: 'clarification', question }
@@ -107,7 +129,7 @@ export class AgentRunnerService {
         ctx: {
           agentId: runAgentId,
           prompt: loadedCtx.prompt,
-          skills: loadedCtx.skills as any, // RunnableSkill shape is compatible
+          skills: skills as any, // RunnableSkill shape is compatible
           subscriberAddress: request.tenantAddress,
         },
         llmProvider,
@@ -163,6 +185,98 @@ export class AgentRunnerService {
     } finally {
       opts?.signal?.removeEventListener('abort', onAbort)
     }
+  }
+
+  /**
+   * Platform orchestration tools injected into every agent run while the
+   * delegation depth budget allows:
+   *   - agentx_list_agents  — discover sub-agents the caller may delegate to
+   *   - agentx_delegate     — delegate a sub-task (off-chain by default,
+   *                           on-chain when the user requests audit/settlement)
+   */
+  private buildOrchestrationSkills(request: AgentRunRequest, depth: number): RunnableSkill[] {
+    if (!this.orchestrator || !this.orchestrator.configured || depth >= config.orchestrateMaxDepth) {
+      return []
+    }
+
+    const tenantAddress = request.tenantAddress
+
+    const listAgentsTool: RunnableSkill = {
+      name: 'agentx_list_agents',
+      description:
+        'List agents the current user can delegate to (agents they own or have an active subscription to), with IDs, names, descriptions and categories. Call this to discover which agents can help with sub-tasks — do NOT invent agent IDs.',
+      inputSchema: { type: 'object', properties: {} },
+      execute: async () => {
+        try {
+          const agents = await this.orchestrator!.listAgents(tenantAddress)
+          if (agents.length === 0) {
+            return 'No accessible agents. Agents you own or have an active subscription to will appear here.'
+          }
+          return agents
+            .map(a => `#${a.id} "${a.name}" — ${a.description || '(no description)'} [${a.category}]`)
+            .join('\n')
+        } catch (err) {
+          return `Error listing agents: ${err instanceof Error ? err.message : String(err)}`
+        }
+      },
+    }
+
+    const delegateTool: RunnableSkill = {
+      name: 'agentx_delegate',
+      description:
+        'Delegate a sub-task to another AgentX agent. Default rail is off-chain (real-time conversation channel, zero cost). ' +
+        'When the user EXPLICITLY requests an auditable / settled / on-chain delegation (e.g. "上链", "记到链上", "可审计", "结算", "对账", "on-chain", "audit", "settle"), use mode: "onchain" — this creates an on-chain A2A task with a taskId audit trail and settlement capability.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          targetAgentId: { type: 'integer', description: 'The agent ID to delegate to (from agentx_list_agents)' },
+          message: { type: 'string', description: 'Full task description. Include ALL context the sub-agent needs.' },
+          mode: {
+            type: 'string',
+            enum: ['offchain', 'onchain'],
+            description: 'offchain (default) = real-time chat channel; onchain = auditable/settled A2A task',
+          },
+        },
+        required: ['targetAgentId', 'message'],
+      },
+      execute: async (input: Record<string, unknown>) => {
+        const targetAgentId = Number(input.targetAgentId)
+        const message = String(input.message ?? '')
+        const mode = String(input.mode ?? config.orchestrateDefaultMode)
+        if (!Number.isInteger(targetAgentId) || targetAgentId <= 0 || !message) {
+          return 'Error: targetAgentId and message are required'
+        }
+
+        if (mode === 'onchain') {
+          try {
+            const { taskId, status } = await this.orchestrator!.delegateOnChain({
+              tenantAddress,
+              targetAgentId,
+              message,
+              taskType: 'delegate',
+            })
+            return `Delegated on-chain (rail: onchain). taskId=${taskId}, status=${status}. The sub-task is queued, will be processed on-chain, and its result is recorded in the A2A task registry for audit / settlement.`
+          } catch (err) {
+            return `Error delegating on-chain: ${err instanceof Error ? err.message : String(err)}`
+          }
+        }
+
+        try {
+          const result = await this.orchestrator!.delegateOffChain({
+            targetAgentId,
+            message,
+            tenantAddress,
+            endUserId: request.endUserId,
+            depth,
+          })
+          return `Delegated off-chain (rail: offchain, real-time).\nResult from Agent #${targetAgentId}:\n${result}`
+        } catch (err) {
+          return `Error delegating off-chain: ${err instanceof Error ? err.message : String(err)}`
+        }
+      },
+    }
+
+    return [listAgentsTool, delegateTool]
   }
 
   /**

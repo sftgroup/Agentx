@@ -39,6 +39,18 @@ export const config = {
   // AgentX Gateway URL (fallback when no tenant/agent key)
   gatewayUrl: process.env.GATEWAY_URL || 'http://localhost:3090',
 
+  // Multi-agent orchestration layering (2026-08-07):
+  //   off-chain (default) — real-time conversational delegation inside the
+  //     conversation service: zero cost, no on-chain writes, nested agent runs.
+  //   on-chain (opt-in)   — A2A protocol task via the Gateway: audit trail,
+  //     settlement & reputation. Used when the user explicitly requests it.
+  // Shared token must match the Gateway's ORCHESTRATE_TOKEN.
+  orchestrateToken: process.env.ORCHESTRATE_TOKEN || '',
+  // Default rail when the delegating agent does not specify mode.
+  orchestrateDefaultMode: process.env.ORCHESTRATE_DEFAULT_MODE || 'offchain',
+  // Maximum nested delegation depth for off-chain orchestration.
+  orchestrateMaxDepth: parseInt(process.env.ORCHESTRATE_MAX_DEPTH || '4', 10),
+
   // Blockchain RPC (for fetching agent data)
   rpcUrl: process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
   rpcUrlOxaChain: process.env.RPC_URL_OXACHAIN || 'https://rpc-oxa.0xainet.top',

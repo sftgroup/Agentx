@@ -179,14 +179,35 @@ if (!ok) { /* 引导订阅 */ }
 { "error": "No subscription access to this agent", "code": "AGENT_ACCESS_DENIED" }
 ```
 
-### 3.3 多 Agent 编排边界
+### 3.3 多 Agent 编排：上链 / 链下 分层策略
 
-主 Agent（对话中）的 LLM 可自主委派子任务给其他 Agent，但**只能委派给「调用者自己写的」或「已订阅的」Agent**：
+主 Agent（对话中）的 LLM 可自主委派子任务给其他 Agent，但**只能委派给「调用者自己写的」或「已订阅的」Agent**（与对话访问边界一致，无权返回 `403 AGENT_ACCESS_DENIED`）。
 
-- `agentx_list_agents` → 只返回该调用者可访问的 Agent（过滤后）
-- `agentx_a2a_create_task` → 目标无权限时直接拒绝（不会产生链上交易）
+编排分两轨，**默认走链下**：
 
-对用户完全透明：编排发生在对话后端，前端「A2A Tasks」页仅用于追踪任务状态。
+| 轨道 | 适用 | 成本 | 保证 |
+|---|---|---|---|
+| **链下**（默认，`agentx_delegate` mode=`offchain`） | 同平台内部、高频、实时对话式委派 | 零（无链上写入） | 子 Agent 在对话通道内同步运行，结果实时返回主 Agent |
+| **链上**（显式，`agentx_delegate` mode=`onchain`） | 跨组织、结算对账、信誉积累、需第三方验证 | gas + 任务交易 | 可审计的 A2A taskId、链上记录、结算/信誉钩子 |
+
+对话中注入的平台工具（Conversation Service 提供，仅当调用方有权时可用）：
+
+- `agentx_list_agents` — 列出调用者可委派的 Agent（id / name / description / category）
+- `agentx_delegate` — `{ targetAgentId, message, mode? }`：
+  - 默认 `mode: "offchain"` → 子 Agent 在对话通道内**同步**运行，实时返回结果（零成本）
+  - 用户**显式要求可审计/结算/上链**（如「上链」「可审计」「结算」「对账」「on-chain」「audit」「settle」）→ 自动 `mode: "onchain"` → 经 Gateway 创建链上 A2A 任务，返回 `taskId` 作为审计轨迹，由 a2a-worker 异步处理并记录到 `a2a_task_results`
+
+平台可配置（Conversation Service 环境变量）：
+
+```bash
+ORCHESTRATE_TOKEN=...                 # 必须与 Gateway 的 ORCHESTRATE_TOKEN 一致
+ORCHESTRATE_DEFAULT_MODE=offchain     # 默认轨道：offchain | onchain
+ORCHESTRATE_MAX_DEPTH=4               # 链下嵌套委派最大深度
+```
+
+对用户完全透明：编排发生在对话后端；「A2A Tasks」页追踪链上任务的审计状态；链下委派实时返回无需追踪。
+
+> 既有链上 A2A 工具（a2a-worker 的 `agentx_a2a_create_task`）保留，用于**以链上任务为入口**的编排场景（SDK `A2AProtocol` / `A2ADaemon`），与对话通道的链下委派互补。
 
 ---
 
