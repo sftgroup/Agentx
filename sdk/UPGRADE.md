@@ -1,5 +1,30 @@
 # @agentxv2/sdk Upgrade Guide
 
+## 2026-08-08 — B 端集成 key 能力澄清（文档，无代码变更）
+
+> 无需升级 SDK（npm 未发布新版本）。本说明只澄清**服务端行为**与**调用方最佳实践**，SDK API 完全不变。
+
+### 一个 `agentx_` key 即可，不需要两把 key
+
+- **现状（2026-08-08 起）**：Gateway 对「会话 / 并行任务」的能力判定已统一为 **P9 能力位**（`effective = tenant.allow_parallel_tasks ?? plan.features.parallel_tasks ?? true`），对 B 端集成 key（`X-Api-Key: agentx_...`）与注册用户 JWT（`Authorization: Bearer`）**一视同仁**。
+- B 端集成 key 不再只限于对话（chat）——创建会话（`createSession`）、提交并行任务（`createTask`）、查询 / 列表 / 取消任务与注册用户**完全等价**（受同一套餐 / 租户能力位约束）。
+- 不再存在 `403 PARTNER_TASKS_DISABLED`；能力位为 false 时统一返回 `403 { code: "PARALLEL_TASKS_DISABLED" }`，此时回退单轮 `chat()`。
+- 仅两种场景仍需「用户身份」（设计如此，非限制遗漏）：**MCP 通道**的对话 / 任务工具（仅接受注册用户 `access_token`）与 **A2A 上链 / 发布 / 订阅**（用户自己钱包签名、自己付 gas）。
+
+### 调用方请使用自己的 LLM Key 透传（BYOK）
+
+任务 / 对话的 LLM 计费默认走平台兜底 key；平台推荐调用方**透传自己的 LLM key**，计费落在自己账户，三种方式：
+
+| 方式 | SDK 用法 | 说明 |
+|---|---|---|
+| 无状态透传（最高优先级） | 构造 `ConversationClient({ llmApiKey, llmEndpoint, llmModel })` | 每个请求自动带 `X-Llm-Api-Key` / `X-Llm-Endpoint` / `X-Llm-Model`，key 不落盘 |
+| 请求级透传 | `stream({ ..., tenantKeyId })`（v0.8.6 起） | 用已在平台 Settings 保存的租户自有 key，明文不出服务器 |
+| HTTP 直接调用 | `X-Llm-Api-Key` 请求头 | 等价 SDK 的 `llmApiKey` |
+
+> 未传任何 LLM key 时走平台兜底 key（DeepSeek / OpenAI 平台配额），受租户配额限制。
+
+---
+
 ## v0.9.6 → v0.10.0 (完整功能版)
 
 ### What's New

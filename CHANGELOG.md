@@ -16,6 +16,7 @@
   - **行为**：B 端 key 一个即可（不再需要第二个"钱包 JWT"变通）；Enterprise 计划 B 端自动获得 sessions/tasks 并行能力；能力位为 false 时返回 `403 PARALLEL_TASKS_DISABLED`
 - **测试**：`test/chat-tasks.test.ts` R14 partner gate 3 用例 → 重写为「B 端 key 遵循 P9 能力位」5 用例（默认放行 / plan 关闭拦截 / 读写取消端点放行）；并 mock `canAccessAgent` 修复既有 7 个因无效地址走真实链调用的失败用例。gateway 单测 **37/37 通过**，tsc build 通过。
 - **不受影响**：MCP 通道维持 R14 收紧（对话/任务工具仅接受 `access_token`，B 端 key 不能调 MCP）；A2A 上链、发布、订阅仍走用户钱包。
+- **文档同步**（2026-08-08 同日）：`sdk/README.md`（ConversationClient 鉴权段 + Version History）、`sdk/UPGRADE.md`（新增「B 端集成 key 能力澄清」章节）、`docs/integration-callers.md`（一个 key 即够 + BYOK 透传小节 + MCP 鉴权修正）、`docs/sdk-integration-example.md` 已更新。SDK 无代码变更，无需重新发布 npm。
 
 ---
 

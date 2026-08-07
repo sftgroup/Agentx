@@ -163,6 +163,8 @@ for await (const event of client.stream({ message: '你好', agentId: 1 })) {
 // 聊天链路也可传 tenantKeyId：client.stream({ agentId: 1, message: '...', tenantKeyId: 'key-01HX...' })
 ```
 
+> **一个 `agentx_` Key 即可**（2026-08-08 起）：B 端集成 Key 与注册用户 JWT 在对话 / 会话 / 并行任务上能力一致（统一受套餐 / 租户能力位约束），无需第二把 Key。**建议自带 LLM Key**（上方 `llmApiKey` / `llmEndpoint` / `llmModel`）——计费落在自己账户；未传时走平台兜底 Key（受租户配额限制）。
+
 ---
 
 ## 3. MCP 接入（AI Agent 工具化）
