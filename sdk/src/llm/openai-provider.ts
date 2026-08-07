@@ -98,6 +98,10 @@ export class OpenAIProvider implements LLMProvider {
     const decoder = new TextDecoder()
     let buffer = ''
 
+    // DeepSeek/OpenAI 流式 tool_calls: 首 chunk 带 id+name, 后续参数增量 chunk 只带 index。
+    // 维护 index→id 映射, 使 delta 能关联到 start 的真实 callId, 否则 arguments 会被丢弃。
+    const callIdsByIndex = new Map<number, string>()
+
     try {
       while (true) {
         const { done, value } = await reader.read()
@@ -144,13 +148,14 @@ export class OpenAIProvider implements LLMProvider {
 
           if (choice.delta?.tool_calls) {
             for (const tc of choice.delta.tool_calls) {
+              if (tc.id) callIdsByIndex.set(tc.index, tc.id)
               if (tc.id && tc.function?.name) {
                 yield { type: 'tool_call_start', callId: tc.id, name: tc.function.name }
               }
               if (tc.function?.arguments) {
                 yield {
                   type: 'tool_call_delta',
-                  callId: tc.id ?? `call_${tc.index}`,
+                  callId: tc.id ?? callIdsByIndex.get(tc.index) ?? `call_${tc.index}`,
                   arguments: tc.function.arguments,
                 }
               }
