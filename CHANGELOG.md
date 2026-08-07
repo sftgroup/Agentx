@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-08-08 — B 端端用户订阅转发（B-end subscription proxying）
+
+**背景**：B 端集成方需要「我的最终用户已订阅某 Agent → 我可代为对话」。原授权模型按**调用方租户**（`partner-...`）判定，端用户订阅无法传递（partner 地址非链地址，恒 403）。
+
+**实现**：
+- **Gateway**：新增 `resolveAccessSubject()`（[services/agent-access.ts](gateway/src/services/agent-access.ts)）——partner 租户请求带 `X-End-User-Id: 0x<钱包>`（或 body `endUserId`）时，改用该钱包做 `canAccessAgent`（拥有 / 订阅）授权；接入 [chat-tasks.ts](gateway/src/routes/chat-tasks.ts)（sessions + tasks）与 [agent-runs.ts](gateway/src/routes/agent-runs.ts)；非 `0x` 值仅作记忆隔离标识，不触发转发
+- **SDK 0.10.1**（待发布）：`ConversationCreateTaskParams.endUserId?` / `ConversationChatParams.endUserId?` 支持 per-request 透传（`createSession` 原本已支持）
+- **测试**：gateway **42/42**（新增 5 个端用户转发用例）；sdk 32/32；tsc build 干净
+- **文档**：integration-callers.md（B 端代调示例 + HTTP 表 + FAQ）、sdk README / UPGRADE 同步
+
+---
+
 ## 2026-08-08 — B 端集成 key 的并行任务能力统一为 P9 能力位（R14 策略修订）
 
 **背景**：B 端反馈 `GET /api/v1/tenant/me` 显示 `parallel_tasks: true`（Enterprise plan），但 `POST /api/v1/sessions` 返回 403 `PARTNER_TASKS_DISABLED`。根因是 R14（2026-08-06）对 `kind='partner'` 的 B 端 key 在 `chat-tasks` / `schedules` 全路由做了"一刀切"拦截，与既有的 P9 能力位机制（`tenant.allow_parallel_tasks ?? plan.features.parallel_tasks ?? true`）冲突——同一租户"报告有能力、调用被拒"。

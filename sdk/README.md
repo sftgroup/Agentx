@@ -331,7 +331,6 @@ const session = await client.createSession({ title: 'Audit' })          // dialo
 const t1 = await client.createTask({ sessionId: session.id, agentId: 42, message: 'Analyze contract A' })
 const t2 = await client.createTask({ sessionId: session.id, agentId: 42, message: 'Analyze contract B' })
 // → both return immediately with { id, status: 'queued' } — execution runs in the background
-
 const tasks = await client.listTasks(session.id)                        // all tasks of the session
 
 let task = await client.getTask(t1.id)                                  // poll until terminal
@@ -345,6 +344,8 @@ try {
   }
 }
 ```
+
+> **B-end subscription proxying** (v0.10.1, Gateway 2026-08-08): a partner caller can authorize by an end-user's subscription by passing that user's wallet via `endUserId` (`0x<wallet>`; `createSession` / `createTask` params, or `X-End-User-Id` header). The Gateway then checks ownership/subscription against that wallet instead of the partner tenant itself — so "my end-user already subscribed → I may chat on their behalf". Non-`0x` end-user ids remain memory-isolation-only. `stream(params)` accepts `params.endUserId` too (per-request override of the constructor-level id).
 
 ---
 
@@ -713,6 +714,7 @@ ORCHESTRATE_MAX_DEPTH=4               # max nested delegation depth
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.10.1** | 2026-08-08 | **Per-request `endUserId`** — `createTask` / `stream` accept `endUserId` for B-end subscription proxying: a partner caller passes the end-user's `0x` wallet and the Gateway authorizes by that wallet's ownership/subscription (one `agentx_` key, no second credential). Non-breaking additive change (see UPGRADE.md) |
 | **— (docs)** | 2026-08-08 | **B-end key clarification** — B-end integration keys (`agentx_...`) have the same sessions/parallel-tasks surface as registered-user JWTs, gated uniformly by the P9 capability bits; **one key is enough** (no second "wallet JWT" needed). BYOK (`llmApiKey` / `X-Llm-Api-Key` / stored `tenantKeyId`) is the recommended way for callers to run tasks with their own LLM account. Docs only — no SDK code changes, no re-publish |
 | **0.10.0** | 2026-08-08 | **Complete feature release** — consolidates the 0.9.x line into a stable baseline: typed `onchain_approval_required` SSE event + `OnChainApprovalRequest` (user-wallet-signed on-chain delegation, no platform gas), agent categories, unified payments rails, sessions & parallel tasks, streaming tool_call fix. **No breaking changes** |
 | **0.9.6** | 2026-08-08 | **Typed on-chain approval event** — `ConversationSSEEvent` adds `'onchain_approval_required'` + `OnChainApprovalRequest { targetAgentId, taskType, inputData }` so consumers no longer need `as unknown as` narrowing when the agent requests an auditable on-chain A2A delegation (the user's wallet signs `createTask` and pays the gas). Frontend `useAgentChat` updated to the typed event (also resolves the pre-existing `AgentPayload.category` error). **No breaking changes** |

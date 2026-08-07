@@ -9,7 +9,7 @@
 
 import { Router, type Request, type Response as ExpressResponse } from 'express'
 import { getConversationProxy } from '../services/conversation-proxy'
-import { canAccessAgent } from '../services/agent-access'
+import { canAccessAgent, resolveAccessSubject } from '../services/agent-access'
 import { getPool } from '../lib/db'
 import { decryptApiKey } from '../lib/crypto'
 import { config } from '../config'
@@ -90,12 +90,15 @@ async function pipeSSE(upstream: globalThis.Response, res: ExpressResponse): Pro
 // POST /api/v1/sessions — create a session
 router.post('/sessions', async (req: Request, res: ExpressResponse) => {
   try {
-    const { sessionId, agentId, endUserId, title } = req.body || {}
+    const { sessionId, agentId, title } = req.body || {}
+    const endUserId = (req.headers['x-end-user-id'] as string | undefined) || req.body?.endUserId
 
     // Access boundary: sessions may only be created for agents the caller
-    // owns or has an active subscription to.
+    // owns or has an active subscription to. B-end (partner) callers may
+    // proxy an end-user's subscription via X-End-User-Id (0x wallet).
     if (agentId !== undefined && agentId !== null && agentId !== '') {
-      const ok = await canAccessAgent(req.tenant?.walletAddress || 'unknown', Number(agentId))
+      const subject = resolveAccessSubject(req.tenant?.walletAddress || 'unknown', req.tenant?.kind, endUserId)
+      const ok = await canAccessAgent(subject, Number(agentId))
       if (!ok) {
         return res.status(403).json({ error: 'No subscription access to this agent', code: 'AGENT_ACCESS_DENIED' })
       }
@@ -121,7 +124,7 @@ router.post('/sessions/:sessionId/tasks', async (req: Request, res: ExpressRespo
   try {
     const { sessionId } = req.params
     const { agentId, message, enableMemory, history, prompt, skills, tenantKeyId } = req.body || {}
-    const endUserId = req.headers['x-end-user-id'] as string | undefined
+    const endUserId = (req.headers['x-end-user-id'] as string | undefined) || req.body?.endUserId
 
     if (!message) return res.status(400).json({ error: 'message is required' })
     const hasAgentId = agentId !== undefined && agentId !== null && agentId !== ''
@@ -131,9 +134,11 @@ router.post('/sessions/:sessionId/tasks', async (req: Request, res: ExpressRespo
     }
 
     // Access boundary: tasks may only run for agents the caller owns or is
-    // subscribed to. Inline mode (no agentId) is unaffected.
+    // subscribed to. Inline mode (no agentId) is unaffected. B-end (partner)
+    // callers may proxy an end-user's subscription via X-End-User-Id (0x wallet).
     if (hasAgentId && !hasInline) {
-      const ok = await canAccessAgent(req.tenant?.walletAddress || 'unknown', Number(agentId))
+      const subject = resolveAccessSubject(req.tenant?.walletAddress || 'unknown', req.tenant?.kind, endUserId)
+      const ok = await canAccessAgent(subject, Number(agentId))
       if (!ok) {
         return res.status(403).json({ error: 'No subscription access to this agent', code: 'AGENT_ACCESS_DENIED' })
       }
