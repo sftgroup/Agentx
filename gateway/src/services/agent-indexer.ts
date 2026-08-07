@@ -15,7 +15,7 @@ const IDENTITY_ABI = [
   'function tokenURI(uint256 tokenId) view returns (string)',
   'function ownerOf(uint256 tokenId) view returns (address)',
   'function getAgentOwner(uint256 agentId) view returns (address)',
-  'function getAgentMetadata(uint256 agentId) view returns ((string,string)[] metadata)',
+  'function getAgentMetadata(uint256 agentId) view returns ((string,bytes)[] metadata)',
   'function totalAgents() view returns (uint256)',
   'event AgentRegistered(uint256 indexed agentId, address indexed creator, string tokenURI)',
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
@@ -86,10 +86,23 @@ async function fetchAndUpsertAgent(agentId: number, contract: ethers.Contract): 
 
   // On-chain attributes (metadataPairs written at registration). The Studio
   // publish flow stores name/description/category here because its tokenURI
-  // points to an encrypted IPFS payload (no readable JSON).
+  // points to an encrypted IPFS payload (no readable JSON). The contract
+  // returns `bytes` values: canonical writers hex-encode UTF-8 text
+  // (stringToHex), but raw non-UTF-8 bytes (e.g. a binary AES key) must not
+  // break indexing — decode leniently (UTF-8, else hex literal).
   const attrs: Record<string, string> = {}
+  const decodeAttrValue = (v: string): string => {
+    if (!v.startsWith('0x')) return v
+    try {
+      const utf8 = Buffer.from(v.slice(2), 'hex').toString('utf8')
+      // Buffer decodes invalid sequences to U+FFFD instead of throwing.
+      return utf8.includes('\uFFFD') ? v : utf8
+    } catch {
+      return v
+    }
+  }
   for (const entry of (attrsRaw as [string, string][] | null) ?? []) {
-    if (Array.isArray(entry) && entry.length >= 2) attrs[entry[0]] = entry[1]
+    if (Array.isArray(entry) && entry.length >= 2) attrs[entry[0]] = decodeAttrValue(entry[1])
   }
 
   const parsed = parseTokenURIJSON(tokenURI)
