@@ -7,6 +7,15 @@
 
 ## 待发布（Pending）
 
+### @agentxv2/sdk@0.9.4 — Agent 应用类别（category）字段
+
+- **目的**：发布 Agent 时声明「应用类别 / 用途」，Marketplace 分类筛选与应用集成（运营、客服、销售、个人助理、写代码、服务器监控、空投、量化策略等）按此字段归类
+- **SDK**：`core/types.ts` 新增 `AGENT_CATEGORIES`（13 个枚举）+ `AgentCategory` 类型；`AgentPayload.category?`（发布必填，前端 Studio 强制）；`publishAgent` 的 public metadata 写入 `category`；`getAllAgents` / `getAgentMetadata` 解析 `category`（tokenURI JSON 优先，链上 attrs 兜底）
+- **Gateway**：`agents` 表新增 `category` 列（迁移 `020_agents_category.sql`）；索引器读取链上 `getAgentMetadata` attrs 的 `category`；`GET /api/v1/agents` 支持 `?category=` 过滤，`byCategory` 改为按 category 列聚合
+- **Frontend**：Studio Basics 新增「应用类别」必选下拉；Marketplace 顶部分类标签组 + Agent 卡片分类标签；`useAgentSearch` 新增 `category` 过滤
+- **文档**：新增 `docs/publish-subscribe-pay.md`（发布/订阅/付费集成指南，含 category 必填说明）
+- **注意**：本地验证已通过（sdk build / gateway+frontend typecheck / next build）；生产需先发 sdk@0.9.4 再升级 gateway+frontend（node_modules 用 registry 版本，不含新类型）
+
 ### @agentxv2/payments@0.2.2 — 归属元数据（随下次功能迭代一起发）
 
 - **目的**：让 npm registry 展示 AgentX 归属信息（当前 0.2.1 的 package.json 元数据变更尚未发布，`npm view` 的 `author/repository/homepage` 仍为空）

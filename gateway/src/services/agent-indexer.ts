@@ -15,6 +15,7 @@ const IDENTITY_ABI = [
   'function tokenURI(uint256 tokenId) view returns (string)',
   'function ownerOf(uint256 tokenId) view returns (address)',
   'function getAgentOwner(uint256 agentId) view returns (address)',
+  'function getAgentMetadata(uint256 agentId) view returns ((string,string)[] metadata)',
   'function totalAgents() view returns (uint256)',
   'event AgentRegistered(uint256 indexed agentId, address indexed creator, string tokenURI)',
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
@@ -61,6 +62,7 @@ export function extractMetadata(parsed: Record<string, unknown> | null, agentId:
     tags: arr(parsed?.tags),
     capabilities: arr(parsed?.capabilities),
     skills: arr(parsed?.skills),
+    category: str(parsed?.category) || 'other',
     isActive:
       typeof parsed?.isActive === 'boolean' ? parsed.isActive
       : typeof parsed?.is_active === 'boolean' ? parsed.is_active
@@ -75,19 +77,30 @@ export function extractMetadata(parsed: Record<string, unknown> | null, agentId:
 async function fetchAndUpsertAgent(agentId: number, contract: ethers.Contract): Promise<boolean> {
   const pool = getPool()
 
-  const [owner, tokenURI] = await Promise.all([
+  const [owner, tokenURI, attrsRaw] = await Promise.all([
     contract.getAgentOwner(agentId).catch(() => null),
     contract.tokenURI(agentId).catch(() => null),
+    contract.getAgentMetadata(agentId).catch(() => null),
   ])
   if (!owner || owner === ZERO_ADDRESS || !tokenURI) return false
 
+  // On-chain attributes (metadataPairs written at registration). The Studio
+  // publish flow stores name/description/category here because its tokenURI
+  // points to an encrypted IPFS payload (no readable JSON).
+  const attrs: Record<string, string> = {}
+  for (const entry of (attrsRaw as [string, string][] | null) ?? []) {
+    if (Array.isArray(entry) && entry.length >= 2) attrs[entry[0]] = entry[1]
+  }
+
   const parsed = parseTokenURIJSON(tokenURI)
+  const parsedCategory = typeof parsed?.category === 'string' && parsed.category ? String(parsed.category) : ''
+  const category = parsedCategory || attrs.category || 'other'
   const { name, description, tags, capabilities, skills, isActive, agentCreatedAt } =
     extractMetadata(parsed, agentId)
 
   await pool.query(
-    `INSERT INTO agents (id, owner, name, description, tags, capabilities, skills, is_active, agent_created_at, token_uri, metadata_json, synced_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())
+    `INSERT INTO agents (id, owner, name, description, tags, capabilities, skills, category, is_active, agent_created_at, token_uri, metadata_json, synced_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
      ON CONFLICT (id) DO UPDATE SET
        owner = EXCLUDED.owner,
        name = EXCLUDED.name,
@@ -95,6 +108,7 @@ async function fetchAndUpsertAgent(agentId: number, contract: ethers.Contract): 
        tags = EXCLUDED.tags,
        capabilities = EXCLUDED.capabilities,
        skills = EXCLUDED.skills,
+       category = EXCLUDED.category,
        is_active = EXCLUDED.is_active,
        agent_created_at = EXCLUDED.agent_created_at,
        token_uri = EXCLUDED.token_uri,
@@ -103,7 +117,7 @@ async function fetchAndUpsertAgent(agentId: number, contract: ethers.Contract): 
        updated_at = NOW()`,
     [
       agentId, owner, name, description, tags, capabilities, skills,
-      isActive, agentCreatedAt, tokenURI, JSON.stringify(parsed || {}),
+      category, isActive, agentCreatedAt, tokenURI, JSON.stringify(parsed || {}),
     ]
   )
   return true

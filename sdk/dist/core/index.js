@@ -20,6 +20,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/core/index.ts
 var core_exports = {};
 __export(core_exports, {
+  AGENT_CATEGORIES: () => AGENT_CATEGORIES,
   AgentXError: () => AgentXError,
   AgentXErrorCode: () => AgentXErrorCode,
   aesDecrypt: () => aesDecrypt,
@@ -43,6 +44,34 @@ __export(core_exports, {
 module.exports = __toCommonJS(core_exports);
 
 // src/core/types.ts
+var AGENT_CATEGORIES = [
+  "operations",
+  // 运营
+  "customer-service",
+  // 客服
+  "sales",
+  // 销售
+  "personal-assistant",
+  // 个人助理
+  "coding",
+  // 写代码 / 开发
+  "server-monitoring",
+  // 服务器监控
+  "airdrop",
+  // 空投
+  "quant-trading",
+  // 量化策略
+  "data-analysis",
+  // 数据分析
+  "content",
+  // 内容创作
+  "security",
+  // 安全
+  "finance",
+  // 金融
+  "other"
+  // 其他 / 未分类
+];
 var AgentXErrorCode = /* @__PURE__ */ ((AgentXErrorCode2) => {
   AgentXErrorCode2["NOT_SUBSCRIBED"] = "NOT_SUBSCRIBED";
   AgentXErrorCode2["SUBSCRIPTION_EXPIRED"] = "SUBSCRIPTION_EXPIRED";
@@ -292,6 +321,7 @@ async function publishAgent(config) {
       version: agent.version,
       tags: agent.tags,
       capabilities: agent.capabilities,
+      category: agent.category,
       eciesKey: eciesEncryptedKeyHex
     })
   ]);
@@ -326,6 +356,7 @@ function getPublicKey(privateKey) {
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  AGENT_CATEGORIES,
   AgentXError,
   AgentXErrorCode,
   aesDecrypt,

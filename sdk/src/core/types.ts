@@ -120,6 +120,31 @@ export interface AgentPricing {
 
 // ── Agent Payload (the core data model) ────────────────────────────────────
 
+// ── Agent Category (application / use case) ─────────────────────────────────
+//
+// The application category of an agent. Marketplace and application launchers
+// (e.g. "customer service", "airdrop tools", "quant strategies") filter on this
+// field — agents without a category fall back to "other" for display purposes.
+// Publish flows MUST set it so the agent surfaces in the right application tab.
+
+export const AGENT_CATEGORIES = [
+  'operations',          // 运营
+  'customer-service',    // 客服
+  'sales',               // 销售
+  'personal-assistant',  // 个人助理
+  'coding',              // 写代码 / 开发
+  'server-monitoring',   // 服务器监控
+  'airdrop',             // 空投
+  'quant-trading',       // 量化策略
+  'data-analysis',       // 数据分析
+  'content',             // 内容创作
+  'security',            // 安全
+  'finance',             // 金融
+  'other',               // 其他 / 未分类
+] as const
+
+export type AgentCategory = (typeof AGENT_CATEGORIES)[number]
+
 /**
  * The complete Agent definition.
  *
@@ -138,6 +163,12 @@ export interface AgentPayload {
   communicationProtocol: 'mcp' | 'a2a'
   authenticationMethod: 'ecdsa'
   pricing: AgentPricing
+  /**
+   * Application category / use case (see AGENT_CATEGORIES). Strongly
+   * recommended — marketplace and app launchers filter on it. Agents
+   * without a category are displayed under "other".
+   */
+  category?: AgentCategory
 
   // ── Private (AES-256-GCM encrypted, stored at encryptedPayloadCid) ──────
   prompt: string
@@ -186,6 +217,8 @@ export interface OnChainAgentMetadata {
     tags: string[]
     pricingType: PricingType
     pricingAmount: string
+    /** Application category / use case (AGENT_CATEGORIES value). */
+    category?: string
   }
 }
 
