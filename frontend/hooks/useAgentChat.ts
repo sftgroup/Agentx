@@ -31,6 +31,13 @@ export interface ChatMessage {
   toolDurationMs?: number
 }
 
+/** Rail: onchain — the user's wallet must create the A2A task (they pay the gas). */
+export interface OnChainApprovalPayload {
+  targetAgentId: number
+  taskType: string
+  inputData: string
+}
+
 interface AgentChatOptions {
   agentId: number
   gatewayUrl: string
@@ -50,6 +57,8 @@ interface AgentChatOptions {
   onClarification?: (question: string) => void
   onComplete?: (usage?: { totalTokens: number }) => void
   onError?: (error: string) => void
+  /** Rail: onchain — the agent requested an auditable on-chain delegation; the user's wallet must create the A2A task */
+  onOnchainApproval?: (approval: OnChainApprovalPayload) => void
 }
 
 const TASK_POLL_MS = 2000
@@ -337,6 +346,17 @@ export function useAgentChat() {
           case 'error':
             options.onError?.(event.error ?? '')
             break
+
+          default: {
+            // The SDK forwards unknown SSE events verbatim; the on-chain
+            // delegation approval payload is one of them (typed loosely until
+            // a future SDK release adds the event to ConversationSSEEvent).
+            const ev = event as unknown as { type?: string; approval?: OnChainApprovalPayload }
+            if (ev.type === 'onchain_approval_required' && ev.approval) {
+              options.onOnchainApproval?.(ev.approval)
+            }
+            break
+          }
         }
       }
     } catch (err: any) {

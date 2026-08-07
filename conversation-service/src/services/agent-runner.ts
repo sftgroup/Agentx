@@ -9,7 +9,7 @@ import { MemoryEngine } from './memory-engine'
 import { TenantLLMResolver } from './tenant-llm-resolver'
 import { AgentContextLoader } from './agent-context-loader'
 import type { AgentSkillDef, RunnableSkill } from './agent-context-loader'
-import { OrchestratorService } from './orchestrator'
+import { OrchestratorService, type OnChainApprovalRequest } from './orchestrator'
 import { config } from '../config'
 
 export interface AgentRunRequest {
@@ -31,7 +31,7 @@ export interface AgentRunRequest {
 }
 
 export interface AgentRunSSEEvent {
-  type: 'text' | 'tool_call' | 'tool_result' | 'thinking' | 'done' | 'error' | 'clarification'
+  type: 'text' | 'tool_call' | 'tool_result' | 'thinking' | 'done' | 'error' | 'clarification' | 'onchain_approval_required'
   content?: string
   /** Clarification question when the run is interrupted for disambiguation */
   question?: string
@@ -41,6 +41,8 @@ export interface AgentRunSSEEvent {
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
   iterations?: number
   error?: string
+  /** On-chain delegation approval payload (rail: onchain) — the user's wallet must create the A2A task */
+  approval?: OnChainApprovalRequest
 }
 
 export class AgentRunnerService {
@@ -86,7 +88,15 @@ export class AgentRunnerService {
       //     by the local subscription table), skip the Gateway-based ones to
       //     avoid duplicate tool definitions.
       const loadedNames = new Set((loadedCtx.skills || []).map((s) => s.name))
-      const skills = [...(loadedCtx.skills || []), ...this.buildOrchestrationSkills(request, depth, loadedNames)]
+      // Side events emitted by tools that need UI coordination — e.g. an
+      // on-chain delegation that the user's own wallet must sign. Flushed
+      // after the tool records so the frontend can correlate them.
+      const sideEvents: AgentRunSSEEvent[] = []
+      const emitSideEvent = (event: AgentRunSSEEvent) => sideEvents.push(event)
+      const skills = [
+        ...(loadedCtx.skills || []),
+        ...this.buildOrchestrationSkills(request, depth, loadedNames, emitSideEvent),
+      ]
 
       // 2. Resolve LLM provider — tenant key > header key > AgentX key
       const llmProvider = await this.llmResolver.resolve(
@@ -156,6 +166,10 @@ export class AgentRunnerService {
         }
       }
 
+      // Emit tool side-events (e.g. onchain_approval_required) after the
+      // corresponding tool records so the UI can act on them.
+      for (const ev of sideEvents) yield ev
+
       // Emit final text
       yield { type: 'text', content: result.finalText }
 
@@ -203,6 +217,7 @@ export class AgentRunnerService {
     request: AgentRunRequest,
     depth: number,
     loadedNames?: Set<string>,
+    emit?: (event: AgentRunSSEEvent) => void,
   ): RunnableSkill[] {
     if (!this.orchestrator || !this.orchestrator.configured || depth >= config.orchestrateMaxDepth) {
       return []
@@ -238,7 +253,7 @@ export class AgentRunnerService {
       name: 'agentx_delegate',
       description:
         'Delegate a sub-task to another AgentX agent. Default rail is off-chain (real-time conversation channel, zero cost). ' +
-        'When the user EXPLICITLY requests an auditable / settled / on-chain delegation (e.g. "上链", "记到链上", "可审计", "结算", "对账", "on-chain", "audit", "settle"), use mode: "onchain" — this creates an on-chain A2A task with a taskId audit trail and settlement capability.',
+        'When the user EXPLICITLY requests an auditable / settled / on-chain delegation (e.g. "上链", "记到链上", "可审计", "结算", "对账", "on-chain", "audit", "settle"), use mode: "onchain" — the user will be asked to approve an A2A task creation in their wallet (they pay the gas and become the on-chain client) and the task gets a taskId audit trail and settlement capability.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -261,14 +276,21 @@ export class AgentRunnerService {
         }
 
         if (mode === 'onchain') {
+          // The user pays the gas for the on-chain rail, so only the top-level
+          // run may request it — a nested sub-agent cannot prompt the user to
+          // approve a wallet transaction.
+          if (depth > 0) {
+            return 'Error: the on-chain rail is only available at the top level. Use mode "offchain" for nested sub-tasks.'
+          }
           try {
-            const { taskId, status } = await this.orchestrator!.delegateOnChain({
+            const approval = await this.orchestrator!.delegateOnChain({
               tenantAddress,
               targetAgentId,
               message,
               taskType: 'delegate',
             })
-            return `Delegated on-chain (rail: onchain). taskId=${taskId}, status=${status}. The sub-task is queued, will be processed on-chain, and its result is recorded in the A2A task registry for audit / settlement.`
+            emit?.({ type: 'onchain_approval_required', approval })
+            return `On-chain delegation prepared for Agent #${targetAgentId} (audit trail / settlement). The user must approve the A2A task creation in their own wallet — they pay the gas and become the on-chain client. Ask the user to confirm the wallet prompt; the task is processed asynchronously and its result appears in the A2A task registry once done.`
           } catch (err) {
             return `Error delegating on-chain: ${err instanceof Error ? err.message : String(err)}`
           }

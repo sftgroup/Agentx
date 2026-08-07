@@ -71,9 +71,6 @@ export const config = {
   multiEndpoint: process.env.MULTI_ENDPOINT || '0xEB5e866f186d4B73F97aa0d70B86f2C6e2e21Cb7',
   multiEndpointOxaChain: process.env.MULTI_ENDPOINT_OXACHAIN || '0xB361d04F49000013FC131D3C59C41c8486C64f8c',
 
-  // A2A Worker wallet (for creating sub-tasks on-chain during multi-agent orchestration)
-  a2aWorkerPrivateKey: process.env.A2A_WORKER_PRIVATE_KEY || '',
-
   // ── Fiat subscriptions (A1) ──────────────────────────────────────────────
   // Empty keys = feature disabled (endpoints respond 503 with a clear hint).
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',

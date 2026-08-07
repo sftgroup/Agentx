@@ -4,24 +4,30 @@
 // Background service that:
 //   1. Polls OxaChain A2A contract for pending tasks (status=Created/Accepted)
 //   2. Runs ReAct-style AgentLoop with A2A tools for each task
-//   3. LLM can autonomously delegate sub-tasks to other agents via createTask()
+//   3. LLM can autonomously delegate sub-tasks to other agents
 //   4. Sub-tasks are processed inline and results fed back to the parent LLM
+//
+// Layering (2026-08-08): the worker NEVER writes to the chain. Top-level
+// on-chain tasks are created by the USER's own wallet (they pay the gas and
+// become the on-chain client). Sub-delegations inside the ReAct loop follow
+// the layering default — off-chain, processed inline with a local pseudo
+// taskId — so the platform pays no gas and the user is not asked to sign
+// autonomously-decided sub-tasks.
 //
 // Multi-Agent Orchestration Flow:
 //   Agent A's task → LLM(Agent A) analyzes
 //     → LLM decides: "I need Agent B for auditing"
 //     → calls agentx_a2a_create_task(Agent B, "audit", ...)
-//     → Worker submits tx on-chain, processes Agent B's task inline
+//     → Worker processes Agent B's task inline (off-chain)
 //     → Agent B's result fed back to Agent A's LLM
 //     → LLM(Agent A) continues: "Now I need Agent C to summarize"
 //     → calls agentx_a2a_create_task(Agent C, "summarize", ...)
-//     → Worker processes Agent C's task inline
+//     → Worker processes Agent C's task inline (off-chain)
 //     → Agent A's LLM aggregates all results → final output
 // ---------------------------------------------------------------------------
 
 import { createPublicClient, createWalletClient, http } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
-import type { Address, Hex } from 'viem'
+import type { Address } from 'viem'
 import { A2AProtocol } from '@agentxv2/sdk'
 import type { A2ATaskStatus } from '@agentxv2/sdk'
 import { getPool } from '../lib/db'
@@ -59,6 +65,7 @@ const MAX_DEPTH = 3                 // Max delegation depth
 const MAX_REACT_ITERATIONS = 5      // Max LLM tool-call rounds per task
 const processingSet = new Set<number>()
 let totalOrchestrated = 0           // Counter for multi-agent orchestrations
+let localTaskCounter = 0            // Negative pseudo ids for off-chain sub-tasks
 
 // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -149,7 +156,7 @@ const A2A_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'agentx_a2a_create_task',
-      description: 'DELEGATE work to another AgentX agent. Creates an on-chain task. Use this when you need another agent\'s expertise. The sub-task will be processed and its result returned to you.',
+      description: 'DELEGATE work to another AgentX agent. Sub-tasks are processed off-chain inline (the user pays gas only for the top-level on-chain task). Use this when you need another agent\'s expertise. The sub-task result is returned to you once processed.',
       parameters: {
         type: 'object',
         properties: {
@@ -287,14 +294,13 @@ async function processTask(
               break
             }
 
-            // Submit createTask on-chain (permissionless — anyone can call)
-            let subTaskId: number
-            try {
-              subTaskId = await createTaskOnChain(targetId, subTaskType, subInput)
-            } catch (err: any) {
-              toolResult = `Error creating sub-task: ${err.message}`
-              break
-            }
+            // Sub-tasks follow the layering default (off-chain): the user only
+            // signed the top-level on-chain task, so sub-delegations run inline
+            // through the conversation channel — no on-chain write, no platform
+            // gas. A local negative pseudo taskId keeps the DB result record
+            // stable without colliding with real on-chain task ids.
+            localTaskCounter -= 1
+            const subTaskId = localTaskCounter
 
             console.log(`${indent}[A2A] → Delegated to ${targetName} (#${targetId}), sub-task: #${subTaskId}`)
             totalOrchestrated++
@@ -322,11 +328,16 @@ async function processTask(
             const queryId = Number(args.taskId)
             if (!queryId || isNaN(queryId)) { toolResult = 'Error: taskId required'; break }
             try {
-              const t = await getA2AReadonly().getTask(queryId)
-              if (!t) { toolResult = `Task #${queryId} not found`; break }
+              const { rows } = await pool.query(
+                `SELECT task_id, agent_id, task_type, input_data, output_data, status, error_message
+                 FROM a2a_task_results WHERE task_id = $1`, [queryId]
+              )
+              if (rows.length === 0) { toolResult = `Task #${queryId} not found`; break }
+              const r = rows[0]
               toolResult = JSON.stringify({
-                taskId: t.taskId, agentId: t.targetAgentId, taskType: t.taskType,
-                status: t.status, outputData: t.result ?? '',
+                taskId: r.task_id, agentId: r.agent_id, taskType: r.task_type,
+                status: r.status === 2 ? 'completed' : r.status === 3 ? 'failed' : r.status === 1 ? 'processing' : 'pending',
+                outputData: r.output_data ?? '', errorMessage: r.error_message ?? '',
               })
             } catch { toolResult = `Task #${queryId} not found` }
             break
@@ -375,15 +386,16 @@ async function processTask(
 
 // ── On-Chain A2A Client (SDK) ─────────────────────────────────────────────
 // Single source of truth for the A2A protocol ABI: the @agentxv2/sdk
-// `A2AProtocol` wrapper. The worker only needs `getAgentTasks` / `getTask`
-// (read-only) and `createTask` (signer). Clients are cached per process.
+// `A2AProtocol` wrapper. The worker only needs the read-only paths
+// (`getAgentTasks`) — it never signs: top-level on-chain tasks are created by
+// the user's own wallet, and sub-tasks run off-chain inline. Client cached
+// per process.
 
 const A2A_STATUS_INDEX: Record<A2ATaskStatus, number> = {
   created: 0, accepted: 1, in_progress: 2, completed: 3, failed: 4,
 }
 
 let a2aReadonly: A2AProtocol | null = null
-let a2aSigner: A2AProtocol | null = null
 
 function getA2AReadonly(): A2AProtocol {
   if (!a2aReadonly) {
@@ -397,29 +409,6 @@ function getA2AReadonly(): A2AProtocol {
     })
   }
   return a2aReadonly
-}
-
-function getA2ASigner(): A2AProtocol {
-  if (!a2aSigner) {
-    const pk = config.a2aWorkerPrivateKey
-    if (!pk) throw new Error('A2A_WORKER_PRIVATE_KEY not configured — cannot create sub-tasks')
-    const publicClient = createPublicClient({ transport: http(config.rpcUrlOxaChain) })
-    const walletClient = createWalletClient({
-      account: privateKeyToAccount(pk as Hex),
-      transport: http(config.rpcUrlOxaChain),
-    })
-    a2aSigner = new A2AProtocol({
-      contractAddress: config.a2aProtocolOxaChain as Address,
-      publicClient,
-      walletClient,
-    })
-  }
-  return a2aSigner
-}
-
-export async function createTaskOnChain(agentId: number, taskType: string, inputData: string): Promise<number> {
-  const { taskId } = await getA2ASigner().createTask(agentId, taskType, inputData)
-  return taskId
 }
 
 // ── LLM Helpers ────────────────────────────────────────────────────────────
