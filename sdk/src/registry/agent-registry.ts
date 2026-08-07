@@ -120,6 +120,8 @@ export interface AgentSummaryMetadata {
   description: string
   capabilities: string[]
   skills: string[]
+  /** Application category / use case (AGENT_CATEGORIES value; undefined = other). */
+  category?: string
   /** Marketplace-visible availability; tokenURI JSON may override the default true. */
   isActive: boolean
 }
@@ -156,6 +158,8 @@ export interface StructuredAgentMetadata {
   publicPayloadCid: string
   capabilities: string[]
   skills: string[]
+  /** Application category / use case (AGENT_CATEGORIES value; '' = other). */
+  category?: string
   isActive: boolean
 }
 
@@ -400,6 +404,7 @@ export class AgentRegistry {
       publicPayloadCid: str(attrs.publicPayloadCid),
       capabilities: caps.length ? caps : arr(attrs.capabilities),
       skills: skills.length ? skills : arr(attrs.skills),
+      category: str(parsed?.category) || str(attrs.category) || undefined,
       isActive:
         typeof parsed?.isActive === 'boolean'
           ? parsed.isActive
@@ -444,6 +449,7 @@ export class AgentRegistry {
               description: (parsed?.description as string) || '',
               capabilities: Array.isArray(parsed?.capabilities) ? parsed.capabilities.map(String) : [],
               skills: Array.isArray(parsed?.skills) ? parsed.skills.map(String) : [],
+              category: typeof parsed?.category === 'string' && parsed.category ? parsed.category : undefined,
               isActive:
                 typeof parsed?.isActive === 'boolean'
                   ? parsed.isActive

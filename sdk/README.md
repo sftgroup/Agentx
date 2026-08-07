@@ -1,6 +1,6 @@
-# @agentxv2/sdk v0.9.3
+# @agentxv2/sdk v0.9.4
 
-**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query, hosted conversation sessions & parallel tasks.
+**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query, hosted conversation sessions & parallel tasks, agent application categories.
 
 ```
 Agent = Prompt + Skills[] + MCP
@@ -10,14 +10,14 @@ Agent = Prompt + Skills[] + MCP
 
 ## Installation
 
-The current release **0.9.3** routes fiat / x402 / access through the Gateway's unified `/api/v1/payments` endpoint via the decoupled `@agentxv2/payments` engine (auto-installed, `^0.2.0` → resolves to **0.2.1**, adds MPP channels / stablecoin EIP-3009 / period authorizations / a2a-pay clients) — on top of the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
+The current release **0.9.4** adds the **agent application category** (`category` / `AGENT_CATEGORIES`) to publishing & querying, on top of the unified `/api/v1/payments` endpoint for fiat / x402 / access via the decoupled `@agentxv2/payments` engine (auto-installed, `^0.2.0` → resolves to **0.2.2**, adds MPP channels / stablecoin EIP-3009 / period authorizations / a2a-pay clients) and the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
 
 ```bash
-# latest (recommended) — 0.9.3, unified payments endpoint
+# latest (recommended) — 0.9.4, agent categories + unified payments endpoint
 npm install @agentxv2/sdk
 
 # or pin the exact release
-npm install @agentxv2/sdk@0.9.3
+npm install @agentxv2/sdk@0.9.4
 ```
 
 ### Peer Dependencies
@@ -91,6 +91,7 @@ const result = await publishAgent({
     description: 'AI agent that audits Solidity smart contracts',
     version: '1.0.0',
     tags: ['security', 'audit'],
+    category: 'security',               // v0.9.4: application category — see AGENT_CATEGORIES
     capabilities: ['smart_contract_audit'],
     supportedTasks: ['audit'],
     communicationProtocol: 'mcp',
@@ -110,6 +111,8 @@ await registry.register(`ipfs://${result.publicCid}`, [
   { key: 'eciesEncryptedKey', value: result.eciesEncryptedKeyHex },
 ])
 ```
+
+> **Application category (v0.9.4)** — publishing agents now takes a `category` field (one of `AGENT_CATEGORIES`: `operations` / `customer-service` / `sales` / `personal-assistant` / `coding` / `server-monitoring` / `airdrop` / `quant-trading` / `data-analysis` / `content` / `security` / `finance` / `other`). It is written into the public metadata + on-chain attrs and drives Marketplace category filtering. The Studio UI enforces it as required; SDK-level it is optional for backward compatibility (agents without it fall back to `other`). `getAllAgents()` / `getAgentMetadata()` return the resolved `category`.
 
 ---
 
@@ -616,7 +619,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 ---
 
-## Multi-Rail Subscription Payments (v0.9.3)
+## Multi-Rail Subscription Payments (v0.9.4)
 
 `SubscriptionPayments` is the single entry point for subscribing across every AgentX payment rail — chain (on-chain escrow), fiat (Stripe card via the Gateway) and x402 (native-token period payment). `fiat` / `x402` / `hasAccess()` go through the unified `/api/v1/payments` endpoint (the `@agentxv2/payments` engine); `chain` works fully off-Gateway.
 
@@ -667,7 +670,33 @@ const uni    = new PaymentsClient(base) // unified create / verify / access / in
 | `X402Client` | `/api/v1/x402/{info,verify,balance}`, `quote`/`pay` (v2 headers) | `quote(url)` fetches the `PAYMENT-REQUIRED` challenge; `pay({ url, walletClient, account })` funds + signs + replays in one call |
 | `PaymentsClient` | `/api/v1/payments` + `/verify` `/access` `/info` `/quote` | `create({ method: 'fiat'|'x402'|... })`, `verify(txHash)`, `access(subscriber, agentId)`, `info()` rails discovery |
 
-> **Dependency note**: the clients come from [`@agentxv2/payments`](https://www.npmjs.com/package/@agentxv2/payments) `^0.2.0` (currently **0.2.1**), auto-installed as a dependency of `@agentxv2/sdk`. `PAYMENT_VERSION` (`'0.2.0'` — the aligned engine API version) is also exported from the SDK root. **Browser/bundler safe**: since 0.2.1 the engine uses only the Web Crypto API — no Node built-ins (`node:crypto` / `Buffer`) — so webpack/Next.js builds no longer fail on `UnhandledSchemeError`. Endpoints must be exposed by the Gateway the client points at (MPP/period/a2a routes exist on AgentX Gateway `/api/v1/payments/*`).
+> **Dependency note**: the clients come from [`@agentxv2/payments`](https://www.npmjs.com/package/@agentxv2/payments) `^0.2.0` (currently **0.2.2**, adds AgentX ownership metadata), auto-installed as a dependency of `@agentxv2/sdk`. `PAYMENT_VERSION` (`'0.2.0'` — the aligned engine API version) is also exported from the SDK root. **Browser/bundler safe**: since 0.2.1 the engine uses only the Web Crypto API — no Node built-ins (`node:crypto` / `Buffer`) — so webpack/Next.js builds no longer fail on `UnhandledSchemeError`. Endpoints must be exposed by the Gateway the client points at (MPP/period/a2a routes exist on AgentX Gateway `/api/v1/payments/*`).
+
+---
+
+## Multi-Agent Orchestration Layering (v0.9.4)
+
+Multi-agent delegation follows a **two-rail layering strategy** so integrators get real-time, zero-cost orchestration by default and only pay for on-chain guarantees when they need them:
+
+| Rail | When to use | Cost | Guarantees |
+|------|-------------|------|-----------|
+| **off-chain** (default) | same-platform, high-frequency, real-time conversational delegation | zero (no on-chain writes) | result returns synchronously in the conversation channel |
+| **on-chain** (opt-in) | cross-org, settlement / reconciliation, reputation accumulation, third-party verification | gas + task tx | auditable A2A taskId, on-chain record, settlement & reputation hooks |
+
+Inside a conversation run, the main agent is given two platform tools (injected by the Conversation Service, same access boundary as chat — only agents the caller owns or is subscribed to):
+
+- `agentx_list_agents` — discover the agents the caller may delegate to (id / name / description / category).
+- `agentx_delegate` — `{ targetAgentId, message, mode? }`. **Default `mode: "offchain"`**: the sub-agent runs synchronously inside the conversation channel and its final answer returns to the main agent in real time. **When the user explicitly requests an auditable / settled / on-chain delegation** (e.g. "上链", "可审计", "结算", "on-chain", "audit"), use `mode: "onchain"`: an on-chain A2A task is created (returned `taskId` is the audit trail), picked up by the Gateway A2A worker and recorded in `a2a_task_results`.
+
+Platform configuration (Conversation Service env):
+
+```bash
+ORCHESTRATE_TOKEN=...                 # must match the Gateway's ORCHESTRATE_TOKEN
+ORCHESTRATE_DEFAULT_MODE=offchain     # default rail: offchain | onchain
+ORCHESTRATE_MAX_DEPTH=4               # max nested delegation depth
+```
+
+> The SDK `A2AProtocol` / `A2ADaemon` remain the explicit on-chain rail for integrators who want settlement & reputation without the chat channel.
 
 ---
 
@@ -675,6 +704,7 @@ const uni    = new PaymentsClient(base) // unified create / verify / access / in
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.9.4** | 2026-08-07 | **Agent application categories** — `AgentPayload.category` + `AGENT_CATEGORIES` / `AgentCategory` (13 enums); written to public metadata + on-chain attrs; `getAllAgents()` / `getAgentMetadata()` resolve `category`; Gateway `?category=` filter + byCategory aggregation; frontend Studio requires it, Marketplace categorizes by it. `@agentxv2/payments` resolved to **0.2.2** (ownership metadata). **No breaking changes** (see UPGRADE.md) |
 | **0.9.3** | 2026-08-07 | **P2-P4 rails aligned** — `@agentxv2/payments` bumped to `^0.2.0` (MPP payment channels / stablecoin EIP-3009+Permit2 / period authorizations / a2a-pay); re-exports `MPPClient` / `A2AClient` / `PeriodClient` / `X402Client` / `PaymentsClient` from the SDK root. **No breaking changes** — `SubscriptionPayments` API unchanged (see UPGRADE.md) |
 | **0.9.2** | 2026-08-07 | **Unified payments endpoint** — `SubscriptionPayments` fiat / x402 / `hasAccess()` now go through the Gateway's `/api/v1/payments` via the decoupled `@agentxv2/payments` engine (`^0.1.0`, new dependency); `fetchX402Info()` reads the rails-discovery `/info`. **No breaking changes** — `pay()` / `hasAccess()` / result types unchanged (see UPGRADE.md) |
 | **0.9.0** | 2026-08-06 | Browser Control Skill extension: new actions `hover` / `press` / `select` (select+checkbox+radio) / `back` / `forward` / `getInfo` (url/title/viewport); `extractAccessibleDOM` now includes `name`/`role`/`aria-label`/input `value`/checkbox `checked`/anchor `target`; new `sleep(ms)` async pacing helper; `findElement` also matches `name` attr |

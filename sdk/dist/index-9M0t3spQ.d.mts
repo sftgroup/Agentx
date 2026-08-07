@@ -1,9 +1,9 @@
-import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, c as LLMProvider, L as LLMMessage, O as OpenAIToolDef } from './types-1FzCtTKY.js';
-import { R as RunnableSkill, b as AgentRunner } from './agent-runner-x2okE4yu.js';
-import { TraceConfig, TraceEvent } from './traces/index.js';
+import { A as AgentLoopConfig, a as AgentLoopResult, T as ToolCallRecord, c as LLMProvider, L as LLMMessage, O as OpenAIToolDef } from './types-CZnZX8ej.mjs';
+import { R as RunnableSkill, b as AgentRunner } from './agent-runner-BvolNHhF.mjs';
+import { TraceConfig, TraceEvent } from './traces/index.mjs';
 import { Address, PublicClient, WalletClient, Hash } from 'viem';
-import { c as A2AAgentCard, e as A2ATask, l as AgentSubscription } from './types-CCl4P8IB.js';
-import { IPFSUploader } from './ipfs/index.js';
+import { c as A2AAgentCard, e as A2ATask, n as AgentSubscription } from './types-DJHPGJSX.mjs';
+import { IPFSUploader } from './ipfs/index.mjs';
 import { EventEmitter } from 'events';
 
 declare class AgentLoop {
@@ -250,6 +250,8 @@ interface AgentSummaryMetadata {
     description: string;
     capabilities: string[];
     skills: string[];
+    /** Application category / use case (AGENT_CATEGORIES value; undefined = other). */
+    category?: string;
     /** Marketplace-visible availability; tokenURI JSON may override the default true. */
     isActive: boolean;
 }
@@ -283,6 +285,8 @@ interface StructuredAgentMetadata {
     publicPayloadCid: string;
     capabilities: string[];
     skills: string[];
+    /** Application category / use case (AGENT_CATEGORIES value; '' = other). */
+    category?: string;
     isActive: boolean;
 }
 /**

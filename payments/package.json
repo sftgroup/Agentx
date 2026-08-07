@@ -1,6 +1,6 @@
 {
   "name": "@agentxv2/payments",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "AgentX Payments — zero-AgentX-dependency payment engine (chain / Stripe / x402 / MPP / a2a). Embedded service or standalone library.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -15,10 +15,17 @@ export default function MarketplacePage() {
   const pageSize = 12
 
   const { agents, isLoading, totalAgents, loadedCount, refetch } = useAgentRegistry(pageSize * currentPage)
-  const { filteredAgents, availableTags, setQuery, setTags, setSortBy, resetFilters, hasActiveFilters, resultStats } = useAgentSearch(agents)
+  const { filteredAgents, availableTags, availableCategories, filters, setQuery, setTags, setCategory, setSortBy, resetFilters, hasActiveFilters, resultStats } = useAgentSearch(agents)
 
   const [searchText, setSearchText] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    operations: '运营', 'customer-service': '客服', sales: '销售',
+    'personal-assistant': '个人助理', coding: '写代码', 'server-monitoring': '服务器监控',
+    airdrop: '空投', 'quant-trading': '量化', 'data-analysis': '数据分析',
+    content: '内容', security: '安全', finance: '金融', other: '其他',
+  }
 
   const handleSearch = (v: string) => { setSearchText(v); setQuery(v) }
   const toggleTag = (tag: string) => {
@@ -56,6 +63,20 @@ export default function MarketplacePage() {
             placeholder={t('common.search')}
             className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/5 rounded-2xl text-sm focus:outline-none focus:border-accent-purple/40 focus:bg-white/8 transition-all placeholder:text-text-muted"
           />
+        </div>
+
+        {/* Application category tabs */}
+        <div className="flex flex-wrap items-center gap-2 justify-center">
+          <button onClick={() => setCategory('')}
+            className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${!filters.category ? 'bg-accent-purple/20 text-accent-purple border-accent-purple/30' : 'bg-white/3 border-white/5 text-text-muted hover:text-text-secondary hover:border-white/10'}`}>
+            全部应用
+          </button>
+          {availableCategories.map(cat => (
+            <button key={cat} onClick={() => setCategory(cat)}
+              className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${filters.category === cat ? 'bg-accent-purple/20 text-accent-purple border-accent-purple/30' : 'bg-white/3 border-white/5 text-text-muted hover:text-text-secondary hover:border-white/10'}`}>
+              {CATEGORY_LABELS[cat] || cat}
+            </button>
+          ))}
         </div>
 
         {/* Filter tags */}
@@ -108,11 +129,16 @@ export default function MarketplacePage() {
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-purple/20 to-accent-cyan/10 border border-white/5 flex items-center justify-center">
                     <Brain className="w-6 h-6 text-accent-purple" />
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    agent.metadata?.pricing?.type === 'subscription' ? 'bg-accent-cyan/10 text-accent-cyan' : 'bg-accent-purple/10 text-accent-purple'
-                  }`}>
-                    {agent.metadata?.pricing?.type === 'subscription' ? t('common.subscription') : t('common.payPerUse')}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/8 text-text-secondary">
+                      {CATEGORY_LABELS[agent.metadata?.category || 'other'] || agent.metadata?.category || '其他'}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      agent.metadata?.pricing?.type === 'subscription' ? 'bg-accent-cyan/10 text-accent-cyan' : 'bg-accent-purple/10 text-accent-purple'
+                    }`}>
+                      {agent.metadata?.pricing?.type === 'subscription' ? t('common.subscription') : t('common.payPerUse')}
+                    </span>
+                  </div>
                 </div>
                 <h3 className="font-semibold mb-1.5 group-hover:text-accent-purple transition-colors truncate">
                   {agent.metadata?.name || `Agent #${agent.id}`}

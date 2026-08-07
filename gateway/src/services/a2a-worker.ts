@@ -417,7 +417,7 @@ function getA2ASigner(): A2AProtocol {
   return a2aSigner
 }
 
-async function createTaskOnChain(agentId: number, taskType: string, inputData: string): Promise<number> {
+export async function createTaskOnChain(agentId: number, taskType: string, inputData: string): Promise<number> {
   const { taskId } = await getA2ASigner().createTask(agentId, taskType, inputData)
   return taskId
 }

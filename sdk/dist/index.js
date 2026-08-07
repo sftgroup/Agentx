@@ -258,6 +258,7 @@ async function publishAgent(config) {
       version: agent.version,
       tags: agent.tags,
       capabilities: agent.capabilities,
+      category: agent.category,
       eciesKey: eciesEncryptedKeyHex
     })
   ]);
@@ -2481,6 +2482,7 @@ __export(index_exports, {
   A2ADaemon: () => A2ADaemon,
   A2AProtocol: () => A2AProtocol,
   A2A_VERSION: () => A2A_VERSION,
+  AGENT_CATEGORIES: () => AGENT_CATEGORIES,
   AgentLoop: () => AgentLoop,
   AgentRegistry: () => AgentRegistry,
   AgentRunner: () => AgentRunner,
@@ -2556,6 +2558,34 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // src/core/types.ts
+var AGENT_CATEGORIES = [
+  "operations",
+  // 运营
+  "customer-service",
+  // 客服
+  "sales",
+  // 销售
+  "personal-assistant",
+  // 个人助理
+  "coding",
+  // 写代码 / 开发
+  "server-monitoring",
+  // 服务器监控
+  "airdrop",
+  // 空投
+  "quant-trading",
+  // 量化策略
+  "data-analysis",
+  // 数据分析
+  "content",
+  // 内容创作
+  "security",
+  // 安全
+  "finance",
+  // 金融
+  "other"
+  // 其他 / 未分类
+];
 var AgentXErrorCode = /* @__PURE__ */ ((AgentXErrorCode2) => {
   AgentXErrorCode2["NOT_SUBSCRIBED"] = "NOT_SUBSCRIBED";
   AgentXErrorCode2["SUBSCRIPTION_EXPIRED"] = "SUBSCRIPTION_EXPIRED";
@@ -4958,6 +4988,7 @@ var AgentRegistry = class {
       publicPayloadCid: str2(attrs.publicPayloadCid),
       capabilities: caps.length ? caps : arr(attrs.capabilities),
       skills: skills.length ? skills : arr(attrs.skills),
+      category: str2(parsed?.category) || str2(attrs.category) || void 0,
       isActive: typeof parsed?.isActive === "boolean" ? parsed.isActive : typeof parsed?.is_active === "boolean" ? parsed.is_active : await this.agentExists(agentId)
     };
   }
@@ -4993,6 +5024,7 @@ var AgentRegistry = class {
               description: parsed?.description || "",
               capabilities: Array.isArray(parsed?.capabilities) ? parsed.capabilities.map(String) : [],
               skills: Array.isArray(parsed?.skills) ? parsed.skills.map(String) : [],
+              category: typeof parsed?.category === "string" && parsed.category ? parsed.category : void 0,
               isActive: typeof parsed?.isActive === "boolean" ? parsed.isActive : typeof parsed?.is_active === "boolean" ? parsed.is_active : true
             };
             if (activeOnly && !metadata.isActive) return null;
@@ -7256,6 +7288,7 @@ var ConversationClient = class {
   A2ADaemon,
   A2AProtocol,
   A2A_VERSION,
+  AGENT_CATEGORIES,
   AgentLoop,
   AgentRegistry,
   AgentRunner,

@@ -1,15 +1,16 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.8.6 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-06
+> SDK v0.9.4 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-07
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
 **两种接入方式，按场景选择：**
 
-- **SDK** · [`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk) v0.8.6 — 直连区块链：链上读写、真实交易（订阅 / 创建套餐）、事件监听、加密、IPFS、对话 SSE。适合 **DApp 与深度集成**。
+- **SDK** · [`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk) v0.9.4 — 直连区块链：链上读写、真实交易（订阅 / 创建套餐）、事件监听、加密、IPFS、对话 SSE、**三轨订阅支付（chain / fiat / x402）**、Agent 应用分类。适合 **DApp 与深度集成**。
 - **MCP 客户端** · [`@agentxv2/mcp`](https://www.npmjs.com/package/@agentxv2/mcp) v0.1.0 — 经 Gateway MCP 协议：38 个工具（链上读写 + 对话/并行任务管理）、AI Agent 工具化调用、零依赖、免链配置。适合 **快速接入与只读场景**。
 
 > 详细对比（能力 / 场景 / 选型决策树）：[docs/sdk-vs-mcp.md](docs/sdk-vs-mcp.md)
+> 完整接入指南：发布 / 订阅 / 付费三轨 + 多 Agent 编排分层 → [docs/publish-subscribe-pay.md](docs/publish-subscribe-pay.md)
 
 ---
 
@@ -82,7 +83,7 @@ ERC-8004 Standard (planned):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.8.6
+npm install @agentxv2/sdk@0.9.4
 ```
 
 ```typescript
@@ -138,7 +139,9 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | **Dual-Mode LLM** | Platform quota (DeepSeek/OpenAI) + BYOK transparent proxy |
 | **Admin Dashboard** | Web UI for platform key/plan/tenant/usage management |
 | **MCP Remote Tools** | Publisher-hosted tools with ECDSA auth |
-| **Payment Stack** | 链上自动分成（creator 97.5% + 平台 2.5%）+ 渠道归因分成（可追溯）+ 法币订阅 (Stripe, A1) + x402 按次付费 (A2) |
+| **Payment Stack** | 三轨订阅支付（chain 链上 escrow / fiat Stripe / x402 周期支付，统一 `/api/v1/payments` 端点）+ 链上自动分成（creator 97.5% + 平台 2.5%）+ 渠道归因分成（可追溯） |
+| **Multi-Agent Orchestration** | 编排分层：**链下默认**（对话通道实时委派，零成本）+ **链上可选**（A2A 协议，可审计 / 结算 / 信誉；用户显式要求时启用） |
+| **Agent Categories** | 发布必填应用类别（`AGENT_CATEGORIES`，13 枚举），Marketplace 分类筛选 + 卡片标签 |
 | **Live Chain Data API** | `/api/v1/chain` 实时直读（SDK 驱动）+ `/api/v1/agents` 索引层（PostgreSQL 双轨架构） |
 | **A2A Protocol** | Agent-to-Agent task delegation with auto-processing Worker + SDK Daemon |
 | **IPFS / Pinata** | Encrypted payload + metadata upload to IPFS via Pinata |
@@ -162,8 +165,8 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | **SDK Docs (live)** | `http://43.159.60.46:3100/docs/sdk`（实时渲染 SDK README） |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.8.6` |
-| **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.8.6`, production :3100) |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.9.4` |
+| **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.9.4`, production :3100) |
 
 ---
 
@@ -188,6 +191,9 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | Doc | Content |
 |-----|---------|
 | [PROGRESS.md](./docs/PROGRESS.md) | **统一任务清单与进度**（P0–P4 全部任务状态 / 待办 / 生产环境 / 合约地址 / 验证记录） |
+| [publish-subscribe-pay.md](./docs/publish-subscribe-pay.md) | **发布 / 订阅 / 付费 集成指南**（三轨支付 + 多 Agent 编排分层 + category 必填） |
+| [integration-callers.md](./docs/integration-callers.md) | 调用方（业务团队）接入指南：Key / 会话任务 / MCP / 错误码 |
+| [sdk-integration-example.md](./docs/sdk-integration-example.md) | 第三方服务接入样例：SDK / MCP / REST 三通道可运行示例 |
 | [payment-architecture.md](./docs/payment-architecture.md) | 支付体系设计：渠道分成、法币订阅 (A1)、x402 按次付费 (A2)、决策树 |
 | [INTEGRATION.md](./INTEGRATION.md) | SDK / Gateway / Contract integration guide |
 | [CONVERSATION_SERVICE.md](./CONVERSATION_SERVICE.md) | Conversation Service server protocol (auth, SSE, BYOK, memory) |

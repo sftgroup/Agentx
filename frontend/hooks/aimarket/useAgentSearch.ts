@@ -7,6 +7,7 @@ import { AgentInfo } from './useAgentRegistry'
 export interface SearchFilters {
   query: string
   tags: string[]
+  category: string // '' = all
   pricingType: 'all' | 'subscription' | 'pay_per_use'
   sortBy: 'newest' | 'oldest' | 'name' | 'name_desc'
 }
@@ -15,9 +16,11 @@ export interface UseAgentSearchReturn {
   filteredAgents: AgentInfo[]
   filters: SearchFilters
   availableTags: string[]
+  availableCategories: string[]
   availablePricingTypes: Array<'subscription' | 'pay_per_use'>
   setQuery: (query: string) => void
   setTags: (tags: string[]) => void
+  setCategory: (category: string) => void
   setPricingType: (type: SearchFilters['pricingType']) => void
   setSortBy: (sortBy: SearchFilters['sortBy']) => void
   resetFilters: () => void
@@ -33,6 +36,7 @@ export function useAgentSearch(agents: AgentInfo[]): UseAgentSearchReturn {
   const [filters, setFilters] = useState<SearchFilters>({
     query: '',
     tags: [],
+    category: '',
     pricingType: 'all',
     sortBy: 'newest'
   })
@@ -47,8 +51,14 @@ export function useAgentSearch(agents: AgentInfo[]): UseAgentSearchReturn {
         // 修复：允许没有元数据的Agent显示
         if (!agent.isLoaded || agent.hasError) return false
 
-        const { query, tags, pricingType } = filters
+        const { query, tags, category, pricingType } = filters
         const metadata = agent.metadata
+
+        // 应用类别过滤 — agents without a category are only shown under "all"/"other"
+        if (category && category !== 'all') {
+          const cat = metadata?.category || 'other'
+          if (cat !== category) return false
+        }
 
         // 文本搜索 - 修复：允许通过ID搜索没有元数据的Agent
         if (query.trim()) {
@@ -127,6 +137,15 @@ export function useAgentSearch(agents: AgentInfo[]): UseAgentSearchReturn {
     return Array.from(tags).sort()
   }, [agents])
 
+  // 获取所有可用的应用类别
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>(['other'])
+    agents.forEach(agent => {
+      if (agent.metadata?.category) cats.add(agent.metadata.category)
+    })
+    return Array.from(cats).sort()
+  }, [agents])
+
   // 获取所有可用的价格类型 - 修复：只从有元数据的Agent获取
   const availablePricingTypes = useMemo(() => {
     const types = new Set<'subscription' | 'pay_per_use'>()
@@ -148,6 +167,11 @@ export function useAgentSearch(agents: AgentInfo[]): UseAgentSearchReturn {
     setFilters(prev => ({ ...prev, tags }))
   }, [])
 
+  // 更新应用类别过滤
+  const setCategory = useCallback((category: string) => {
+    setFilters(prev => ({ ...prev, category }))
+  }, [])
+
   // 更新价格类型过滤
   const setPricingType = useCallback((pricingType: SearchFilters['pricingType']) => {
     setFilters(prev => ({ ...prev, pricingType }))
@@ -163,6 +187,7 @@ export function useAgentSearch(agents: AgentInfo[]): UseAgentSearchReturn {
     setFilters({
       query: '',
       tags: [],
+      category: '',
       pricingType: 'all',
       sortBy: 'newest'
     })
@@ -172,6 +197,7 @@ export function useAgentSearch(agents: AgentInfo[]): UseAgentSearchReturn {
   const hasActiveFilters = useMemo(() => {
     return filters.query !== '' || 
            filters.tags.length > 0 || 
+           filters.category !== '' || 
            filters.pricingType !== 'all'
   }, [filters])
 
@@ -188,9 +214,11 @@ export function useAgentSearch(agents: AgentInfo[]): UseAgentSearchReturn {
     filteredAgents: filteredAgents.slice(0, 100), // 限制显示数量
     filters,
     availableTags,
+    availableCategories,
     availablePricingTypes,
     setQuery,
     setTags,
+    setCategory,
     setPricingType,
     setSortBy,
     resetFilters,
