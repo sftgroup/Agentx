@@ -1,6 +1,6 @@
-# @agentxv2/sdk v0.9.5
+# @agentxv2/sdk v0.10.0
 
-**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query, hosted conversation sessions & parallel tasks, agent application categories.
+**Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop (off-chain + user-wallet-signed on-chain rails), IPFS upload, MCP remote tools, chain-data batch query, hosted conversation sessions & parallel tasks, agent application categories, unified multi-rail payments.
 
 ```
 Agent = Prompt + Skills[] + MCP
@@ -10,14 +10,14 @@ Agent = Prompt + Skills[] + MCP
 
 ## Installation
 
-The current release **0.9.5** is a **streaming bug fix**: DeepSeek / OpenAI tool-call argument deltas (which carry only an `index`, not an `id`) are now correctly re-attached to the originating `tool_call_start` — previously the accumulated tool arguments could be silently dropped, breaking multi-turn tool use. No breaking changes. It builds on **0.9.4** (agent application categories + unified `/api/v1/payments` endpoint via the decoupled `@agentxv2/payments` engine, `^0.2.0` → resolves to **0.2.2**) and the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
+The current release **0.10.0** is the **complete feature release** — it consolidates the 0.9.x line (agent application categories, unified `/api/v1/payments` endpoint via the decoupled `@agentxv2/payments` engine, sessions & parallel tasks, streaming tool_call fix, and the **typed `onchain_approval_required` SSE event** for user-wallet-signed on-chain delegation). Install and use:
 
 ```bash
-# latest (recommended) — 0.9.5, streaming tool_call fix + agent categories + unified payments endpoint
+# latest (recommended) — 0.10.0, complete feature release
 npm install @agentxv2/sdk
 
 # or pin the exact release
-npm install @agentxv2/sdk@0.9.5
+npm install @agentxv2/sdk@0.10.0
 ```
 
 ### Peer Dependencies
@@ -258,7 +258,7 @@ const client = new ConversationClient({
   timeoutMs: 120_000,                           // optional: stream timeout (default 120s)
 })
 
-// Stream events (thinking / tool_call / tool_result / text / clarification / done / error)
+// Stream events (text / tool_call / tool_result / thinking / clarification / onchain_approval_required / done / error)
 const controller = new AbortController()        // optional: external stop (user "Stop" button)
 for await (const event of client.stream({
   agentId: 42,
@@ -273,6 +273,12 @@ for await (const event of client.stream({
     case 'tool_result':    updateToolBubble(event.toolName!, event.toolResult); break
     case 'thinking':       setThinking(event.content!); break
     case 'clarification':  askUser(event.question!); break  // request was ambiguous — prompt the user
+    case 'onchain_approval_required':
+      // v0.9.6+: the agent requested an auditable on-chain A2A delegation.
+      // The USER must approve it in their own wallet (they pay the gas and
+      // become the on-chain client). Show a wallet modal with
+      // event.approval = { targetAgentId, taskType, inputData }.
+      openWalletModal(event.approval!); break
     case 'done':           onDone(event.usage); break
     case 'error':          onError(event.error!); break
   }
@@ -674,19 +680,21 @@ const uni    = new PaymentsClient(base) // unified create / verify / access / in
 
 ---
 
-## Multi-Agent Orchestration Layering (v0.9.4)
+## Multi-Agent Orchestration Layering (v0.10.0)
 
 Multi-agent delegation follows a **two-rail layering strategy** so integrators get real-time, zero-cost orchestration by default and only pay for on-chain guarantees when they need them:
 
 | Rail | When to use | Cost | Guarantees |
 |------|-------------|------|-----------|
 | **off-chain** (default) | same-platform, high-frequency, real-time conversational delegation | zero (no on-chain writes) | result returns synchronously in the conversation channel |
-| **on-chain** (opt-in) | cross-org, settlement / reconciliation, reputation accumulation, third-party verification | gas + task tx | auditable A2A taskId, on-chain record, settlement & reputation hooks |
+| **on-chain** (opt-in) | cross-org, settlement / reconciliation, reputation accumulation, third-party verification | gas paid by the **user's wallet** + task tx | auditable A2A taskId, on-chain record, settlement & reputation hooks |
+
+> **v0.10.0 gas model (2026-08-08):** on-chain rail costs are **never paid by the platform**. When the user explicitly requests an auditable / settled delegation, the Conversation Service emits an `onchain_approval_required` SSE event and the **user's own wallet** submits `createTask` — they pay the gas and become the on-chain `clientAddress` (the contract records `clientAddress = msg.sender`). The Gateway no longer holds any signing key (`A2A_WORKER_PRIVATE_KEY` removed) and never writes to the chain; sub-tasks created by the a2a-worker run **off-chain inline** (local negative pseudo taskIds), so only the top-level task the user signs is on-chain.
 
 Inside a conversation run, the main agent is given two platform tools (injected by the Conversation Service, same access boundary as chat — only agents the caller owns or is subscribed to):
 
 - `agentx_list_agents` — discover the agents the caller may delegate to (id / name / description / category).
-- `agentx_delegate` — `{ targetAgentId, message, mode? }`. **Default `mode: "offchain"`**: the sub-agent runs synchronously inside the conversation channel and its final answer returns to the main agent in real time. **When the user explicitly requests an auditable / settled / on-chain delegation** (e.g. "上链", "可审计", "结算", "on-chain", "audit"), use `mode: "onchain"`: an on-chain A2A task is created (returned `taskId` is the audit trail), picked up by the Gateway A2A worker and recorded in `a2a_task_results`.
+- `agentx_delegate` — `{ targetAgentId, message, mode? }`. **Default `mode: "offchain"`**: the sub-agent runs synchronously inside the conversation channel and its final answer returns to the main agent in real time. **When the user explicitly requests an auditable / settled / on-chain delegation** (e.g. "上链", "可审计", "结算", "on-chain", "audit"), use `mode: "onchain"`: the service emits `onchain_approval_required` and the **user signs the A2A `createTask` in their own wallet** (they pay the gas); the returned `taskId` is the audit trail, picked up by the Gateway A2A worker and recorded in `a2a_task_results`.
 
 Platform configuration (Conversation Service env):
 
@@ -696,7 +704,7 @@ ORCHESTRATE_DEFAULT_MODE=offchain     # default rail: offchain | onchain
 ORCHESTRATE_MAX_DEPTH=4               # max nested delegation depth
 ```
 
-> The SDK `A2AProtocol` / `A2ADaemon` remain the explicit on-chain rail for integrators who want settlement & reputation without the chat channel.
+> The SDK `A2AProtocol` / `A2ADaemon` remain the explicit on-chain rail for integrators who want settlement & reputation without the chat channel — same principle: the caller's own wallet signs `createTask`.
 
 ---
 
@@ -704,6 +712,8 @@ ORCHESTRATE_MAX_DEPTH=4               # max nested delegation depth
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.10.0** | 2026-08-08 | **Complete feature release** — consolidates the 0.9.x line into a stable baseline: typed `onchain_approval_required` SSE event + `OnChainApprovalRequest` (user-wallet-signed on-chain delegation, no platform gas), agent categories, unified payments rails, sessions & parallel tasks, streaming tool_call fix. **No breaking changes** |
+| **0.9.6** | 2026-08-08 | **Typed on-chain approval event** — `ConversationSSEEvent` adds `'onchain_approval_required'` + `OnChainApprovalRequest { targetAgentId, taskType, inputData }` so consumers no longer need `as unknown as` narrowing when the agent requests an auditable on-chain A2A delegation (the user's wallet signs `createTask` and pays the gas). Frontend `useAgentChat` updated to the typed event (also resolves the pre-existing `AgentPayload.category` error). **No breaking changes** |
 | **0.9.5** | 2026-08-08 | **Fix: streaming tool_call arguments dropped** — DeepSeek/OpenAI argument-delta chunks carry only an `index` (no `id`); `GatewayProvider` / `OpenAIProvider` now keep an `index→id` map so accumulated tool arguments attach to the real call (previously silently discarded). **No breaking changes** (see UPGRADE.md) |
 | **0.9.4** | 2026-08-07 | **Agent application categories** — `AgentPayload.category` + `AGENT_CATEGORIES` / `AgentCategory` (13 enums); written to public metadata + on-chain attrs; `getAllAgents()` / `getAgentMetadata()` resolve `category`; Gateway `?category=` filter + byCategory aggregation; frontend Studio requires it, Marketplace categorizes by it. `@agentxv2/payments` resolved to **0.2.2** (ownership metadata). **No breaking changes** (see UPGRADE.md) |
 | **0.9.3** | 2026-08-07 | **P2-P4 rails aligned** — `@agentxv2/payments` bumped to `^0.2.0` (MPP payment channels / stablecoin EIP-3009+Permit2 / period authorizations / a2a-pay); re-exports `MPPClient` / `A2AClient` / `PeriodClient` / `X402Client` / `PaymentsClient` from the SDK root. **No breaking changes** — `SubscriptionPayments` API unchanged (see UPGRADE.md) |

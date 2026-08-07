@@ -1,6 +1,6 @@
 # AgentX 发布 / 订阅 / 付费 集成指南
 
-> 适用版本：`@agentxv2/sdk >= 0.9.4`（含 `AgentCategory` / `AGENT_CATEGORIES`）
+> 适用版本：`@agentxv2/sdk >= 0.10.0`（含 `AgentCategory` / `AGENT_CATEGORIES` / 三轨订阅支付 / 用户钱包签名上链编排）
 > 面向对象：集成方（想把自己的 Agent 发布到 AgentX 市场、并对用户订阅/付费进行管理的团队）
 
 AgentX 有三角色：
@@ -140,14 +140,21 @@ const result = await publishAgent({ agent, publicKey, uploader })
 ### 2.3 SDK 示例（订阅）
 
 ```ts
-import { SubscriptionPayments } from '@agentxv2/sdk'
+import { SubscriptionPayments, SubscriptionManager } from '@agentxv2/sdk'
 
-const sp = new SubscriptionPayments({ chain, publicClient, walletClient })
+// chain 轨道需要 on-chain 读写能力；fiat / x402 轨道走 Gateway /api/v1/payments
+const sm = new SubscriptionManager({ contractAddress, publicClient, walletClient })
+const sp = new SubscriptionPayments({
+  gatewayUrl: 'https://gw.example.com',   // fiat / x402 必需
+  subscriptionManager: sm,                // chain 轨道 & x402 自动出资必需
+  walletClient,
+  chain: 'oxachain',
+})
 
 // 1) 订阅（三选一）
 await sp.pay({ method: 'chain', agentId, planId, subscriber: myAddress })   // 链上 escrow
-await sp.pay({ method: 'fiat', agentId, planId, ... })                      // Stripe → 返回 sessionUrl 跳转
-await sp.pay({ method: 'x402', agentId, planId, ... })                      // 原生代币周期支付
+const { sessionUrl } = await sp.pay({ method: 'fiat', agentId, planId, subscriber: myAddress })  // Stripe → 跳转
+await sp.pay({ method: 'x402', agentId, planId, subscriber: myAddress })   // 原生代币周期支付
 
 // 2) 访问判定（链上 OR fiat/x402）
 const ok = await sp.hasAccess(agentId, myAddress)
@@ -188,14 +195,29 @@ if (!ok) { /* 引导订阅 */ }
 | 轨道 | 适用 | 成本 | 保证 |
 |---|---|---|---|
 | **链下**（默认，`agentx_delegate` mode=`offchain`） | 同平台内部、高频、实时对话式委派 | 零（无链上写入） | 子 Agent 在对话通道内同步运行，结果实时返回主 Agent |
-| **链上**（显式，`agentx_delegate` mode=`onchain`） | 跨组织、结算对账、信誉积累、需第三方验证 | gas + 任务交易 | 可审计的 A2A taskId、链上记录、结算/信誉钩子 |
+| **链上**（显式，`agentx_delegate` mode=`onchain`） | 跨组织、结算对账、信誉积累、需第三方验证 | **用户钱包支付 gas** + 任务交易 | 可审计的 A2A taskId、链上记录、结算/信誉钩子 |
+
+> **v0.10.0 gas 模型（2026-08-08）**：链上轨道**平台从不代付 gas**。用户显式要求可审计/结算时，Conversation Service 发出 `onchain_approval_required` SSE 事件，**用户自己的钱包**签 `createTask` —— 用户付 gas，合约记录 `clientAddress = msg.sender`（= 用户地址）。Gateway 不再持有任何签名密钥（`A2A_WORKER_PRIVATE_KEY` 已移除），永不写链；a2a-worker 创建的子任务**链下内联**处理（本地负伪 taskId），只有用户签的顶层任务在链上。
 
 对话中注入的平台工具（Conversation Service 提供，仅当调用方有权时可用）：
 
 - `agentx_list_agents` — 列出调用者可委派的 Agent（id / name / description / category）
 - `agentx_delegate` — `{ targetAgentId, message, mode? }`：
   - 默认 `mode: "offchain"` → 子 Agent 在对话通道内**同步**运行，实时返回结果（零成本）
-  - 用户**显式要求可审计/结算/上链**（如「上链」「可审计」「结算」「对账」「on-chain」「audit」「settle」）→ 自动 `mode: "onchain"` → 经 Gateway 创建链上 A2A 任务，返回 `taskId` 作为审计轨迹，由 a2a-worker 异步处理并记录到 `a2a_task_results`
+  - 用户**显式要求可审计/结算/上链**（如「上链」「可审计」「结算」「对账」「on-chain」「audit」「settle」）→ 自动 `mode: "onchain"` → Conversation Service 校验访问权后发 `onchain_approval_required` 事件（含 `{ targetAgentId, taskType, inputData }`）→ **前端弹钱包，用户签 `createTask`**（用户付 gas，成为链上 client）→ 返回 `taskId` 作为审计轨迹 → a2a-worker 异步处理并记录到 `a2a_task_results` → 前端轮询 `GET /api/v1/a2a/task-result/:taskId` 展示结果
+
+前端流程（用户视角）：
+
+```
+对话中：「上链委派给 Agent #X 做审计」
+  → Conversation 发 onchain_approval_required（SSE side-event）
+  → 前端弹「上链确认」弹窗（展示目标 Agent / taskType / inputData / gas 支付方=我的钱包）
+  → 用户钱包确认（签名 createTask，付 OXA gas）
+  → 前端从 receipt.logs[].topics[1] 解析 taskId
+  → 轮询 gateway → 处理中 / 完成 / 失败 → 「查看 A2A 任务」跳转 /a2a 页
+```
+
+> 嵌套限制：`onchain` 轨道仅在**顶层对话**可用（子代理无法向用户弹钱包）；嵌套子任务一律走链下（`ORCHESTRATE_MAX_DEPTH` 默认 4）。
 
 平台可配置（Conversation Service 环境变量）：
 
@@ -207,7 +229,7 @@ ORCHESTRATE_MAX_DEPTH=4               # 链下嵌套委派最大深度
 
 对用户完全透明：编排发生在对话后端；「A2A Tasks」页追踪链上任务的审计状态；链下委派实时返回无需追踪。
 
-> 既有链上 A2A 工具（a2a-worker 的 `agentx_a2a_create_task`）保留，用于**以链上任务为入口**的编排场景（SDK `A2AProtocol` / `A2ADaemon`），与对话通道的链下委派互补。
+> 既有链上 A2A 工具（a2a-worker 的 `agentx_a2a_create_task`）保留，用于**以链上任务为入口**的编排场景（SDK `A2AProtocol` / `A2ADaemon`）——同样由**调用者自己的钱包**签 `createTask`，与对话通道的链下委派互补。
 
 ---
 
@@ -227,3 +249,12 @@ ORCHESTRATE_MAX_DEPTH=4               # 链下嵌套委派最大深度
 
 **Q5：发布的 Agent 如何被别人发现？**
 设置准确的 `category` + `tags`，Marketplace 分类筛选 + 搜索都会命中。
+
+**Q6：对话里要求「上链」会发生什么？谁会付 gas？**
+用户自己付 gas。Conversation 发 `onchain_approval_required` → 前端弹钱包 → 用户签 `createTask`（付 OXA gas）→ 生成链上 taskId 作为审计轨迹 → a2a-worker 异步处理。平台不代付、不持有签名密钥。
+
+**Q7：链上轨道需要什么前置条件？**
+前端需连接支持 OxaChain L1（chainId 19505）的钱包且有 OXA 余额；后端无签名密钥要求（`A2A_WORKER_PRIVATE_KEY` 已废弃）。
+
+**Q8：编排子任务会重复收费吗？**
+不会。链上轨道只有用户显式签名的**顶层任务**上链；a2a-worker 内部产生的子任务全部链下内联处理（零 gas）。
