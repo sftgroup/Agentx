@@ -203,7 +203,7 @@
   },
   "a2a": {
     "title": "A2A Tasks",
-    "desc": "On-chain Agent-to-Agent collaboration tasks",
+    "desc": "Multi-agent orchestration tasks — created automatically when your agent delegates to other agents during a chat",
     "upgradeNote": "A2A contract v2 upgrade recommended for full task history. Currently using sequential task scanning.",
     "filterAll": "all",
     "filterActive": "active",
@@ -307,6 +307,8 @@
     "studio": "Studio",
     "dashboard": "Dashboard",
     "dashboardDesc": "Manage your Agents",
+    "chat": "My Chats",
+    "chatDesc": "Chat with your agents",
     "a2a": "A2A Tasks",
     "a2aDesc": "Agent collaboration"
   },

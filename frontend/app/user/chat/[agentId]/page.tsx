@@ -14,7 +14,7 @@ import { AgentLoop, OpenAIProvider } from '@agentxv2/sdk'
 import type { RunnableSkill, ToolCallStart, ToolCallResult } from '@agentxv2/sdk'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
 import { useAgentChat, type ChatMessage } from '@/hooks/useAgentChat'
-import { Send, Brain, AlertCircle, ArrowLeft, Loader2, Trash2, Square, Wrench } from 'lucide-react'
+import { Send, Brain, AlertCircle, ArrowLeft, Loader2, Trash2, Square, Wrench, Terminal } from 'lucide-react'
 import Link from 'next/link'
 import { ModelOption, HISTORY_KEY_PREFIX, llmApiKeyFromLocalStorage } from './chat-utils'
 import { GATEWAY_URL_OPTIONAL as gatewayUrl } from '@/lib/gateway'
@@ -386,6 +386,9 @@ export default function ChatPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              <Link href="/a2a" className="btn-secondary text-xs py-1.5 px-2" title="A2A orchestration tasks">
+                <Terminal className="w-3.5 h-3.5" />
+              </Link>
               {displayMessages.length > 0 && (
                 <button onClick={clearHistory} className="btn-secondary text-xs py-1.5 px-2" title="Clear history">
                   <Trash2 className="w-3.5 h-3.5" />
