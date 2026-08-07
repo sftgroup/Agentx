@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@agentxv2/payments": "^0.2.2",
-    "@agentxv2/sdk": "^0.9.4",
+    "@agentxv2/sdk": "0.9.5",
     "@noble/ciphers": "^2.2.0",
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
