@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-08-08 — 文档修正：`createTask` 参数签名与字段（B 端反馈）
+
+- **integration-callers.md §6 / §7**：SDK 示例 `createTask(session.sessionId, { input: '你好' })` → 改为 `createTask({ sessionId: session.sessionId, agentId: 1, message: '你好' })`；HTTP 参考 `body: { input }` → `body: { agentId, message }`（或 inline `{ message, prompt/skills }`）
+- 与 SDK 0.10.1 签名（`ConversationCreateTaskParams`）及 gateway 校验一致：`message` 必填，`agentId` 或 inline `prompt/skills` 必填
+- 纯文档修正，无代码 / API 变更
+
+---
+
 ## 2026-08-08 — 发布 sdk@0.10.1（per-request endUserId + B 端能力澄清）
 
 - **`@agentxv2/sdk@0.10.1` 已发布 npm**（patch，非破坏性增量）：

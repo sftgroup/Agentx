@@ -157,8 +157,8 @@ const client = new ConversationClient({
 // 1. 创建会话（幂等：同 agent+租户重复创建返回已有会话）
 const session = await client.createSession({ agentId: 1 })
 
-// 2. 提交任务，立即返回 taskId，后台并行执行
-const task = await client.createTask(session.sessionId, { input: '你好' })
+// 2. 提交任务，立即返回 taskId，后台并行执行（body: { agentId, message }）
+const task = await client.createTask({ sessionId: session.sessionId, agentId: 1, message: '你好' })
 
 // 3. 查询任务状态（queued | running | done | error | cancelled）
 const status = await client.getTask(task.taskId)
@@ -181,7 +181,7 @@ if (caps.parallelTasks === false) {
 > ```ts
 > // header：X-End-User-Id: 0x<用户钱包>；或 body：endUserId
 > const session = await client.createSession({ agentId: 1, endUserId: '0x<用户钱包>' })
-> const task = await client.createTask(session.sessionId, { input: '你好', endUserId: '0x<用户钱包>' })
+> const task = await client.createTask({ sessionId: session.sessionId, agentId: 1, message: '你好', endUserId: '0x<用户钱包>' })
 > ```
 >
 > 仅 `0x` 开头 + 40 位 hex 的钱包地址会触发转发，其余值只作记忆隔离标识。网关用该钱包做「拥有 / 订阅」检查，通过即放行；未通过返回 `403 AGENT_ACCESS_DENIED`。
@@ -237,7 +237,7 @@ const client = new ConversationClient({
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | POST | `/api/v1/sessions` | 创建会话（幂等），body: `{ agentId }` |
-| POST | `/api/v1/sessions/:sessionId/tasks` | 创建任务，body: `{ input }` → 201 返回 taskId |
+| POST | `/api/v1/sessions/:sessionId/tasks` | 创建任务，body: `{ agentId, message }`（或 inline `{ message, prompt/skills }`）→ 201 返回 taskId |
 | GET | `/api/v1/sessions/:sessionId/tasks` | 列出会话内任务 |
 | GET | `/api/v1/tasks/:taskId` | 查询任务详情 |
 | DELETE | `/api/v1/tasks/:taskId` | 取消任务 |
