@@ -45,6 +45,7 @@ AgentX 是一个多租户 AI Agent 平台，对外提供：
 
 - **租户隔离**：每个调用方 = 一个独立租户（`wallet_address` 形如 `partner-<slug>`），Key 互不通用，可单独禁用 / 轮换 / 配额管理
 - **鉴权方式**：请求头 `X-Api-Key: agentx_...`（租户 Key），或 JWT（钱包签名，适用于终端用户）
+- **一个 Key 即可**：B 端集成 Key（`agentx_...`）与注册用户 JWT 在**会话 / 并行任务 / 对话**能力上完全等价（统一受套餐 / 租户能力位约束），**不需要第二把 Key**。仅 MCP 通道的对话 / 任务工具要求注册用户 `access_token`，A2A 上链 / 发布 / 订阅要求用户自己的钱包（设计如此）
 - **能力开关**：平台可对套餐 / 租户维度启用或禁用「多任务并行 / 子 Agent」能力（见错误码 `403`）
 
 ## 3. 环境变量配置
@@ -188,6 +189,26 @@ for await (const event of stream) {
 
 > `createTask` 可能返回 `403 PARALLEL_TASKS_DISABLED`（套餐 / 租户禁用了多任务），此时应回退到单轮 `stream()` 接口。
 
+### 自带 LLM Key（BYOK 透传，推荐）
+
+平台任务 / 对话的 LLM 默认走平台兜底 Key（DeepSeek / OpenAI 平台配额，受租户配额限制）。**平台推荐调用方透传自己的 LLM Key**，计费落在自己账户、配额不互相挤占：
+
+```ts
+// 方式一（推荐）：无状态透传 —— 构造时带上自己的 key + endpoint + model
+const client = new ConversationClient({
+  gatewayUrl: process.env.AGENTX_GATEWAY_URL!,
+  apiKey: process.env.AGENTX_CONVERSATION_API_KEY!, // X-Api-Key 鉴权
+  llmApiKey: 'sk-...',                            // 你的 LLM Key（如 DeepSeek / OpenAI）
+  llmEndpoint: 'https://api.deepseek.com/v1',     // 可选：OpenAI 兼容端点
+  llmModel: 'deepseek-chat',                      // 可选：模型名
+})
+```
+
+- 方式二：**请求级透传**——`client.stream({ agentId: 1, message: '...', tenantKeyId })`，使用已在平台 Settings 保存的租户自有 Key（明文不出服务器，v0.8.6 起）
+- 方式三：**HTTP 直接调用**——请求头 `X-Llm-Api-Key`（+ `X-Llm-Endpoint` / `X-Llm-Model`），等价 SDK 的 `llmApiKey`
+- 优先级：`tenantKeyId`（服务器解密注入）> 请求头 / `llmApiKey` > 平台兜底 Key
+- 若任务「瞬间 error」，先检查是否未配置 BYOK / BYOK 无效（见[常见问题](#9-常见问题)）
+
 ## 7. HTTP API 参考
 
 以下端点均需 `X-Api-Key` 请求头。
@@ -221,14 +242,16 @@ for await (const event of stream) {
 
 | 工具 | 说明 | 鉴权 |
 |---|---|---|
-| `agentx_gateway_chat` | 单轮对话（SSE 聚合为 `{reply, tool_calls}`） | `api_key` 或 `access_token` |
+| `agentx_gateway_chat` | 单轮对话（SSE 聚合为 `{reply, tool_calls}`） | 仅 `access_token`（注册用户 JWT） |
 | `agentx_gateway_create_session` | 创建会话（幂等） | 同上 |
 | `agentx_gateway_create_task` | 创建后台任务（立即返回 taskId） | 同上 |
 | `agentx_gateway_get_task` | 查询任务状态/结果 | 同上 |
 | `agentx_gateway_list_tasks` | 会话内任务列表 | 同上 |
 | `agentx_gateway_cancel_task` | 取消任务（终态幂等） | 同上 |
 
-对话/任务工具的参数使用 snake_case（`api_key`/`access_token`/`session_id`/`task_id`/`agent_id`），鉴权凭据直接放在 `arguments` 中：
+> ⚠️ **MCP 通道的对话 / 任务工具仅接受注册用户 `access_token`（钱包签名登录 Gateway 签发的 JWT），B 端集成 Key（`agentx_...`）不可用于 MCP 对话 / 任务**（R14 收紧，2026-08-06 起）。若你的调用方只有 B 端 Key，请改用 REST（`/api/v1/sessions*`）或 SDK `ConversationClient`——REST 通道一个 `agentx_` Key 即可。链上只读 / 写工具不受此限制。
+
+对话/任务工具的参数使用 snake_case（`access_token`/`session_id`/`task_id`/`agent_id`），鉴权凭据直接放在 `arguments` 中：
 
 ```bash
 curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
@@ -236,7 +259,7 @@ curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
   "params": {
     "name": "agentx_gateway_create_task",
     "arguments": {
-      "api_key": "agentx_<your-key>",
+      "access_token": "<user-jwt>",
       "session_id": "<session-id>",
       "message": "分析最近一周的交易",
       "agent_id": 1
@@ -264,7 +287,8 @@ curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
 |---|---|---|
 | 连接超时 | 网关地址从本团队网络不可达 | 确认可访问 `43.159.60.46:3090`，检查防火墙 / 白名单 |
 | `401` 但 Key 未变 | Key 被团队内其他人轮换 | 联系平台管理员重新签发 |
-| 任务瞬间 `error` | 平台兜底 LLM Key 无效 / 未配置 BYOK | 通过 Settings 配置团队自己的 LLM Key（BYOK） |
+| 任务瞬间 `error` | 平台兜底 LLM Key 无效 / 未配置 BYOK | 配置团队自己的 LLM Key（BYOK 透传，见 [§6](#6-sdk-接入示例)），如仍失败检查 Key 的有效性与配额 |
+| 报 `403 PARTNER_TASKS_DISABLED` | **该错误已废弃**（2026-08-08 起 B 端 Key 与注册用户能力统一） | 确认 Gateway 已升级；一个 `agentx_` Key 即可，无需第二把 Key |
 | 多个调用方共用 Key | 用量 / 配额无法区分 | 每个调用方使用独立 Key |
 | 无流式事件 | SSE 被网关 / 代理缓冲 | 确认使用 HTTP/1.1 且未启用 gzip 缓冲 |
 
