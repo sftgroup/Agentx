@@ -51,6 +51,13 @@ export interface ConversationChatParams {
   history?: { role: 'user' | 'assistant'; content: string }[]
   enableMemory?: boolean
   contextBudget?: number
+  /**
+   * Per-request end-user id. For B-end (partner) callers, a `0x<wallet>` value
+   * triggers subscription proxying on the Gateway (access is authorized by that
+   * wallet's ownership/subscription). Any other value is used for memory
+   * isolation only. Overrides the constructor-level `endUserId`.
+   */
+  endUserId?: string
   /** Inline mode: caller-supplied system prompt, bypasses Gateway agent lookup */
   prompt?: string
   /** Inline mode: caller-supplied tools (MCP/HTTP), injected into the run */
@@ -134,6 +141,13 @@ export interface ConversationCreateTaskParams {
   skills?: ConversationSkillDef[]
   /** BYOK: id of a stored tenant-owned API key */
   tenantKeyId?: string
+  /**
+   * Per-request end-user id. For B-end (partner) callers, a `0x<wallet>` value
+   * triggers subscription proxying on the Gateway (access is authorized by that
+   * wallet's ownership/subscription). Any other value is used for memory
+   * isolation only.
+   */
+  endUserId?: string
 }
 
 export interface ConversationCreateSessionParams {
@@ -189,6 +203,7 @@ export class ConversationClient {
    */
   async *stream(params: ConversationChatParams, opts?: { signal?: AbortSignal }): AsyncGenerator<ConversationSSEEvent> {
     const headers = this._headers()
+    if (params.endUserId) headers['X-End-User-Id'] = params.endUserId
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 120_000)

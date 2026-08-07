@@ -23,6 +23,24 @@
 
 > 未传任何 LLM key 时走平台兜底 key（DeepSeek / OpenAI 平台配额），受租户配额限制。
 
+### 端用户订阅转发（B 端代调，Gateway 2026-08-08）
+
+B 端（partner 租户）请求带 `X-End-User-Id: 0x<钱包地址>`（或 body `endUserId`）时，网关改用该钱包做「拥有 / 订阅」授权检查，通过即放行对话 / 任务——实现「我的最终用户已订阅 → 我可代为对话」。不传或非 `0x` 地址时回退到租户自身授权；端用户记忆隔离不变。
+
+### SDK 0.10.1 — per-request `endUserId`
+
+新增（non-breaking，随 0.10.1 发布）：
+
+- `ConversationCreateTaskParams.endUserId?` — `createTask({ ..., endUserId })` 请求体透传
+- `ConversationChatParams.endUserId?` — `stream({ ..., endUserId })` 时作为 `X-End-User-Id` header 发送（覆盖构造级）
+- `createSession({ ..., endUserId })` 原本已支持
+
+```ts
+// B 端代调：按最终用户订阅授权
+const session = await client.createSession({ agentId: 42, endUserId: '0x<user-wallet>' })
+const t = await client.createTask({ sessionId: session.id, agentId: 42, message: 'hi', endUserId: '0x<user-wallet>' })
+```
+
 ---
 
 ## v0.9.6 → v0.10.0 (完整功能版)

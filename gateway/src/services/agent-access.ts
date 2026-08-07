@@ -56,6 +56,26 @@ export async function canAccessAgent(
 }
 
 /**
+ * Resolve the access subject for a request.
+ * B-end (partner) callers may proxy an end-user's subscription by sending
+ * `X-End-User-Id: 0x<wallet>` (or body `endUserId`) — the gateway then
+ * authorizes by that wallet's ownership/subscription instead of the partner
+ * tenant's own (non-chain) `partner-...` address. Falls back to the tenant's
+ * wallet address when the caller is not a partner or no valid end-user address
+ * is supplied. Memory isolation still keys off the end-user id as-is.
+ */
+export function resolveAccessSubject(
+  walletAddress: string,
+  kind: string | undefined,
+  endUserId?: string,
+): string {
+  if (kind === 'partner' && endUserId && /^0x[0-9a-fA-F]{40}$/.test(endUserId)) {
+    return endUserId.toLowerCase()
+  }
+  return walletAddress || 'unknown'
+}
+
+/**
  * Filter candidate agents down to those the caller may interact with
  * (owned or subscribed). Used by the orchestrator's `agentx_list_agents`
  * tool and the A2A page agent selector.

@@ -4,7 +4,7 @@
 import { Router, Request, Response } from 'express'
 import { getConversationProxy } from '../services/conversation-proxy'
 import { x402Available, x402Guard } from '../services/x402'
-import { canAccessAgent } from '../services/agent-access'
+import { canAccessAgent, resolveAccessSubject } from '../services/agent-access'
 import { getPool } from '../lib/db'
 import { decryptApiKey } from '../lib/crypto'
 import { config } from '../config'
@@ -54,9 +54,11 @@ router.post('/runs', (req: Request, res: Response, next: () => void) => {
 
   // Access boundary: chat only with agents the caller owns or is subscribed to.
   // Callers who paid through x402 (per-request) are exempt (x402Guard marked them).
+  // B-end (partner) callers may proxy an end-user's subscription via X-End-User-Id.
   const isPaidThrough = (req as any).x402Access === true
-  if (hasAgentId && !hasInline && !isPaidThrough && tenantAddress && tenantAddress !== 'unknown') {
-    const ok = await canAccessAgent(tenantAddress, Number(agentId))
+  const accessSubject = resolveAccessSubject(tenantAddress, req.tenant?.kind, endUserId)
+  if (hasAgentId && !hasInline && !isPaidThrough && accessSubject && accessSubject !== 'unknown') {
+    const ok = await canAccessAgent(accessSubject, Number(agentId))
     if (!ok) {
       return res.status(403).json({ error: 'No subscription access to this agent', code: 'AGENT_ACCESS_DENIED' })
     }

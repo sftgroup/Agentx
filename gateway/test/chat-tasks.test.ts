@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import request from 'supertest'
-import chatTasksRouter from '../src/routes/chat-tasks'
 
 const proxyMock = vi.hoisted(() => ({
   createSession: vi.fn(),
@@ -16,14 +15,24 @@ const proxyMock = vi.hoisted(() => ({
   streamTaskEvents: vi.fn(),
 }))
 
+const accessMock = vi.hoisted(() => ({
+  canAccessAgent: vi.fn(async () => true),
+  filterAccessibleAgents: vi.fn(async (candidates: unknown[]) => candidates),
+  // Mirror the real pure function so the route's subject resolution is exercised
+  resolveAccessSubject: (wallet: string, kind?: string, endUserId?: string) =>
+    kind === 'partner' && endUserId && /^0x[0-9a-fA-F]{40}$/.test(endUserId)
+      ? endUserId.toLowerCase()
+      : wallet || 'unknown',
+}))
+
 vi.mock('../src/services/conversation-proxy', () => ({
   getConversationProxy: () => proxyMock,
 }))
 
-vi.mock('../src/services/agent-access', () => ({
-  canAccessAgent: vi.fn(async () => true),
-  filterAccessibleAgents: vi.fn(async (candidates: unknown[]) => candidates),
-}))
+vi.mock('../src/services/agent-access', () => accessMock)
+
+import chatTasksRouter from '../src/routes/chat-tasks'
+import { canAccessAgent } from '../src/services/agent-access'
 
 interface TenantCtx {
   id: string
@@ -49,6 +58,8 @@ const ok = (body: unknown, status = 200) =>
 beforeEach(() => {
   currentTenant = { id: 't1', walletAddress: '0xTenant', allowParallelTasks: undefined, planFeatures: {} }
   for (const fn of Object.values(proxyMock)) fn.mockReset()
+  accessMock.canAccessAgent.mockReset()
+  accessMock.canAccessAgent.mockResolvedValue(true)
 })
 
 // ── P9 capability gate ────────────────────────────────────────────────────
@@ -154,6 +165,67 @@ describe('B-end partner keys follow the P9 capability gate (not a kind block)', 
     expect((await request(app).get('/api/v1/tasks/t1')).status).toBe(200)
     expect((await request(app).get('/api/v1/tasks/t1/events')).status).toBe(200)
     expect((await request(app).delete('/api/v1/tasks/t1')).status).toBe(200)
+  })
+})
+
+// ── B-end end-user subscription proxy (2026-08-08) ────────────────────────
+
+describe('B-end end-user subscription proxy (X-End-User-Id: 0x wallet)', () => {
+  const endUserWallet = '0x1111111111111111111111111111111111111111'
+
+  beforeEach(() => {
+    currentTenant = { id: 't-p', walletAddress: 'partner-smoke-1', kind: 'partner', allowParallelTasks: undefined, planFeatures: {} }
+  })
+
+  it('authorizes by the end-user wallet when a partner sends X-End-User-Id: 0x...', async () => {
+    proxyMock.createSession.mockResolvedValue(ok({ id: 's1' }, 201))
+    const res = await request(app)
+      .post('/api/v1/sessions')
+      .set('X-End-User-Id', endUserWallet)
+      .send({ agentId: 3 })
+    expect(res.status).toBe(201)
+    expect(accessMock.canAccessAgent).toHaveBeenCalledWith(endUserWallet, 3)
+  })
+
+  it('also accepts the end-user wallet via body endUserId', async () => {
+    proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
+    const res = await request(app)
+      .post('/api/v1/sessions/s1/tasks')
+      .send({ agentId: 2, message: 'hi', endUserId: endUserWallet })
+    expect(res.status).toBe(201)
+    expect(accessMock.canAccessAgent).toHaveBeenCalledWith(endUserWallet, 2)
+  })
+
+  it('falls back to the partner tenant wallet when X-End-User-Id is not a 0x address', async () => {
+    proxyMock.createSession.mockResolvedValue(ok({ id: 's1' }, 201))
+    const res = await request(app)
+      .post('/api/v1/sessions')
+      .set('X-End-User-Id', 'user-abc') // opaque id — memory isolation only
+      .send({ agentId: 3 })
+    expect(res.status).toBe(201)
+    expect(accessMock.canAccessAgent).toHaveBeenCalledWith('partner-smoke-1', 3)
+  })
+
+  it('rejects when the proxied end-user has no access → 403 AGENT_ACCESS_DENIED', async () => {
+    accessMock.canAccessAgent.mockResolvedValue(false)
+    const res = await request(app)
+      .post('/api/v1/sessions')
+      .set('X-End-User-Id', endUserWallet)
+      .send({ agentId: 3 })
+    expect(res.status).toBe(403)
+    expect(res.body.code).toBe('AGENT_ACCESS_DENIED')
+    expect(proxyMock.createSession).not.toHaveBeenCalled()
+  })
+
+  it('does NOT proxy for non-partner (user JWT) tenants', async () => {
+    currentTenant = { id: 't-user', walletAddress: endUserWallet, kind: 'user', allowParallelTasks: undefined, planFeatures: {} }
+    proxyMock.createSession.mockResolvedValue(ok({ id: 's1' }, 201))
+    const res = await request(app)
+      .post('/api/v1/sessions')
+      .set('X-End-User-Id', endUserWallet)
+      .send({ agentId: 3 })
+    expect(res.status).toBe(201)
+    expect(accessMock.canAccessAgent).toHaveBeenCalledWith(endUserWallet, 3)
   })
 })
 

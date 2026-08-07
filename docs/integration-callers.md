@@ -46,6 +46,7 @@ AgentX 是一个多租户 AI Agent 平台，对外提供：
 - **租户隔离**：每个调用方 = 一个独立租户（`wallet_address` 形如 `partner-<slug>`），Key 互不通用，可单独禁用 / 轮换 / 配额管理
 - **鉴权方式**：请求头 `X-Api-Key: agentx_...`（租户 Key），或 JWT（钱包签名，适用于终端用户）
 - **一个 Key 即可**：B 端集成 Key（`agentx_...`）与注册用户 JWT 在**会话 / 并行任务 / 对话**能力上完全等价（统一受套餐 / 租户能力位约束），**不需要第二把 Key**。仅 MCP 通道的对话 / 任务工具要求注册用户 `access_token`，A2A 上链 / 发布 / 订阅要求用户自己的钱包（设计如此）
+- **端用户订阅转发（B 端代调，2026-08-08）**：B 端请求带 `X-End-User-Id: 0x<钱包地址>` 时，网关改用该钱包做「拥有 / 订阅」授权检查（通过即放行对话 / 任务）——实现「我的最终用户订阅了该 Agent → 我这边可代为对话」。不传或非 `0x` 地址时回退到租户自身授权；端用户记忆隔离不受影响
 - **能力开关**：平台可对套餐 / 租户维度启用或禁用「多任务并行 / 子 Agent」能力（见错误码 `403`）
 
 ## 3. 环境变量配置
@@ -175,6 +176,16 @@ if (caps.parallelTasks === false) {
 }
 ```
 
+> **B 端代调（端用户订阅转发）**：若最终用户（你的客户）已订阅某 Agent，可传该用户的钱包地址让网关按其订阅授权：
+>
+> ```ts
+> // header：X-End-User-Id: 0x<用户钱包>；或 body：endUserId
+> const session = await client.createSession({ agentId: 1, endUserId: '0x<用户钱包>' })
+> const task = await client.createTask(session.sessionId, { input: '你好', endUserId: '0x<用户钱包>' })
+> ```
+>
+> 仅 `0x` 开头 + 40 位 hex 的钱包地址会触发转发，其余值只作记忆隔离标识。网关用该钱包做「拥有 / 订阅」检查，通过即放行；未通过返回 `403 AGENT_ACCESS_DENIED`。
+
 ### 单轮对话（SSE 流式）
 
 ```ts
@@ -229,6 +240,8 @@ const client = new ConversationClient({
 | GET | `/api/v1/tasks/:taskId` | 查询任务详情 |
 | DELETE | `/api/v1/tasks/:taskId` | 取消任务 |
 | GET | `/api/v1/tasks/:taskId/events` | SSE 事件流（重放历史事件后实时推送，30s 心跳） |
+
+> `X-End-User-Id` 请求头（或 body `endUserId`）可选：传 `0x` 钱包地址时按该用户订阅授权（B 端代调）；传其他值仅作记忆隔离。
 
 ### 对话
 
@@ -286,6 +299,7 @@ curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
 | 现象 | 可能原因 | 处理 |
 |---|---|---|
 | 连接超时 | 网关地址从本团队网络不可达 | 确认可访问 `43.159.60.46:3090`，检查防火墙 / 白名单 |
+| 如何代已订阅用户对话 | 直接调用按租户自身授权被 403 | 请求带 `X-End-User-Id: 0x<用户钱包>`（B 端代调，见 [§6](#6-sdk-接入示例)）；也可先 `GET /api/v1/chain/check-subscription` 确认订阅 |
 | `401` 但 Key 未变 | Key 被团队内其他人轮换 | 联系平台管理员重新签发 |
 | 任务瞬间 `error` | 平台兜底 LLM Key 无效 / 未配置 BYOK | 配置团队自己的 LLM Key（BYOK 透传，见 [§6](#6-sdk-接入示例)），如仍失败检查 Key 的有效性与配额 |
 | 报 `403 PARTNER_TASKS_DISABLED` | **该错误已废弃**（2026-08-08 起 B 端 Key 与注册用户能力统一） | 确认 Gateway 已升级；一个 `agentx_` Key 即可，无需第二把 Key |
