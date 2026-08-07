@@ -12,6 +12,7 @@ export interface AgentInfo {
   name: string
   description: string
   tags: string[]
+  category?: string
   capabilities: string[]
   synced_at?: string
   created_at?: string
@@ -19,7 +20,7 @@ export interface AgentInfo {
   token_uri?: string
   metadata_json?: Record<string, unknown>
   // compatibility
-  metadata?: { name: string; description: string; tags: string[]; capabilities: string[]; pricing?: { type: string; amount: string; currency?: string } }
+  metadata?: { name: string; description: string; tags: string[]; category?: string; capabilities: string[]; pricing?: { type: string; amount: string; currency?: string } }
   isLoaded: boolean
   hasError: boolean
   status: 'success' | 'no-metadata' | 'metadata-failed' | 'error'
@@ -45,6 +46,7 @@ function mapAgent(row: any): AgentInfo {
     name: row.name,
     description: row.description,
     tags: row.tags || [],
+    category: row.category || undefined,
     capabilities: row.capabilities || [],
     synced_at: row.synced_at,
     created_at: row.created_at,
@@ -55,6 +57,7 @@ function mapAgent(row: any): AgentInfo {
       name: row.name,
       description: row.description,
       tags: row.tags || [],
+      category: row.category || undefined,
       capabilities: row.capabilities || [],
     },
     isLoaded: true,

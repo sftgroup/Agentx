@@ -4,6 +4,7 @@
 import { useTranslation } from 'react-i18next'
 import { useStudio } from '@/components/studio/StudioContext'
 import { StepNav } from '@/components/studio/StepNav'
+import { AGENT_CATEGORY_OPTIONS } from '@/components/studio/types'
 
 const PRESET_TAGS = [
   'Customer Service', 'Sales', 'Marketing', 'Trading',
@@ -75,6 +76,23 @@ export default function BasicsPage() {
                 Selected: {form.tags.join(', ')}
               </p>
             )}
+          </div>
+          <div>
+            <label className="text-sm text-text-secondary mb-1.5 block">
+              应用类别 Category <span className="text-red-400">*</span>
+              <span className="text-text-muted text-xs">（决定 Agent 落入哪个应用分类 / 筛选）</span>
+            </label>
+            <select
+              value={form.category}
+              onChange={e => setForm({ ...form, category: e.target.value })}
+              className={`w-full px-4 py-2.5 bg-white/5 border rounded-xl text-sm focus:outline-none focus:bg-white/8 transition-colors ${fieldErrors.category ? 'border-red-400/40' : 'border-white/5 focus:border-accent-purple/40'}`}
+            >
+              <option value="">选择应用类别…</option>
+              {AGENT_CATEGORY_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            {fieldErrors.category && <p className="text-xs text-red-400 mt-1">{fieldErrors.category}</p>}
           </div>
         </div>
       </div>

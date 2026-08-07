@@ -440,6 +440,7 @@ export async function publishAgent(config: PublishAgentConfig): Promise<PublishA
       version: agent.version,
       tags: agent.tags,
       capabilities: agent.capabilities,
+      category: agent.category,
       eciesKey: eciesEncryptedKeyHex,
     }),
   ])
