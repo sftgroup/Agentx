@@ -460,7 +460,17 @@ ss -tlnp | grep -E '3100|3090|8100'
 
 ## 7. npm SDK Publish
 
+> **CI 发布（2026-08-08 起，推荐）**：`@agentxv2/sdk` 发布已迁移到 GitHub Actions — [.github/workflows/publish-sdk.yml](../.github/workflows/publish-sdk.yml)（手动触发，`bump` 选 minor / patch / major，默认 minor）。凭据**不落盘明文**，通过 GitHub Secrets 注入：
+>
+> - `NPM_TOKEN` — npmjs 组织 `@agentxv2` 的自动化 token
+> - `GH_TOKEN` — GitHub PAT（`Contents: read+write`），发布后自动把版本号变更提交推回 `main`
+>
+> **发布步骤**：GitHub → Actions → **Publish SDK** → Run workflow → 选择 bump。workflow 自动执行：typecheck → 单测 → build(tsup) → `npm version <bump>` → `npm publish` → commit+push 版本号。
+>
+> 本地手动发布已停用（不再需要本地 npm token / `~/.npmrc` 明文）。
+
 ```bash
+# 手动发布（仅 CI 不可用时的回退路径，需先在本地配置 npm token）
 cd sdk/
 npm run build
 npm version minor     # 完整功能版用 minor（v0.10.x），避免打补丁造成版本混乱
