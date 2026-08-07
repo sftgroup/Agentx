@@ -44,9 +44,9 @@ B 端（partner 租户）请求带 `X-End-User-Id: 0x<钱包地址>`（或 body 
 
 > 一句话总结：**`agentx_` key 覆盖 REST 全部对话 + 并行任务（带 BYOK），JWT 额外覆盖 MCP 对话/任务与链上操作**；调用方按自身场景选择，无需两把 key 并存。
 
-### SDK 0.10.1 — per-request `endUserId`
+### SDK 0.10.1 — per-request `endUserId`（已发布 npm，2026-08-08）
 
-新增（non-breaking，随 0.10.1 发布）：
+新增（non-breaking）：
 
 - `ConversationCreateTaskParams.endUserId?` — `createTask({ ..., endUserId })` 请求体透传
 - `ConversationChatParams.endUserId?` — `stream({ ..., endUserId })` 时作为 `X-End-User-Id` header 发送（覆盖构造级）
