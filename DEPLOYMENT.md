@@ -1,7 +1,7 @@
 # AgentX Deployment Guide
 
 > Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-08
-> Server code: `~/Agentx` @ `9afda17` (main, 生产分支 `prod-patches-20260807` merge) · SDK published: `@agentxv2/sdk@0.9.4` (+ `@agentxv2/payments@0.2.2`)
+> Server code: `~/Agentx` @ `1f53d80` (main, 生产分支 `prod-patches-20260807` merge) · SDK published: `@agentxv2/sdk@0.9.5` (+ `@agentxv2/payments@0.2.2`)
 > ⚠️ 测试策略（2026-08-07 起）：**所有功能/回归测试一律在生产环境 `43.159.60.46` 直接进行**（不再使用独立测试服务器）
 
 ---

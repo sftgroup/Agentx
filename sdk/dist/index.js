@@ -4459,6 +4459,7 @@ var OpenAIProvider = class {
     }
     const decoder = new TextDecoder();
     let buffer = "";
+    const callIdsByIndex = /* @__PURE__ */ new Map();
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -4497,13 +4498,14 @@ var OpenAIProvider = class {
           }
           if (choice.delta?.tool_calls) {
             for (const tc of choice.delta.tool_calls) {
+              if (tc.id) callIdsByIndex.set(tc.index, tc.id);
               if (tc.id && tc.function?.name) {
                 yield { type: "tool_call_start", callId: tc.id, name: tc.function.name };
               }
               if (tc.function?.arguments) {
                 yield {
                   type: "tool_call_delta",
-                  callId: tc.id ?? `call_${tc.index}`,
+                  callId: tc.id ?? callIdsByIndex.get(tc.index) ?? `call_${tc.index}`,
                   arguments: tc.function.arguments
                 };
               }
@@ -4594,6 +4596,7 @@ var GatewayProvider = class {
     }
     const decoder = new TextDecoder();
     let buffer = "";
+    const callIdsByIndex = /* @__PURE__ */ new Map();
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -4634,13 +4637,14 @@ var GatewayProvider = class {
           }
           if (choice.delta?.tool_calls) {
             for (const tc of choice.delta.tool_calls) {
+              if (tc.id) callIdsByIndex.set(tc.index, tc.id);
               if (tc.id && tc.function?.name) {
                 yield { type: "tool_call_start", callId: tc.id, name: tc.function.name };
               }
               if (tc.function?.arguments) {
                 yield {
                   type: "tool_call_delta",
-                  callId: tc.id ?? `call_${tc.index}`,
+                  callId: tc.id ?? callIdsByIndex.get(tc.index) ?? `call_${tc.index}`,
                   arguments: tc.function.arguments
                 };
               }
