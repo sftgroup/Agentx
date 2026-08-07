@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-08-08 — 发布 sdk@0.10.0（完整版）+ 用户钱包签名上链轨道
+
+### @agentxv2/sdk@0.10.0 — 完整功能版（已发布 npm）
+
+- **完整版发布**：整合 0.9.x 全部能力（Agent 应用类别 / 统一三轨支付 / sessions & 并行任务 / 流式 tool_call 修复 / 类型化 `onchain_approval_required`），作为稳定基线（`npm version minor`，非 patch）。
+- **新增类型**：`ConversationSSEEvent` 增加 `'onchain_approval_required'` + `OnChainApprovalRequest { targetAgentId, taskType, inputData }`；前端 `useAgentChat` 改为显式 case（移除 `as unknown as`），并顺带消除 `AgentPayload.category` 既有类型错误。
+- **无 breaking changes**。
+
+### 用户钱包签名上链轨道（仓库级，2026-08-08）
+
+- **原则修正**：链上 A2A 轨道由**用户自己付 gas**——Conversation Service 发 `onchain_approval_required` SSE 事件 → 前端弹钱包 → 用户签 `createTask`（合约记录 `clientAddress = msg.sender` = 用户地址）。
+- **Gateway**：删除 `A2A_WORKER_PRIVATE_KEY` / `getA2ASigner` / `createTaskOnChain` / `POST /api/v1/internal/orchestrate/create-task` 路由（commit 7f87743）；a2a-worker 只读链，子任务**链下内联**（负伪 taskId 写 `a2a_task_results`），`agentx_a2a_get_task` 改查 DB。
+- **Conversation Service**：`agentx_delegate mode="onchain"` 校验访问后直接返回 approval payload（不再调 `/create-task`），通过 side-event 队列在 AgentLoop 结束后统一 yield `onchain_approval_required`；嵌套（depth>0）run 拒绝 onchain。
+- **Frontend**：新增 `OnchainApprovalModal`（wagmi v2：`writeContractAsync` 签 `createTask` → `useWaitForTransactionReceipt` → 从 `receipt.logs[].topics[1]` 解析 taskId → 轮询 `GET /api/v1/a2a/task-result/:taskId` 展示状态）。
+- **生产**：三服务已构建部署（frontend/conversation 锁定 `@agentxv2/sdk@0.10.0`），`/create-task` 404 验证通过。
+
+---
+
 ## 2026-08-08 — 发布 sdk@0.9.5（流式 tool_call 参数修复）
 
 ### @agentxv2/sdk@0.9.5 — 流式 tool_call 参数增量 chunk callId 丢失修复
