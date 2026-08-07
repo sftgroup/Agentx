@@ -1,0 +1,78 @@
+# AgentX — Publish @agentxv2/sdk to npm
+#
+# 手动触发（Actions → Publish SDK → Run workflow）：
+#   - bump 选择 minor（默认，完整功能版） / patch / major
+#   - 流程：typecheck → 单测 → build(tsup) → npm version <bump> → npm publish
+#   - 发布成功后自动把 package.json / package-lock.json / CHANGELOG 版本变更
+#     提交并推回 main
+#
+# 凭据注入（不落盘明文，GitHub Secrets 注入环境变量）：
+#   - NPM_TOKEN : npmjs 组织 @agentxv2 的自动化 token（npm login 后生成）
+#   - GH_TOKEN  : GitHub PAT（Contents: read+write），用于推回版本号变更
+# 仓库 Secrets 在 GitHub → Settings → Secrets and variables → Actions 中配置。
+name: Publish SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump'
+        required: true
+        default: 'minor'
+        type: choice
+        options:
+          - minor
+          - patch
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Build, version & publish @agentxv2/sdk
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sdk/package-lock.json
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build (tsup, publishable artifacts)
+        run: npm run build
+
+      - name: Version bump
+        run: npm version ${{ inputs.bump }} --no-git-tag-version
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit & push version bump back to main
+        working-directory: .
+        run: |
+          git config user.name "agentx-ci"
+          git config user.email "ci@agentx.dev"
+          git add sdk/package.json sdk/package-lock.json
+          git commit -m "chore(sdk): bump to $(node -p "require('./sdk/package.json').version")"
+          git push origin main
