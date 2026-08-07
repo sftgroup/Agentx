@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-08-08 — 发布 sdk@0.10.1（per-request endUserId + B 端能力澄清）
+
+- **`@agentxv2/sdk@0.10.1` 已发布 npm**（patch，非破坏性增量）：
+  - `ConversationCreateTaskParams.endUserId?` / `ConversationChatParams.endUserId?` — per-request 端用户钱包透传（B 端订阅转发：`0x` 钱包按该钱包订阅授权，`createSession` 原本已支持）
+  - 文档：B 端 key 与用户 JWT 差异对照（UPGRADE.md）、MCP 边界说明（README）
+- **平台侧强制变化（Gateway 已上线，调用方需知悉）**：
+  - partner（B 端）任务**强制 BYOK**：`X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId` 三者之一，否则 `400 LLM_KEY_REQUIRED`（防平台预算被后台任务消耗）
+  - **平台 MCP**（`/mcp`，6 个 `agentx_gateway_*` 工具）仅接受注册用户 `access_token`；调用方**自建** MCP 不受限
+  - B 端 key 覆盖 REST 全部对话 + 并行任务；JWT 额外覆盖 MCP 对话/任务与链上操作（A2A 上链 / 发布 / 订阅，用户钱包签名）
+- 相关 Gateway 变更见本日条目：端用户订阅转发 / P9 能力位统一 / 并行任务强制 BYOK
+
+---
+
 ## 2026-08-08 — B 端（partner）并行任务强制 BYOK（预算约束）
 
 **背景**：B 端需求第 2 点——防止 partner 用平台 LLM 预算跑后台任务（并行/后台任务消耗平台兜底 key）。
