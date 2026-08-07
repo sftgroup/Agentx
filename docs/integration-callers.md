@@ -265,6 +265,8 @@ const client = new ConversationClient({
 | `agentx_gateway_cancel_task` | 取消任务（终态幂等） | 同上 |
 
 > ⚠️ **MCP 通道的对话 / 任务工具仅接受注册用户 `access_token`（钱包签名登录 Gateway 签发的 JWT），B 端集成 Key（`agentx_...`）不可用于 MCP 对话 / 任务**（R14 收紧，2026-08-06 起）。若你的调用方只有 B 端 Key，请改用 REST（`/api/v1/sessions*`）或 SDK `ConversationClient`——REST 通道一个 `agentx_` Key 即可。链上只读 / 写工具不受此限制。
+>
+> **边界说明（通用）**：以上仅针对 **AgentX 平台 MCP**（Gateway `/mcp` 的 `agentx_gateway_*` 工具，共 6 个：`chat` / `create_session` / `create_task` / `get_task` / `list_tasks` / `cancel_task`）。调用方**自建**的 MCP 服务器（如自部署的 aitrader-mcp、RAG MCP）鉴权由其自行配置，**不在平台边界内**——是否匿名放行、是否提供会话/任务工具，由调用方自己决定。
 
 对话/任务工具的参数使用 snake_case（`access_token`/`session_id`/`task_id`/`agent_id`），鉴权凭据直接放在 `arguments` 中：
 
