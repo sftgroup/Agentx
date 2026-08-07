@@ -17,13 +17,18 @@ const router = Router()
 const MAX_SCHEDULES_PER_TENANT = 10
 const MIN_INTERVAL_SECONDS = 60
 
-// R14: B-end integration keys (kind='partner') are limited to the chat service.
-// Scheduled tasks would consume platform LLM budget via a2a-worker fallback keys.
+// P9 capability gate (2026-08-08): schedules follow the same capability bits as
+// sessions/tasks for ALL tenants — user JWT and B-end (partner) keys alike.
+// effective = tenant.allow_parallel_tasks ?? plan.features.parallel_tasks ?? true.
+// The schedule daemon independently re-checks this before each trigger
+// (services/schedule-daemon.ts → parallelTasksEnabled).
 router.use((req: Request, res: ExpressResponse, next: () => void): void => {
-  if (req.tenant?.kind === 'partner') {
+  const planBit = req.tenant?.planFeatures?.parallel_tasks
+  const effective = req.tenant?.allowParallelTasks ?? (typeof planBit === 'boolean' ? planBit : true)
+  if (!effective) {
     res.status(403).json({
-      error: 'B-end integration keys are limited to the chat service',
-      code: 'PARTNER_TASKS_DISABLED',
+      error: 'Parallel tasks are disabled for this tenant',
+      code: 'PARALLEL_TASKS_DISABLED',
     })
     return
   }

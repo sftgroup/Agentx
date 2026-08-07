@@ -290,21 +290,22 @@
   - channel 申请/审批流程回归无影响
 - 验证：生产冒烟 4/4 PASS——① developer/apply 创建 type=developer application；② admin approve 返回 `type:'developer'` + `api_key`（`agentx_` 39 字符）+ integration partner（slug=smoke-dev-*）；③ 新 key 经 `GET /tenant/me` 200（enterprise plan · rate_limit_rpm=100 · max_concurrent=10）；④ channel 申请/审批回归返回 `channelId`；smoke 数据已清理
 
-**R14 B 端能力边界：仅对话服务，MCP 仅注册用户** —— 优先级：高 · ✅ 已上线（2026-08-06）
+**R14 B 端能力边界：仅对话服务，MCP 仅注册用户** —— 优先级：高 · ✅ 已上线（2026-08-06）· ⚠️ 部分修订（2026-08-08）
 - 来源：2026-08-06 用户确认——B 端调用方（R11/R13 签发的 `agentx_` key）**只允许使用对话服务**；B 端 key **完全不能调用 MCP**；MCP 对话/任务工具必须是正常注册用户（JWT）
+- ⚠️ **2026-08-08 修订**：B 端反馈 `GET /tenant/me` 报 `parallel_tasks: true` 但 `POST /sessions` 403 `PARTNER_TASKS_DISABLED`（R14 kind 一刀切 与 P9 能力位冲突）。已删除 `chat-tasks` / `schedules` 的 partner 拦截，改为**统一 P9 能力位**（`allow_parallel_tasks ?? plan.features.parallel_tasks ?? true`），user JWT 与 B 端 key 一视同仁——**B 端 key 一个即可**，Enterprise 计划自动获得 sessions/tasks 并行能力。详见 CHANGELOG（2026-08-08）。
 - 背景事实：B 端租户原 `quota_daily=0` 导致对话 400 不可用；任务执行（a2a-worker）无 BYOK 时会回退平台 key 消耗 LLM 且不计费
 - 平台侧：
   1. migration 016：`tenants.kind TEXT NOT NULL DEFAULT 'user'`（'user' 注册用户 | 'partner' B 端集成租户）；回填 `wallet_address LIKE 'partner-%'` 存量租户（生产 5 行已回填）
   2. R11/R13 创建 B 端租户：`kind='partner'` + `quota_daily` 改为**继承套餐配额**（enterprise plan 当前 5,000,000/日，原硬编码 0 → 对话自动进入平台 key 分支）
   3. `TenantContext` 增加 `kind`；`apiKeyAuth` / `authMiddleware` / `verifyChallenge` 三处填充
-  4. B 端禁用任务：`chat-tasks` 全路由 `kind='partner'` → 403 `PARTNER_TASKS_DISABLED`（sessions/tasks 全部拦截）
-  5. MCP 收紧：对话/任务 6 工具 schema 移除 `api_key`，`gatewayAuthHeaders` 仅接受 `access_token`（JWT 注册用户）
-- 验收标准：
+  4. ~~B 端禁用任务：`chat-tasks` 全路由 `kind='partner'` → 403 `PARTNER_TASKS_DISABLED`（sessions/tasks 全部拦截）~~ → 2026-08-08 删除，改为统一 P9 能力位
+  5. MCP 收紧：对话/任务 6 工具 schema 移除 `api_key`，`gatewayAuthHeaders` 仅接受 `access_token`（JWT 注册用户）【保持不变】
+- 验收标准（2026-08-08 修订后）：
   - B 端 key approve 后租户 `kind='partner'`、`quota_daily` 继承套餐
-  - B 端 key 调 `/sessions` `/tasks` → 403 PARTNER_TASKS_DISABLED
+  - B 端 key 调 `/sessions` `/tasks` → 按 P9 能力位：Enterprise plan（`parallel_tasks=true`）**放行**；能力位 false → `403 PARALLEL_TASKS_DISABLED`
   - B 端 key 调 `/chat/completions` 进入平台模式（非 401）
-  - MCP 对话/任务工具传 `api_key` → 拒绝；传 `access_token` 正常转发
-- 验证：单测 35/35（mcp 新增 B 端 api_key 拒绝用例 + chat-tasks 新增 partner gate 3 用例）；生产冒烟——① developer apply→approve→key（39 字符）；② 租户 `kind=partner, quota_daily=5,000,000`；③ `/sessions` 403 + `/tasks` PARTNER_TASKS_DISABLED；④ `/chat/completions` **200**（2026-08-06 配置正式 DeepSeek 平台 key 后 B 端对话真实可用；key 记录于生产 `.env` 的 `DEEPSEEK_API_KEY`，经 admin API 写入 `platform_api_keys` 加密存储）；⑤ MCP 传 `api_key` → `access_token (registered-user JWT) is required for this tool` ✅；smoke 数据已清理
+  - MCP 对话/任务工具传 `api_key` → 拒绝；传 `access_token` 正常转发【保持不变】
+- 验证：单测 37/37（chat-tasks 重写为「B 端 key 遵循 P9 能力位」5 用例 + mock canAccessAgent 修复既有失败用例）；生产冒烟——① developer apply→approve→key（39 字符）；② 租户 `kind=partner, quota_daily=5,000,000`；③ `/chat/completions` **200**（2026-08-06 配置正式 DeepSeek 平台 key 后 B 端对话真实可用；key 记录于生产 `.env` 的 `DEEPSEEK_API_KEY`，经 admin API 写入 `platform_api_keys` 加密存储）；④ MCP 传 `api_key` → `access_token (registered-user JWT) is required for this tool` ✅；smoke 数据已清理
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 

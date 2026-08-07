@@ -49,7 +49,8 @@ const CHALLENGE_TTL_SEC = 5 * 60
 
 // ── Shared tenant loading (single source of truth for SQL + row mapping) ──
 // Used by verifyChallenge (by wallet), authMiddleware (by JWT tenant id) and
-// apiKeyAuth (by api_key). Must always include t.kind (R14 partner gate).
+// apiKeyAuth (by api_key). Must always include t.kind ('user' | 'partner'),
+// allow_parallel_tasks and plan.features (P9 capability bits for parallel tasks).
 const TENANT_SELECT_COLUMNS = `t.id, t.wallet_address, t.status, t.api_key,
         t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
         t.kind, t.allow_parallel_tasks,

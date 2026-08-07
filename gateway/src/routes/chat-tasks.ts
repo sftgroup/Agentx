@@ -17,22 +17,26 @@ import { config } from '../config'
 const router = Router()
 
 /**
- * R14: B-end integration keys (kind='partner') are limited to the chat service.
- * Sessions / tasks (background agent execution) are blocked for them — such calls
- * would otherwise consume platform LLM budget via a2a-worker fallback keys.
+ * P9 capability gate (2026-08-08): sessions / tasks are gated uniformly by
+ * capability bits for ALL tenants — user JWT and B-end (partner) keys alike.
+ * effective = tenant.allow_parallel_tasks ?? plan.features.parallel_tasks ?? true.
+ * (Replaces the former R14 partner-only block: B-end keys now get the same
+ * parallel-task surface as registered users, controlled by their plan.)
  */
-function partnerTaskGate(req: Request, res: ExpressResponse, next: () => void): void {
-  if (req.tenant?.kind === 'partner') {
+function parallelTaskGate(req: Request, res: ExpressResponse, next: () => void): void {
+  const planBit = req.tenant?.planFeatures?.parallel_tasks
+  const effective = req.tenant?.allowParallelTasks ?? (typeof planBit === 'boolean' ? planBit : true)
+  if (!effective) {
     res.status(403).json({
-      error: 'B-end integration keys are limited to the chat service',
-      code: 'PARTNER_TASKS_DISABLED',
+      error: 'Parallel tasks are disabled for this tenant',
+      code: 'PARALLEL_TASKS_DISABLED',
     })
     return
   }
   next()
 }
 
-router.use(partnerTaskGate)
+router.use(parallelTaskGate)
 
 /** Resolve stored BYOK (tenantKeyId) → plaintext key/endpoint/model. */
 async function resolveStoredKey(
@@ -135,16 +139,7 @@ router.post('/sessions/:sessionId/tasks', async (req: Request, res: ExpressRespo
       }
     }
 
-    // P9 capability gate: integrators can disable multi-task / sub-agent.
-    // effective = tenant.allow_parallel_tasks ?? plan.features.parallel_tasks ?? true
-    const planBit = req.tenant?.planFeatures?.parallel_tasks
-    const effective = req.tenant?.allowParallelTasks ?? (typeof planBit === 'boolean' ? planBit : true)
-    if (!effective) {
-      return res.status(403).json({
-        error: 'Parallel tasks are disabled for this tenant',
-        code: 'PARALLEL_TASKS_DISABLED',
-      })
-    }
+    // P9 capability gate is enforced once at router.use(parallelTaskGate).
 
     // Stored BYOK: resolve the tenant's own key server-side (never leaves the gateway)
     const { key: headerApiKey, endpoint, model } = await resolveStoredKey(req, tenantKeyId)
