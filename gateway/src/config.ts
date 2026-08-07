@@ -38,6 +38,10 @@ export const config = {
   // (0 = scan from genesis; set to the SubscriptionManager deploy block to save RPC)
   plansSyncFromBlock: parseInt(process.env.PLANS_SYNC_FROM_BLOCK || '0', 10),
 
+  // Block number to start scanning Subscribed history from on boot
+  // (0 = scan from genesis; set to the SubscriptionManager deploy block to save RPC)
+  subscriptionsSyncFromBlock: parseInt(process.env.SUBSCRIPTIONS_SYNC_FROM_BLOCK || '0', 10),
+
   subscriptionManager: process.env.SUBSCRIPTION_MANAGER || '0xC15fE80b9d800abb72121F353a6ae6d6E9077E63',
   subscriptionManagerOxaChain: process.env.SUBSCRIPTION_MANAGER_OXACHAIN || '0x019AC9d945467478Dd371CDbD70cb2f325800E6B',
 
@@ -68,6 +72,13 @@ export const config = {
   // Empty keys = feature disabled (endpoints respond 503 with a clear hint).
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+  // Stripe API base — override for local mock servers / proxies (default = real Stripe).
+  stripeApiBase: process.env.STRIPE_API_BASE || 'https://api.stripe.com/v1',
+  // Auto-pricing for fiat checkout: when the caller sends planId without
+  // amountCents, the on-chain plan price (wei) is converted with this
+  // native-token → USD price: amountCents = (planWei / 1e18) × price × 100.
+  // Default 1 (placeholder) — production MUST set the real token price.
+  fiatTokenUsdPrice: parseFloat(process.env.FIAT_TOKEN_USD_PRICE || '1'),
 
   // ── x402 pay-per-request (A2) ────────────────────────────────────────────
   // Enabled when X402_ENABLED=true; pay-to wallet receives native-token
@@ -76,6 +87,33 @@ export const config = {
   x402PayTo: process.env.X402_PAY_TO || '',
   x402PriceWei: process.env.X402_PRICE_WEI || '1000000000000000', // 0.001 native by default
   x402Chain: process.env.X402_CHAIN || 'oxachain',
+
+  // ── Stablecoin accept/verify (P3, x402 rail) ─────────────────────────────
+  // When configured, the x402 v2 challenge also advertises an `exact` accept
+  // paid in the token; verification scans the token's Transfer event.
+  stablecoinEnabled: process.env.STABLECOIN_ENABLED === 'true',
+  stablecoinAsset: process.env.STABLECOIN_ASSET || '',
+  stablecoinDecimals: parseInt(process.env.STABLECOIN_DECIMALS || '6', 10),
+  stablecoinPriceWei: process.env.STABLECOIN_PRICE_WEI || '1000000',
+  stablecoinDomainName: process.env.STABLECOIN_DOMAIN_NAME || '',
+  stablecoinPermit2: process.env.STABLECOIN_PERMIT2 || '',
+
+  // ── Period scheme (P4, x402 rail) ────────────────────────────────────────
+  // One authorization funds n periods; each period boundary charges without
+  // re-signing (payment_authorizations).
+  periodEnabled: process.env.PERIOD_ENABLED === 'true',
+  periodPriceWei: process.env.PERIOD_PRICE_WEI || '2000000000000000',
+  periodMaxPeriods: parseInt(process.env.PERIOD_MAX_PERIODS || '12', 10),
+
+  // ── MPP payment channels (P2) ────────────────────────────────────────────
+  // Payer pre-funds a channel on-chain, then signs cumulative vouchers;
+  // consumption is settled in batch (threshold / interval).
+  mppEnabled: process.env.MPP_ENABLED === 'true',
+  mppDomain: process.env.MPP_DOMAIN || '',
+  mppPayee: process.env.MPP_PAYEE || '',
+  mppChain: process.env.MPP_CHAIN || 'oxachain',
+  mppSettleThresholdWei: process.env.MPP_SETTLE_THRESHOLD_WEI || '1000000000000000000',
+  mppSettleIntervalSec: parseInt(process.env.MPP_SETTLE_INTERVAL_SEC || '86400', 10),
 }
 
 // ---------------------------------------------------------------------------

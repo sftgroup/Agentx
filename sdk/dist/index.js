@@ -27,9 +27,11 @@ __export(crypto_exports, {
   aesEncrypt: () => aesEncrypt,
   bytesToHex: () => import_utils.bytesToHex,
   decryptPayload: () => decryptPayload,
+  decryptWithKey: () => decryptWithKey,
   eciesDecrypt: () => eciesDecrypt,
   eciesEncrypt: () => eciesEncrypt,
   encryptPayload: () => encryptPayload,
+  encryptWithKey: () => encryptWithKey,
   generateAesKey: () => generateAesKey,
   generateKeyPair: () => generateKeyPair,
   getPublicKey: () => getPublicKey,
@@ -81,6 +83,33 @@ function aesDecrypt(encryptedBase64, keyHex) {
   const iv = combined.subarray(0, IV_SIZE);
   const ciphertext = combined.subarray(IV_SIZE, -TAG_SIZE);
   const authTag = combined.subarray(-TAG_SIZE);
+  const cipher = (0, import_aes.gcm)(key, iv);
+  const ciphertextWithTag = new Uint8Array(ciphertext.length + TAG_SIZE);
+  ciphertextWithTag.set(ciphertext, 0);
+  ciphertextWithTag.set(authTag, ciphertext.length);
+  const decrypted = cipher.decrypt(ciphertextWithTag);
+  return new TextDecoder().decode(decrypted);
+}
+function encryptWithKey(plaintext, keyHex) {
+  const key = (0, import_utils.hexToBytes)(keyHex);
+  const iv = randomBytes(IV_SIZE);
+  const plainBytes = new TextEncoder().encode(plaintext);
+  const cipher = (0, import_aes.gcm)(key, iv);
+  const encrypted = cipher.encrypt(plainBytes);
+  const ciphertext = encrypted.subarray(0, -TAG_SIZE);
+  const authTag = encrypted.subarray(-TAG_SIZE);
+  const combined = new Uint8Array(IV_SIZE + TAG_SIZE + ciphertext.length);
+  combined.set(iv, 0);
+  combined.set(authTag, IV_SIZE);
+  combined.set(ciphertext, IV_SIZE + TAG_SIZE);
+  return toBase64(combined);
+}
+function decryptWithKey(encryptedBase64, keyHex) {
+  const key = (0, import_utils.hexToBytes)(keyHex);
+  const combined = fromBase64(encryptedBase64);
+  const iv = combined.subarray(0, IV_SIZE);
+  const authTag = combined.subarray(IV_SIZE, IV_SIZE + TAG_SIZE);
+  const ciphertext = combined.subarray(IV_SIZE + TAG_SIZE);
   const cipher = (0, import_aes.gcm)(key, iv);
   const ciphertextWithTag = new Uint8Array(ciphertext.length + TAG_SIZE);
   ciphertextWithTag.set(ciphertext, 0);
@@ -2475,12 +2504,14 @@ __export(index_exports, {
   MultiEndpointClient: () => MultiEndpointClient,
   NoopTraceEmitter: () => NoopTraceEmitter,
   OpenAIProvider: () => OpenAIProvider,
+  PAYMENT_VERSION: () => PAYMENT_VERSION,
   REGISTRY_VERSION: () => REGISTRY_VERSION,
   REPUTATION_VERSION: () => REPUTATION_VERSION,
   ReputationRegistry: () => ReputationRegistry,
   SUBSCRIPTION_PERIODS: () => SUBSCRIPTION_PERIODS,
   SUBSCRIPTION_VERSION: () => SUBSCRIPTION_VERSION,
   SubscriptionManager: () => SubscriptionManager,
+  SubscriptionPayments: () => SubscriptionPayments,
   ToolExecutor: () => ToolExecutor,
   ZERO_ADDRESS: () => ZERO_ADDRESS2,
   aesDecrypt: () => aesDecrypt,
@@ -2492,11 +2523,13 @@ __export(index_exports, {
   cidFromURI: () => cidFromURI,
   createLLMProvider: () => createLLMProvider,
   decryptPayload: () => decryptPayload,
+  decryptWithKey: () => decryptWithKey,
   defaultIPFSFetcher: () => defaultIPFSFetcher,
   defaultIPFSUploader: () => defaultIPFSUploader,
   eciesDecrypt: () => eciesDecrypt,
   eciesEncrypt: () => eciesEncrypt,
   encryptPayload: () => encryptPayload,
+  encryptWithKey: () => encryptWithKey,
   executeBrowserAction: () => executeBrowserAction,
   executePlatformTool: () => executePlatformTool,
   extractAccessibleDOM: () => extractAccessibleDOM,
@@ -2507,6 +2540,7 @@ __export(index_exports, {
   guardSubscription: () => guardSubscription,
   hexToBytes: () => import_utils.hexToBytes,
   packAgentForPublish: () => packAgentForPublish,
+  parseTokenURIJSON: () => parseTokenURIJSON,
   publishAgent: () => publishAgent,
   randomBytes: () => randomBytes,
   subscribeToEvents: () => subscribeToEvents,
@@ -5150,6 +5184,12 @@ var ERC20_ABI = {
     type: "function"
   }
 };
+var SUBSCRIPTION_STATUS_NAMES = {
+  0: "pending",
+  1: "active",
+  2: "expired",
+  3: "cancelled"
+};
 var SUBSCRIPTION_PERIODS = ["day", "week", "month", "year"];
 var SubscriptionManager = class {
   address;
@@ -5364,7 +5404,7 @@ var SubscriptionManager = class {
       subscriptionId: Number(subId),
       subscriber: sub,
       agentId: Number(aId),
-      status: ["active", "expired", "cancelled", "pending"][status],
+      status: SUBSCRIPTION_STATUS_NAMES[status] ?? "pending",
       startedAt: Number(started),
       expiresAt: Number(expires),
       period
@@ -5589,6 +5629,166 @@ var AgentX402 = class {
 // src/subscription/index.ts
 var SUBSCRIPTION_VERSION = "0.3.0";
 
+// src/payment/payments.ts
+var import_payments = require("@agentxv2/payments");
+var PERIODS = ["day", "week", "month", "year"];
+var SubscriptionPayments = class {
+  constructor(config) {
+    this.config = config;
+    this.client = config.gatewayUrl ? new import_payments.PaymentsClient({ baseUrl: config.gatewayUrl, accessToken: config.accessToken }) : null;
+  }
+  config;
+  client;
+  // ── Public API ──────────────────────────────────────────────────────────
+  /** Pay for (or renew) a subscription using the chosen rail. */
+  async pay(input) {
+    switch (input.method) {
+      case "chain":
+        return this._payChain(input);
+      case "fiat":
+        return this._payFiat(input);
+      case "x402":
+        return this._payX402(input);
+    }
+  }
+  /**
+   * Unified access check across all rails (chain OR fiat/x402) via the
+   * unified /api/v1/payments/access endpoint.
+   */
+  async hasAccess(agentId, subscriber) {
+    if (!this.client) {
+      throw new Error("hasAccess() requires a gatewayUrl");
+    }
+    const res = await this.client.access(subscriber, agentId, this.config.chain ?? "oxachain");
+    return res.active === true;
+  }
+  /** x402 protocol discovery (price / pay-to wallet / network). */
+  async fetchX402Info() {
+    if (!this.client) {
+      throw new Error("fetchX402Info() requires a gatewayUrl");
+    }
+    const info = await this.client.info();
+    return {
+      enabled: Boolean(info.x402?.enabled),
+      priceWei: info.x402?.priceWei ?? "0",
+      payTo: info.x402?.payTo ?? "",
+      network: info.x402?.network ?? "",
+      chain: info.x402?.chain ?? this.config.chain ?? "oxachain"
+    };
+  }
+  // ── Rails ───────────────────────────────────────────────────────────────
+  async _payChain(input) {
+    const sm = this.config.subscriptionManager;
+    if (!sm) throw new Error('method "chain" requires a SubscriptionManager in the config');
+    const result = await sm.subscribe(input.planId, {
+      valueWei: input.valueWei,
+      approveTokenFirst: input.approveTokenFirst
+    });
+    return { method: "chain", subscriptionId: result.subscriptionId, txHash: result.txHash };
+  }
+  async _payFiat(input) {
+    if (!this.client) throw new Error('method "fiat" requires a gatewayUrl');
+    if (!input.subscriber) throw new Error('method "fiat" requires a subscriber address');
+    const data = await this.client.create({
+      method: "fiat",
+      subscriber: input.subscriber,
+      period: input.period ?? "month",
+      currency: input.currency ?? "usd",
+      chain: this.config.chain ?? "oxachain",
+      // amountCents is optional — the Gateway derives the USD amount from the
+      // on-chain plan price when omitted (FIAT_TOKEN_USD_PRICE on the Gateway).
+      amountCents: input.amountCents,
+      pricing: { planId: input.planId },
+      // AgentX business context rides in metadata (the unified endpoint reads
+      // it back out — the generic module never interprets it).
+      metadata: { agentId: input.agentId, planId: input.planId },
+      successUrl: input.successUrl,
+      cancelUrl: input.cancelUrl
+    });
+    if (data.method !== "fiat" || !data.sessionUrl) {
+      throw new Error("Fiat checkout returned no redirect URL");
+    }
+    return { method: "fiat", sessionUrl: data.sessionUrl, sessionId: data.sessionId, redirect: true };
+  }
+  async _payX402(input) {
+    if (!this.client) throw new Error('method "x402" requires a gatewayUrl');
+    if (!input.subscriber) throw new Error('method "x402" requires a subscriber address');
+    if (!PERIODS.includes(input.period ?? "month")) {
+      throw new Error("period must be one of: day | week | month | year");
+    }
+    let txHash = input.txHash;
+    if (!txHash) {
+      txHash = await this._autoFundX402(input);
+    }
+    const data = await this._fetchJson("/api/v1/payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        method: "x402",
+        subscriber: input.subscriber,
+        agentId: input.agentId,
+        planId: input.planId,
+        period: input.period ?? "month",
+        txHash,
+        chain: this.config.chain ?? "oxachain"
+      })
+    });
+    return {
+      method: "x402",
+      subscriptionId: data.subscriptionId,
+      txHash,
+      creditedWei: data.creditedWei
+    };
+  }
+  /** Send the on-chain native transfer to the platform wallet (x402 rail). */
+  async _autoFundX402(input) {
+    const { walletClient, subscriptionManager } = this.config;
+    if (!walletClient || !subscriptionManager) {
+      throw new Error("x402 automatic payment needs a txHash, or a walletClient + subscriptionManager in the config");
+    }
+    const info = await this.fetchX402Info();
+    if (!info.enabled || !info.payTo) {
+      throw new Error("x402 is not enabled on the Gateway (X402_ENABLED / X402_PAY_TO missing)");
+    }
+    const plan = await subscriptionManager.getPlan(input.planId);
+    const priceWei = BigInt(info.priceWei || "0");
+    const amount = plan.price > priceWei ? plan.price : priceWei;
+    let account = walletClient.account?.address;
+    if (!account) {
+      const [addr] = await walletClient.getAddresses();
+      account = addr;
+    }
+    if (!account) throw new Error("Wallet not connected for x402 payment");
+    const hash2 = await walletClient.sendTransaction({
+      to: info.payTo,
+      value: amount,
+      chain: void 0,
+      account
+    });
+    return hash2;
+  }
+  // ── HTTP helpers ────────────────────────────────────────────────────────
+  async _fetchJson(path, init) {
+    const base = (this.config.gatewayUrl ?? "").replace(/\/$/, "");
+    const headers = { ...init?.headers };
+    if (this.config.accessToken) headers.Authorization = `Bearer ${this.config.accessToken}`;
+    const resp = await fetch(`${base}${path}`, { ...init, headers });
+    if (!resp.ok) {
+      let message = `Gateway request failed (${resp.status}): ${path}`;
+      try {
+        const body = await resp.json();
+        if (body.error) message = body.error;
+      } catch {
+      }
+      throw new Error(message);
+    }
+    return await resp.json();
+  }
+};
+
+// src/payment/index.ts
+var PAYMENT_VERSION = "0.1.0";
+
 // src/a2a/a2a.ts
 var A2A_ABI = {
   createAgentCard: {
@@ -5787,7 +5987,7 @@ var A2AProtocol = class {
   // ── Task ────────────────────────────────────────────────────────────────
   async createTask(agentId, taskType, input) {
     const acct = await this.account;
-    const inputStr = JSON.stringify(input);
+    const inputStr = typeof input === "string" ? input : JSON.stringify(input);
     const { request } = await this.publicClient.simulateContract({
       account: acct,
       address: this.address,
@@ -6999,12 +7199,14 @@ var ConversationClient = class {
   MultiEndpointClient,
   NoopTraceEmitter,
   OpenAIProvider,
+  PAYMENT_VERSION,
   REGISTRY_VERSION,
   REPUTATION_VERSION,
   ReputationRegistry,
   SUBSCRIPTION_PERIODS,
   SUBSCRIPTION_VERSION,
   SubscriptionManager,
+  SubscriptionPayments,
   ToolExecutor,
   ZERO_ADDRESS,
   aesDecrypt,
@@ -7016,11 +7218,13 @@ var ConversationClient = class {
   cidFromURI,
   createLLMProvider,
   decryptPayload,
+  decryptWithKey,
   defaultIPFSFetcher,
   defaultIPFSUploader,
   eciesDecrypt,
   eciesEncrypt,
   encryptPayload,
+  encryptWithKey,
   executeBrowserAction,
   executePlatformTool,
   extractAccessibleDOM,
@@ -7031,6 +7235,7 @@ var ConversationClient = class {
   guardSubscription,
   hexToBytes,
   packAgentForPublish,
+  parseTokenURIJSON,
   publishAgent,
   randomBytes,
   subscribeToEvents,

@@ -47,6 +47,42 @@ interface Challenge {
 // Challenge TTL in seconds (matches the 5-minute window)
 const CHALLENGE_TTL_SEC = 5 * 60
 
+// ── Shared tenant loading (single source of truth for SQL + row mapping) ──
+// Used by verifyChallenge (by wallet), authMiddleware (by JWT tenant id) and
+// apiKeyAuth (by api_key). Must always include t.kind (R14 partner gate).
+const TENANT_SELECT_COLUMNS = `t.id, t.wallet_address, t.status, t.api_key,
+        t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
+        t.kind, t.allow_parallel_tasks,
+        p.id as plan_id, p.slug as plan_slug, p.features as plan_features`
+
+async function queryTenant(where: string, params: unknown[]): Promise<any> {
+  const { rows } = await getPool().query(
+    `SELECT ${TENANT_SELECT_COLUMNS}
+     FROM tenants t
+     LEFT JOIN plans p ON t.plan_id = p.id
+     WHERE ${where}`,
+    params
+  )
+  return rows[0] ?? null
+}
+
+function rowToTenant(row: any): TenantContext {
+  return {
+    id: row.id,
+    walletAddress: row.wallet_address,
+    planId: row.plan_id || '',
+    planSlug: row.plan_slug || 'free',
+    quotaDaily: row.quota_daily,
+    quotaUsed: row.quota_used,
+    rateLimitRpm: row.rate_limit_rpm,
+    maxConcurrent: row.max_concurrent,
+    status: row.status,
+    kind: row.kind ?? 'user',
+    allowParallelTasks: row.allow_parallel_tasks ?? null,
+    planFeatures: row.plan_features ?? null,
+  }
+}
+
 /**
  * Store a challenge in Redis so it works across PM2 cluster workers.
  * Falls back to an in-memory Map when Redis is unavailable (single-process dev).
@@ -136,20 +172,9 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
   const pool = getPool()
   let tenant: TenantContext | null = null
 
-  const existing = await pool.query(
-    `SELECT t.id, t.wallet_address, t.status, t.api_key,
-            t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
-            t.kind,
-            t.allow_parallel_tasks,
-            p.id as plan_id, p.slug as plan_slug, p.features as plan_features
-     FROM tenants t
-     LEFT JOIN plans p ON t.plan_id = p.id
-     WHERE LOWER(t.wallet_address) = $1`,
-    [address]
-  )
+  const row = await queryTenant('LOWER(t.wallet_address) = $1', [address])
 
-  if (existing.rows.length > 0) {
-    const row = existing.rows[0]
+  if (row) {
     if (row.status === 'suspended') {
       res.status(403).json({ error: 'Account suspended' })
       return
@@ -160,20 +185,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
       apiKey = 'agentx_' + crypto.randomBytes(16).toString('hex')
       await pool.query(`UPDATE tenants SET api_key = $1 WHERE id = $2`, [apiKey, row.id])
     }
-    tenant = {
-      id: row.id,
-      walletAddress: row.wallet_address,
-      planId: row.plan_id || '',
-      planSlug: row.plan_slug || 'free',
-      quotaDaily: row.quota_daily,
-      quotaUsed: row.quota_used,
-      rateLimitRpm: row.rate_limit_rpm,
-      maxConcurrent: row.max_concurrent,
-      status: row.status,
-      kind: row.kind,
-      allowParallelTasks: row.allow_parallel_tasks ?? null,
-      planFeatures: row.plan_features ?? null,
-    }
+    tenant = rowToTenant(row)
     ;(tenant as any).apiKey = apiKey
   } else {
     const freePlan = await pool.query(`SELECT id, features FROM plans WHERE slug = 'free' LIMIT 1`)
@@ -218,7 +230,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
   })
 }
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+export async function authMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   // Already authenticated via X-Api-Key
   if (req.tenant) {
     next()
@@ -240,46 +252,21 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     return
   }
 
-  getPool()
-    .query(
-      `SELECT t.id, t.wallet_address, t.status,
-              t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
-              t.allow_parallel_tasks,
-              p.id as plan_id, p.slug as plan_slug, p.features as plan_features
-       FROM tenants t
-       LEFT JOIN plans p ON t.plan_id = p.id
-       WHERE t.id = $1`,
-      [decoded.tenantId]
-    )
-    .then(r => {
-      if (r.rows.length === 0) {
-        res.status(401).json({ error: 'Tenant not found' })
-        return
-      }
-      const row = r.rows[0]
-      if (row.status === 'suspended') {
-        res.status(403).json({ error: 'Account suspended' })
-        return
-      }
-      req.tenant = {
-        id: row.id,
-        walletAddress: row.wallet_address,
-        planId: row.plan_id || '',
-        planSlug: row.plan_slug || 'free',
-        quotaDaily: row.quota_daily,
-        quotaUsed: row.quota_used,
-        rateLimitRpm: row.rate_limit_rpm,
-        maxConcurrent: row.max_concurrent,
-        status: row.status,
-      kind: row.kind,
-        allowParallelTasks: row.allow_parallel_tasks ?? null,
-        planFeatures: row.plan_features ?? null,
-      }
-      next()
-    })
-    .catch(err => {
-      next(err)
-    })
+  try {
+    const row = await queryTenant('t.id = $1', [decoded.tenantId])
+    if (!row) {
+      res.status(401).json({ error: 'Tenant not found' })
+      return
+    }
+    if (row.status === 'suspended') {
+      res.status(403).json({ error: 'Account suspended' })
+      return
+    }
+    req.tenant = rowToTenant(row)
+    next()
+  } catch (err) {
+    next(err)
+  }
 }
 
 // ── API Key retrieval ──────────────────────────────────────────────────
@@ -314,42 +301,17 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
     return
   }
 
-  const pool = getPool()
-  pool.query(
-    `SELECT t.id, t.wallet_address, t.status,
-            t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
-            t.kind,
-            t.allow_parallel_tasks,
-            p.id as plan_id, p.slug as plan_slug, p.features as plan_features
-     FROM tenants t
-     LEFT JOIN plans p ON t.plan_id = p.id
-     WHERE t.api_key = $1`,
-    [apiKey]
-  )
-    .then(r => {
-      if (r.rows.length === 0) {
+  queryTenant('t.api_key = $1', [apiKey])
+    .then(row => {
+      if (!row) {
         res.status(401).json({ error: 'Invalid API key' })
         return
       }
-      const row = r.rows[0]
       if (row.status === 'suspended') {
         res.status(403).json({ error: 'Account suspended' })
         return
       }
-      req.tenant = {
-        id: row.id,
-        walletAddress: row.wallet_address,
-        planId: row.plan_id || '',
-        planSlug: row.plan_slug || 'free',
-        quotaDaily: row.quota_daily,
-        quotaUsed: row.quota_used,
-        rateLimitRpm: row.rate_limit_rpm,
-        maxConcurrent: row.max_concurrent,
-        status: row.status,
-      kind: row.kind,
-        allowParallelTasks: row.allow_parallel_tasks ?? null,
-        planFeatures: row.plan_features ?? null,
-      }
+      req.tenant = rowToTenant(row)
       next()
     })
     .catch(err => {

@@ -8,7 +8,7 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { ethers } from 'ethers'
 import { config } from './config'
-import { getPool } from './lib/db'
+import { getPool, closePool } from './lib/db'
 import { getChallenge, verifyChallenge, authMiddleware, getApiKey, apiKeyAuth } from './middleware/auth'
 import { tenantRateLimiter } from './middleware/rate-limiter'
 import { globalErrorHandler } from './middleware/error-handler'
@@ -22,6 +22,7 @@ import channelRouter from './routes/channel'
 import developerRouter from './routes/developer'
 import fiatRouter from './routes/fiat'
 import x402Router from './routes/x402'
+import paymentsRouter from './routes/payments'
 import a2aRouter from './routes/a2a'
 import adminRouter from './routes/admin'
 import agentRunsRouter from './routes/agent-runs'
@@ -128,6 +129,11 @@ app.use('/api/v1/fiat', fiatRouter)
 
 app.use('/api/v1/x402', x402Router)
 
+// ── Unified payments endpoint (P5): one transport for every rail ───────────
+// Auth is public by default (payment security rests on on-chain credentials).
+
+app.use('/api/v1/payments', paymentsRouter)
+
 // ── Skills Marketplace (mixed: GET public, POST/PUT/DELETE protected) ──────
 
 app.use('/api/v1/skills', skillsRouter)
@@ -193,6 +199,20 @@ app.use((_req, res) => {
 
 app.use(globalErrorHandler)
 
+// ── Graceful shutdown ──────────────────────────────────────────────────────
+// pm2 sends SIGINT (stop/restart) and SIGTERM (kill). Stop the background
+// workers and release the Postgres pool so restarts are clean.
+function shutdown(signal: string): void {
+  console.log(`[AgentX Gateway] ${signal} received — shutting down`)
+  Promise.allSettled([
+    import('./services/a2a-worker').then(({ stopA2AWorker }) => stopA2AWorker()),
+    import('./services/schedule-daemon').then(({ stopScheduleDaemon }) => stopScheduleDaemon()),
+    closePool(),
+  ]).finally(() => process.exit(0))
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+
 // ── Start ─────────────────────────────────────────────────────────────────
 
 app.listen(config.port, () => {
@@ -215,13 +235,19 @@ app.listen(config.port, () => {
   })
 
   // Start agent sync event watcher (incremental on-chain updates)
-  import('./services/agent-indexer').then(({ startAgentSyncWatcher, startPlanSyncWatcher, syncPlanHistory, syncAgents }) => {
+  import('./services/agent-indexer').then(({ startAgentSyncWatcher, startPlanSyncWatcher, startSubscriptionSyncWatcher, syncPlanHistory, syncSubscriptionHistory, syncAgents }) => {
     startAgentSyncWatcher()
     startPlanSyncWatcher()
+    startSubscriptionSyncWatcher()
 
     // Backfill plans table from PlanCreated history (non-blocking)
     syncPlanHistory().catch(err =>
       console.error('[AgentX Gateway] Plan history sync failed:', err.message)
+    )
+
+    // Backfill chain_subscriptions from Subscribed history (non-blocking)
+    syncSubscriptionHistory().catch(err =>
+      console.error('[AgentX Gateway] Subscription history sync failed:', err.message)
     )
 
     // Full-sync fallback timer (keeps agents table consistent if events are missed)

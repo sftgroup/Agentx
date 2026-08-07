@@ -1,6 +1,7 @@
 // components/agent/dashboard/SubscriptionManager.tsx
 // R7 拆分：主组件（状态 + handlers），展示部分拆至 SubscriptionPlanCard / SubscriptionPlanModal，
 // 纯逻辑拆至 subscription-utils
+// v2 合约无 updatePlan/deactivatePlan 能力 → 只保留创建计划流程。
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -18,13 +19,11 @@ import {
 } from 'lucide-react'
 import {
   useSubscription,
-  type SubscriptionPlan,
   BillingPeriod
 } from '../hooks/useSubscription'
 import { useOnChainAgentRegistry as useAgentRegistry } from '../hooks/useAgentRegistry'
 import {
   validateForm,
-  TOKENS,
   type PlanFormData,
   type ValidationResult
 } from './subscription-utils'
@@ -35,7 +34,6 @@ export function SubscriptionManager() {
   const { address, isConnected } = useAccount()
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null)
   const [showPlanForm, setShowPlanForm] = useState(false)
-  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null)
   const [formData, setFormData] = useState<PlanFormData>({
     name: '',
     description: '',
@@ -48,18 +46,15 @@ export function SubscriptionManager() {
 
   const {
     createSubscriptionPlan,
-    updateSubscriptionPlan,
     getAgentPlans,
     getAgentSubscriptionStats,
     agentPlans,
     subscriptionStats,
     isCreatingPlan,
-    isUpdatingPlan,
     isConfirming,
     isConfirmed,
     error,
     transactionHash,
-    refetchData,
     resetState
   } = useSubscription()
 
@@ -78,7 +73,6 @@ export function SubscriptionManager() {
 
       if (showPlanForm) {
         setShowPlanForm(false)
-        setEditingPlan(null)
         setFormData({
           name: '',
           description: '',
@@ -132,54 +126,23 @@ export function SubscriptionManager() {
     try {
       const priceInWei = BigInt(Math.floor(formData.price * 1e18))
 
-      if (editingPlan) {
-        await updateSubscriptionPlan(
-          Number(editingPlan.planId),
-          formData.name,
-          formData.description,
-          Number(priceInWei),
-          formData.billingPeriod,
-          formData.maxUsage
-        )
-      } else {
-        await createSubscriptionPlan(
-          selectedAgentId,
-          formData.name,
-          formData.description,
-          formData.token,
-          Number(priceInWei),
-          formData.billingPeriod,
-          formData.maxUsage
-        )
-      }
-
+      // v2 contract only supports createPlan — no update/deactivate path.
+      await createSubscriptionPlan(
+        selectedAgentId,
+        formData.name,
+        formData.description,
+        formData.token,
+        Number(priceInWei),
+        formData.billingPeriod,
+        formData.maxUsage
+      )
     } catch (error) {
       console.error('Failed to save plan:', error)
     }
   }
 
-  const handleEditPlan = (plan: SubscriptionPlan) => {
-    setEditingPlan(plan)
-
-    const tokenConfig = TOKENS.find(t => t.value === plan.token)
-    const decimals = tokenConfig?.decimals || 18
-    const priceInToken = Number(plan.price) / Math.pow(10, decimals)
-
-    setFormData({
-      name: plan.name ?? '',
-      description: plan.description ?? '',
-      price: priceInToken,
-      billingPeriod: plan.billingPeriod ?? BillingPeriod.Monthly,
-      token: plan.token ?? '0x0000000000000000000000000000000000000000',
-      maxUsage: plan.maxUsage ?? 1000
-    })
-    setShowPlanForm(true)
-    setValidation({ isValid: true, message: '' })
-  }
-
   const handleCancelPlan = () => {
     setShowPlanForm(false)
-    setEditingPlan(null)
     setFormData({
       name: '',
       description: '',
@@ -192,67 +155,14 @@ export function SubscriptionManager() {
     resetState()
   }
 
-  // 修复：通过设置最大使用量为0来停用计划
-  const handleDeactivatePlan = async (plan: SubscriptionPlan) => {
-    if (!window.confirm(`确定要停用订阅计划 "${plan.name}" 吗？停用后用户将无法订阅此计划。`)) {
-      return
-    }
-
-    if (!selectedAgentId) {
-      alert('请先选择Agent')
-      return
-    }
-
-    try {
-      // 修复：通过更新计划将最大使用量设置为0来"停用"计划
-      await updateSubscriptionPlan(
-        Number(plan.planId),
-        plan.name ?? '',
-        plan.description ?? '',
-        Number(plan.price),
-        plan.billingPeriod ?? BillingPeriod.Monthly,
-        0 // 设置最大使用量为0来停用计划
-      )
-    } catch (error) {
-      console.error('Failed to deactivate plan:', error)
-    }
-  }
-
-  // 修复：通过设置最大使用量为正数来启用计划
-  const handleActivatePlan = async (plan: SubscriptionPlan) => {
-    if (!window.confirm(`确定要启用订阅计划 "${plan.name}" 吗？启用后用户可以订阅此计划。`)) {
-      return
-    }
-
-    if (!selectedAgentId) {
-      alert('请先选择Agent')
-      return
-    }
-
-    try {
-      // 修复：通过更新计划重新启用，设置合理的最大使用量
-      await updateSubscriptionPlan(
-        Number(plan.planId),
-        plan.name ?? '',
-        plan.description ?? '',
-        Number(plan.price),
-        plan.billingPeriod ?? BillingPeriod.Monthly,
-        1000 // 重新启用时设置合理的最大使用量
-      )
-    } catch (error) {
-      console.error('Failed to activate plan:', error)
-    }
-  }
-
   // 计算统计数据
   const totalPlans = agentPlans.length
-  const activePlans = agentPlans.filter(plan => Number(plan.maxUsage) > 0).length
-  const deactivatedPlans = agentPlans.filter(plan => Number(plan.maxUsage) === 0).length
+  const activePlans = agentPlans.filter(plan => plan.active !== false).length
+  const deactivatedPlans = agentPlans.filter(plan => plan.active === false).length
   const totalSubscriptions = subscriptionStats ? Number(subscriptionStats.totalSubscriptions) : 0
-  const activeSubscriptions = subscriptionStats ? Number(subscriptionStats.activeSubscriptions) : 0
   const totalRevenue = subscriptionStats ? Number(subscriptionStats.totalRevenue) / 1e18 : 0
 
-  const isFormLoading = isCreatingPlan || isUpdatingPlan || isConfirming
+  const isFormLoading = isCreatingPlan || isConfirming
   const isFormDisabled = isFormLoading || !validation.isValid
 
   return (
@@ -372,7 +282,7 @@ export function SubscriptionManager() {
               <button
                 onClick={() => selectedAgentId && loadData()}
                 className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
-                disabled={isCreatingPlan || isUpdatingPlan}
+                disabled={isCreatingPlan}
               >
                 <RefreshCw className="w-4 h-4" />
                 刷新
@@ -398,10 +308,6 @@ export function SubscriptionManager() {
                 <SubscriptionPlanCard
                   key={plan.planId.toString()}
                   plan={plan}
-                  isUpdating={isUpdatingPlan}
-                  onEdit={handleEditPlan}
-                  onActivate={handleActivatePlan}
-                  onDeactivate={handleDeactivatePlan}
                 />
               ))}
             </div>
@@ -411,7 +317,6 @@ export function SubscriptionManager() {
 
       {showPlanForm && (
         <SubscriptionPlanModal
-          editingPlan={editingPlan}
           formData={formData}
           setFormData={setFormData}
           validation={validation}

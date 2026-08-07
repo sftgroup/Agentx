@@ -7,8 +7,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { CalendarClock, Plus, Trash2, Play, Pause, Loader2, RefreshCw, AlertCircle, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
-
-const GATEWAY = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || ''
+import { GATEWAY_URL_OPTIONAL as GATEWAY } from '@/lib/gateway'
 
 interface Schedule {
   id: number; agent_id: number | null; title: string | null; message: string

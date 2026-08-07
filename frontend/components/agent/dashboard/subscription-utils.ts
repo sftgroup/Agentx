@@ -64,6 +64,14 @@ export const getBillingPeriodLabel = (billingPeriod: BillingPeriod): string => {
   return period ? period.label : `${billingPeriod}天`
 }
 
+// v2 plans carry the on-chain period string ('day'/'week'/'month'/'year');
+// fall back to the v1 BillingPeriod label when it is absent.
+const PERIOD_LABELS: Record<string, string> = { day: '每日', week: '每周', month: '每月', year: '每年' }
+export const getPeriodLabel = (period?: string, fallback?: BillingPeriod): string => {
+  if (period && PERIOD_LABELS[period]) return PERIOD_LABELS[period]
+  return getBillingPeriodLabel(fallback ?? BillingPeriod.Monthly)
+}
+
 export const getTokenSymbol = (tokenAddress: string): string => {
   const token = TOKENS.find(t => t.value === tokenAddress)
   return token ? token.label : 'Unknown'
@@ -73,7 +81,7 @@ export const formatTimestamp = (timestamp: bigint): string => {
   return new Date(Number(timestamp) * 1000).toLocaleDateString('zh-CN')
 }
 
-// 通过最大使用量是否为 0 判断计划是否停用（与合约行为一致）
+// 停用状态以链上 plan.active 为准（v2 计划无 maxUsage 字段）
 export const isPlanDeactivated = (plan: SubscriptionPlan): boolean => {
-  return Number(plan.maxUsage) === 0
+  return plan.active === false
 }

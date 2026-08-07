@@ -173,14 +173,11 @@ export function usePaymentGateway(): UsePaymentGatewayReturn {
   // 修复：监听交易确认，强制刷新数据
   useEffect(() => {
     if (isConfirmed && receipt) {
-      console.log('🎉 支付交易确认成功，强制刷新收益数据')
-      
       // 强制刷新所有数据
       setForceRefresh(prev => prev + 1)
-      
+
       // 立即重新获取数据
       setTimeout(() => {
-        console.log('🔄 立即重新获取收益数据...')
         refetchClientPayments()
         refetchAgentEarnings()
         refetchTotalPaymentCount()
@@ -191,34 +188,10 @@ export function usePaymentGateway(): UsePaymentGatewayReturn {
   // 修复：监听区块高度变化，自动刷新数据
   useEffect(() => {
     if (blockNumber) {
-      console.log('📦 新区块:', blockNumber, '触发收益数据刷新')
       // 每次新区块都强制刷新数据
       setForceRefresh(prev => prev + 1)
     }
   }, [blockNumber])
-
-  // 修复：数据同步 Effect
-  useEffect(() => {
-    if (clientPaymentsData) {
-      try {
-        console.log('🔄 更新客户支付数据:', clientPaymentsData)
-      } catch (err) {
-        console.error('Error processing client payments data:', err)
-      }
-    }
-  }, [clientPaymentsData, forceRefresh])
-
-  // 修复：Agent收益数据同步 Effect
-  useEffect(() => {
-    if (agentEarningsData !== undefined) {
-      try {
-        const newEarnings = Number(agentEarningsData)
-        console.log('🔄 更新Agent收益数据:', newEarnings)
-      } catch (err) {
-        console.error('Error processing agent earnings data:', err)
-      }
-    }
-  }, [agentEarningsData, forceRefresh])
 
   // 修复：获取所有Agent的支付记录
   const fetchAllAgentPayments = useCallback(async (agentIds: number[]): Promise<void> => {
@@ -228,7 +201,6 @@ export function usePaymentGateway(): UsePaymentGatewayReturn {
     }
 
     try {
-      console.log('🔄 开始获取所有Agent的支付记录...', agentIds)
       const allPayments: Payment[] = []
 
       // 并行获取所有Agent的支付记录
@@ -252,7 +224,6 @@ export function usePaymentGateway(): UsePaymentGatewayReturn {
         allPayments.push(...payments)
       })
 
-      console.log('✅ 获取到所有Agent支付记录:', allPayments.length)
       setAgentPayments(allPayments)
     } catch (err) {
       console.error('获取所有Agent支付记录失败:', err)
@@ -291,16 +262,7 @@ export function usePaymentGateway(): UsePaymentGatewayReturn {
       }
 
       setError(null)
-      
-      console.log('🔄 开始创建支付...', {
-        agentId,
-        token,
-        amount,
-        serviceDescription,
-        useEscrow,
-        value
-      })
-      
+
       const hash = await createPaymentAsync({
         address: PAYMENT_GATEWAY_ADDRESS,
         abi: PAYMENT_GATEWAY_ABI,
@@ -315,7 +277,6 @@ export function usePaymentGateway(): UsePaymentGatewayReturn {
         value: value || BigInt(0)
       })
 
-      console.log('✅ 创建支付交易提交成功，哈希:', hash)
       setTransactionHash(hash)
       return hash
     } catch (err) {
@@ -670,13 +631,11 @@ export function usePaymentGateway(): UsePaymentGatewayReturn {
   // 重新获取所有数据
   const refetchData = useCallback(async (): Promise<void> => {
     try {
-      console.log('🔄 重新获取所有收益数据...')
       await Promise.all([
         refetchClientPayments(),
         refetchAgentEarnings(),
         refetchTotalPaymentCount()
       ])
-      console.log('✅ 重新获取收益数据完成')
     } catch (err) {
       console.error('Refetch data error:', err)
     }

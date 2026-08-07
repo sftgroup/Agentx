@@ -1,4 +1,4 @@
-# @agentxv2/sdk v0.8.8
+# @agentxv2/sdk v0.9.2
 
 **Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query, hosted conversation sessions & parallel tasks.
 
@@ -10,14 +10,14 @@ Agent = Prompt + Skills[] + MCP
 
 ## Installation
 
-The current release **0.8.8** includes the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
+The current release **0.9.2** routes fiat / x402 / access through the Gateway's unified `/api/v1/payments` endpoint via the decoupled `@agentxv2/payments` engine (auto-installed, `^0.1.0`) — on top of the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
 
 ```bash
-# latest (recommended) — 0.8.8, includes all new capabilities
+# latest (recommended) — 0.9.2, unified payments endpoint
 npm install @agentxv2/sdk
 
 # or pin the exact release
-npm install @agentxv2/sdk@0.8.8
+npm install @agentxv2/sdk@0.9.2
 ```
 
 ### Peer Dependencies
@@ -616,10 +616,42 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 ---
 
+## Multi-Rail Subscription Payments (v0.9.2)
+
+`SubscriptionPayments` is the single entry point for subscribing across every AgentX payment rail — chain (on-chain escrow), fiat (Stripe card via the Gateway) and x402 (native-token period payment). `fiat` / `x402` / `hasAccess()` go through the unified `/api/v1/payments` endpoint (the `@agentxv2/payments` engine); `chain` works fully off-Gateway.
+
+```ts
+import { SubscriptionManager, SubscriptionPayments } from '@agentxv2/sdk'
+
+const sm = new SubscriptionManager({ contractAddress, publicClient, walletClient })
+const payments = new SubscriptionPayments({
+  gatewayUrl: 'https://gw.example.com', // required for fiat / x402 rails
+  subscriptionManager: sm,              // required for chain rail & x402 auto-funding
+  walletClient,
+  chain: 'oxachain',
+})
+
+await payments.pay({ method: 'chain', planId: 1, agentId: 3 })            // on-chain escrow
+const { sessionUrl } = await payments.pay({                               // Stripe redirect
+  method: 'fiat', planId: 1, agentId: 3, subscriber: '0xabc',
+})                                                                        // amount auto-priced from plan
+await payments.pay({ method: 'x402', planId: 1, agentId: 3, subscriber: '0xabc' }) // auto-funded native payment
+const ok = await payments.hasAccess(3, '0xabc')                           // unified chain-OR-fiat/x402 check
+```
+
+- `pay({ method })` returns a discriminated result: `{ method: 'chain', subscriptionId, txHash }` / `{ method: 'fiat', sessionUrl, sessionId, redirect: true }` / `{ method: 'x402', subscriptionId, txHash, creditedWei }`.
+- For `fiat`, `amountCents` is optional — the Gateway derives the USD amount from the on-chain plan price (`FIAT_TOKEN_USD_PRICE`). Supply `amountCents` to override.
+- For `x402` without `txHash`, the payment is sent automatically from `walletClient` (max of plan price / protocol price), then verified & registered by the Gateway.
+
+---
+
 ## Version History
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.9.2** | 2026-08-07 | **Unified payments endpoint** — `SubscriptionPayments` fiat / x402 / `hasAccess()` now go through the Gateway's `/api/v1/payments` via the decoupled `@agentxv2/payments` engine (`^0.1.0`, new dependency); `fetchX402Info()` reads the rails-discovery `/info`. **No breaking changes** — `pay()` / `hasAccess()` / result types unchanged (see UPGRADE.md) |
+| **0.8.11** | 2026-08-07 | **Multi-rail subscription payments** — new `SubscriptionPayments` class (`pay({ method })` for `chain` / `fiat` / `x402`, `hasAccess()` unified chain-OR-fiat/x402 check, `fetchX402Info()` discovery); fiat `amountCents` now optional (Gateway auto-prices from the on-chain plan); x402 auto-funding from a configured `walletClient` |
+| **0.8.10** | 2026-08-06 | Master-key crypto helpers `encryptWithKey()` / `decryptWithKey()` (AES-256-GCM, `base64(IV‖tag‖ciphertext)`, byte-compatible with Gateway at-rest key encryption); `parseTokenURIJSON` exported from the main entry; `A2AProtocol.createTask()` accepts raw string `input`; **subscription status mapping fix** (on-chain enum `0/1/2/3` → `pending/active/expired/cancelled`, previously shifted) |
 | **0.8.9** | 2026-08-06 | Docs sync — Installation section points at v0.8.8 ("just install to use the new capabilities"); same code as 0.8.8 |
 | **0.8.8** | 2026-08-06 | Docs sync — README updated for 0.8.7 (sessions & parallel tasks section) |
 | **0.8.7** | 2026-08-06 | `ConversationClient` gains sessions & parallel tasks: `createSession()` / `createTask()` (returns `taskId` immediately, background execution) / `getTask()` / `listTasks()` / `cancelTask()` / `getCapabilities()`. New `ConversationTaskError` (`.status` / `.code`) — `createTask()` on a P9-disabled tenant/plan rejects with HTTP 403 `PARALLEL_TASKS_DISABLED`; used by the frontend parallel-task chat UI |

@@ -122,6 +122,44 @@ router.get('/count', async (_req: Request, res: Response) => {
   }
 })
 
+// ── Agent subscription stats ────────────────────────────────────────────────
+// Aggregates the event-indexed chain_subscriptions table (Subscribed / Cancelled
+// / Expired events synced by the indexer). The v2 SubscriptionManager contract
+// has no "subscriptions by agent" view, so this table is the only per-agent
+// aggregate. Revenue/MRR = sum of amountPaid; trial refunds are not tracked
+// here, so totals are an upper bound on creator revenue.
+
+router.get('/:id/stats', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool()
+    const id = parseInt(req.params.id, 10)
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: 'Invalid agent id' })
+    }
+    const { rows } = await pool.query(
+      `SELECT
+         COUNT(*) AS total,
+         COUNT(*) FILTER (WHERE status = 1) AS active,
+         COALESCE(SUM(amount_wei::numeric) FILTER (WHERE status != 0), 0) AS revenue,
+         COALESCE(SUM(amount_wei::numeric) FILTER (WHERE status = 1 AND period = 'month'), 0) AS mrr
+       FROM chain_subscriptions WHERE agent_id = $1`,
+      [id]
+    )
+    const r = rows[0] ?? {}
+    res.json({
+      agentId: id,
+      totalSubscriptions: Number(r.total ?? 0),
+      activeSubscriptions: Number(r.active ?? 0),
+      // Decimal strings so the frontend can parse them with BigInt losslessly.
+      totalRevenue: String(r.revenue ?? 0),
+      monthlyRecurringRevenue: String(r.mrr ?? 0),
+    })
+  } catch (err: any) {
+    console.error('[agents] stats error:', err.message)
+    res.status(500).json({ error: 'Failed to fetch agent stats' })
+  }
+})
+
 // ── Single agent detail ─────────────────────────────────────────────────────
 
 router.get('/:id', async (req: Request, res: Response) => {

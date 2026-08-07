@@ -177,9 +177,9 @@ function decodeBase64(b64: string): string {
  * Parse base64 data-URI tokenURI → JSON metadata (null if not parseable).
  * Tolerant of contract bugs: trims trailing garbage after base64 padding,
  * repairs unterminated JSON (unclosed quotes/braces), and falls back to a
- * regex extraction of the name field. Mirrors gateway/src/services/agent-indexer.ts.
+ * regex extraction of the name field.
  */
-function parseTokenURIJSON(tokenURI: string): Record<string, unknown> | null {
+export function parseTokenURIJSON(tokenURI: string): Record<string, unknown> | null {
   if (!tokenURI || tokenURI.startsWith('ipfs://')) return null
   const match = tokenURI.match(/^data:application\/json;base64,(.+)$/i)
   if (!match) return null

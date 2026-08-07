@@ -1,24 +1,19 @@
 // components/agent/hooks/useAgentRegistry.ts
+// #14 精简：去掉按区块强制刷新（useBlockNumber + forceRefresh）、1s refetch 节流与
+// 冗余 transactionHashRef；数据新鲜度由 react-query refetchInterval + 交易确认后主动
+// refetch 保证。接口（UseAgentRegistryReturn）保持不变。
 'use client'
 
-import { 
-  useWriteContract, 
-  useReadContract, 
-  useAccount, 
+import {
+  useWriteContract,
+  useReadContract,
+  useAccount,
   useWaitForTransactionReceipt,
   usePublicClient,
-  useBlockNumber
 } from 'wagmi'
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
-// 生产级环境变量验证
-const validateAddress = (address: string | undefined): `0x${string}` => {
-  if (!address || !address.startsWith('0x') || address.length !== 42) {
-    console.error('Invalid contract address:', address)
-    return '0x0000000000000000000000000000000000000000'
-  }
-  return address as `0x${string}`
-}
+import { validateAddress } from './contract-address'
 
 const IDENTITY_REGISTRY_ADDRESS = validateAddress(process.env.NEXT_PUBLIC_IDENTITY_REGISTRY_ADDRESS)
 
@@ -31,18 +26,18 @@ interface UseAgentRegistryReturn {
   registerAgent: () => Promise<`0x${string}` | undefined>
   registerAgentWithTokenURI: (tokenURI: string) => Promise<`0x${string}` | undefined>
   registerAgentWithMetadata: (tokenURI: string, metadata: Array<{key: string, value: string}>) => Promise<`0x${string}` | undefined>
-  
+
   // 查询功能
   userAgents: number[]
   currentAgentId: number
   checkAgentExists: (agentId: number) => Promise<boolean>
   refetchAgents: () => Promise<void>
   refetchCurrentAgentId: () => Promise<void>
-  
+
   // 元数据功能
   setMetadata: (agentId: number, key: string, value: string) => Promise<`0x${string}` | undefined>
   getMetadata: (agentId: number, key: string) => Promise<string>
-  
+
   // 状态
   isRegistering: boolean
   isConfirming: boolean
@@ -50,7 +45,7 @@ interface UseAgentRegistryReturn {
   isSettingMetadata: boolean
   error: Error | null
   hash: `0x${string}` | undefined
-  
+
   // 工具函数
   resetState: () => void
 }
@@ -58,20 +53,14 @@ interface UseAgentRegistryReturn {
 export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
-  const { data: blockNumber } = useBlockNumber({ watch: true })
-  
+
   const [userAgents, setUserAgents] = useState<number[]>([])
   const [currentAgentId, setCurrentAgentId] = useState<number>(0)
   const [error, setError] = useState<Error | null>(null)
   const [transactionHash, setTransactionHash] = useState<`0x${string}` | undefined>()
-  const [lastRefetchTime, setLastRefetchTime] = useState<number>(0)
-  const [forceRefresh, setForceRefresh] = useState<number>(0)
-  
-  // 使用 ref 来存储最新的交易哈希，避免闭包问题
-  const transactionHashRef = useRef<`0x${string}` | undefined>()
 
   // 注册交易 - 无参数版本
-  const { 
+  const {
     writeContractAsync: registerWithoutURIAsync,
     isPending: isRegisteringWithoutURI,
     error: registerWithoutURIError,
@@ -79,7 +68,7 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
   } = useWriteContract()
 
   // 注册交易 - 带 tokenURI 版本
-  const { 
+  const {
     writeContractAsync: registerWithURIAsync,
     isPending: isRegisteringWithURI,
     error: registerWithURIError,
@@ -87,7 +76,7 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
   } = useWriteContract()
 
   // 注册交易 - 带元数据版本
-  const { 
+  const {
     writeContractAsync: registerWithMetadataAsync,
     isPending: isRegisteringWithMetadata,
     error: registerWithMetadataError,
@@ -95,7 +84,7 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
   } = useWriteContract()
 
   // 设置元数据交易
-  const { 
+  const {
     writeContractAsync: setMetadataAsync,
     isPending: isSettingMetadata,
     error: setMetadataError,
@@ -103,20 +92,18 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
   } = useWriteContract()
 
   // 统一的交易确认状态
-  const { 
-    isLoading: isConfirming, 
+  const {
+    isLoading: isConfirming,
     isSuccess: isConfirmed,
-    data: receipt
   } = useWaitForTransactionReceipt({
     hash: transactionHash,
   })
 
-  // 获取用户拥有的 Agents - 修复：添加防重复查询
-  const { 
-    data: agentsData, 
+  // 获取用户拥有的 Agents（refetchInterval 替代原按区块强制刷新）
+  const {
+    data: agentsData,
     refetch: refetchAgentsQuery,
     error: agentsError,
-    isLoading: isLoadingAgents
   } = useReadContract({
     address: IDENTITY_REGISTRY_ADDRESS,
     abi: IDENTITY_REGISTRY_ABI,
@@ -125,22 +112,23 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
     query: {
       enabled: !!address && isConnected,
       staleTime: 0, // 立即过期，确保每次都会重新获取
+      refetchInterval: 30_000,
     },
   })
 
-  // 获取当前 Agent ID - 修复：添加自动刷新
-  const { 
+  // 获取当前 Agent ID
+  const {
     data: currentAgentIdData,
     error: currentAgentIdError,
     refetch: refetchCurrentAgentIdQuery,
-    isLoading: isLoadingCurrentAgentId
   } = useReadContract({
     address: IDENTITY_REGISTRY_ADDRESS,
     abi: IDENTITY_REGISTRY_ABI,
     functionName: 'getCurrentAgentId',
     query: {
       enabled: true,
-      staleTime: 0, // 立即过期，确保每次都会重新获取
+      staleTime: 0,
+      refetchInterval: 30_000,
     },
   })
 
@@ -152,7 +140,6 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
       }
 
       if (!publicClient) {
-        console.error('Public client not available')
         return false
       }
 
@@ -191,11 +178,11 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
         functionName: 'getMetadata',
         args: [BigInt(agentId), key],
       })
-      
+
       if (result) {
         return bytesToString(result as `0x${string}`)
       }
-      
+
       return ''
     } catch (err) {
       console.error('Get metadata error:', err)
@@ -205,10 +192,10 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
 
   // 错误处理 Effect
   useEffect(() => {
-    const currentError = registerWithoutURIError || registerWithURIError || 
+    const currentError = registerWithoutURIError || registerWithURIError ||
                         registerWithMetadataError || setMetadataError ||
                         agentsError || currentAgentIdError
-    
+
     if (currentError) {
       setError(currentError)
     }
@@ -217,84 +204,38 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
     setMetadataError, agentsError, currentAgentIdError
   ])
 
-  // 数据同步 Effect - 修复：添加去重逻辑和强制刷新
+  // 数据同步 Effect（react-query 结构共享保证引用稳定，无需额外去重）
   useEffect(() => {
     if (agentsData) {
       try {
         const agents = (agentsData as unknown as readonly bigint[]).map((id) => Number(id))
-        
-        // 去重逻辑：确保没有重复的 Agent ID
-        const uniqueAgents = Array.from(new Set(agents))
-        
-        console.log('🔄 原始 Agent 数据:', agents)
-        console.log('✅ 去重后 Agent 数据:', uniqueAgents)
-        
-        // 只有当数据发生变化时才更新状态
-        if (JSON.stringify(uniqueAgents) !== JSON.stringify(userAgents)) {
-          console.log('🔄 更新 Agents 列表:', userAgents, '->', uniqueAgents)
-          setUserAgents(uniqueAgents)
-        }
-      } catch (err) {
-        console.error('Error processing agents data:', err)
+        setUserAgents(Array.from(new Set(agents)))
+      } catch {
         setUserAgents([])
       }
     } else {
-      // 如果没有数据，确保清空列表
-      if (userAgents.length > 0) {
-        console.log('🔄 清空 Agents 列表')
-        setUserAgents([])
-      }
+      setUserAgents([])
     }
-  }, [agentsData, userAgents, forceRefresh])
+  }, [agentsData])
 
-  // 当前 Agent ID 同步 Effect - 修复：强制更新机制
+  // 当前 Agent ID 同步 Effect
   useEffect(() => {
     if (currentAgentIdData !== undefined) {
       try {
-        const newAgentId = Number(currentAgentIdData)
-        console.log('🔄 当前 Agent ID 数据更新:', newAgentId)
-        
-        if (newAgentId !== currentAgentId) {
-          console.log('✅ 更新当前 Agent ID:', currentAgentId, '->', newAgentId)
-          setCurrentAgentId(newAgentId)
-        } else {
-          console.log('ℹ️ 当前 Agent ID 没有变化:', currentAgentId)
-        }
-      } catch (err) {
-        console.error('Error processing current agent ID:', err)
+        setCurrentAgentId(Number(currentAgentIdData))
+      } catch {
         setCurrentAgentId(0)
       }
-    } else {
-      console.log('⚠️ 当前 Agent ID 数据为空')
     }
-  }, [currentAgentIdData, currentAgentId, forceRefresh])
+  }, [currentAgentIdData])
 
-  // 修复：监听区块高度变化，自动刷新数据
+  // 监听交易确认，主动刷新链上数据
   useEffect(() => {
-    if (blockNumber) {
-      console.log('📦 新区块:', blockNumber, '触发数据刷新')
-      // 每次新区块都强制刷新数据
-      setForceRefresh(prev => prev + 1)
+    if (isConfirmed) {
+      refetchAgentsQuery()
+      refetchCurrentAgentIdQuery()
     }
-  }, [blockNumber])
-
-  // 修复：监听交易确认，强制刷新所有数据
-  useEffect(() => {
-    if (isConfirmed && receipt) {
-      console.log('🎉 交易确认成功，强制刷新所有数据')
-      console.log('📄 交易收据:', receipt)
-      
-      // 强制刷新所有数据
-      setForceRefresh(prev => prev + 1)
-      
-      // 立即重新获取数据
-      setTimeout(() => {
-        console.log('🔄 立即重新获取 Agent 数据...')
-        refetchAgentsQuery()
-        refetchCurrentAgentIdQuery()
-      }, 1000)
-    }
-  }, [isConfirmed, receipt, refetchAgentsQuery, refetchCurrentAgentIdQuery])
+  }, [isConfirmed, refetchAgentsQuery, refetchCurrentAgentIdQuery])
 
   // 字符串到 bytes 转换工具函数
   const stringToBytes = useCallback((value: string): `0x${string}` => {
@@ -324,8 +265,7 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
       }
 
       setError(null)
-      
-      console.log('🔄 开始注册 Agent...')
+
       const hash = await registerWithoutURIAsync({
         address: IDENTITY_REGISTRY_ADDRESS,
         abi: IDENTITY_REGISTRY_ABI,
@@ -333,14 +273,12 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
         value: BigInt(1000000000000000), // 0.001 ETH
       })
 
-      console.log('✅ 注册交易提交成功，哈希:', hash)
       setTransactionHash(hash)
-      transactionHashRef.current = hash
       return hash
     } catch (err) {
       const error = err instanceof Error ? err : new Error('注册失败')
       setError(error)
-      console.error('❌ Register agent error:', err)
+      console.error('Register agent error:', err)
       return undefined
     }
   }, [isConnected, address, registerWithoutURIAsync])
@@ -357,8 +295,7 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
       }
 
       setError(null)
-      
-      console.log('🔄 开始注册带 Token URI 的 Agent...')
+
       const hash = await registerWithURIAsync({
         address: IDENTITY_REGISTRY_ADDRESS,
         abi: IDENTITY_REGISTRY_ABI,
@@ -367,21 +304,19 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
         value: BigInt(1000000000000000), // 0.001 ETH
       })
 
-      console.log('✅ 注册交易提交成功，哈希:', hash)
       setTransactionHash(hash)
-      transactionHashRef.current = hash
       return hash
     } catch (err) {
       const error = err instanceof Error ? err : new Error('注册失败')
       setError(error)
-      console.error('❌ Register agent with tokenURI error:', err)
+      console.error('Register agent with tokenURI error:', err)
       return undefined
     }
   }, [isConnected, address, registerWithURIAsync])
 
   // 注册函数 - 带元数据版本
   const registerAgentWithFullMetadata = useCallback(async (
-    tokenURI: string, 
+    tokenURI: string,
     metadata: Array<{key: string, value: string}>
   ): Promise<`0x${string}` | undefined> => {
     try {
@@ -407,8 +342,7 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
       }[]
 
       setError(null)
-      
-      console.log('🔄 开始注册带元数据的 Agent...')
+
       const hash = await registerWithMetadataAsync({
         address: IDENTITY_REGISTRY_ADDRESS,
         abi: IDENTITY_REGISTRY_ABI,
@@ -417,22 +351,20 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
         value: BigInt(1000000000000000), // 0.001 ETH
       })
 
-      console.log('✅ 注册交易提交成功，哈希:', hash)
       setTransactionHash(hash)
-      transactionHashRef.current = hash
       return hash
     } catch (err) {
       const error = err instanceof Error ? err : new Error('注册失败')
       setError(error)
-      console.error('❌ Register agent with metadata error:', err)
+      console.error('Register agent with metadata error:', err)
       return undefined
     }
   }, [isConnected, address, registerWithMetadataAsync, stringToBytes])
 
   // 设置元数据
   const setMetadata = useCallback(async (
-    agentId: number, 
-    key: string, 
+    agentId: number,
+    key: string,
     value: string
   ): Promise<`0x${string}` | undefined> => {
     try {
@@ -449,9 +381,9 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
       }
 
       setError(null)
-      
+
       const valueBytes = stringToBytes(value)
-      
+
       const hash = await setMetadataAsync({
         address: IDENTITY_REGISTRY_ADDRESS,
         abi: IDENTITY_REGISTRY_ABI,
@@ -472,50 +404,25 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
   // 重新获取用户 Agents
   const refetchAgents = useCallback(async (): Promise<void> => {
     try {
-      const now = Date.now()
-      // 防止频繁调用：1秒内只能调用一次
-      if (now - lastRefetchTime < 1000) {
-        console.log('⏰ 防重复调用：跳过重复的 refetch')
-        return
-      }
-      
-      setLastRefetchTime(now)
-      console.log('🔄 开始重新获取 Agent 列表...')
-      
-      const result = await refetchAgentsQuery()
-      console.log('✅ 重新获取 Agent 列表结果:', result)
-      
+      await refetchAgentsQuery()
     } catch (err) {
-      console.error('❌ Refetch agents error:', err)
+      console.error('Refetch agents error:', err)
     }
-  }, [refetchAgentsQuery, lastRefetchTime])
+  }, [refetchAgentsQuery])
 
   // 专门刷新当前 Agent ID 的函数
   const refetchCurrentAgentId = useCallback(async (): Promise<void> => {
     try {
-      const now = Date.now()
-      // 防止频繁调用：1秒内只能调用一次
-      if (now - lastRefetchTime < 1000) {
-        console.log('⏰ 防重复调用：跳过重复的当前 Agent ID refetch')
-        return
-      }
-      
-      setLastRefetchTime(now)
-      console.log('🔄 开始重新获取当前 Agent ID...')
-      
-      const result = await refetchCurrentAgentIdQuery()
-      console.log('✅ 重新获取当前 Agent ID 结果:', result)
-      
+      await refetchCurrentAgentIdQuery()
     } catch (err) {
-      console.error('❌ Refetch current agent ID error:', err)
+      console.error('Refetch current agent ID error:', err)
     }
-  }, [refetchCurrentAgentIdQuery, lastRefetchTime])
+  }, [refetchCurrentAgentIdQuery])
 
   // 重置状态
   const resetState = useCallback((): void => {
     setError(null)
     setTransactionHash(undefined)
-    transactionHashRef.current = undefined
     resetRegisterWithoutURI()
     resetRegisterWithURI()
     resetRegisterWithMetadata()
@@ -531,18 +438,18 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
     registerAgent,
     registerAgentWithTokenURI,
     registerAgentWithMetadata: registerAgentWithFullMetadata,
-    
+
     // 查询功能
     userAgents,
     currentAgentId,
     checkAgentExists,
     refetchAgents,
     refetchCurrentAgentId,
-    
+
     // 元数据功能
     setMetadata,
     getMetadata,
-    
+
     // 状态
     isRegistering,
     isConfirming,
@@ -550,7 +457,7 @@ export function useOnChainAgentRegistry(): UseAgentRegistryReturn {
     isSettingMetadata,
     error,
     hash: transactionHash,
-    
+
     // 工具函数
     resetState
   }), [

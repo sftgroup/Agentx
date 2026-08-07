@@ -1,7 +1,7 @@
 // @agentx/sdk — Registry module
 // Agent registration, query, and IPFS fetching.
 
-export { AgentRegistry, cidFromURI } from './agent-registry'
+export { AgentRegistry, cidFromURI, parseTokenURIJSON } from './agent-registry'
 export type {
   AgentRegistryConfig,
   AgentSummary,

@@ -1,9 +1,9 @@
 // components/agent/dashboard/SubscriptionPlanModal.tsx
-// R7 拆分：订阅计划创建/编辑弹窗（纯展示组件）
+// R7 拆分：订阅计划创建弹窗（纯展示组件）
 'use client'
 
 import { CheckCircle, Plus } from 'lucide-react'
-import { type SubscriptionPlan, BillingPeriod } from '../hooks/useSubscription'
+import { BillingPeriod } from '../hooks/useSubscription'
 import {
   BILLING_PERIODS,
   TOKENS,
@@ -12,7 +12,6 @@ import {
 } from './subscription-utils'
 
 interface SubscriptionPlanModalProps {
-  editingPlan: SubscriptionPlan | null
   formData: PlanFormData
   setFormData: React.Dispatch<React.SetStateAction<PlanFormData>>
   validation: ValidationResult
@@ -26,7 +25,6 @@ interface SubscriptionPlanModalProps {
 }
 
 export function SubscriptionPlanModal({
-  editingPlan,
   formData,
   setFormData,
   validation,
@@ -43,7 +41,7 @@ export function SubscriptionPlanModal({
       <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            {editingPlan ? '编辑订阅计划' : '创建订阅计划'}
+            创建订阅计划
           </h3>
 
           <form onSubmit={onSubmit} className="space-y-4">
@@ -95,25 +93,23 @@ export function SubscriptionPlanModal({
                 />
               </div>
 
-              {!editingPlan && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    代币 *
-                  </label>
-                  <select
-                    value={formData.token}
-                    onChange={(e) => setFormData(prev => ({ ...prev, token: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    disabled={isFormLoading}
-                  >
-                    {TOKENS.map(token => (
-                      <option key={token.value} value={token.value}>
-                        {token.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  代币 *
+                </label>
+                <select
+                  value={formData.token}
+                  onChange={(e) => setFormData(prev => ({ ...prev, token: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={isFormLoading}
+                >
+                  {TOKENS.map(token => (
+                    <option key={token.value} value={token.value}>
+                      {token.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -203,7 +199,7 @@ export function SubscriptionPlanModal({
                 ) : (
                   <>
                     <Plus className="w-4 h-4" />
-                    {editingPlan ? '更新计划' : '创建计划'}
+                    创建计划
                   </>
                 )}
               </button>

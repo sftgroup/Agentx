@@ -1,12 +1,12 @@
 // components/agent/dashboard/SubscriptionPlanCard.tsx
-// R7 拆分：单个订阅计划卡片（展示 + 操作，纯展示组件）
+// R7 拆分：单个订阅计划卡片（纯展示组件）
+// v2 合约无 updatePlan/deactivatePlan 能力，故不提供编辑/停用操作按钮。
 'use client'
 
-import { Edit, PauseCircle, Play } from 'lucide-react'
 import { type SubscriptionPlan, BillingPeriod } from '../hooks/useSubscription'
 import {
   formatPrice,
-  getBillingPeriodLabel,
+  getPeriodLabel,
   getTokenSymbol,
   formatTimestamp,
   isPlanDeactivated
@@ -14,19 +14,9 @@ import {
 
 interface SubscriptionPlanCardProps {
   plan: SubscriptionPlan
-  isUpdating: boolean
-  onEdit: (plan: SubscriptionPlan) => void
-  onActivate: (plan: SubscriptionPlan) => void
-  onDeactivate: (plan: SubscriptionPlan) => void
 }
 
-export function SubscriptionPlanCard({
-  plan,
-  isUpdating,
-  onEdit,
-  onActivate,
-  onDeactivate
-}: SubscriptionPlanCardProps) {
+export function SubscriptionPlanCard({ plan }: SubscriptionPlanCardProps) {
   const planDeactivated = isPlanDeactivated(plan)
 
   return (
@@ -62,7 +52,7 @@ export function SubscriptionPlanCard({
         </span>
       </div>
 
-      <div className={`space-y-3 mb-4 ${
+      <div className={`space-y-3 ${
         planDeactivated ? 'text-gray-500' : ''
       }`}>
         <div className="flex justify-between items-center">
@@ -74,13 +64,7 @@ export function SubscriptionPlanCard({
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">计费周期</span>
           <span className="text-sm">
-            {getBillingPeriodLabel(plan.billingPeriod ?? BillingPeriod.Monthly)}
-          </span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">最大使用量</span>
-          <span className="text-sm">
-            {planDeactivated ? '0' : Number(plan.maxUsage).toLocaleString()}
+            {getPeriodLabel(plan.period, plan.billingPeriod ?? BillingPeriod.Monthly)}
           </span>
         </div>
         <div className="flex justify-between items-center">
@@ -95,40 +79,6 @@ export function SubscriptionPlanCard({
             {formatTimestamp(BigInt(plan.createdAt ?? 0))}
           </span>
         </div>
-      </div>
-
-      {/* 修复：统一按钮大小和样式，支持停用和启用 */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => onEdit(plan)}
-          className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-          disabled={isUpdating}
-        >
-          <Edit className="w-4 h-4" />
-          {isUpdating ? '更新中...' : '编辑'}
-        </button>
-
-        {planDeactivated ? (
-          <button
-            onClick={() => onActivate(plan)}
-            className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-            disabled={isUpdating}
-            title="启用此计划"
-          >
-            <Play className="w-4 h-4" />
-            {isUpdating ? '启用中...' : '启用'}
-          </button>
-        ) : (
-          <button
-            onClick={() => onDeactivate(plan)}
-            className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-            disabled={isUpdating}
-            title="停用此计划"
-          >
-            <PauseCircle className="w-4 h-4" />
-            {isUpdating ? '停用中...' : '停用'}
-          </button>
-        )}
       </div>
     </div>
   )
