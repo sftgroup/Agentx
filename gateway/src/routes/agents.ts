@@ -34,6 +34,7 @@ router.get('/', async (req: Request, res: Response) => {
     const capabilities = typeof req.query.capabilities === 'string'
       ? req.query.capabilities.split(',').map((s) => s.trim()).filter(Boolean)
       : []
+    const category = typeof req.query.category === 'string' ? req.query.category.trim().toLowerCase() : ''
     const fromId = parseIntOptional(req.query.fromId)
     const toId = parseIntOptional(req.query.toId)
     const page = Math.max(1, parseIntOptional(req.query.page) ?? 1)
@@ -45,6 +46,10 @@ router.get('/', async (req: Request, res: Response) => {
     if (activeOnly) {
       params.push(true)
       where.push(`is_active = $${params.length}`)
+    }
+    if (category) {
+      params.push(category)
+      where.push(`category = $${params.length}`)
     }
     if (capabilities.length > 0) {
       params.push(capabilities)
@@ -62,7 +67,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     const [{ rows }] = await Promise.all([
       pool.query(
-        `SELECT id, owner, name, description, tags, capabilities, skills, is_active,
+        `SELECT id, owner, name, description, tags, capabilities, skills, category, is_active,
                 agent_created_at, synced_at, created_at
          FROM agents
          ${whereSql}
@@ -93,23 +98,18 @@ router.get('/count', async (_req: Request, res: Response) => {
          COUNT(*) FILTER (WHERE is_active) AS active
        FROM agents`
     )
-    // Category counts are derived from the flat `capabilities` array — the only
-    // category dimension available on-chain (agents without capabilities → "other").
+    // Category counts are derived from the dedicated `category` column
+    // (application category written at publish / indexed from chain).
     const { rows: catRows } = await pool.query(
-      `SELECT unnest(capabilities) AS category, COUNT(*) AS cnt
+      `SELECT category, COUNT(*) AS cnt
        FROM agents
-       WHERE cardinality(capabilities) > 0
-       GROUP BY 1
+       GROUP BY category
        ORDER BY cnt DESC`
     )
     const byCategory: Record<string, number> = {}
-    let categorized = 0
     for (const r of catRows) {
       byCategory[r.category] = Number(r.cnt)
-      categorized += Number(r.cnt)
     }
-    const other = Math.max(0, Number(rows[0]?.total ?? 0) - categorized)
-    if (other > 0) byCategory.other = other
 
     res.json({
       total: parseInt(rows[0]?.total ?? '0', 10),

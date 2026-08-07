@@ -92,6 +92,8 @@ interface AgentPricing {
     /** Billing period for subscriptions (e.g. "month", "year", "day") */
     period?: string;
 }
+declare const AGENT_CATEGORIES: readonly ["operations", "customer-service", "sales", "personal-assistant", "coding", "server-monitoring", "airdrop", "quant-trading", "data-analysis", "content", "security", "finance", "other"];
+type AgentCategory = (typeof AGENT_CATEGORIES)[number];
 /**
  * The complete Agent definition.
  *
@@ -109,6 +111,12 @@ interface AgentPayload {
     communicationProtocol: 'mcp' | 'a2a';
     authenticationMethod: 'ecdsa';
     pricing: AgentPricing;
+    /**
+     * Application category / use case (see AGENT_CATEGORIES). Strongly
+     * recommended — marketplace and app launchers filter on it. Agents
+     * without a category are displayed under "other".
+     */
+    category?: AgentCategory;
     prompt: string;
     skills: SkillDef[];
     mcp: McpConnection;
@@ -141,6 +149,8 @@ interface OnChainAgentMetadata {
         tags: string[];
         pricingType: PricingType;
         pricingAmount: string;
+        /** Application category / use case (AGENT_CATEGORIES value). */
+        category?: string;
     };
 }
 interface RegisteredAgent {
@@ -293,4 +303,4 @@ interface SubscriptionRequired {
     }[];
 }
 
-export { type AgentPayload as A, type EncryptedPayload as E, type JSONSchema as J, type McpConnection as M, type OnChainAgentMetadata as O, type PackResult as P, type RegisteredAgent as R, type SkillDef as S, type UnpackResult as U, type AgentReview as a, type AgentReputation as b, type A2AAgentCard as c, type A2ASkillExecution as d, type A2ATask as e, type A2ATaskStatus as f, type AgentPricing as g, type AgentPrivatePayload as h, type AgentPublicPayload as i, type AgentSearchQuery as j, type AgentSearchResult as k, type AgentSubscription as l, type AgentXConfig as m, type AgentXContracts as n, AgentXError as o, AgentXErrorCode as p, type JSONSchemaProperty as q, type McpTransport as r, type PricingType as s, type SkillExecutionMode as t, type SkillExecutionRemote as u, type SubscriptionRequired as v, type SubscriptionStatus as w };
+export { type AgentPayload as A, type EncryptedPayload as E, type JSONSchema as J, type McpConnection as M, type OnChainAgentMetadata as O, type PackResult as P, type RegisteredAgent as R, type SkillDef as S, type UnpackResult as U, type AgentReview as a, type AgentReputation as b, type A2AAgentCard as c, type A2ASkillExecution as d, type A2ATask as e, type A2ATaskStatus as f, AGENT_CATEGORIES as g, type AgentCategory as h, type AgentPricing as i, type AgentPrivatePayload as j, type AgentPublicPayload as k, type AgentSearchQuery as l, type AgentSearchResult as m, type AgentSubscription as n, type AgentXConfig as o, type AgentXContracts as p, AgentXError as q, AgentXErrorCode as r, type JSONSchemaProperty as s, type McpTransport as t, type PricingType as u, type SkillExecutionMode as v, type SkillExecutionRemote as w, type SubscriptionRequired as x, type SubscriptionStatus as y };

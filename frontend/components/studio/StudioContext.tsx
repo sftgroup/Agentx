@@ -61,6 +61,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         prompt: form.prompt,
         version: '1.0.0',
         tags: tagList,
+        category: (form.category || 'other') as AgentPayload['category'],
         capabilities: ['chat', 'mcp'],
         supportedTasks: ['conversation', 'data-analysis'],
         communicationProtocol: 'mcp',
@@ -100,6 +101,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
             metadata: {
               name: form.name, description: form.description,
               tags: tagList,
+              category: form.category || 'other',
               pricing: { type: form.pricingType, amount: form.price || '0', currency: 'ETH' },
               version: '1.0.0',
             },
@@ -126,6 +128,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       const metadataPairs = [
         { key: 'name', value: `0x${Buffer.from(form.name, 'utf8').toString('hex')}` },
         { key: 'description', value: `0x${Buffer.from(form.description, 'utf8').toString('hex')}` },
+        { key: 'category', value: `0x${Buffer.from(form.category || 'other', 'utf8').toString('hex')}` },
         { key: 'pricing_type', value: `0x${Buffer.from(form.pricingType, 'utf8').toString('hex')}` },
         { key: 'price_wei', value: `0x${Buffer.from(String(Math.floor(Number(form.price || '0') * 1e18)), 'utf8').toString('hex')}` },
         { key: 'aes_key_hex', value: `0x${aesKey}` },

@@ -5,14 +5,30 @@
 
 ---
 
-## 待发布（Pending）
+## 2026-08-07 — 多 Agent 编排分层（链下默认 / 链上可选）+ 发布 sdk@0.9.4、payments@0.2.2
 
-### @agentxv2/payments@0.2.2 — 归属元数据（随下次功能迭代一起发）
+### 多 Agent 编排分层（Conversation Service + Gateway，仓库级）
 
-- **目的**：让 npm registry 展示 AgentX 归属信息（当前 0.2.1 的 package.json 元数据变更尚未发布，`npm view` 的 `author/repository/homepage` 仍为空）
-- **内容**：`author: "AgentX (sftgroup)"`、`repository: github.com/sftgroup/Agentx`、`homepage`、`bugs`、`keywords`；README 维护声明（源码位于 `sftgroup/Agentx/payments`）
-- **无代码/API 变化**：不 bump sdk（sdk `^0.2.0` 范围兼容）
-- 代码已在 main（commit `c65d2c4`），仅待 npm 发版
+- **策略**：主 Agent 编排**默认走链下**（对话通道内同步委派，零成本、实时），仅在用户**显式要求可审计 / 结算 / 上链**时才落链上 A2A 协议（可审计 taskId、结算、信誉）
+- **Gateway**：`routes/internal-orchestrate.ts`（`ORCHESTRATE_TOKEN` 守卫）挂载 `/api/v1/internal/orchestrate`，提供 `POST /list`（列出可委派 Agent）、`POST /check`（访问校验）、`POST /create-task`（链上 A2A 任务创建，复用 `createTaskOnChain`，仅对 `canAccessAgent` 放行的目标执行）
+- **Conversation Service**：新增 `services/orchestrator.ts`（`OrchestratorService`：listAgents / checkAccess / delegateOffChain / delegateOnChain）；`AgentRunnerService` 注入平台工具 `agentx_list_agents` + `agentx_delegate`（`mode: offchain|onchain`，默认取 `ORCHESTRATE_DEFAULT_MODE=offchain`），嵌套委派受 `ORCHESTRATE_MAX_DEPTH`（默认 4）约束；嵌套运行跳过 clarification gate（子 Agent 无法与用户对话）
+- **配置**：`ORCHESTRATE_TOKEN`（Gateway 与 Conversation Service 须一致）/ `ORCHESTRATE_DEFAULT_MODE` / `ORCHESTRATE_MAX_DEPTH`，已写入两侧 `.env.example`
+- **访问边界不变**：委派仅限「调用者自己写的 + 已订阅的（chain/fiat/x402）」Agent；无权限拒绝 `403 AGENT_ACCESS_DENIED`
+
+### @agentxv2/sdk@0.9.4 — Agent 应用类别（category）字段（已发布 npm）
+
+- **目的**：发布 Agent 时声明「应用类别 / 用途」，Marketplace 分类筛选与应用集成（运营、客服、销售、个人助理、写代码、服务器监控、空投、量化策略等）按此字段归类
+- **SDK**：`core/types.ts` 新增 `AGENT_CATEGORIES`（13 个枚举）+ `AgentCategory` 类型；`AgentPayload.category?`（发布必填，前端 Studio 强制）；`publishAgent` 的 public metadata 写入 `category`；`getAllAgents` / `getAgentMetadata` 解析 `category`（tokenURI JSON 优先，链上 attrs 兜底）
+- **Gateway**：`agents` 表新增 `category` 列（迁移 `020_agents_category.sql`）；索引器读取链上 `getAgentMetadata` attrs 的 `category`；`GET /api/v1/agents` 支持 `?category=` 过滤，`byCategory` 改为按 category 列聚合
+- **Frontend**：Studio Basics 新增「应用类别」必选下拉；Marketplace 顶部分类标签组 + Agent 卡片分类标签；`useAgentSearch` 新增 `category` 过滤
+- **文档**：`docs/publish-subscribe-pay.md`（发布/订阅/付费集成指南，含 category 必填说明）+ SDK README / UPGRADE 同步
+- **生产**：需先发 sdk@0.9.4 再升级 gateway+frontend（node_modules 用 registry 版本，不含新类型）；迁移 020 需在生产 DB 执行
+
+### @agentxv2/payments@0.2.2 — 归属元数据（已发布 npm）
+
+- **目的**：让 npm registry 展示 AgentX 归属信息（`npm view` 的 `author/repository/homepage` 现可显示 AgentX/sftgroup）
+- **内容**：`author: "AgentX (sftgroup)"`、`repository: github.com/sftgroup/Agentx`、`homepage`、`bugs`、`keywords`；README 维护声明
+- **无代码/API 变化**：不 bump sdk（sdk `^0.2.0` 范围兼容，0.9.4 自动解析到 0.2.2）
 
 ---
 

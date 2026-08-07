@@ -49,6 +49,12 @@ export const config = {
   conversationServiceUrl: process.env.CONVERSATION_SERVICE_URL || 'http://localhost:8100',
   conversationServiceToken: process.env.CONVERSATION_SERVICE_TOKEN || 'change-me-in-production',
 
+  // Off-chain orchestration: shared token used by the Conversation Service to
+  // call gateway internal endpoints (list/check) for sub-agent delegation.
+  orchestrateToken: process.env.ORCHESTRATE_TOKEN || '',
+  // Maximum nested delegation depth for off-chain orchestration.
+  orchestrateMaxDepth: parseInt(process.env.ORCHESTRATE_MAX_DEPTH || '4', 10),
+
   // Public-facing Gateway URL — recorded on auto-approved developer integrations
   // so callers know which AGENTX_GATEWAY_URL to configure.
   publicGatewayUrl: process.env.PUBLIC_GATEWAY_URL || `http://127.0.0.1:${process.env.PORT || '3090'}`,
