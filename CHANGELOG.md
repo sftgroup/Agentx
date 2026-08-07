@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-08-08 — B 端集成 key 的并行任务能力统一为 P9 能力位（R14 策略修订）
+
+**背景**：B 端反馈 `GET /api/v1/tenant/me` 显示 `parallel_tasks: true`（Enterprise plan），但 `POST /api/v1/sessions` 返回 403 `PARTNER_TASKS_DISABLED`。根因是 R14（2026-08-06）对 `kind='partner'` 的 B 端 key 在 `chat-tasks` / `schedules` 全路由做了"一刀切"拦截，与既有的 P9 能力位机制（`tenant.allow_parallel_tasks ?? plan.features.parallel_tasks ?? true`）冲突——同一租户"报告有能力、调用被拒"。
+
+**修订**（commit 后续）：
+- **Gateway**：
+  - `routes/chat-tasks.ts`：删除 R14 `partnerTaskGate`（按 `kind` 拦截），改为 `parallelTaskGate` —— 统一按 P9 能力位判定（`allow_parallel_tasks ?? plan.features.parallel_tasks ?? true`），对 user JWT 与 B 端 key **一视同仁**；移除 createTask 端点内重复的 P9 检查（收敛到 router.use 一处）
+  - `routes/schedules.ts`：同步把 partner gate 替换为 P9 能力位 gate（与 `schedule-daemon` 触发前的 `parallelTasksEnabled` 检查一致）
+  - **行为**：B 端 key 一个即可（不再需要第二个"钱包 JWT"变通）；Enterprise 计划 B 端自动获得 sessions/tasks 并行能力；能力位为 false 时返回 `403 PARALLEL_TASKS_DISABLED`
+- **测试**：`test/chat-tasks.test.ts` R14 partner gate 3 用例 → 重写为「B 端 key 遵循 P9 能力位」5 用例（默认放行 / plan 关闭拦截 / 读写取消端点放行）；并 mock `canAccessAgent` 修复既有 7 个因无效地址走真实链调用的失败用例。gateway 单测 **37/37 通过**，tsc build 通过。
+- **不受影响**：MCP 通道维持 R14 收紧（对话/任务工具仅接受 `access_token`，B 端 key 不能调 MCP）；A2A 上链、发布、订阅仍走用户钱包。
+
+---
+
 ## 2026-08-08 — 发布 sdk@0.10.0（完整版）+ 用户钱包签名上链轨道
 
 ### @agentxv2/sdk@0.10.0 — 完整功能版（已发布 npm）

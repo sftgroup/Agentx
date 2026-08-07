@@ -20,6 +20,11 @@ vi.mock('../src/services/conversation-proxy', () => ({
   getConversationProxy: () => proxyMock,
 }))
 
+vi.mock('../src/services/agent-access', () => ({
+  canAccessAgent: vi.fn(async () => true),
+  filterAccessibleAgents: vi.fn(async (candidates: unknown[]) => candidates),
+}))
+
 interface TenantCtx {
   id: string
   walletAddress: string
@@ -99,34 +104,56 @@ describe('P9 capability gate — POST /sessions/:sessionId/tasks', () => {
   })
 })
 
-// ── R14 B-end partner gate ────────────────────────────────────────────────
+// ── B-end (partner) keys — unified P9 capability gate (2026-08-08) ────────
 
-describe('R14 B-end partner gate — kind=partner is chat-only', () => {
+describe('B-end partner keys follow the P9 capability gate (not a kind block)', () => {
   beforeEach(() => {
-    currentTenant = { id: 't-p', walletAddress: 'partner-smoke-1', kind: 'partner' }
+    currentTenant = { id: 't-p', walletAddress: 'partner-smoke-1', kind: 'partner', allowParallelTasks: undefined, planFeatures: {} }
   })
 
-  it('blocks task creation → 403 PARTNER_TASKS_DISABLED', async () => {
+  it('allows task creation when the partner plan permits parallel_tasks (default true)', async () => {
+    proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
+    const res = await request(app)
+      .post('/api/v1/sessions/s1/tasks')
+      .send({ agentId: 1, message: 'hi' })
+    expect(res.status).toBe(201)
+    expect(proxyMock.createTask).toHaveBeenCalledTimes(1)
+  })
+
+  it('allows session creation for a partner with parallel tasks enabled', async () => {
+    proxyMock.createSession.mockResolvedValue(ok({ id: 's1' }, 201))
+    const res = await request(app).post('/api/v1/sessions').send({ agentId: 3 })
+    expect(res.status).toBe(201)
+    expect(proxyMock.createSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('blocks task creation when the partner plan disables parallel_tasks → 403 PARALLEL_TASKS_DISABLED', async () => {
+    currentTenant!.planFeatures = { parallel_tasks: false }
     const res = await request(app)
       .post('/api/v1/sessions/s1/tasks')
       .send({ agentId: 1, message: 'hi' })
     expect(res.status).toBe(403)
-    expect(res.body.code).toBe('PARTNER_TASKS_DISABLED')
+    expect(res.body.code).toBe('PARALLEL_TASKS_DISABLED')
     expect(proxyMock.createTask).not.toHaveBeenCalled()
   })
 
-  it('blocks session creation → 403', async () => {
+  it('blocks session creation when the partner plan disables parallel_tasks → 403', async () => {
+    currentTenant!.planFeatures = { parallel_tasks: false }
     const res = await request(app).post('/api/v1/sessions').send({ agentId: 3 })
     expect(res.status).toBe(403)
-    expect(res.body.code).toBe('PARTNER_TASKS_DISABLED')
+    expect(res.body.code).toBe('PARALLEL_TASKS_DISABLED')
     expect(proxyMock.createSession).not.toHaveBeenCalled()
   })
 
-  it('blocks task read/cancel endpoints → 403', async () => {
-    expect((await request(app).get('/api/v1/sessions/s1/tasks')).status).toBe(403)
-    expect((await request(app).get('/api/v1/tasks/t1')).status).toBe(403)
-    expect((await request(app).get('/api/v1/tasks/t1/events')).status).toBe(403)
-    expect((await request(app).delete('/api/v1/tasks/t1')).status).toBe(403)
+  it('allows task read/cancel endpoints when the capability bit is on', async () => {
+    proxyMock.listTasks.mockResolvedValue(ok({ tasks: [] }))
+    proxyMock.getTask.mockResolvedValue(ok({ id: 't1' }))
+    proxyMock.streamTaskEvents.mockResolvedValue(new Response('data: {"type":"done"}\n\n', { status: 200 }))
+    proxyMock.cancelTask.mockResolvedValue(ok({ cancelled: true }))
+    expect((await request(app).get('/api/v1/sessions/s1/tasks')).status).toBe(200)
+    expect((await request(app).get('/api/v1/tasks/t1')).status).toBe(200)
+    expect((await request(app).get('/api/v1/tasks/t1/events')).status).toBe(200)
+    expect((await request(app).delete('/api/v1/tasks/t1')).status).toBe(200)
   })
 })
 
