@@ -1,5 +1,28 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.9.6 → v0.10.0 (完整功能版)
+
+### What's New
+
+`0.10.0` is the **complete feature release** — it consolidates the entire 0.9.x line (Agent application categories / unified three-rail payments / sessions & parallel tasks / streaming tool_call fix / typed on-chain approval) into a stable baseline. Released via `npm version minor` (not a patch) to avoid version clutter.
+
+| Feature | Description |
+|---------|-------------|
+| **Complete release baseline** | Same code as 0.9.6, but published as a minor release to signal the stable, feature-complete SDK baseline. Integrators should pin `@agentxv2/sdk@0.10.0`. |
+| **Typed `onchain_approval_required` event** | `ConversationSSEEvent.type` now includes `'onchain_approval_required'`, carrying `approval?: OnChainApprovalRequest { targetAgentId, taskType, inputData }`. Raised when the agent requests an **auditable on-chain A2A delegation** — the **user's own wallet** must submit `createTask` (the user pays the gas and becomes the on-chain client). The platform never pays gas and holds no signing key (`A2A_WORKER_PRIVATE_KEY` removed from the Gateway). |
+| **User-wallet-signed on-chain rail** | v0.10.0 gas model: on-chain rail costs are never paid by the platform. When the user explicitly requests audit / settlement, the Conversation Service emits `onchain_approval_required`, the frontend opens a wallet modal, and the user's wallet signs `createTask`. Sub-tasks spawned by the a2a-worker run **off-chain inline** (local negative pseudo taskIds). |
+| **No breaking changes** | Everything is additive. 0.9.x consumers can upgrade in place. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.10.0   # or: npm install @agentxv2/sdk (latest = 0.10.0)
+```
+
+> The Gateway + Conversation Service must run the matching server release for the user-wallet-signed on-chain orchestration rail (2026-08-08).
+
+---
+
 ## v0.9.4 → v0.9.5
 
 ### What's New
