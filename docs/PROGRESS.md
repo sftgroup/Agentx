@@ -1,6 +1,6 @@
 # AgentX — 项目任务清单与进度
 
-> Last updated: 2026-08-06 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
+> Last updated: 2026-08-08 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
 > 状态图例：✅ 完成 · ⏸ 代码完成待外部前提 · 🔧 进行中 · ⏳ 待办 · 🔵 技术债
 
 ---
@@ -141,7 +141,8 @@
   - R3 ✅ 已完成（2026-08-06 · DeepSeek 平台 key 配置 + conversation-service LLM_ENDPOINT/LLM_MODEL，非 BYOK 任务真实 LLM 输出补验通过）
   - R12 ✅ 已完成（2026-08-06 · commit `c224317`，MCP 6 工具）
   - R13 ✅ 已完成（2026-08-06 · 开发者自助申请）
-  - R14 ✅ 已完成（2026-08-06 · B 端仅对话 + MCP 仅注册用户）
+  - R14 ✅ 已完成（2026-08-06 · B 端仅对话 + MCP 仅注册用户）→ **2026-08-08 部分修订**：并行任务统一 P9 能力位（见 R15）
+  - R15 ✅ 已完成（2026-08-08 · B 端能力修订补完：强制 BYOK + 端用户订阅转发 + kind 统一 + sdk@0.10.1）
 
 ### 开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）
 
@@ -306,6 +307,21 @@
   - B 端 key 调 `/chat/completions` 进入平台模式（非 401）
   - MCP 对话/任务工具传 `api_key` → 拒绝；传 `access_token` 正常转发【保持不变】
 - 验证：单测 37/37（chat-tasks 重写为「B 端 key 遵循 P9 能力位」5 用例 + mock canAccessAgent 修复既有失败用例）；生产冒烟——① developer apply→approve→key（39 字符）；② 租户 `kind=partner, quota_daily=5,000,000`；③ `/chat/completions` **200**（2026-08-06 配置正式 DeepSeek 平台 key 后 B 端对话真实可用；key 记录于生产 `.env` 的 `DEEPSEEK_API_KEY`，经 admin API 写入 `platform_api_keys` 加密存储）；④ MCP 传 `api_key` → `access_token (registered-user JWT) is required for this tool` ✅；smoke 数据已清理
+
+**R15 B 端能力修订补完：强制 BYOK + 端用户订阅转发 + kind 统一 + sdk@0.10.1** —— 优先级：高 · ✅ 完成（2026-08-08）
+- 来源：B 端反馈（`/tenant/me` 报 `parallel_tasks: true` 但 `/sessions` 403 `PARTNER_TASKS_DISABLED`）+ 需求确认（放开并行任务、partner 预算约束、端用户授权代调）
+- 实施：
+  1. **R14 修订**（`4652d1c`）：`chat-tasks` / `schedules` 删除按 `kind` 拦截的 partner gate → 统一 `parallelTaskGate`（P9 能力位 `allow_parallel_tasks ?? plan.features.parallel_tasks ?? true`），user JWT 与 B 端 key 一视同仁；能力位 false → `403 PARALLEL_TASKS_DISABLED`
+  2. **partner 任务强制 BYOK**（`0f1b521`）：`POST /sessions/:id/tasks` 时 partner 租户必须携带 LLM key（`X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId` 三者之一），否则 `400 LLM_KEY_REQUIRED`（防平台兜底 key 被后台任务消耗）；chat 与 user 租户不受限
+  3. **B 端端用户订阅转发**（`e8be980`）：请求带 `X-End-User-Id: 0x<钱包>`（或 body `endUserId`）→ 网关按该钱包做「拥有/订阅」授权检查（agent-access `kind='partner'` 分支），通过即放行对话/任务；端用户记忆隔离不变
+  4. **SDK 0.10.1 发布**（CI `bump=patch`，run 31227825434）：`ConversationCreateTaskParams.endUserId?` / `ConversationChatParams.endUserId?` per-request 透传；已发布 npm `@agentxv2/sdk@0.10.1`（latest）
+  5. **kind 统一**：生产 5 个 `partner-*` 租户全部 `kind='partner'`（`UPDATE 2`：aiservicer/autoops 由 user→partner，R13 创建时 kind 混用的历史遗留），预算约束与端用户转发对全部 B 端 key 一致
+  6. **文档**：`sdk/README.md`（0.10.1 Released + B 端 key vs JWT 差异 + MCP 边界「平台 vs 自建」note）、`sdk/UPGRADE.md`（差异对照表 + 0.10.1 标注已发布）、`docs/integration-callers.md`（强制 BYOK 说明 + FAQ `LLM_KEY_REQUIRED` + MCP 边界）、CHANGELOG
+- 验收/验证：
+  - gateway 单测 **46/46**（P9 gate 5 用例 + B 端 end-user proxy 5 用例 + BYOK 守卫 4 用例；mock `canAccessAgent`/`lib/db`/`lib/crypto`）
+  - 生产实测：partner key `/sessions` **201**（原 403）；无 BYOK 建 task **400 `LLM_KEY_REQUIRED`**；带 `X-Llm-Api-Key` 建 task **201**（真实执行 done）；smoke 数据已清理
+  - `sdk@0.10.1` 已发布 npm（0.10.1，CI 自动回推版本号 `b04f6f8`）；三服务 `^0.10.0` semver 兼容无需强制升级
+- 影响面（对调用方）：零代码改动；仅 partner 建任务需新增传 LLM key（header/参数，非代码改动）；`aiops-saas/aihunter-saas/aitrader` 原即 partner，`aiservicer/autoops` 由 user→partner 后任务同样强制 BYOK + 获得端用户转发能力；MCP 通道维持仅注册用户 `access_token`（R14 收紧不变）；A2A 上链/发布/订阅仍走用户钱包签名（平台不持私钥）
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 

@@ -14,6 +14,7 @@
   - partner（B 端）任务**强制 BYOK**：`X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId` 三者之一，否则 `400 LLM_KEY_REQUIRED`（防平台预算被后台任务消耗）
   - **平台 MCP**（`/mcp`，6 个 `agentx_gateway_*` 工具）仅接受注册用户 `access_token`；调用方**自建** MCP 不受限
   - B 端 key 覆盖 REST 全部对话 + 并行任务；JWT 额外覆盖 MCP 对话/任务与链上操作（A2A 上链 / 发布 / 订阅，用户钱包签名）
+  - **kind 统一**：生产 5 个 `partner-*` 租户全部 `kind='partner'`（aiservicer/autoops 由 user→partner，R13 历史混用修正），预算约束与端用户转发对全部 B 端 key 一致
 - 相关 Gateway 变更见本日条目：端用户订阅转发 / P9 能力位统一 / 并行任务强制 BYOK
 
 ---
