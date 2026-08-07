@@ -3,9 +3,22 @@
 // @agentxv2/payments' PaymentsClient; chain stays on SubscriptionManager.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { SubscriptionPayments } from '../src/payment/payments'
+import { MPPClient, A2AClient, PeriodClient, X402Client, PaymentsClient, PAYMENT_VERSION } from '../src/payment'
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+describe('payment module exports (v0.9.3)', () => {
+  it('re-exports the generic protocol clients from the SDK root', () => {
+    for (const Ctor of [MPPClient, A2AClient, PeriodClient, X402Client, PaymentsClient]) {
+      expect(typeof Ctor).toBe('function')
+      expect(new Ctor({ baseUrl: 'http://localhost' })).toBeInstanceOf(Ctor)
+    }
+  })
+  it('tracks the aligned generic engine version', () => {
+    expect(PAYMENT_VERSION).toBe('0.2.0')
+  })
+})
 
 describe('SubscriptionPayments', () => {
   let fetchMock: ReturnType<typeof vi.fn>

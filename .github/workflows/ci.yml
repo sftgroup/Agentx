@@ -1,7 +1,11 @@
-# AgentX CI — parallel-tasks 单测回归保护
-# push 到 main / PR 时自动运行三个服务包的 typecheck + 单元测试。
-# 覆盖：SDK conversation client（17 用例）、gateway chat-tasks（16 用例）、
-#       conversation-service task-manager（11 用例）。
+# AgentX CI — payments / SDK / gateway 构建与单测回归保护
+# push 到 main / PR 时自动运行：
+#   payments        通用支付引擎（build + 单测）——发布 @agentxv2/payments 前必须全绿
+#   sdk             @agentxv2/sdk（typecheck + 单测 + build）——依赖已发布的
+#                   @agentxv2/payments（^0.1.0，registry），不依赖 monorepo 目录
+#   gateway         AgentX Gateway（typecheck + 单测 + build）——@agentxv2/payments
+#                   为 file: 依赖，需先在 payments 目录 npm ci + build
+#   conversation-service 并行任务服务（typecheck + 单测）
 name: CI
 
 on:
@@ -14,8 +18,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  payments:
+    name: Payments (typecheck + build + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: payments
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: payments/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Unit tests
+        run: npm test
+
   sdk:
-    name: SDK (typecheck + test)
+    name: SDK (typecheck + test + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,11 +57,13 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
-      - name: Unit tests (parallel-tasks client)
+      - name: Unit tests
         run: npm test
+      - name: Build (tsup, publishable artifacts)
+        run: npm run build
 
   gateway:
-    name: Gateway (typecheck + test)
+    name: Gateway (typecheck + test + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -47,12 +75,17 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: gateway/package-lock.json
+      - name: Prepare @agentxv2/payments (file: dependency)
+        working-directory: payments
+        run: npm ci && npm run build
       - name: Install
         run: npm ci --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
-      - name: Unit tests (chat-tasks / P9 gate)
+      - name: Unit tests
         run: npm test
+      - name: Build
+        run: npm run build
 
   conversation-service:
     name: Conversation Service (typecheck + test)
@@ -71,5 +104,5 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
-      - name: Unit tests (task-manager)
+      - name: Unit tests
         run: npm test

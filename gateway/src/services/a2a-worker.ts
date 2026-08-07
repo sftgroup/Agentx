@@ -27,6 +27,7 @@ import type { A2ATaskStatus } from '@agentxv2/sdk'
 import { getPool } from '../lib/db'
 import { config } from '../config'
 import { decryptApiKey } from '../lib/crypto'
+import { canAccessAgent, filterAccessibleAgents } from './agent-access'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -176,7 +177,7 @@ const A2A_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'agentx_list_agents',
-      description: 'List ALL available agents with their IDs, names, and descriptions. Use this to discover which agents can help with sub-tasks.',
+      description: 'List agents the task client can delegate to (agents they own or have an active subscription to), with their IDs, names, and descriptions. Use this to discover which agents can help with sub-tasks.',
       parameters: { type: 'object', properties: {} },
     },
   },
@@ -253,8 +254,15 @@ async function processTask(
 
         switch (toolName) {
           case 'agentx_list_agents': {
-            const list = allAgents.map(a => `#${a.id} "${a.name}" — ${a.description || '(no description)'}`).join('\n')
-            toolResult = `Available agents:\n${list}`
+            // Orchestration boundary: only agents the task client owns or is
+            // subscribed to are listed (fiat/x402 subscriptions included).
+            const accessible = await filterAccessibleAgents(task.clientAddress, allAgents)
+            if (accessible.length === 0) {
+              toolResult = 'No accessible agents. Agents you own or have an active subscription to will appear here.'
+              break
+            }
+            const list = accessible.map(a => `#${a.id} "${a.name}" — ${a.description || '(no description)'}`).join('\n')
+            toolResult = `Accessible agents (yours or subscribed):\n${list}`
             break
           }
 
@@ -270,6 +278,14 @@ async function processTask(
 
             const targetAgent = allAgents.find(a => a.id === targetId)
             const targetName = targetAgent?.name || `Agent #${targetId}`
+
+            // Access boundary: the task client may only delegate to agents they
+            // own or have an active subscription to. No subscription → refuse.
+            const allowed = await canAccessAgent(task.clientAddress, targetId)
+            if (!allowed) {
+              toolResult = `Error: no access to Agent #${targetId} "${targetName}". Only agents you own or have an active subscription to can be delegated to.`
+              break
+            }
 
             // Submit createTask on-chain (permissionless — anyone can call)
             let subTaskId: number
@@ -426,9 +442,7 @@ async function resolveLLMConfig(pool: ReturnType<typeof getPool>, tenantId: stri
   return null
 }
 
-function buildOrchestrationSystemPrompt(agent: AgentInfo, allAgents: AgentInfo[]): string {
-  const agentList = allAgents.slice(0, 30).map(a => `  #${a.id} "${a.name}" — ${a.description || 'No description'}`).join('\n')
-
+function buildOrchestrationSystemPrompt(agent: AgentInfo, _allAgents: AgentInfo[]): string {
   return `You are "${agent.name}", an AI agent on the AgentX decentralized platform.
 
 ## Your Role
@@ -438,18 +452,19 @@ ${agent.description || 'Process delegated tasks professionally and return result
 You have access to A2A (Agent-to-Agent) tools that let you DELEGATE work to other agents.
 When a task is complex or requires specialized skills, break it down and delegate sub-tasks.
 
-### Available Agents
-${agentList}
+### Access Boundary
+You can only delegate to agents the task client owns or has an active subscription to.
+Call agentx_list_agents to see the currently accessible agents — do NOT invent agent IDs.
 
 ### How to Orchestrate
 1. Analyze the task — what parts need specialized agents?
-2. Call agentx_list_agents to see available agents
+2. Call agentx_list_agents to see which agents are accessible (yours or subscribed)
 3. Call agentx_a2a_create_task to delegate sub-tasks (each runs autonomously)
 4. Call agentx_a2a_get_task to check sub-task results
 5. Aggregate ALL sub-task results into your final output
 
 ### Rules
-- Delegate when another agent has relevant expertise
+- Delegate only to agents returned by agentx_list_agents (the client's own or subscribed agents)
 - Include ALL context in inputData so the sub-agent can work independently
 - After getting sub-task results, synthesize them into a coherent final answer
 - If the task is simple and you can handle it alone, just answer directly

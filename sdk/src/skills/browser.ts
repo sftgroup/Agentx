@@ -3,14 +3,18 @@
 // No external dependencies — uses native browser APIs only.
 //
 // Usage:
-//   import { executeBrowserAction } from '@agentxv2/sdk/skills'
+//   import { executeBrowserAction, extractAccessibleDOM, sleep } from '@agentxv2/sdk/skills'
 //   const result = executeBrowserAction({ type: 'click', selector: '#submit' })
+//   await sleep(300)  // optional pacing between actions
 
 export interface BrowserAction {
-  type: 'click' | 'type' | 'extract' | 'scroll' | 'navigate'
+  type:
+    | 'click' | 'type' | 'extract' | 'scroll' | 'navigate'
+    // v0.9.0 additions:
+    | 'hover' | 'press' | 'select' | 'back' | 'forward' | 'getInfo'
   /** CSS selector or text content of the target element */
   selector?: string
-  /** Value for 'type' action */
+  /** Value for 'type' / 'select' actions, URL for 'navigate', key for 'press', px for 'scroll' */
   value?: string
   /** Natural language description (fallback when no selector) */
   description?: string
@@ -20,6 +24,11 @@ export interface BrowserActionResult {
   success: boolean
   result?: string
   error?: string
+}
+
+/** Wait for a delay (async pacing helper for agent loops). */
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 /**
@@ -56,7 +65,7 @@ export function extractAccessibleDOM(): string {
   while ((node = walker.nextNode())) {
     const el = node as HTMLElement
     const tag = el.tagName.toLowerCase()
-    const text = (el.textContent || '').trim().slice(0, 80)
+    const text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80)
     const id = el.id ? `#${el.id}` : ''
     const classes = el.className && typeof el.className === 'string'
       ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.')
@@ -64,11 +73,30 @@ export function extractAccessibleDOM(): string {
     const href = el.getAttribute('href')
     const placeholder = el.getAttribute('placeholder')
     const type = el.getAttribute('type')
+    const name = el.getAttribute('name')
+    const role = el.getAttribute('role')
+    const ariaLabel = el.getAttribute('aria-label')
 
     let desc = `<${tag}${id}${classes}`
     if (href) desc += ` href="${href}"`
     if (placeholder) desc += ` placeholder="${placeholder}"`
     if (type) desc += ` type="${type}"`
+    if (name) desc += ` name="${name}"`
+    if (role) desc += ` role="${role}"`
+    if (ariaLabel) desc += ` aria-label="${ariaLabel}"`
+
+    // Form value / state — makes the snapshot actionable for the agent.
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      if (el.value) desc += ` value="${String(el.value).slice(0, 60)}"`
+      if (el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio')) {
+        desc += ` checked="${el.checked}"`
+      }
+    } else if (el instanceof HTMLSelectElement && el.value) {
+      desc += ` value="${el.value}"`
+    } else if (el instanceof HTMLAnchorElement) {
+      desc += ` target="${el.target || '_self'}"`
+    }
+
     desc += '>'
     if (text) desc += `${text}`
     desc += `</${tag}>`
@@ -89,7 +117,8 @@ export function executeBrowserAction(action: BrowserAction): BrowserActionResult
 
   try {
     const el = findElement(action.selector, action.description)
-    if (!el && action.type !== 'navigate' && action.type !== 'extract') {
+    const needsEl = !['navigate', 'extract', 'getInfo', 'back', 'forward', 'scroll'].includes(action.type)
+    if (!el && needsEl) {
       return { success: false, error: `Element not found: ${action.selector || action.description}` }
     }
 
@@ -100,11 +129,46 @@ export function executeBrowserAction(action: BrowserAction): BrowserActionResult
       }
 
       case 'type': {
-        const input = el as HTMLInputElement
+        const input = el as HTMLInputElement | HTMLTextAreaElement
         input.focus()
         input.value = action.value || ''
         input.dispatchEvent(new Event('input', { bubbles: true }))
+        input.dispatchEvent(new Event('change', { bubbles: true }))
         return { success: true, result: `Typed: ${action.value}` }
+      }
+
+      case 'press': {
+        const key = action.value || action.selector || ''
+        if (!key) return { success: false, error: 'No key provided for press' }
+        const target = (el || document.activeElement || document.body) as Element
+        const opts = { bubbles: true, cancelable: true, key }
+        target.dispatchEvent(new KeyboardEvent('keydown', opts))
+        target.dispatchEvent(new KeyboardEvent('keyup', opts))
+        return { success: true, result: `Pressed: ${key}` }
+      }
+
+      case 'hover': {
+        const target = el as HTMLElement
+        target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+        target.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }))
+        target.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }))
+        return { success: true, result: `Hovered: ${action.selector || action.description || target.tagName}` }
+      }
+
+      case 'select': {
+        const value = action.value || ''
+        if (el instanceof HTMLSelectElement) {
+          el.value = value
+          el.dispatchEvent(new Event('change', { bubbles: true }))
+          return { success: true, result: `Selected: ${value}` }
+        }
+        if (el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio')) {
+          const checked = value === '' ? !el.checked : value.toLowerCase() === 'true' || value === '1'
+          el.checked = checked
+          el.dispatchEvent(new Event('change', { bubbles: true }))
+          return { success: true, result: `Checked: ${checked}` }
+        }
+        return { success: false, error: `Element is not a select/checkbox/radio: ${action.selector}` }
       }
 
       case 'extract': {
@@ -116,11 +180,24 @@ export function executeBrowserAction(action: BrowserAction): BrowserActionResult
         return { success: true, result: extractAccessibleDOM() }
       }
 
+      case 'getInfo': {
+        return {
+          success: true,
+          result: JSON.stringify({
+            url: window.location.href,
+            title: document.title,
+            readyState: document.readyState,
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+            scrollY: Math.round(window.scrollY),
+          }),
+        }
+      }
+
       case 'scroll': {
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
         } else {
-          window.scrollBy({ top: action.value ? parseInt(action.value) : 500, behavior: 'smooth' })
+          window.scrollBy({ top: action.value ? parseInt(action.value) || 500 : 500, behavior: 'smooth' })
         }
         return { success: true, result: 'Scrolled' }
       }
@@ -130,6 +207,16 @@ export function executeBrowserAction(action: BrowserAction): BrowserActionResult
         if (!url) return { success: false, error: 'No URL provided' }
         window.location.href = url
         return { success: true, result: `Navigating to ${url}` }
+      }
+
+      case 'back': {
+        window.history.back()
+        return { success: true, result: 'Navigated back' }
+      }
+
+      case 'forward': {
+        window.history.forward()
+        return { success: true, result: 'Navigated forward' }
       }
 
       default:
@@ -159,7 +246,8 @@ function findElement(selector?: string, description?: string): Element | null {
     const text = (el.textContent || '').toLowerCase()
     const placeholder = (el.getAttribute('placeholder') || '').toLowerCase()
     const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase()
-    if (text.includes(lower) || placeholder.includes(lower) || ariaLabel.includes(lower)) {
+    const name = (el.getAttribute('name') || '').toLowerCase()
+    if (text.includes(lower) || placeholder.includes(lower) || ariaLabel.includes(lower) || name.includes(lower)) {
       return el
     }
   }

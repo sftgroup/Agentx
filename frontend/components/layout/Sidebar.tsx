@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import {
   Home, ShoppingBag, Brain, BarChart3, Users,
-  Zap, Settings, ChevronLeft, ChevronRight, Sparkles, Terminal,
+  Zap, Settings, ChevronLeft, ChevronRight, Sparkles, Terminal, MessageSquare,
 } from 'lucide-react'
 import { WalletStatus } from '@/components/wallet/WalletStatus'
 
@@ -20,6 +20,7 @@ export function Sidebar() {
     { name: t('sidebar.marketplace'), href: '/marketplace', icon: ShoppingBag },
     { name: t('sidebar.studio'), href: '/studio', icon: Sparkles, highlight: true },
     { name: t('sidebar.dashboard'), href: '/dashboard/agent', icon: BarChart3, description: t('sidebar.dashboardDesc') },
+    { name: t('sidebar.chat'), href: '/user/chat', icon: MessageSquare, description: t('sidebar.chatDesc') },
     { name: t('sidebar.a2a'), href: '/a2a', icon: Terminal, description: t('sidebar.a2aDesc') },
   ]
 

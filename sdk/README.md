@@ -1,4 +1,4 @@
-# @agentxv2/sdk v0.9.2
+# @agentxv2/sdk v0.9.3
 
 **Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop, IPFS upload, MCP remote tools, chain-data batch query, hosted conversation sessions & parallel tasks.
 
@@ -10,14 +10,14 @@ Agent = Prompt + Skills[] + MCP
 
 ## Installation
 
-The current release **0.9.2** routes fiat / x402 / access through the Gateway's unified `/api/v1/payments` endpoint via the decoupled `@agentxv2/payments` engine (auto-installed, `^0.1.0`) — on top of the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
+The current release **0.9.3** routes fiat / x402 / access through the Gateway's unified `/api/v1/payments` endpoint via the decoupled `@agentxv2/payments` engine (auto-installed, `^0.2.0` → resolves to **0.2.1**, adds MPP channels / stablecoin EIP-3009 / period authorizations / a2a-pay clients) — on top of the full sessions & parallel-tasks client (`createSession` / `createTask` / `getTask` / `listTasks` / `cancelTask` / `getCapabilities`) — just install and use:
 
 ```bash
-# latest (recommended) — 0.9.2, unified payments endpoint
+# latest (recommended) — 0.9.3, unified payments endpoint
 npm install @agentxv2/sdk
 
 # or pin the exact release
-npm install @agentxv2/sdk@0.9.2
+npm install @agentxv2/sdk@0.9.3
 ```
 
 ### Peer Dependencies
@@ -616,7 +616,7 @@ Configuration: 26 environment variables — see `gateway/.env.example`.
 
 ---
 
-## Multi-Rail Subscription Payments (v0.9.2)
+## Multi-Rail Subscription Payments (v0.9.3)
 
 `SubscriptionPayments` is the single entry point for subscribing across every AgentX payment rail — chain (on-chain escrow), fiat (Stripe card via the Gateway) and x402 (native-token period payment). `fiat` / `x402` / `hasAccess()` go through the unified `/api/v1/payments` endpoint (the `@agentxv2/payments` engine); `chain` works fully off-Gateway.
 
@@ -643,13 +643,41 @@ const ok = await payments.hasAccess(3, '0xabc')                           // uni
 - For `fiat`, `amountCents` is optional — the Gateway derives the USD amount from the on-chain plan price (`FIAT_TOKEN_USD_PRICE`). Supply `amountCents` to override.
 - For `x402` without `txHash`, the payment is sent automatically from `walletClient` (max of plan price / protocol price), then verified & registered by the Gateway.
 
+### Protocol Clients (v0.9.3)
+
+Since **0.9.3** the SDK re-exports the generic engine's protocol clients from the root, so integrators can drive the P2-P4 rails directly against any Gateway deployment (AgentX-hosted or your own):
+
+```ts
+import { MPPClient, A2AClient, PeriodClient, X402Client, PaymentsClient } from '@agentxv2/sdk'
+
+const base = { baseUrl: 'https://gw.example.com', accessToken: 'jwt...' } // accessToken optional
+
+const mpp    = new MPPClient(base)      // payment channels
+const a2a    = new A2AClient(base)      // two-phase paymentId (create → settle)
+const period = new PeriodClient(base)   // period authorizations (charge / state)
+const x402   = new X402Client(base)     // x402 v2 protocol (quote / pay / verify / balance)
+const uni    = new PaymentsClient(base) // unified create / verify / access / info / quote
+```
+
+| Client | Endpoints | Typical flow |
+|--------|-----------|--------------|
+| `MPPClient` | `/api/v1/payments/mpp/{open,voucher,topup,settle,close,session}` | open a channel → submit signed cumulative vouchers (`voucher`, idempotent `mode: 'reuse'`) → auto-settle / close |
+| `A2AClient` | `/api/v1/payments/a2a`, `/api/v1/payments/a2a/settle` | `create({ payer, amountWei })` → payer pays on-chain → `settle({ paymentId, txHash })` (idempotent) |
+| `PeriodClient` | `/api/v1/payments/period/charge`, `/period/authorization` | one-time pre-authorization for N periods, then `charge(authorizationId)` per period — no re-signing |
+| `X402Client` | `/api/v1/x402/{info,verify,balance}`, `quote`/`pay` (v2 headers) | `quote(url)` fetches the `PAYMENT-REQUIRED` challenge; `pay({ url, walletClient, account })` funds + signs + replays in one call |
+| `PaymentsClient` | `/api/v1/payments` + `/verify` `/access` `/info` `/quote` | `create({ method: 'fiat'|'x402'|... })`, `verify(txHash)`, `access(subscriber, agentId)`, `info()` rails discovery |
+
+> **Dependency note**: the clients come from [`@agentxv2/payments`](https://www.npmjs.com/package/@agentxv2/payments) `^0.2.0` (currently **0.2.1**), auto-installed as a dependency of `@agentxv2/sdk`. `PAYMENT_VERSION` (`'0.2.0'` — the aligned engine API version) is also exported from the SDK root. **Browser/bundler safe**: since 0.2.1 the engine uses only the Web Crypto API — no Node built-ins (`node:crypto` / `Buffer`) — so webpack/Next.js builds no longer fail on `UnhandledSchemeError`. Endpoints must be exposed by the Gateway the client points at (MPP/period/a2a routes exist on AgentX Gateway `/api/v1/payments/*`).
+
 ---
 
 ## Version History
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.9.3** | 2026-08-07 | **P2-P4 rails aligned** — `@agentxv2/payments` bumped to `^0.2.0` (MPP payment channels / stablecoin EIP-3009+Permit2 / period authorizations / a2a-pay); re-exports `MPPClient` / `A2AClient` / `PeriodClient` / `X402Client` / `PaymentsClient` from the SDK root. **No breaking changes** — `SubscriptionPayments` API unchanged (see UPGRADE.md) |
 | **0.9.2** | 2026-08-07 | **Unified payments endpoint** — `SubscriptionPayments` fiat / x402 / `hasAccess()` now go through the Gateway's `/api/v1/payments` via the decoupled `@agentxv2/payments` engine (`^0.1.0`, new dependency); `fetchX402Info()` reads the rails-discovery `/info`. **No breaking changes** — `pay()` / `hasAccess()` / result types unchanged (see UPGRADE.md) |
+| **0.9.0** | 2026-08-06 | Browser Control Skill extension: new actions `hover` / `press` / `select` (select+checkbox+radio) / `back` / `forward` / `getInfo` (url/title/viewport); `extractAccessibleDOM` now includes `name`/`role`/`aria-label`/input `value`/checkbox `checked`/anchor `target`; new `sleep(ms)` async pacing helper; `findElement` also matches `name` attr |
 | **0.8.11** | 2026-08-07 | **Multi-rail subscription payments** — new `SubscriptionPayments` class (`pay({ method })` for `chain` / `fiat` / `x402`, `hasAccess()` unified chain-OR-fiat/x402 check, `fetchX402Info()` discovery); fiat `amountCents` now optional (Gateway auto-prices from the on-chain plan); x402 auto-funding from a configured `walletClient` |
 | **0.8.10** | 2026-08-06 | Master-key crypto helpers `encryptWithKey()` / `decryptWithKey()` (AES-256-GCM, `base64(IV‖tag‖ciphertext)`, byte-compatible with Gateway at-rest key encryption); `parseTokenURIJSON` exported from the main entry; `A2AProtocol.createTask()` accepts raw string `input`; **subscription status mapping fix** (on-chain enum `0/1/2/3` → `pending/active/expired/cancelled`, previously shifted) |
 | **0.8.9** | 2026-08-06 | Docs sync — Installation section points at v0.8.8 ("just install to use the new capabilities"); same code as 0.8.8 |

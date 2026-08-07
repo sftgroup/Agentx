@@ -5,6 +5,77 @@
 
 ---
 
+## 待发布（Pending）
+
+### @agentxv2/payments@0.2.2 — 归属元数据（随下次功能迭代一起发）
+
+- **目的**：让 npm registry 展示 AgentX 归属信息（当前 0.2.1 的 package.json 元数据变更尚未发布，`npm view` 的 `author/repository/homepage` 仍为空）
+- **内容**：`author: "AgentX (sftgroup)"`、`repository: github.com/sftgroup/Agentx`、`homepage`、`bugs`、`keywords`；README 维护声明（源码位于 `sftgroup/Agentx/payments`）
+- **无代码/API 变化**：不 bump sdk（sdk `^0.2.0` 范围兼容）
+- 代码已在 main（commit `c65d2c4`），仅待 npm 发版
+
+---
+
+## 2026-08-07 — 生产升级 sdk@0.9.3 + payments@0.2.1
+
+### @agentxv2/payments@0.2.1 — 浏览器/bundler 兼容修复
+
+**问题**：`@agentxv2/payments@0.2.0` 在 `service.ts` / `client.ts` / `stripe.ts` / `x402-v2.ts` 顶层引用了 Node 内置模块（`node:crypto` 的 `randomUUID`/`randomBytes`/`createHmac`/`timingSafeEqual` 与 `Buffer` base64）。SDK 0.9.3 re-export 该包根导出后，前端（webpack/Next.js）构建报 `UnhandledSchemeError: Reading from "node:crypto" is not handled by plugins`。
+
+**修复**：
+- 新增 `payments/src/crypto.ts`（纯 Web Crypto：`randomUUID` / `getRandomValues` / 手写 base64 / `hmacSha256Hex` / `timingSafeEqualStr`），替换 4 处 Node 内置用法，引擎在 Node ≥19 与浏览器均可运行
+- `StripeAdapter.verifyWebhookSignature()` 改为 `async`（Web Crypto `subtle.sign` 异步）；`PaymentsService.handleWebhook` 与单测同步 `await`，对外契约不变
+- 本地 tsc build + 87/87 vitest 全绿；`dist` 无任何 `node:`/`Buffer` 引用
+- 已发布 npm `@agentxv2/payments@0.2.1`（sdk `^0.2.0` semver 自动兼容，**无需重发 sdk**）
+
+**生产部署**（43.159.60.46，pm2）：
+- gateway：重链 `file:../payments` → 0.2.1 → build → `pm2 restart agentx-gateway` ✅
+- frontend：显式安装 payments@0.2.1 → `next build` 成功 → `pm2 restart agentx-frontend` ✅
+- 最终：gateway = `@agentxv2/sdk@0.9.3` + `@agentxv2/payments@0.2.1`（file:）；frontend 同版本；三服务 online，`/api/v1/payments/info` 正常
+
+---
+
+## 2026-08-07
+
+### SDK v0.8.11 — 三轨订阅支付（chain / fiat / x402）
+
+**新特性**（npm `@agentxv2/sdk@0.8.11`）：统一支付层，让集成的 B 端与 AgentX 前端都能用多种方式订阅：
+
+- **`SubscriptionPayments` 类（主入口）** — `pay({ method, planId, agentId, subscriber, ... })` 按三轨分发：
+  - `chain` → 链上 SubscriptionManager（原生代币/ERC20 escrow，可指定 `valueWei` / `approveTokenFirst`）
+  - `fiat` → Stripe 信用卡订阅，返回 checkout URL 重定向（无需钱包）
+  - `x402` → 原生代币周期支付，Gateway 验 tx 后写入 `fiat_subscriptions(provider='x402')` 注册访问
+- **`hasAccess(agentId, subscriber)`** — 统一访问检查（链上 OR fiat/x402），走 Gateway `/api/v1/chain/check-subscription`
+- **`fetchX402Info()`** — x402 协议发现（priceWei / payTo / network / chain）
+- **fiat `amountCents` 可选** — Gateway 按 planId 自动从链上套餐定价换算美元（`FIAT_TOKEN_USD_PRICE`）；显式传 `amountCents` 仍优先
+- **x402 自动支付** — 未传 `txHash` 时自动用 `walletClient` 转账（max(plan price, protocol price)）并注册
+
+**Gateway 配套**（本机同步到生产）：
+- `POST /api/v1/x402/subscribe`（新增）— 幂等验 tx + 订阅续期（复用 `fiat_subscriptions`，无新表）
+- `POST /api/v1/fiat/checkout` — 支持 planId 自动定价；`invoice.paid` 空行 bug 修复
+- `hasSubscriptionAccess` 服务 — 统一「链上 OR fiat/x402」访问控制，接入 `check-subscription` 与 MCP `agentx_subscription_check`
+
+**前端**：订阅详情页续费支持三选一支付方式（钱包 / 信用卡 / x402），复用 SDK `SubscriptionPayments`。
+
+- 验证：SDK tsc 0 错误 + vitest 29/29 ✓（payment 12/12）；Gateway tsc 0 错误 + vitest 35/35 ✓
+- 文档：`sdk/UPGRADE.md`（v0.8.10→v0.8.11）、`sdk/README.md`（Multi-Rail 章节 + 版本表）
+
+---
+
+## 2026-08-06
+
+### SDK v0.8.10 — 主密钥加解密 + subscription 状态映射修正
+
+**新特性**（npm `@agentxv2/sdk@0.8.10`，此前 0.8.8/0.8.9 均为 docs-sync，不含这些改动）：
+
+- **`encryptWithKey()` / `decryptWithKey()`** — AES-256-GCM 主密钥线格式 `base64(IV[12] ‖ authTag[16] ‖ ciphertext)`，与 Gateway at-rest key 加密（`gateway/src/lib/crypto.ts`）字节级兼容；Gateway 已改由 SDK 提供此实现
+- **`parseTokenURIJSON` 公开导出** — 容错 tokenURI 解析器现可从主入口导入（此前仅内部使用）
+- **`A2AProtocol.createTask()` 支持原始字符串 input** — `input: string | Record`，向后兼容
+- **Subscription 状态映射修正** — 链上 enum（`0=Inactive,1=Active,2=Expired,3=Cancelled`）此前被错误的位置数组映射（错位一位，几乎所有订阅状态都返回错误值），现修正为 `pending/active/expired/cancelled`
+
+- 验证：SDK tsc 0 错误 + vitest 17/17 ✓；构建产物 dist 已更新
+- 文档：`sdk/UPGRADE.md`（v0.8.9→v0.8.10）、`sdk/README.md` 版本表已更新
+
 ## 2026-08-06
 
 ### Gateway — R13 外部项目方自助申请 API Key
@@ -20,8 +91,6 @@
 - 测试：`developer.test.ts` 4 用例，gateway 全量 31/31 通过；生产冒烟 4/4 PASS
 - 详细变更说明见 [docs/R13-change-notes.md](docs/R13-change-notes.md)
 
-## 2026-08-06
-
 ### Gateway — MCP 新增对话与任务管理工具（33→38）
 
 **新特性**：MCP 端点 `/mcp` 工具数 33→38，补齐对话与并行任务管理能力（此前仅链上 + 网关只读，MCP 客户端无法消费 P8/P9 并行能力）。
@@ -31,6 +100,17 @@
 - **鉴权**：MCP 为公开路由，对话/任务工具在工具 `arguments` 中接受 `api_key`（`X-Api-Key`）或 `access_token`（JWT）二选一；参数 snake_case，handler 转 camelCase 内部转发 gateway REST，P9 gate 403（`PARALLEL_TASKS_DISABLED`）透传
 - 测试：新增 `gateway/test/mcp.test.ts` 11 用例，gateway 全量 27/27 通过
 - 文档：`MCP_SETUP.md`、`mcp/README.md`、`docs/sdk-vs-mcp.md`、`docs/integration-callers.md`（§7.5 MCP 接入）、`README.md` 同步更新
+
+### SDK v0.9.0 — Browser Control Skill 扩展
+
+**新特性**：`@agentxv2/sdk/skills` 面向 Agent 浏览器控制的动作集扩展。
+
+- `executeBrowserAction()` 新增动作：`hover`（悬停）、`press`（键盘事件）、`select`（SELECT 值 / checkbox+radio checked）、`back` / `forward`（历史导航）、`getInfo`（url/title/readyState/viewport/scrollY）
+- `extractAccessibleDOM()` 快照增强：补充 `name` / `role` / `aria-label`、表单 `value`（input/textarea/select）、checkbox/radio `checked`、anchor `target`，让快照对 agent 可直接行动
+- 新增 `sleep(ms)` 异步节奏辅助函数；`findElement` 回退匹配新增 `name` 属性
+- 向后兼容：全部为新增动作/字段，无破坏性变更
+
+---
 
 ## 2026-08-05
 
