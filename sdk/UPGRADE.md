@@ -29,6 +29,21 @@
 
 B 端（partner 租户）请求带 `X-End-User-Id: 0x<钱包地址>`（或 body `endUserId`）时，网关改用该钱包做「拥有 / 订阅」授权检查，通过即放行对话 / 任务——实现「我的最终用户已订阅 → 我可代为对话」。不传或非 `0x` 地址时回退到租户自身授权；端用户记忆隔离不变。
 
+### B 端 key 与用户 JWT 调用 sessions/tasks 的差异对照
+
+两者在「会话 / 并行任务」能力判定上一致（统一 P9 能力位），其余维度差异如下：
+
+| 维度 | B 端集成 key（`X-Api-Key: agentx_...`，kind=partner） | 用户 JWT（`Authorization: Bearer`，kind=user） |
+|---|---|---|
+| 会话 / 并行任务（sessions/tasks） | ✅ 可用，受 P9 能力位约束（`403 PARALLEL_TASKS_DISABLED`） | ✅ 同左 |
+| 授权主体（谁须「拥有 / 订阅」agent） | partner 租户自身；或 `X-End-User-Id: 0x<钱包>` 转发到端用户钱包 | 用户自己的钱包 |
+| 任务 LLM Key | ⚠️ **强制 BYOK**：`X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId` 三者之一，否则 `400 LLM_KEY_REQUIRED` | 不强制；未传时走平台兜底 key |
+| 平台 MCP 对话 / 任务工具（`agentx_gateway_*`） | ❌ 不可用（R14 拒绝 `agentx_` key） | ✅ 可用（`access_token` 必填） |
+| A2A 上链 / 发布 / 订阅 | ❌ 需用户钱包签名（平台不持私钥） | ✅ 用户钱包签名，用户自付 gas |
+| 订阅状态查询（`GET /api/v1/chain/check-subscription`） | ✅ 可查任意钱包地址 | ✅ 同左 |
+
+> 一句话总结：**`agentx_` key 覆盖 REST 全部对话 + 并行任务（带 BYOK），JWT 额外覆盖 MCP 对话/任务与链上操作**；调用方按自身场景选择，无需两把 key 并存。
+
 ### SDK 0.10.1 — per-request `endUserId`
 
 新增（non-breaking，随 0.10.1 发布）：
