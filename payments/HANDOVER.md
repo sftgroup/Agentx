@@ -197,6 +197,6 @@ npm view @agentxv2/payments dist-tags   # latest 指向新版本
 
 ## 12. 与 AgentX SDK 的依赖关系
 
-`@agentxv2/sdk@0.9.3` 依赖 `@agentxv2/payments@^0.2.0`（registry 版），仅 re-export 协议客户端（`MPPClient` / `A2AClient` / `PeriodClient` / `X402Client` / `PaymentsClient`）+ `SubscriptionPayments` 业务封装。**业务层依赖通用层（单向）**；通用层不依赖任何业务包。
+`@agentxv2/sdk@0.9.4` 依赖 `@agentxv2/payments@^0.2.0`（registry 版，解析到 0.2.2），仅 re-export 协议客户端（`MPPClient` / `A2AClient` / `PeriodClient` / `X402Client` / `PaymentsClient`）+ `SubscriptionPayments` 业务封装。**业务层依赖通用层（单向）**；通用层不依赖任何业务包。
 
 后续 infrax 发布自己的通用 SDK 后，AgentX 可在其上叠加业务封装（依赖方向不变），双方版本通过 semver `^` 范围对接。

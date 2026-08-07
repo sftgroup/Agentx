@@ -1,7 +1,12 @@
 # AgentX Deployment Guide
 
+<<<<<<< HEAD
 > Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-07
 > Server code: `~/Agentx` @ `2ff22b0` (main) · SDK published: `@agentxv2/sdk@0.8.11`
+=======
+> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-08
+> Server code: `~/Agentx` @ `9afda17` (main, 生产分支 `prod-patches-20260807` merge) · SDK published: `@agentxv2/sdk@0.9.4` (+ `@agentxv2/payments@0.2.2`)
+>>>>>>> 88cce3e (docs: sync DEPLOYMENT to 9afda17/sdk@0.9.4 + fix HANDOVER sdk version)
 > ⚠️ 测试策略（2026-08-07 起）：**所有功能/回归测试一律在生产环境 `43.159.60.46` 直接进行**（不再使用独立测试服务器）
 
 ---
@@ -212,6 +217,8 @@ The Gateway indexer solves this by probing tokenURIs sequentially and storing re
 
 The Gateway runs a background A2A Worker v2 that enables **true multi-agent orchestration** via LLM tool-calling:
 
+> **编排分层（2026-08-08）**：链上 A2A Worker 是**可选轨道**（跨组织 / 可审计 taskId / 结算 / 信誉场景）。默认编排走**链下**——Conversation Service 注入 `agentx_list_agents` / `agentx_delegate` 平台工具，在对话通道内同步嵌套委派（零成本、实时），仅用户显式要求审计 / 结算时才经 `POST /api/v1/internal/orchestrate/create-task`（`ORCHESTRATE_TOKEN` 守卫）落到链上。访问边界两者一致：仅限「自己写的 + 已订阅（chain/fiat/x402）」Agent，无权限 403 `AGENT_ACCESS_DENIED`。详见 §2.7。
+
 ```
 Agent A's task → Worker LLM(Agent A) analyzes
   → LLM decides: "I need Agent B for auditing"
@@ -286,9 +293,11 @@ curl -s http://43.159.60.46:3090/api/v1/a2a/worker-status
 
 ---
 
-## 2.7 Conversation Service (v0.7.1 · SDK 0.8.11)
+## 2.7 Conversation Service (v0.7.1 · SDK 0.8.11 · 链下编排默认)
 
 Agent dialogue microservice — multi-tenant AgentLoop execution engine (Memory + Context + Skills + inline MCP/HTTP tools). Hosted on `43.159.60.46:8100`, called by Gateway via `ConversationProxy` (`POST /api/v1/agent/runs` → SSE pipe).
+
+> **多 Agent 编排（2026-08-08）**：`AgentRunnerService` 注入平台工具 `agentx_list_agents`（列出调用方可委派 Agent，含 category）与 `agentx_delegate`（`mode: offchain | onchain`，默认 `offchain`，由 `ORCHESTRATE_DEFAULT_MODE` 控制）。链下委派经 Gateway 内部端点 `/api/v1/internal/orchestrate/*`（`ORCHESTRATE_TOKEN` 守卫）校验访问后同步递归执行；嵌套深度受 `ORCHESTRATE_MAX_DEPTH`（默认 4）限制，嵌套运行跳过澄清（子 Agent 无法与用户对话）。链上轨道复用 a2a-worker 的 `createTaskOnChain`。
 
 ### Deploy (pm2: `agentx-conversation`)
 
@@ -314,6 +323,9 @@ GATEWAY_URL=http://localhost:3090
 OPENAI_API_KEY=sk-...                # platform fallback LLM key
 MASTER_ENCRYPTION_KEY=<64-hex>       # required for tenant LLM key encryption (openssl rand -hex 32)
 CONTEXT_CACHE_TTL_SEC=300
+ORCHESTRATE_TOKEN=<same value as gateway ORCHESTRATE_TOKEN>   # off-chain orchestration (2026-08-08)
+ORCHESTRATE_DEFAULT_MODE=offchain                            # offchain | onchain
+ORCHESTRATE_MAX_DEPTH=4                                      # nested delegation limit
 ```
 
 ### Migrations (pgvector required)
@@ -327,6 +339,7 @@ for f in migrations/*.sql; do psql -h localhost -U agentx -d agentx_conversation
 ```
 CONVERSATION_SERVICE_URL=http://localhost:8100
 CONVERSATION_SERVICE_TOKEN=<same value as conversation INTERNAL_AUTH_TOKEN>
+ORCHESTRATE_TOKEN=<same value as conversation ORCHESTRATE_TOKEN>  # guards /api/v1/internal/orchestrate/*
 ```
 
 > Full API / SSE protocol / memory isolation: see [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md).
@@ -345,7 +358,7 @@ sudo -u postgres psql -c "CREATE DATABASE agentx_conversation OWNER agentx;"
 for f in db/migrations/*.sql; do psql -U agentx -d agentx_gateway -f "$f"; done
 ```
 
-### Schema (15 tables, gateway DB)
+### Schema (28 tables, gateway DB)
 
 | Table | Purpose |
 |-------|---------|
@@ -355,7 +368,7 @@ for f in db/migrations/*.sql; do psql -U agentx -d agentx_gateway -f "$f"; done
 | `tenant_api_keys` | BYOK keys (encrypted, AES-256-GCM) |
 | `usage_logs` | Per-request token + tool call tracking |
 | `chat_messages` | Conversation history |
-| `agents` | Agent metadata index from IdentityRegistry chain sync |
+| `agents` | Agent metadata index from IdentityRegistry chain sync（`category` 列见迁移 020：链上 attrs 优先、tokenURI JSON 兜底） |
 | `a2a_task_results` | Gateway A2A Worker LLM processing results (tenant-isolated) |
 | `subscription_plans` | On-chain plan index (PlanCreated events) |
 | `channels` | Distribution channels (revenue-share bps) |
@@ -459,7 +472,15 @@ npm version patch
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.8.11`
+Current: `@agentxv2/sdk@0.9.4` (+ `@agentxv2/payments@0.2.2`)
+
+### SDK v0.9.4 New Features (agent category + orchestration layering)
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| **Agent application categories** | `@agentxv2/sdk` | `AgentPayload.category` + `AGENT_CATEGORIES` / `AgentCategory`（13 枚举）；写入 public metadata + 链上 attrs；`getAllAgents()` / `getAgentMetadata()` 解析 `category`；Gateway `?category=` 过滤 + byCategory 聚合；DB 迁移 `020_agents_category`（2026-08-08 生产已执行） |
+| **Off-chain orchestration** | Conversation Service + Gateway | 主 Agent 默认**链下**同步委派（`agentx_list_agents` / `agentx_delegate`，零成本）；显式要求审计 / 结算时走链上 A2A（`POST /api/v1/internal/orchestrate/create-task`）；`ORCHESTRATE_TOKEN` / `ORCHESTRATE_DEFAULT_MODE` / `ORCHESTRATE_MAX_DEPTH` |
+| **payments 0.2.2** | `@agentxv2/payments` | 归属元数据（author / repository / homepage），SDK `^0.2.0` 自动解析到 0.2.2；无 API 变化 |
 
 ### SDK v0.8.10 / v0.8.11 New Features
 
@@ -616,7 +637,7 @@ for f in db/migrations/*.sql; do
 done
 ```
 
-Migration files (011): `001_init` (core auth/billing) → `002_agents` → `003_a2a_results` → `004_tenant_platform_api_key` → `005_agents_structured` → `006_plans` → `007_channel_attributions` (channels + attributions) → `008_fiat_subscriptions` → `009_x402` → `010_channel_admin` (**P7**: `channel_settlements` ledger + `settled_at`/`settlement_id` on attributions) → `011_partner_applications` (**P7**: B-end onboarding applications).
+Migration files (020): `001_init` (core auth/billing) → `002_agents` → `003_a2a_results` → `004_tenant_platform_api_key` → `005_agents_structured` → `006_plans` → `007_channel_attributions` (channels + attributions) → `008_fiat_subscriptions` → `009_x402` → `010_channel_admin` (**P7**: `channel_settlements` ledger + `settled_at`/`settlement_id` on attributions) → `011_partner_applications` (**P7**: B-end onboarding applications) → `012_parallel_tasks_control` → `014_integration_partners` → `015_developer_applications` → `016_tenant_kind` → `017_schedules` → `018_chain_subscriptions` → `019_payments_mpp_period` → `020_agents_category` (**category 列 + 索引，2026-08-08 生产已执行**).
 
 ### Conversation Service (`conversation-service/migrations/`)
 
