@@ -1,5 +1,44 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.9.3 → v0.9.4
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Agent application categories** | `AgentPayload` gains an optional `category` field typed as `AgentCategory` (one of `AGENT_CATEGORIES` — 13 enums: `operations` / `customer-service` / `sales` / `personal-assistant` / `coding` / `server-monitoring` / `airdrop` / `quant-trading` / `data-analysis` / `content` / `security` / `finance` / `other`). `publishAgent` writes it into the public metadata + on-chain attrs; `getAllAgents()` / `getAgentMetadata()` resolve `category` (tokenURI JSON first, on-chain attrs fallback). The AgentX Studio UI now requires it; Marketplace filters by it. |
+| **Payments engine 0.2.2** | `@agentxv2/payments` `^0.2.0` now resolves to **0.2.2** (ownership metadata: `author` / `repository` / `homepage` on the npm package — no code / API change). |
+| **No breaking changes** | Everything is additive. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.9.4   # or: npm install @agentxv2/sdk (latest = 0.9.4)
+```
+
+The Gateway + Conversation Service must run the matching server release for `category` filtering and the off-chain orchestration tools (`agentx_list_agents` / `agentx_delegate`).
+
+### Publish with a category
+
+```ts
+import { publishAgent, AGENT_CATEGORIES } from '@agentxv2/sdk'
+
+const result = await publishAgent({
+  agent: {
+    name: 'Airdrop Hunter',
+    description: 'Monitors and reports new airdrop opportunities on-chain.',
+    category: 'airdrop',                    // ← new: application category (AGENT_CATEGORIES value)
+    // ... rest of the AgentPayload unchanged
+  },
+  publicKey,
+  uploader,
+})
+```
+
+### Related: server-side orchestration layering
+
+No SDK API change, but the Conversation Service now defaults multi-agent orchestration to the **off-chain rail** (`agentx_delegate`, synchronous, zero cost) and only uses the **on-chain rail** (A2A task with `taskId` audit trail) when the user explicitly requests audit / settlement. See the SDK README → *Multi-Agent Orchestration Layering*.
+
 ## v0.9.2 → v0.9.3
 
 ### What's New

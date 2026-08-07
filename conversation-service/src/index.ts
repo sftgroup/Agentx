@@ -10,6 +10,7 @@ import { AgentRunnerService } from './services/agent-runner'
 import { TenantLLMResolver } from './services/tenant-llm-resolver'
 import { AgentContextLoader } from './services/agent-context-loader'
 import { ToolExecutor } from './services/tool-executor'
+import { OrchestratorService } from './services/orchestrator'
 import { createRunsRouter } from './routes/runs'
 import { createTenantsRouter } from './routes/tenants'
 import { createSessionsRouter } from './routes/sessions'
@@ -42,7 +43,9 @@ const memoryEngine = new MemoryEngine(db)
 const llmResolver = new TenantLLMResolver(db)
 const toolExecutor = new ToolExecutor(config.gatewayUrl)
 const contextLoader = new AgentContextLoader(config.gatewayUrl, config.contextCacheTtlSec * 1000, toolExecutor)
-const runner = new AgentRunnerService(memoryEngine, llmResolver, contextLoader)
+const orchestrator = new OrchestratorService()
+const runner = new AgentRunnerService(memoryEngine, llmResolver, contextLoader, orchestrator)
+orchestrator.setRunner(runner)
 const taskManager = new TaskManager(db, runner)
 
 // Routes
