@@ -47,7 +47,7 @@ Frontend / MCP Client
 
 ---
 
-## Integrator SDK (v0.8.8) — Sessions & Parallel Tasks
+## Integrator SDK (v0.10.0) — Sessions & Parallel Tasks
 
 Hosted sessions & parallel tasks are available to integrators through the published SDK — no platform-side changes needed:
 
@@ -55,7 +55,7 @@ Hosted sessions & parallel tasks are available to integrators through the publis
 # latest (recommended) — includes sessions & parallel tasks client
 npm install @agentxv2/sdk
 # or pin the exact release
-npm install @agentxv2/sdk@0.8.8
+npm install @agentxv2/sdk@0.10.0
 ```
 
 ```ts
@@ -171,6 +171,22 @@ All values via environment variables. Copy `.env.example` to `.env`:
 | `TASK_TIMEOUT_MS` | `900000` | Per-task timeout (15 min); on timeout the task is aborted and marked `error` |
 | `RPC_URL` | Sepolia public RPC | Blockchain RPC for agent data |
 | `IDENTITY_REGISTRY` | Sepolia | IdentityRegistry contract address |
+| `ORCHESTRATE_TOKEN` | — | Shared secret guarding the Gateway orchestration endpoints (must match Gateway's `ORCHESTRATE_TOKEN`) |
+| `ORCHESTRATE_DEFAULT_MODE` | `offchain` | Default delegation rail: `offchain` (zero-cost, in-channel) or `onchain` (user-wallet-signed A2A task) |
+| `ORCHESTRATE_MAX_DEPTH` | `4` | Max nested off-chain delegation depth |
+
+---
+
+## Multi-Agent Orchestration Layering (v0.10.0)
+
+The service injects two platform tools into each conversation run (same access boundary as chat — only agents the caller owns or is subscribed to):
+
+- `agentx_list_agents` — list the agents the caller may delegate to (`id` / `name` / `description` / `category`).
+- `agentx_delegate` — `{ targetAgentId, message, mode? }`:
+  - **`offchain` (default)**: the sub-agent runs synchronously inside the conversation channel; its final answer returns to the main agent in real time. Zero on-chain cost.
+  - **`onchain` (opt-in)**: used when the user explicitly requests an auditable / settled delegation (「上链」「可审计」「结算」). The service verifies access, then emits an `onchain_approval_required` SSE event carrying `approval: { targetAgentId, taskType, inputData }`. **The user's own wallet** then submits the A2A `createTask` (they pay the gas and become the on-chain client); the returned `taskId` is the audit trail, processed asynchronously by the Gateway A2A worker into `a2a_task_results`. Nested (depth > 0) runs reject `onchain` — a sub-agent cannot prompt the user for a wallet signature.
+
+> **v0.10.0 gas model:** the platform never pays on-chain gas and holds no signing key (`A2A_WORKER_PRIVATE_KEY` removed). Sub-tasks spawned by the a2a-worker run off-chain inline with local negative pseudo taskIds.
 
 ---
 
@@ -215,6 +231,7 @@ X-End-User-Id: user_123  # Optional: per end-user memory isolation
 | `tool_result` | Tool execution result |
 | `thinking` | Agent status update |
 | `clarification` | Request interrupted — the service asks the user to disambiguate (carries `question`) |
+| `onchain_approval_required` | **v0.10.0** — the agent requested an auditable on-chain A2A delegation; the **user's wallet** must create the task (carries `approval: { targetAgentId, taskType, inputData }`). See [Multi-Agent Orchestration Layering](#multi-agent-orchestration-layering) |
 | `done` | Conversation complete (includes usage stats) |
 | `error` | Error message |
 
@@ -534,7 +551,7 @@ CONVERSATION_SERVICE_TOKEN=agentx-conv-internal-token-2026
 Tenants can call the hosted Conversation Service from their own app via `@agentxv2/sdk`'s `ConversationClient` — no manual SSE parsing needed:
 
 ```bash
-npm install @agentxv2/sdk@0.8.0
+npm install @agentxv2/sdk@0.10.0
 ```
 
 ```typescript

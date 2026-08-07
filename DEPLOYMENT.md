@@ -1,7 +1,7 @@
 # AgentX Deployment Guide
 
 > Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-08
-> Server code: `~/Agentx` @ `1f53d80` (main, 生产分支 `prod-patches-20260807` merge) · SDK published: `@agentxv2/sdk@0.9.5` (+ `@agentxv2/payments@0.2.2`)
+> Server code: `~/Agentx` @ main · SDK published: `@agentxv2/sdk@0.10.0` (完整版) (+ `@agentxv2/payments@0.2.2`)
 > ⚠️ 测试策略（2026-08-07 起）：**所有功能/回归测试一律在生产环境 `43.159.60.46` 直接进行**（不再使用独立测试服务器）
 
 ---
@@ -145,9 +145,9 @@ CONFIGURATION_REGISTRY_OXACHAIN=0x07280674ccc2898Fd038A9e3C22005CA83ffD2F8
 MULTI_ENDPOINT=0xEB5e866f186d4B73F97aa0d70B86f2C6e2e21Cb7
 MULTI_ENDPOINT_OXACHAIN=0xB361d04F49000013FC131D3C59C41c8486C64f8c
 
-# A2A Worker wallet private key (for creating sub-tasks on-chain during multi-agent orchestration)
-# Without this, the Worker can process tasks but cannot delegate to other agents
-A2A_WORKER_PRIVATE_KEY=0x...
+# ⚠️ A2A_WORKER_PRIVATE_KEY 已废弃（2026-08-08）：Gateway 不再持有任何签名密钥。
+# 链上 A2A 轨道由用户自己的钱包签 createTask（用户付 gas，成为链上 client）。
+# 该变量无需配置，可删除；a2a-worker 只读链、子任务链下内联处理。
 ```
 
 ---
@@ -212,17 +212,18 @@ The Gateway indexer solves this by probing tokenURIs sequentially and storing re
 
 The Gateway runs a background A2A Worker v2 that enables **true multi-agent orchestration** via LLM tool-calling:
 
-> **编排分层（2026-08-08）**：链上 A2A Worker 是**可选轨道**（跨组织 / 可审计 taskId / 结算 / 信誉场景）。默认编排走**链下**——Conversation Service 注入 `agentx_list_agents` / `agentx_delegate` 平台工具，在对话通道内同步嵌套委派（零成本、实时），仅用户显式要求审计 / 结算时才经 `POST /api/v1/internal/orchestrate/create-task`（`ORCHESTRATE_TOKEN` 守卫）落到链上。访问边界两者一致：仅限「自己写的 + 已订阅（chain/fiat/x402）」Agent，无权限 403 `AGENT_ACCESS_DENIED`。详见 §2.7。
+> **编排分层（2026-08-08，v0.10.0 gas 模型）**：链上 A2A Worker 是**可选轨道**（跨组织 / 可审计 taskId / 结算 / 信誉场景）。默认编排走**链下**——Conversation Service 注入 `agentx_list_agents` / `agentx_delegate` 平台工具，在对话通道内同步嵌套委派（零成本、实时）。仅用户**显式要求审计 / 结算 / 上链**时，Conversation Service 发 `onchain_approval_required` 事件，**用户自己的钱包**签 `createTask`（用户付 gas，成为链上 client；合约记录 `clientAddress = msg.sender`）。访问边界两者一致：仅限「自己写的 + 已订阅（chain/fiat/x402）」Agent，无权限 403 `AGENT_ACCESS_DENIED`。详见 §2.7。
 
 ```
 Agent A's task → Worker LLM(Agent A) analyzes
   → LLM decides: "I need Agent B for auditing"
   → calls agentx_a2a_create_task(Agent B, "audit", ...)
-  → Worker submits tx on-chain, processes Agent B's task inline (recursive)
+  → Worker processes Agent B's task OFF-CHAIN inline (sub-tasks never sign;
+    local negative pseudo taskIds keep DB records stable)
   → Agent B's result fed back to Agent A's LLM
   → LLM continues: "Now I need Agent C to summarize"
   → calls agentx_a2a_create_task(Agent C, "summarize", ...)
-  → Worker processes Agent C's task inline
+  → Worker processes Agent C's task inline (off-chain)
   → Agent A's LLM aggregates all results → final output
 ```
 
@@ -230,7 +231,7 @@ Agent A's task → Worker LLM(Agent A) analyzes
 
 | Component | Location | Role |
 |-----------|----------|------|
-| **A2A Worker v2** | `gateway/src/services/a2a-worker.ts` | ReAct AgentLoop with A2A tools: polls contract → LLM with tools → processes inline |
+| **A2A Worker v2** | `gateway/src/services/a2a-worker.ts` | ReAct AgentLoop with A2A tools: polls contract (read-only) → LLM with tools → processes sub-tasks off-chain inline; **never writes to the chain** |
 | **A2A API** | `gateway/src/routes/a2a.ts` | Exposes task results + worker status (incl. `totalOrchestrated` counter) |
 | **A2A Daemon** | `sdk/src/agent-loop/a2a-daemon.ts` | Agent owner's SDK process: polls → gets result → completeTask() on-chain |
 | **useMyAgentIds** | `frontend/hooks/user/useMyAgentIds.ts` | Combines owned + subscribed agent IDs for tenant-scoped agent selection |
@@ -239,7 +240,7 @@ Agent A's task → Worker LLM(Agent A) analyzes
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| Poll interval | 30s | Contract poll frequency |
+| Poll interval | 30s | Contract poll frequency (read-only) |
 | Max batch size | 3 | Tasks per poll (reduced: each may spawn sub-tasks) |
 | Max depth | 3 | Recursive delegation limit |
 | Max ReAct iterations | 5 | LLM tool-call rounds per task |
@@ -248,15 +249,14 @@ Agent A's task → Worker LLM(Agent A) analyzes
 
 | Tool | Description |
 |------|-------------|
-| `agentx_a2a_create_task` | Delegate sub-task to another agent (on-chain tx) |
-| `agentx_a2a_get_task` | Check sub-task status/result |
+| `agentx_a2a_create_task` | Delegate sub-task to another agent (**off-chain inline**, no tx) |
+| `agentx_a2a_get_task` | Check sub-task status/result (reads `a2a_task_results` DB) |
 | `agentx_list_agents` | List all available agents with names/descriptions |
 
 ### Prerequisites
 
-- `A2A_WORKER_PRIVATE_KEY` in Gateway `.env` (wallet for `createTask` on-chain tx)
-- Fund the worker wallet with OXA for gas
 - Agent sync cron must be active (see section 2.5)
+- ⚠️ `A2A_WORKER_PRIVATE_KEY` is **no longer required** (removed 2026-08-08) — the worker never signs; the user's wallet signs `createTask` for on-chain rail
 
 ### A2A API Endpoints
 
@@ -292,7 +292,7 @@ curl -s http://43.159.60.46:3090/api/v1/a2a/worker-status
 
 Agent dialogue microservice — multi-tenant AgentLoop execution engine (Memory + Context + Skills + inline MCP/HTTP tools). Hosted on `43.159.60.46:8100`, called by Gateway via `ConversationProxy` (`POST /api/v1/agent/runs` → SSE pipe).
 
-> **多 Agent 编排（2026-08-08）**：`AgentRunnerService` 注入平台工具 `agentx_list_agents`（列出调用方可委派 Agent，含 category）与 `agentx_delegate`（`mode: offchain | onchain`，默认 `offchain`，由 `ORCHESTRATE_DEFAULT_MODE` 控制）。链下委派经 Gateway 内部端点 `/api/v1/internal/orchestrate/*`（`ORCHESTRATE_TOKEN` 守卫）校验访问后同步递归执行；嵌套深度受 `ORCHESTRATE_MAX_DEPTH`（默认 4）限制，嵌套运行跳过澄清（子 Agent 无法与用户对话）。链上轨道复用 a2a-worker 的 `createTaskOnChain`。
+> **多 Agent 编排（2026-08-08，v0.10.0）**：`AgentRunnerService` 注入平台工具 `agentx_list_agents`（列出调用方可委派 Agent，含 category）与 `agentx_delegate`（`mode: offchain | onchain`，默认 `offchain`，由 `ORCHESTRATE_DEFAULT_MODE` 控制）。链下委派经 Gateway 内部端点 `/api/v1/internal/orchestrate/*`（`ORCHESTRATE_TOKEN` 守卫）校验访问后同步递归执行；嵌套深度受 `ORCHESTRATE_MAX_DEPTH`（默认 4）限制，嵌套运行跳过澄清（子 Agent 无法与用户对话）。**链上轨道（`mode: onchain`）不经过任何签名端点**：Conversation Service 校验访问后直接发 `onchain_approval_required` SSE 事件，**用户钱包**签 `createTask`（用户付 gas）；`/api/v1/internal/orchestrate/create-task` 路由已移除（2026-08-08），Gateway 不持有签名密钥。
 
 ### Deploy (pm2: `agentx-conversation`)
 
@@ -463,18 +463,19 @@ ss -tlnp | grep -E '3100|3090|8100'
 ```bash
 cd sdk/
 npm run build
-npm version patch
+npm version minor     # 完整功能版用 minor（v0.10.x），避免打补丁造成版本混乱
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.9.4` (+ `@agentxv2/payments@0.2.2`)
+Current: `@agentxv2/sdk@0.10.0` (+ `@agentxv2/payments@0.2.2`)
 
-### SDK v0.9.4 New Features (agent category + orchestration layering)
+### SDK v0.10.0 New Features (完整功能版 — 整合 0.9.x 全部能力)
 
 | Feature | Module | Description |
 |---------|--------|-------------|
 | **Agent application categories** | `@agentxv2/sdk` | `AgentPayload.category` + `AGENT_CATEGORIES` / `AgentCategory`（13 枚举）；写入 public metadata + 链上 attrs；`getAllAgents()` / `getAgentMetadata()` 解析 `category`；Gateway `?category=` 过滤 + byCategory 聚合；DB 迁移 `020_agents_category`（2026-08-08 生产已执行） |
-| **Off-chain orchestration** | Conversation Service + Gateway | 主 Agent 默认**链下**同步委派（`agentx_list_agents` / `agentx_delegate`，零成本）；显式要求审计 / 结算时走链上 A2A（`POST /api/v1/internal/orchestrate/create-task`）；`ORCHESTRATE_TOKEN` / `ORCHESTRATE_DEFAULT_MODE` / `ORCHESTRATE_MAX_DEPTH` |
+| **Off-chain orchestration** | Conversation Service + Gateway | 主 Agent 默认**链下**同步委派（`agentx_list_agents` / `agentx_delegate`，零成本）；显式要求审计 / 结算时走**用户钱包签名**的链上 A2A（`onchain_approval_required` SSE 事件 → 用户签 `createTask`，用户付 gas）；`ORCHESTRATE_TOKEN` / `ORCHESTRATE_DEFAULT_MODE` / `ORCHESTRATE_MAX_DEPTH` |
+| **Typed on-chain approval** | `@agentxv2/sdk` | `ConversationSSEEvent` 新增 `'onchain_approval_required'` + `OnChainApprovalRequest { targetAgentId, taskType, inputData }`（前端 `useAgentChat` 显式 case） |
 | **payments 0.2.2** | `@agentxv2/payments` | 归属元数据（author / repository / homepage），SDK `^0.2.0` 自动解析到 0.2.2；无 API 变化 |
 
 ### SDK v0.8.10 / v0.8.11 New Features
