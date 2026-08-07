@@ -31,6 +31,14 @@ vi.mock('../src/services/conversation-proxy', () => ({
 
 vi.mock('../src/services/agent-access', () => accessMock)
 
+vi.mock('../src/lib/db', () => ({
+  getPool: () => ({ query: vi.fn(async () => ({ rows: [{ api_key: 'enc:test', endpoint: null, model: null }] })) }),
+}))
+
+vi.mock('../src/lib/crypto', () => ({
+  decryptApiKey: (enc: string) => (enc ? 'decrypted-key' : ''),
+}))
+
 import chatTasksRouter from '../src/routes/chat-tasks'
 import { canAccessAgent } from '../src/services/agent-access'
 
@@ -126,6 +134,7 @@ describe('B-end partner keys follow the P9 capability gate (not a kind block)', 
     proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
     const res = await request(app)
       .post('/api/v1/sessions/s1/tasks')
+      .set('X-Llm-Api-Key', 'sk-test') // partner tasks require BYOK
       .send({ agentId: 1, message: 'hi' })
     expect(res.status).toBe(201)
     expect(proxyMock.createTask).toHaveBeenCalledTimes(1)
@@ -191,6 +200,7 @@ describe('B-end end-user subscription proxy (X-End-User-Id: 0x wallet)', () => {
     proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
     const res = await request(app)
       .post('/api/v1/sessions/s1/tasks')
+      .set('X-Llm-Api-Key', 'sk-test') // partner tasks require BYOK
       .send({ agentId: 2, message: 'hi', endUserId: endUserWallet })
     expect(res.status).toBe(201)
     expect(accessMock.canAccessAgent).toHaveBeenCalledWith(endUserWallet, 2)
@@ -226,6 +236,56 @@ describe('B-end end-user subscription proxy (X-End-User-Id: 0x wallet)', () => {
       .send({ agentId: 3 })
     expect(res.status).toBe(201)
     expect(accessMock.canAccessAgent).toHaveBeenCalledWith(endUserWallet, 3)
+  })
+})
+
+// ── B-end BYOK budget guard (2026-08-08) ──────────────────────────────────
+// Partner tasks must carry their own LLM key (X-Llm-Api-Key / tenantKeyId /
+// llmApiKey) so background/parallel work never consumes the platform key budget.
+
+describe('B-end BYOK budget guard — partner tasks require own LLM key', () => {
+  const inlineBody = { message: 'hi', prompt: 'inline ok' }
+
+  beforeEach(() => {
+    currentTenant = { id: 't-p', walletAddress: 'partner-smoke-1', kind: 'partner', allowParallelTasks: undefined, planFeatures: { parallel_tasks: true } }
+  })
+
+  it('rejects partner task creation without BYOK → 400 LLM_KEY_REQUIRED', async () => {
+    const res = await request(app)
+      .post('/api/v1/sessions/s1/tasks')
+      .send(inlineBody)
+    expect(res.status).toBe(400)
+    expect(res.body.code).toBe('LLM_KEY_REQUIRED')
+    expect(res.body.error).toContain('BYOK')
+    expect(proxyMock.createTask).not.toHaveBeenCalled()
+  })
+
+  it('allows partner task creation with X-Llm-Api-Key header', async () => {
+    proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
+    const res = await request(app)
+      .post('/api/v1/sessions/s1/tasks')
+      .set('X-Llm-Api-Key', 'sk-test')
+      .send(inlineBody)
+    expect(res.status).toBe(201)
+    expect(proxyMock.createTask).toHaveBeenCalledTimes(1)
+  })
+
+  it('allows partner task creation with tenantKeyId (stored BYOK)', async () => {
+    proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
+    const res = await request(app)
+      .post('/api/v1/sessions/s1/tasks')
+      .send({ ...inlineBody, tenantKeyId: 'key-1' })
+    expect(res.status).toBe(201)
+    expect(proxyMock.createTask).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT require BYOK for non-partner (user) tenants', async () => {
+    currentTenant = { id: 't-user', walletAddress: '0xUserWallet12345678901234567890123456789012', kind: 'user', allowParallelTasks: undefined, planFeatures: {} }
+    proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
+    const res = await request(app)
+      .post('/api/v1/sessions/s1/tasks')
+      .send(inlineBody)
+    expect(res.status).toBe(201)
   })
 })
 

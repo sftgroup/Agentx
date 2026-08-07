@@ -22,6 +22,8 @@
 | HTTP 直接调用 | `X-Llm-Api-Key` 请求头 | 等价 SDK 的 `llmApiKey` |
 
 > 未传任何 LLM key 时走平台兜底 key（DeepSeek / OpenAI 平台配额），受租户配额限制。
+>
+> ⚠️ **B 端（partner）任务强制 BYOK**（2026-08-08 起）：partner 租户创建任务必须携带 `X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId` 之一，否则 `400 { code: "LLM_KEY_REQUIRED" }`；对话（chat）与 user 类租户不受此限制。
 
 ### 端用户订阅转发（B 端代调，Gateway 2026-08-08）
 

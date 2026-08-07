@@ -218,7 +218,9 @@ const client = new ConversationClient({
 - 方式二：**请求级透传**——`client.stream({ agentId: 1, message: '...', tenantKeyId })`，使用已在平台 Settings 保存的租户自有 Key（明文不出服务器，v0.8.6 起）
 - 方式三：**HTTP 直接调用**——请求头 `X-Llm-Api-Key`（+ `X-Llm-Endpoint` / `X-Llm-Model`），等价 SDK 的 `llmApiKey`
 - 优先级：`tenantKeyId`（服务器解密注入）> 请求头 / `llmApiKey` > 平台兜底 Key
-- 若任务「瞬间 error」，先检查是否未配置 BYOK / BYOK 无效（见[常见问题](#9-常见问题)）
+
+> ⚠️ **B 端（partner）任务强制 BYOK**（2026-08-08 起）：partner 租户创建任务（`POST /sessions/:id/tasks`）**必须**携带 LLM Key——`X-Llm-Api-Key` 请求头、`llmApiKey` 或 `tenantKeyId` 三者之一，否则返回 `400 { code: "LLM_KEY_REQUIRED" }`（防止后台任务消耗平台 LLM 预算）。对话（chat）与 user 类租户不受此限制，未传时走平台兜底 Key。
+> 若任务「瞬间 error」，先检查是否未配置 BYOK / BYOK 无效（见[常见问题](#9-常见问题)）
 
 ## 7. HTTP API 参考
 
@@ -302,6 +304,7 @@ curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
 | 如何代已订阅用户对话 | 直接调用按租户自身授权被 403 | 请求带 `X-End-User-Id: 0x<用户钱包>`（B 端代调，见 [§6](#6-sdk-接入示例)）；也可先 `GET /api/v1/chain/check-subscription` 确认订阅 |
 | `401` 但 Key 未变 | Key 被团队内其他人轮换 | 联系平台管理员重新签发 |
 | 任务瞬间 `error` | 平台兜底 LLM Key 无效 / 未配置 BYOK | 配置团队自己的 LLM Key（BYOK 透传，见 [§6](#6-sdk-接入示例)），如仍失败检查 Key 的有效性与配额 |
+| 报 `400 LLM_KEY_REQUIRED` | partner 租户创建任务未携带 LLM Key | 携带 `X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId`（partner 任务强制 BYOK，见 [§6](#6-sdk-接入示例)） |
 | 报 `403 PARTNER_TASKS_DISABLED` | **该错误已废弃**（2026-08-08 起 B 端 Key 与注册用户能力统一） | 确认 Gateway 已升级；一个 `agentx_` Key 即可，无需第二把 Key |
 | 多个调用方共用 Key | 用量 / 配额无法区分 | 每个调用方使用独立 Key |
 | 无流式事件 | SSE 被网关 / 代理缓冲 | 确认使用 HTTP/1.1 且未启用 gzip 缓冲 |
