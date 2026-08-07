@@ -21,9 +21,10 @@ import { createPublicClient, createWalletClient, http } from 'viem'
 import type { Address, PublicClient, WalletClient } from 'viem'
 import { AgentRegistry, SubscriptionManager, subscribeToEvents } from '@agentxv2/sdk'
 import type { AgentSummary, AgentXChainEvent, AgentXEventType, PlanDetail, SubscriptionDetail } from '@agentxv2/sdk'
-import { config } from '../config'
+import { CHAINS } from './chain-config'
+import type { ChainInfo, ChainKey } from './chain-config'
 
-export type ChainKey = 'sepolia' | 'oxachain'
+export type { ChainKey }
 
 /** address(0) — native token sentinel for payToken / platformFeesCollected. */
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -32,28 +33,6 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const PLATFORM_FEES_ABI = [
   { name: 'platformFeesCollected', type: 'function', stateMutability: 'view', inputs: [{ name: 'token', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
 ] as const
-
-interface ChainInfo {
-  rpcUrl: string
-  chainId: number
-  identityRegistry: Address
-  subscriptionManager: Address
-}
-
-const CHAINS: Record<ChainKey, ChainInfo> = {
-  sepolia: {
-    rpcUrl: config.rpcUrl,
-    chainId: config.chainId,
-    identityRegistry: config.identityRegistry as Address,
-    subscriptionManager: config.subscriptionManager as Address,
-  },
-  oxachain: {
-    rpcUrl: config.rpcUrlOxaChain,
-    chainId: config.chainIdOxaChain,
-    identityRegistry: config.identityRegistryOxaChain as Address,
-    subscriptionManager: config.subscriptionManagerOxaChain as Address,
-  },
-}
 
 // SDK classes require a WalletClient at construction but we never sign —
 // construct one without an account (read-only). ChainDataReader is strictly
@@ -119,7 +98,7 @@ export class ChainDataReader {
     if (!this.registries[chain]) {
       const info = this.resolve(chain)
       this.registries[chain] = new AgentRegistry({
-        contractAddress: info.identityRegistry,
+        contractAddress: info.identityRegistry as Address,
         publicClient: this.getPublicClient(chain),
         walletClient: createWalletClient({ transport: http(info.rpcUrl) }),
       })
@@ -132,7 +111,7 @@ export class ChainDataReader {
     if (!this.subscriptions[chain]) {
       const info = this.resolve(chain)
       this.subscriptions[chain] = new SubscriptionManager({
-        contractAddress: info.subscriptionManager,
+        contractAddress: info.subscriptionManager as Address,
         publicClient: this.getPublicClient(chain),
         walletClient: this.makeReadonlyWallet(info.rpcUrl),
       })
@@ -251,7 +230,7 @@ export class ChainDataReader {
   async platformFeesCollected(chain: ChainKey, token: Address = ZERO_ADDRESS): Promise<bigint> {
     const info = this.resolve(chain)
     const fees = await this.getPublicClient(chain).readContract({
-      address: info.subscriptionManager,
+      address: info.subscriptionManager as Address,
       abi: PLATFORM_FEES_ABI,
       functionName: 'platformFeesCollected',
       args: [token],
@@ -275,8 +254,8 @@ export class ChainDataReader {
     const info = this.resolve(chain)
     log.info(`watchEvents started (chain=${chain}, events=${events.join(',')}${fromBlock !== undefined ? `, fromBlock=${fromBlock}` : ''})`)
     const unwatch = await subscribeToEvents(this.getPublicClient(chain), {
-      identityRegistryAddress: info.identityRegistry,
-      subscriptionManagerAddress: info.subscriptionManager,
+      identityRegistryAddress: info.identityRegistry as Address,
+      subscriptionManagerAddress: info.subscriptionManager as Address,
       events,
       onEvent,
       fromBlock,

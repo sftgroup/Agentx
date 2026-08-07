@@ -87,6 +87,33 @@ function aesDecrypt(encryptedBase64, keyHex) {
   const decrypted = cipher.decrypt(ciphertextWithTag);
   return new TextDecoder().decode(decrypted);
 }
+function encryptWithKey(plaintext, keyHex) {
+  const key = hexToBytes(keyHex);
+  const iv = randomBytes(IV_SIZE);
+  const plainBytes = new TextEncoder().encode(plaintext);
+  const cipher = gcm(key, iv);
+  const encrypted = cipher.encrypt(plainBytes);
+  const ciphertext = encrypted.subarray(0, -TAG_SIZE);
+  const authTag = encrypted.subarray(-TAG_SIZE);
+  const combined = new Uint8Array(IV_SIZE + TAG_SIZE + ciphertext.length);
+  combined.set(iv, 0);
+  combined.set(authTag, IV_SIZE);
+  combined.set(ciphertext, IV_SIZE + TAG_SIZE);
+  return toBase64(combined);
+}
+function decryptWithKey(encryptedBase64, keyHex) {
+  const key = hexToBytes(keyHex);
+  const combined = fromBase64(encryptedBase64);
+  const iv = combined.subarray(0, IV_SIZE);
+  const authTag = combined.subarray(IV_SIZE, IV_SIZE + TAG_SIZE);
+  const ciphertext = combined.subarray(IV_SIZE + TAG_SIZE);
+  const cipher = gcm(key, iv);
+  const ciphertextWithTag = new Uint8Array(ciphertext.length + TAG_SIZE);
+  ciphertextWithTag.set(ciphertext, 0);
+  ciphertextWithTag.set(authTag, ciphertext.length);
+  const decrypted = cipher.decrypt(ciphertextWithTag);
+  return new TextDecoder().decode(decrypted);
+}
 function generateAesKey() {
   return bytesToHex(randomBytes(AES_KEY_SIZE));
 }
@@ -267,9 +294,11 @@ export {
   aesEncrypt,
   bytesToHex,
   decryptPayload,
+  decryptWithKey,
   eciesDecrypt,
   eciesEncrypt,
   encryptPayload,
+  encryptWithKey,
   generateAesKey,
   generateKeyPair,
   getPublicKey,

@@ -1,7 +1,8 @@
 # AgentX Deployment Guide
 
-> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-06
-> Server code: `~/Agentx` @ `279bb57` (main) · SDK published: `@agentxv2/sdk@0.8.6`
+> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-07
+> Server code: `~/Agentx` @ `2ff22b0` (main) · SDK published: `@agentxv2/sdk@0.8.11`
+> ⚠️ 测试策略（2026-08-07 起）：**所有功能/回归测试一律在生产环境 `43.159.60.46` 直接进行**（不再使用独立测试服务器）
 
 ---
 
@@ -285,7 +286,7 @@ curl -s http://43.159.60.46:3090/api/v1/a2a/worker-status
 
 ---
 
-## 2.7 Conversation Service (v0.7.1)
+## 2.7 Conversation Service (v0.7.1 · SDK 0.8.11)
 
 Agent dialogue microservice — multi-tenant AgentLoop execution engine (Memory + Context + Skills + inline MCP/HTTP tools). Hosted on `43.159.60.46:8100`, called by Gateway via `ConversationProxy` (`POST /api/v1/agent/runs` → SSE pipe).
 
@@ -458,7 +459,24 @@ npm version patch
 npm publish --access public --registry https://registry.npmjs.org/
 ```
 
-Current: `@agentxv2/sdk@0.8.6`
+Current: `@agentxv2/sdk@0.8.11`
+
+### SDK v0.8.10 / v0.8.11 New Features
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| **encryptWithKey / decryptWithKey** | `@agentxv2/sdk/core` | AES-256-GCM master-key 格式加解密（`base64(IV[12]∥authTag[16]∥ciphertext)`），与 Gateway 遗留 at-rest key 加密（`gateway/src/lib/crypto.ts`）byte-for-byte 兼容 — SDK 可解密 Gateway 已存储的加密数据 |
+
+> 注：`0.8.10` 与 `0.8.11` 为同一构建重发（gitHead `9dd7303`），功能一致。
+
+### SDK v0.8.7 New Features (sessions & parallel tasks)
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| **createSession** | `@agentxv2/sdk/conversation` | 创建会话上下文（会话级记忆隔离） |
+| **createTask / getTask / listTasks / cancelTask** | `@agentxv2/sdk/conversation` | 后台并行任务：`createTask` 立即返回 `taskId` 后台执行，可查询/取消；受 P9 门卫控制（`plans.features.parallel_tasks` + `tenants.allow_parallel_tasks`，禁用时 403 `PARALLEL_TASKS_DISABLED`） |
+| **getCapabilities** | `@agentxv2/sdk/conversation` | 查询租户可用能力（并行任务开关等） |
+| **ConversationTaskError** | `@agentxv2/sdk/conversation` | 任务级错误类型 |
 
 ### SDK v0.8.6 New Features
 

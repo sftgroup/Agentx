@@ -2,14 +2,13 @@
 // Keeps v1 surface API stable for existing callers while aligning to v2 contracts.
 'use client'
 
-import { useWriteContract, useReadContract, useAccount, useWaitForTransactionReceipt, usePublicClient, useWalletClient } from 'wagmi'
+import { useWriteContract, useAccount, useWaitForTransactionReceipt, usePublicClient, useWalletClient } from 'wagmi'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { SubscriptionManager } from '@agentxv2/sdk'
 import { SUBSCRIPTION_MANAGER_ABI } from '@/abis/SubscriptionManager'
 
-// ── Validation ────────────────────────────────────────────────────────────
-const validateAddr = (a?: string): `0x${string}` =>
-  (a && a.startsWith('0x') && a.length === 42) ? a as `0x${string}` : '0x0000000000000000000000000000000000000000'
+import { validateAddress as validateAddr } from './contract-address'
+import { GATEWAY_URL } from '@/lib/gateway'
 
 const CONTRACT_ADDR = validateAddr(process.env.NEXT_PUBLIC_SUBSCRIPTION_MANAGER_ADDRESS)
 
@@ -53,24 +52,14 @@ export const BILLING_PERIOD_TO_ONCHAIN: Record<BillingPeriod, string> = {
 
 export interface UseSubscriptionReturn {
   createSubscriptionPlan: (agentId:number,name:string,desc:string,token:string,price:number,period:BillingPeriod,maxUsage:number) => Promise<`0x${string}`|undefined>
-  updateSubscriptionPlan: (planId:number,name:string,desc:string,price:number,period:BillingPeriod,maxUsage:number) => Promise<`0x${string}`|undefined>
-  deactivatePlan: (planId:number) => Promise<`0x${string}`|undefined>
   getPlan: (planId:number) => Promise<SubscriptionPlan|null>
   getAgentPlans: (agentId:number) => Promise<SubscriptionPlan[]>
-  getPlanSubscriptions: (planId:number) => Promise<Subscription[]>
   getAgentSubscriptionStats: (agentId:number) => Promise<SubscriptionStats|null>
-  withdrawSubscriptionRevenue: (agentId:number) => Promise<`0x${string}`|undefined>
-  getWithdrawableRevenue: (agentId:number) => Promise<bigint>
   subscribe: (planId:number,value?:bigint) => Promise<`0x${string}`|undefined>
-  processPayment: (subscriptionId:number) => Promise<`0x${string}`|undefined>
   cancelSubscription: (subscriptionId:number) => Promise<`0x${string}`|undefined>
-  recordUsage: (subscriptionId:number,usage:number) => Promise<`0x${string}`|undefined>
   getSubscription: (subscriptionId:number) => Promise<Subscription|null>
   getUserSubscriptions: () => Promise<Subscription[]>
   isSubscriptionActive: (subscriptionId:number) => Promise<boolean>
-  getTotalPlanCount: () => Promise<number>
-  getTotalSubscriptionCount: () => Promise<number>
-  getDueSubscriptions: () => Promise<number[]>
   /// v2 additions
   releaseFunds: (subscriptionId:number) => Promise<`0x${string}`|undefined>
   getSubscriptionDetail: (subscriptionId:number) => Promise<SubscriptionDetailV2|null>
@@ -78,14 +67,9 @@ export interface UseSubscriptionReturn {
   isTokenWhitelisted: (token:`0x${string}`) => Promise<boolean>
   userSubscriptions: Subscription[]
   agentPlans: SubscriptionPlan[]
-  planSubscriptions: Subscription[]
   subscriptionStats: SubscriptionStats|null
-  totalPlanCount: number; totalSubscriptionCount: number
-  dueSubscriptions: number[]; withdrawableRevenue: bigint
-  isCreatingPlan: boolean; isUpdatingPlan: boolean
-  isDeactivatingPlan: boolean; isSubscribing: boolean
-  isProcessingPayment: boolean; isCancellingSubscription: boolean
-  isRecordingUsage: boolean; isWithdrawingRevenue: boolean
+  isCreatingPlan: boolean; isSubscribing: boolean
+  isCancellingSubscription: boolean
   isLoading: boolean; error: Error|null
   transactionHash: `0x${string}`|undefined
   isConfirming: boolean; isConfirmed: boolean
@@ -111,7 +95,7 @@ function resolveChannelRef(): string | null {
 async function reportChannelAttribution(opts: { subscriber: string; agentId: number; planId?: number }): Promise<void> {
   const channelId = resolveChannelRef()
   if (!channelId) return
-  const base = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
+  const base = GATEWAY_URL
   try {
     await fetch(`${base}/api/v1/channel/attribute`, {
       method: 'POST',
@@ -131,12 +115,7 @@ export function useSubscription(): UseSubscriptionReturn {
   const [txHash, setTxHash] = useState<`0x${string}`|undefined>()
   const [subs, setSubs] = useState<Subscription[]>([])
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
-  const [planSubs, setPlanSubs] = useState<Subscription[]>([])
   const [stats, setStats] = useState<SubscriptionStats|null>(null)
-  const [revenue, setRevenue] = useState<bigint>(BigInt(0))
-  const [lastSubscribeResult, setLastSubscribeResult] = useState<{
-    subscriptionId: number; agentId: number; expiresAt: number; subscriber: string
-  } | null>(null)
 
   const [isSubbing, setIsSubbing] = useState(false)
   const { writeContractAsync: cancelAsync, isPending: isCanceling, error: cancelErr } = useWriteContract()
@@ -154,8 +133,6 @@ export function useSubscription(): UseSubscriptionReturn {
       : null),
     [publicClient, walletClient.data]
   )
-
-  const { data: feeData } = useReadContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'platformFeeBps' })
 
   useEffect(() => { if (cancelErr) setError(cancelErr) }, [cancelErr])
 
@@ -178,7 +155,6 @@ export function useSubscription(): UseSubscriptionReturn {
     try {
       const result = await manager.subscribe(planId, { valueWei: value })
       setTxHash(result.txHash)
-      setLastSubscribeResult({ subscriptionId: result.subscriptionId, agentId: result.agentId, expiresAt: result.expiresAt, subscriber: result.subscriber })
       reportChannelAttribution({ subscriber: result.subscriber, agentId: result.agentId, planId })
       return result.txHash
     } catch(e) { setError(e as Error); return undefined }
@@ -186,7 +162,6 @@ export function useSubscription(): UseSubscriptionReturn {
   }, [isConnected,address,manager])
 
   const releaseFunds = useCallback(async (sid:number) => {
-    const [acct] = [{ getAddresses: async () => [address] }] // use writeContractAsync
     if (!address) throw new Error('Wallet not connected')
     try {
       const h = await releaseAsync({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'releaseFunds', args:[BigInt(sid)] })
@@ -230,7 +205,7 @@ export function useSubscription(): UseSubscriptionReturn {
   // getAgentPlans — served by Gateway REST (chain data synced by the indexer),
   // instead of the previous stub that always returned [].
   const getAgentPlans = useCallback(async (aid:number) => {
-    const base = process.env.NEXT_PUBLIC_AGENTX_GATEWAY_URL || 'http://localhost:3090'
+    const base = GATEWAY_URL
     try {
       const res = await fetch(`${base}/api/v1/agents/${aid}`)
       if (!res.ok) { setPlans([]); return [] }
@@ -249,9 +224,25 @@ export function useSubscription(): UseSubscriptionReturn {
       return list
     } catch { setPlans([]); return [] }
   }, [])
-  const getPlanSubscriptions = useCallback(async (_:number) => { return [] as Subscription[] }, [])
-  const getAgentSubscriptionStats = useCallback(async (_:number) => null as SubscriptionStats|null, [])
-  const getWithdrawableRevenue = useCallback(async (_:number) => BigInt(0), [])
+  // getAgentSubscriptionStats — served by Gateway REST, aggregated from the
+  // chain_subscriptions table the indexer maintains (the v2 contract has no
+  // "subscriptions by agent" on-chain view, so events are the only source).
+  const getAgentSubscriptionStats = useCallback(async (aid:number) => {
+    const base = GATEWAY_URL
+    try {
+      const res = await fetch(`${base}/api/v1/agents/${aid}/stats`)
+      if (!res.ok) { setStats(null); return null }
+      const d = await res.json()
+      const s: SubscriptionStats = {
+        totalSubscriptions: BigInt(d.totalSubscriptions ?? 0),
+        activeSubscriptions: BigInt(d.activeSubscriptions ?? 0),
+        totalRevenue: BigInt(d.totalRevenue ?? 0),
+        monthlyRecurringRevenue: BigInt(d.monthlyRecurringRevenue ?? 0),
+      }
+      setStats(s)
+      return s
+    } catch { setStats(null); return null }
+  }, [])
 
   const getSubscription = useCallback(async (sid:number) => {
     if (!publicClient||!address) return null
@@ -269,11 +260,6 @@ export function useSubscription(): UseSubscriptionReturn {
       const [sId,s,aId,status,started,expires,period,pt,amt,tA,tE,fR] = r as [bigint,string,bigint,number,bigint,bigint,string,string,bigint,boolean,bigint,boolean]
       return { subscriptionId:Number(sId),subscriber:s,agentId:Number(aId),status,startedAt:Number(started),expiresAt:Number(expires),period,payToken:pt,amountPaid:amt,trialActive:tA,trialEndsAt:Number(tE),fundsReleased:fR }
     } catch { return null }
-  }, [publicClient])
-
-  const hasActiveSubscription = useCallback(async (sub:`0x${string}`,aid:number) => {
-    if (!publicClient) return false
-    try { return await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'hasActiveSubscription', args:[sub,BigInt(aid)] }) as boolean } catch { return false }
   }, [publicClient])
 
   const getUserSubscriptions = useCallback(async () => {
@@ -297,33 +283,21 @@ export function useSubscription(): UseSubscriptionReturn {
     return d ? d.status === 1 : false
   }, [getSubscriptionDetail])
 
-  // ── Stubs ───────────────────────────────────────────────────────────────
-  const updateSubscriptionPlan = useCallback(async () => undefined as any, [])
-  const deactivatePlan = useCallback(async () => undefined as any, [])
-  const processPayment = useCallback(async () => undefined as any, [])
-  const recordUsage = useCallback(async () => undefined as any, [])
-  const withdrawSubscriptionRevenue = useCallback(async () => undefined as any, [])
-  const getTotalPlanCount = useCallback(async () => 0, [])
-  const getTotalSubscriptionCount = useCallback(async () => 0, [])
-  const getDueSubscriptions = useCallback(async () => [] as number[], [])
   const refetchData = useCallback(async () => {}, [])
   const resetState = useCallback(() => { setError(null); setTxHash(undefined) }, [])
 
   return {
-    createSubscriptionPlan, updateSubscriptionPlan, deactivatePlan,
-    getPlan, getAgentPlans, getPlanSubscriptions, getAgentSubscriptionStats,
-    withdrawSubscriptionRevenue, getWithdrawableRevenue,
-    subscribe, processPayment, cancelSubscription, recordUsage,
+    createSubscriptionPlan,
+    getPlan, getAgentPlans, getAgentSubscriptionStats,
+    subscribe, cancelSubscription,
     getSubscription, getUserSubscriptions, isSubscriptionActive,
-    getTotalPlanCount, getTotalSubscriptionCount, getDueSubscriptions,
     releaseFunds, getSubscriptionDetail, getPlatformFeeBps, isTokenWhitelisted,
-    userSubscriptions: subs, agentPlans: plans, planSubscriptions: planSubs,
-    subscriptionStats: stats, totalPlanCount: 0, totalSubscriptionCount: 0,
-    dueSubscriptions: [], withdrawableRevenue: revenue,
-    isCreatingPlan: isCreating, isUpdatingPlan: false, isDeactivatingPlan: false,
-    isSubscribing: isSubbing, isProcessingPayment: false,
-    isCancellingSubscription: isCanceling, isRecordingUsage: false,
-    isWithdrawingRevenue: false, isLoading: isSubbing||isCanceling||isCreating,
+    userSubscriptions: subs, agentPlans: plans,
+    subscriptionStats: stats,
+    isCreatingPlan: isCreating,
+    isSubscribing: isSubbing,
+    isCancellingSubscription: isCanceling,
+    isLoading: isSubbing||isCanceling||isCreating,
     error, transactionHash: txHash, isConfirming, isConfirmed,
     refetchData, resetState,
   }

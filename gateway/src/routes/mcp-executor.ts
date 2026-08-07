@@ -9,48 +9,13 @@ import { ethers } from 'ethers'
 import type { Address } from 'viem'
 import { config } from '../config'
 import { chainDataReader } from '../services/chain-data-reader'
+import { CHAINS } from '../services/chain-config'
+import type { ChainKey, ChainInfo } from '../services/chain-config'
+import { hasSubscriptionAccess } from '../services/subscription-access'
 import { MCP_TOOLS } from './mcp-tools'
 
 /** address(0) — native token / ETH sentinel for payToken. */
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-
-// ── Chain Config ───────────────────────────────────────────────────────────
-
-type ChainKey = 'sepolia' | 'oxachain'
-
-interface ChainInfo {
-  rpcUrl: string
-  chainId: number
-  identityRegistry: string
-  subscriptionManager: string
-  a2aProtocol: string
-  reputationRegistry: string
-  configurationRegistry: string
-  multiEndpoint: string
-}
-
-const CHAINS: Record<ChainKey, ChainInfo> = {
-  sepolia: {
-    rpcUrl: config.rpcUrl,
-    chainId: config.chainId,
-    identityRegistry: config.identityRegistry,
-    subscriptionManager: config.subscriptionManager,
-    a2aProtocol: config.a2aProtocol,
-    reputationRegistry: config.reputationRegistry,
-    configurationRegistry: config.configurationRegistry,
-    multiEndpoint: config.multiEndpoint,
-  },
-  oxachain: {
-    rpcUrl: config.rpcUrlOxaChain,
-    chainId: config.chainIdOxaChain,
-    identityRegistry: config.identityRegistryOxaChain,
-    subscriptionManager: config.subscriptionManagerOxaChain,
-    a2aProtocol: config.a2aProtocolOxaChain,
-    reputationRegistry: config.reputationRegistryOxaChain,
-    configurationRegistry: config.configurationRegistryOxaChain,
-    multiEndpoint: config.multiEndpointOxaChain,
-  },
-}
 
 function resolveChain(args: Record<string, unknown>): ChainInfo {
   const key = (args.chain as string)?.toLowerCase() === 'oxachain' ? 'oxachain' : 'sepolia'
@@ -261,7 +226,7 @@ async function executeToolCall(name: string, args: Record<string, unknown>): Pro
         // Accept both 'subscriberAddress' and 'subscriber' parameter names
         const subscriber = (args.subscriberAddress || args.subscriber || args.subscriber_address) as string
         const subscriberAddr = ethers.getAddress(subscriber)
-        const ok = await chainDataReader.hasActiveSubscription(ck, subscriberAddr as Address, Number(args.agentId))
+        const ok = await hasSubscriptionAccess(subscriberAddr, Number(args.agentId), ck)
         return { active: ok, subscriber: subscriberAddr, agentId: Number(args.agentId), chain: chainLabel, chainId }
       }
       case 'agentx_subscription_detail': {

@@ -15,6 +15,20 @@ declare function aesEncrypt(plaintext: string, keyHex: string): string;
  */
 declare function aesDecrypt(encryptedBase64: string, keyHex: string): string;
 /**
+ * Encrypt with AES-256-GCM — master-key wire format.
+ * Layout: base64( IV[12] || authTag[16] || ciphertext ).
+ * Kept byte-for-byte compatible with the Gateway's legacy at-rest key
+ * encryption (`gateway/src/lib/crypto.ts`) so existing stored rows decrypt
+ * unchanged. New code should prefer `aesEncrypt`/`aesDecrypt` unless data
+ * written in this layout must be read.
+ */
+declare function encryptWithKey(plaintext: string, keyHex: string): string;
+/**
+ * Decrypt AES-256-GCM — master-key wire format
+ * (base64( IV[12] || authTag[16] || ciphertext )).
+ */
+declare function decryptWithKey(encryptedBase64: string, keyHex: string): string;
+/**
  * Generate a cryptographically random AES-256 key (hex, 64 chars).
  */
 declare function generateAesKey(): string;
@@ -105,4 +119,4 @@ declare function generateKeyPair(): {
  */
 declare function getPublicKey(privateKey: string): string;
 
-export { AgentPayload, AgentPrivatePayload, EncryptedPayload, PackResult, type PublishAgentConfig, type PublishAgentResult, aesDecrypt, aesEncrypt, decryptPayload, eciesDecrypt, eciesEncrypt, encryptPayload, generateAesKey, generateKeyPair, getPublicKey, packAgentForPublish, publishAgent, randomBytes, unpackAgent };
+export { AgentPayload, AgentPrivatePayload, EncryptedPayload, PackResult, type PublishAgentConfig, type PublishAgentResult, aesDecrypt, aesEncrypt, decryptPayload, decryptWithKey, eciesDecrypt, eciesEncrypt, encryptPayload, encryptWithKey, generateAesKey, generateKeyPair, getPublicKey, packAgentForPublish, publishAgent, randomBytes, unpackAgent };

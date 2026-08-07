@@ -116,3 +116,11 @@ export function startScheduleDaemon(): void {
   }, POLL_INTERVAL_MS)
   console.log(`[schedule-daemon] started (poll every ${POLL_INTERVAL_MS / 1000}s)`)
 }
+
+export function stopScheduleDaemon(): void {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+    console.log('[schedule-daemon] stopped')
+  }
+}
