@@ -77,6 +77,8 @@ export function x402Guard(req: Request, res: any, next: (err?: unknown) => void)
           payer: result.payer,
         }))
         log.info(`x402Guard allow via PAYMENT-SIGNATURE (scheme=${result.accepted.scheme}, amount=${result.settledAmount}, payer=${result.payer.slice(0, 10)})`)
+        // Mark paid-through so downstream access checks (e.g. agent-runs) exempt this caller
+        ;(req as any).x402Access = true
         next()
         return
       }
@@ -87,6 +89,7 @@ export function x402Guard(req: Request, res: any, next: (err?: unknown) => void)
       const credited = await verifyAndCredit(headerPayment, chain)
       if (credited !== null) {
         log.info(`x402Guard allow via X-PAYMENT (tx=${headerPayment})`)
+        ;(req as any).x402Access = true
         next()
         return
       }
@@ -100,6 +103,7 @@ export function x402Guard(req: Request, res: any, next: (err?: unknown) => void)
     const balance = await balanceOf(identity)
     if (balance >= priceWei() && (await deduct(identity))) {
       log.info(`x402Guard allow via balance (identity=${identity}, remaining=${(balance - priceWei()).toString()})`)
+      ;(req as any).x402Access = true
       next()
       return
     }

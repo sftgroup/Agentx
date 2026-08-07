@@ -2477,6 +2477,7 @@ var init_decodeAbiParameters = __esm({
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
+  A2AClient: () => import_payments3.A2AClient,
   A2ADaemon: () => A2ADaemon,
   A2AProtocol: () => A2AProtocol,
   A2A_VERSION: () => A2A_VERSION,
@@ -2501,10 +2502,13 @@ __export(index_exports, {
   LoopTraceEmitter: () => LoopTraceEmitter,
   MCPConnector: () => MCPConnector,
   MCP_VERSION: () => MCP_VERSION,
+  MPPClient: () => import_payments3.MPPClient,
   MultiEndpointClient: () => MultiEndpointClient,
   NoopTraceEmitter: () => NoopTraceEmitter,
   OpenAIProvider: () => OpenAIProvider,
   PAYMENT_VERSION: () => PAYMENT_VERSION,
+  PaymentsClient: () => import_payments3.PaymentsClient,
+  PeriodClient: () => import_payments3.PeriodClient,
   REGISTRY_VERSION: () => REGISTRY_VERSION,
   REPUTATION_VERSION: () => REPUTATION_VERSION,
   ReputationRegistry: () => ReputationRegistry,
@@ -2513,6 +2517,7 @@ __export(index_exports, {
   SubscriptionManager: () => SubscriptionManager,
   SubscriptionPayments: () => SubscriptionPayments,
   ToolExecutor: () => ToolExecutor,
+  X402Client: () => import_payments3.X402Client,
   ZERO_ADDRESS: () => ZERO_ADDRESS2,
   aesDecrypt: () => aesDecrypt,
   aesEncrypt: () => aesEncrypt,
@@ -2543,6 +2548,7 @@ __export(index_exports, {
   parseTokenURIJSON: () => parseTokenURIJSON,
   publishAgent: () => publishAgent,
   randomBytes: () => randomBytes,
+  sleep: () => sleep,
   subscribeToEvents: () => subscribeToEvents,
   unpackAgent: () => unpackAgent,
   wrapPlatformToolsAsSkills: () => wrapPlatformToolsAsSkills
@@ -5787,7 +5793,8 @@ var SubscriptionPayments = class {
 };
 
 // src/payment/index.ts
-var PAYMENT_VERSION = "0.1.0";
+var import_payments3 = require("@agentxv2/payments");
+var PAYMENT_VERSION = "0.2.0";
 
 // src/a2a/a2a.ts
 var A2A_ABI = {
@@ -6831,6 +6838,9 @@ var HttpTraceEmitter = class {
 };
 
 // src/skills/browser.ts
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 function extractAccessibleDOM() {
   if (typeof document === "undefined") {
     return "Browser DOM not available (not running in browser)";
@@ -6873,16 +6883,32 @@ function extractAccessibleDOM() {
   while (node = walker.nextNode()) {
     const el = node;
     const tag = el.tagName.toLowerCase();
-    const text = (el.textContent || "").trim().slice(0, 80);
+    const text = (el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 80);
     const id = el.id ? `#${el.id}` : "";
     const classes = el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
     const href = el.getAttribute("href");
     const placeholder = el.getAttribute("placeholder");
     const type = el.getAttribute("type");
+    const name = el.getAttribute("name");
+    const role = el.getAttribute("role");
+    const ariaLabel = el.getAttribute("aria-label");
     let desc = `<${tag}${id}${classes}`;
     if (href) desc += ` href="${href}"`;
     if (placeholder) desc += ` placeholder="${placeholder}"`;
     if (type) desc += ` type="${type}"`;
+    if (name) desc += ` name="${name}"`;
+    if (role) desc += ` role="${role}"`;
+    if (ariaLabel) desc += ` aria-label="${ariaLabel}"`;
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      if (el.value) desc += ` value="${String(el.value).slice(0, 60)}"`;
+      if (el instanceof HTMLInputElement && (el.type === "checkbox" || el.type === "radio")) {
+        desc += ` checked="${el.checked}"`;
+      }
+    } else if (el instanceof HTMLSelectElement && el.value) {
+      desc += ` value="${el.value}"`;
+    } else if (el instanceof HTMLAnchorElement) {
+      desc += ` target="${el.target || "_self"}"`;
+    }
     desc += ">";
     if (text) desc += `${text}`;
     desc += `</${tag}>`;
@@ -6896,7 +6922,8 @@ function executeBrowserAction(action) {
   }
   try {
     const el = findElement(action.selector, action.description);
-    if (!el && action.type !== "navigate" && action.type !== "extract") {
+    const needsEl = !["navigate", "extract", "getInfo", "back", "forward", "scroll"].includes(action.type);
+    if (!el && needsEl) {
       return { success: false, error: `Element not found: ${action.selector || action.description}` };
     }
     switch (action.type) {
@@ -6909,7 +6936,39 @@ function executeBrowserAction(action) {
         input.focus();
         input.value = action.value || "";
         input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
         return { success: true, result: `Typed: ${action.value}` };
+      }
+      case "press": {
+        const key = action.value || action.selector || "";
+        if (!key) return { success: false, error: "No key provided for press" };
+        const target = el || document.activeElement || document.body;
+        const opts = { bubbles: true, cancelable: true, key };
+        target.dispatchEvent(new KeyboardEvent("keydown", opts));
+        target.dispatchEvent(new KeyboardEvent("keyup", opts));
+        return { success: true, result: `Pressed: ${key}` };
+      }
+      case "hover": {
+        const target = el;
+        target.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+        target.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+        target.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+        return { success: true, result: `Hovered: ${action.selector || action.description || target.tagName}` };
+      }
+      case "select": {
+        const value = action.value || "";
+        if (el instanceof HTMLSelectElement) {
+          el.value = value;
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          return { success: true, result: `Selected: ${value}` };
+        }
+        if (el instanceof HTMLInputElement && (el.type === "checkbox" || el.type === "radio")) {
+          const checked = value === "" ? !el.checked : value.toLowerCase() === "true" || value === "1";
+          el.checked = checked;
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          return { success: true, result: `Checked: ${checked}` };
+        }
+        return { success: false, error: `Element is not a select/checkbox/radio: ${action.selector}` };
       }
       case "extract": {
         if (action.selector) {
@@ -6918,11 +6977,23 @@ function executeBrowserAction(action) {
         }
         return { success: true, result: extractAccessibleDOM() };
       }
+      case "getInfo": {
+        return {
+          success: true,
+          result: JSON.stringify({
+            url: window.location.href,
+            title: document.title,
+            readyState: document.readyState,
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+            scrollY: Math.round(window.scrollY)
+          })
+        };
+      }
       case "scroll": {
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
         } else {
-          window.scrollBy({ top: action.value ? parseInt(action.value) : 500, behavior: "smooth" });
+          window.scrollBy({ top: action.value ? parseInt(action.value) || 500 : 500, behavior: "smooth" });
         }
         return { success: true, result: "Scrolled" };
       }
@@ -6931,6 +7002,14 @@ function executeBrowserAction(action) {
         if (!url) return { success: false, error: "No URL provided" };
         window.location.href = url;
         return { success: true, result: `Navigating to ${url}` };
+      }
+      case "back": {
+        window.history.back();
+        return { success: true, result: "Navigated back" };
+      }
+      case "forward": {
+        window.history.forward();
+        return { success: true, result: "Navigated forward" };
       }
       default:
         return { success: false, error: `Unknown action type: ${action.type}` };
@@ -6955,7 +7034,8 @@ function findElement(selector, description) {
     const text = (el.textContent || "").toLowerCase();
     const placeholder = (el.getAttribute("placeholder") || "").toLowerCase();
     const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
-    if (text.includes(lower) || placeholder.includes(lower) || ariaLabel.includes(lower)) {
+    const name = (el.getAttribute("name") || "").toLowerCase();
+    if (text.includes(lower) || placeholder.includes(lower) || ariaLabel.includes(lower) || name.includes(lower)) {
       return el;
     }
   }
@@ -7172,6 +7252,7 @@ var ConversationClient = class {
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  A2AClient,
   A2ADaemon,
   A2AProtocol,
   A2A_VERSION,
@@ -7196,10 +7277,13 @@ var ConversationClient = class {
   LoopTraceEmitter,
   MCPConnector,
   MCP_VERSION,
+  MPPClient,
   MultiEndpointClient,
   NoopTraceEmitter,
   OpenAIProvider,
   PAYMENT_VERSION,
+  PaymentsClient,
+  PeriodClient,
   REGISTRY_VERSION,
   REPUTATION_VERSION,
   ReputationRegistry,
@@ -7208,6 +7292,7 @@ var ConversationClient = class {
   SubscriptionManager,
   SubscriptionPayments,
   ToolExecutor,
+  X402Client,
   ZERO_ADDRESS,
   aesDecrypt,
   aesEncrypt,
@@ -7238,6 +7323,7 @@ var ConversationClient = class {
   parseTokenURIJSON,
   publishAgent,
   randomBytes,
+  sleep,
   subscribeToEvents,
   unpackAgent,
   wrapPlatformToolsAsSkills

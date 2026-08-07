@@ -1,5 +1,42 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.9.2 → v0.9.3
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Generic engine 0.2.0** | `@agentxv2/payments` upgraded to `^0.2.0` — adds **MPP payment channels**, **stablecoin rails (EIP-3009 / Permit2)**, **period authorizations** (one-time N-period pre-authorization, no re-signing) and **a2a-pay** (two-phase paymentId). |
+| **New protocol clients re-exported** | `MPPClient` (open/voucher/topUp/settle/close), `A2AClient` (create/settle), `PeriodClient` (charge/authorization), plus `X402Client` / `PaymentsClient`, are now exported from the SDK root for integrators who drive those rails directly. |
+| **No breaking changes** | `SubscriptionPayments` API is unchanged (chain / fiat / x402 / hasAccess / fetchX402Info). The new exports are additive. |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.9.3   # or: npm install @agentxv2/sdk (latest = 0.9.3)
+```
+
+The Gateway you point at must run the matching payments release (MPP/period/a2a endpoints under `/api/v1/payments/mpp/*`, `/api/v1/payments/a2a/*`, `/api/v1/payments/period/*`).
+
+### Drive the new rails
+
+```ts
+import { SubscriptionPayments, MPPClient, A2AClient, PeriodClient } from '@agentxv2/sdk'
+
+const base = { baseUrl: 'https://gw.example.com' }
+const mpp = new MPPClient(base)          // payment channels
+const a2a = new A2AClient(base)          // two-phase paymentId
+const period = new PeriodClient(base)    // period authorizations
+```
+
+### Engine 0.2.1 — browser / bundler compatibility
+
+`@agentxv2/payments` `^0.2.0` resolves to **0.2.1** (a patch release). It removes every Node built-in module usage (`node:crypto` / `Buffer`) in favour of the **Web Crypto API** (`crypto.randomUUID` / `getRandomValues` / `crypto.subtle` HMAC / pure-base64 helpers) — the engine is now safe to bundle with webpack / Next.js. Previously, the SDK root re-export pulled `node:crypto` into the browser module graph and failed with `UnhandledSchemeError: Reading from "node:crypto" is not handled by plugins`.
+
+- **No SDK API change** — `SubscriptionPayments` and the re-exported protocol clients are unaffected.
+- **One 0.2.x internal change**: `StripeAdapter.verifyWebhookSignature()` is now `async` (Web Crypto `subtle` is asynchronous). Direct `StripeAdapter` consumers need `await`; the Gateway's `handleWebhook` already does.
+- `PAYMENT_VERSION` stays `'0.2.0'` — the engine API surface did not change between 0.2.0 and 0.2.1.
+
 ## v0.8.11 → v0.9.2
 
 ### What's New
@@ -48,6 +85,37 @@ const ok = await payments.hasAccess(3, '0xabc')
 ### Breaking Changes
 
 None — `pay()`, `hasAccess()`, `fetchX402Info()` and all result types are unchanged. The only behavioral difference is that fiat / x402 / access requests are routed through `/api/v1/payments` (requires the upgraded Gateway).
+
+## v0.8.9 → v0.9.0 (Browser Control)
+
+### What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Browser Skill — more actions** | `executeBrowserAction()` gains `hover`, `press` (keyboard events), `select` (SELECT value / checkbox+radio checked), `back` / `forward` (history), `getInfo` (url/title/readyState/viewport/scrollY) |
+| **Richer DOM snapshot** | `extractAccessibleDOM()` now annotates `name` / `role` / `aria-label`, form `value` (input/textarea/select), `checked` state for checkbox/radio, and `target` for anchors — the snapshot is actionable for the agent |
+| **Async pacing helper** | new `sleep(ms)` export for agent loops that need delays between actions |
+| **Better element matching** | `findElement` fallback also matches the `name` attribute, not just text/placeholder/aria-label |
+
+### Upgrade Steps
+
+```bash
+npm install @agentxv2/sdk@0.9.0
+```
+
+### Use the extended skills
+
+```ts
+import { executeBrowserAction, extractAccessibleDOM, sleep } from '@agentxv2/sdk/skills'
+
+executeBrowserAction({ type: 'hover', description: 'settings menu' })
+executeBrowserAction({ type: 'select', selector: '#chain', value: 'oxachain' })
+executeBrowserAction({ type: 'press', value: 'Enter' })
+executeBrowserAction({ type: 'getInfo' })   // → { url, title, viewport, ... }
+await sleep(300)
+```
+
+No breaking changes — all additions are new action types / fields; existing calls behave as before.
 
 ## v0.8.10 → v0.8.11
 
