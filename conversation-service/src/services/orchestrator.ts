@@ -27,6 +27,12 @@ export interface DelegateOffChainParams {
   depth: number
 }
 
+export interface OnChainApprovalRequest {
+  targetAgentId: number
+  taskType: string
+  inputData: string
+}
+
 export class OrchestratorService {
   private runner: AgentRunnerService | null = null
 
@@ -102,19 +108,29 @@ export class OrchestratorService {
     )
   }
 
-  /** On-chain rail: create an A2A task (audit trail / settlement / reputation). */
+  /**
+   * On-chain rail: the USER's wallet must create the A2A task (they pay the
+   * gas and become the on-chain client — the contract records
+   * clientAddress = msg.sender). This validates the access boundary and
+   * returns the approval payload that the run stream emits as an
+   * `onchain_approval_required` event for the frontend to sign.
+   */
   async delegateOnChain(params: {
     tenantAddress: string
     targetAgentId: number
     message: string
     taskType: string
-  }): Promise<{ taskId: number; status: string }> {
-    const data = await this.call('/create-task', {
-      tenantAddress: params.tenantAddress,
+  }): Promise<OnChainApprovalRequest> {
+    const allowed = await this.checkAccess(params.tenantAddress, params.targetAgentId)
+    if (!allowed) {
+      throw new Error(
+        `No access to Agent #${params.targetAgentId} — only agents you own or have an active subscription to can be delegated to`
+      )
+    }
+    return {
       targetAgentId: params.targetAgentId,
       taskType: params.taskType,
       inputData: params.message,
-    })
-    return { taskId: Number(data.taskId), status: String(data.status ?? 'queued') }
+    }
   }
 }
