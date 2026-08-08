@@ -274,6 +274,8 @@ const client = new ConversationClient({
 > **边界说明（通用）**：以上仅针对 **AgentX 平台 MCP**（Gateway `/mcp` 的 `agentx_gateway_*` 工具，共 6 个：`chat` / `create_session` / `create_task` / `get_task` / `list_tasks` / `cancel_task`）。调用方**自建**的 MCP 服务器（如自部署的 aitrader-mcp、RAG MCP）鉴权由其自行配置，**不在平台边界内**——是否匿名放行、是否提供会话/任务工具，由调用方自己决定。
 >
 > **B 端（含 aihunter 等）最终用户的使用路径**：B 端 Key **不能**调平台 MCP 对话/任务工具（仅注册用户 JWT，R14 收紧，维持不变）。B 端用户的对话/任务能力已由 **REST + 一个 `agentx_` Key + `X-End-User-Id: 0x<钱包>`** 完整覆盖（端用户订阅转发，见 [§6](#6-sdk-接入示例)）——无需走 MCP。若未来需打通「B 端用户 → AgentX 注册用户 JWT」接入平台 MCP，作为独立需求另行设计。
+>
+> **B 端自建对话工具（inline 注入）**：若 B 端要让自己的 MCP/HTTP 工具进入对话，可直连 Conversation Service 的 `loadInline`——外部应用直接注入自己的 prompt + skills（含 `execution.type='mcp'/'http'` 工具），跳过平台 Agent 查找（内部 API，非公开 REST）。对话工具的完整模型见 [publish-subscribe-pay.md §1.6](publish-subscribe-pay.md)。
 
 对话/任务工具的参数使用 snake_case（`access_token`/`session_id`/`task_id`/`agent_id`），鉴权凭据直接放在 `arguments` 中：
 
