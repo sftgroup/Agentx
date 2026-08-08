@@ -196,6 +196,27 @@ const result = await publishAgent({ agent, publicKey, uploader })
 
 ---
 
+### 1.7 附：SDK 连接机制与订阅付费分账（2026-08-08 确认）
+
+> 面向调用方/集成方的商业模式确认：用 SDK 连接的是不是 AgentX 市场？订阅付费谁收？
+
+**SDK 连接机制**：
+- SDK 连接点由构造参数决定：`new ConversationClient({ gatewayUrl, apiKey, llmApiKey })` —— `gatewayUrl` 由调用方配置。
+- B 端调用方（交付包 `agentx-callers.env`）配置的是**我们的生产网关** `http://43.159.60.46:3090`。
+- 关键约束：`agentx_` Key 是**平台签发的**，只有我们的 Gateway 能校验——调用方用我们的 Key 就必须连我们的网关。所以 **「我们的 SDK + 我们的 Key」= 连接我们的 AgentX 市场**。SDK 本身开源，若配置自建 Gateway 则需自签 Key（另一种独立部署形态，不在此文档范围）。
+
+**订阅付费分账逻辑**（钱先进平台托管，平台抽成后结算给发布者）：
+
+| 轨道 | 钱先进哪 | 分成 |
+|---|---|---|
+| `chain` | `SubscriptionManager` v3 合约 **escrow**（链上托管，结算期释放） | **平台 2.5%（250bps）+ 发布者 97.5%**；链上累计可查 `platformFeesCollected`（admin revenue，按 token 分组） |
+| `fiat` | **平台统一 Stripe 账号**（`STRIPE_SECRET_KEY` 平台配置，非发布者各自 Stripe）→ `fiat_subscriptions` 台账 | 按渠道分成模型结算：`share_bps` = `amount_paid × bps / 10000`（如 oxa-partner 125bps=1.25%）；打款人工发起、台账可审计；生产当前未启用（无 Stripe key → 503） |
+| `x402` | 收款到平台配置的 `X402_PAY_TO` 钱包 → 注册访问 | 同台账模型 |
+
+> **结论**：通过市场订阅 = **平台托管收款 + 抽成**——钱先进平台侧（链上 escrow / 平台 Stripe / 平台收款钱包），平台按比例抽成后结算给 Agent 发布者。**不是平台全额收**：大头归发布者（链上 97.5%）；平台扮演支付管道 + 托管 + 2.5% 平台费 + 台账/审计；渠道引荐方另按 `share_bps` 分成。
+
+---
+
 ## 二、订阅 Agent（Subscribe）
 
 ### 2.1 三种支付方式（Multi-Rail）
