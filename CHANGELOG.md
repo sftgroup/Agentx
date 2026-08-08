@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-08-08 — 发布 sdk@0.10.2（createTask endUserId header 加固 + tenantKeyId 隔离说明）
+
+- **`@agentxv2/sdk@0.10.2` 已发布 npm**（patch，非破坏性增量）：
+  - 将 0.10.1 发布后的仓库级加固（`8f22e88`，此前「未发版，随下次发版带上」）正式纳入：`createTask()` per-request `endUserId` 与 `stream()` 机制一致，统一以 `X-End-User-Id` header 发送（覆盖构造级；0.10.1 已发布版本走请求体透传，Gateway 优先 header、回退 body，两版行为兼容，调用方零改动）
+  - 文档：README `tenantKeyId` note 补充「严格按租户隔离」说明（Key 轮换 / 切换租户后必须用新 Key 重新存 BYOK）
+- 验证：build + typecheck 通过；vitest **32/32**；npm 远端 `latest = 0.10.2` 确认
+- 相关仓库文档同步见本日条目「tenantKeyId 严格按租户隔离（B 端审计反馈）」
+
+---
+
+## 2026-08-08 — 文档澄清：`tenantKeyId` 严格按租户隔离（B 端审计反馈）
+
+**现象**：`createTask` 报 `400 Tenant API key not found or inactive`。
+**根因**：新租户（如 `partner-pocketx-wallet`）沿用了旧租户（如 `partner-autoops`）的 `tenantKeyId` —— [chat-tasks.ts](gateway/src/routes/chat-tasks.ts) / `agent-runs.ts` 按 `tenant_id` 查 `tenant_api_keys`（`WHERE id = $1 AND tenant_id = $2`），`tenantKeyId` 严格租户隔离，跨租户复用必然 400。
+**处理（调用方侧）**：用新 Key 调 `POST /api/v1/tenant/keys` 为新租户存 BYOK → 取新 `tenantKeyId` 更新环境变量。
+**文档**：`integration-callers.md`（§6 BYOK 段 + FAQ 新增该错误条目）、`sdk/README.md`（tenantKeyId note 补充英文说明）。**无代码变更**。
+
+---
+
 ## 2026-08-08 — 文档：对话中引入自己的 MCP（Skill 执行模型）
 
 新增 [publish-subscribe-pay.md §1.6](docs/publish-subscribe-pay.md)「Skill 执行模型：如何在对话中引入你自己的 MCP」：

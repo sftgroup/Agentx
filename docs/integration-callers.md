@@ -225,6 +225,7 @@ const client = new ConversationClient({
 
 > ⚠️ **B 端（partner）任务强制 BYOK**（2026-08-08 起）：partner 租户创建任务（`POST /sessions/:id/tasks`）**必须**携带 LLM Key——`X-Llm-Api-Key` 请求头、`llmApiKey` 或 `tenantKeyId` 三者之一，否则返回 `400 { code: "LLM_KEY_REQUIRED" }`（防止后台任务消耗平台 LLM 预算）。对话（chat）与 user 类租户不受此限制，未传时走平台兜底 Key。
 > **适用范围**：BYOK 守卫约束 partner 经 **REST / SDK 创建的并行任务**（`POST /sessions/:id/tasks`）。平台托管后台路径（用户定时任务 schedule、编排触发）不经过该守卫——它们按租户存储 Key（`tenantKeyId`）或平台兜底执行；若需后台任务也走调用方自己的 Key，配置存储式 `tenantKeyId` 即可。
+> ⚠️ **`tenantKeyId` 严格按租户隔离**（2026-08-08 审计确认）：`tenant_api_keys` 按 `tenant_id` 归属，每个租户只能使用**自己**在 `POST /api/v1/tenant/keys` 存的 Key。**Key 轮换 / 切换租户后，必须用新 Key（`agentx_...`）重新调 `POST /api/v1/tenant/keys` 为新租户存 BYOK**，得到新的 `tenantKeyId` 并更新环境变量；沿用旧租户的 `tenantKeyId` 会报 `400 { error: "Tenant API key not found or inactive" }`（不是 Key 失效，而是该 ID 不属于当前租户）。
 > 若任务「瞬间 error」，先检查是否未配置 BYOK / BYOK 无效（见[常见问题](#9-常见问题)）
 
 ## 7. HTTP API 参考
@@ -316,6 +317,7 @@ curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
 | `401` 但 Key 未变 | Key 被团队内其他人轮换 | 联系平台管理员重新签发 |
 | 任务瞬间 `error` | 平台兜底 LLM Key 无效 / 未配置 BYOK | 配置团队自己的 LLM Key（BYOK 透传，见 [§6](#6-sdk-接入示例)），如仍失败检查 Key 的有效性与配额 |
 | 报 `400 LLM_KEY_REQUIRED` | partner 租户创建任务未携带 LLM Key | 携带 `X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId`（partner 任务强制 BYOK，见 [§6](#6-sdk-接入示例)） |
+| 报 `400 Tenant API key not found or inactive` | `tenantKeyId` 不属于当前租户（Key 轮换 / 切换租户后沿用了旧租户的 `tenantKeyId`） | 用当前租户的 `agentx_` Key 调 `POST /api/v1/tenant/keys` 重新存 BYOK，取新 `tenantKeyId` 更新 `.env`（`tenantKeyId` 严格按租户隔离，见 [§6](#6-sdk-接入示例)） |
 | 报 `403 PARTNER_TASKS_DISABLED` | **该错误已废弃**（2026-08-08 起 B 端 Key 与注册用户能力统一） | 确认 Gateway 已升级；一个 `agentx_` Key 即可，无需第二把 Key |
 | 多个调用方共用 Key | 用量 / 配额无法区分 | 每个调用方使用独立 Key |
 | 无流式事件 | SSE 被网关 / 代理缓冲 | 确认使用 HTTP/1.1 且未启用 gzip 缓冲 |
