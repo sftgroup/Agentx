@@ -51,17 +51,19 @@ AgentX 是一个多租户 AI Agent 平台，对外提供：
 
 ## 3. 环境变量配置
 
-每个调用方只需配置两个变量：
+每个调用方配置一个鉴权 Key（`agentx_`），另按应用侧建议显式配置 LLM Key：
 
 | 变量 | 说明 | 必填 | 示例 |
 |---|---|---|---|
 | `AGENTX_GATEWAY_URL` | AgentX 网关地址（从本团队网络可达） | ✅ | `http://43.159.60.46:3090` |
 | `AGENTX_CONVERSATION_API_KEY` | 本团队租户 Key（`agentx_` 开头） | ✅ | `agentx_<your-key>` |
+| `AGENTX_CONVERSATION_LLM_KEY` | **应用侧建议显式配置**：本团队自己的 LLM API Key（openai/deepseek 等）。SDK 构造时传入 `llmApiKey`，所有并行任务自动带 BYOK，避免每次请求重复传参，也防止误用平台兜底 Key | 建议 ✅ | `sk-<your-llm-key>` |
 
 ```bash
-# .env 示例
+# .env 示例（应用侧建议：LLM Key 显式配置，任务自动 BYOK）
 export AGENTX_GATEWAY_URL=http://43.159.60.46:3090
 export AGENTX_CONVERSATION_API_KEY=agentx_<your-key>
+export AGENTX_CONVERSATION_LLM_KEY=sk-<your-llm-key>
 ```
 
 ### 多调用方场景
@@ -148,6 +150,7 @@ import { ConversationClient } from '@agentxv2/sdk/conversation'
 const client = new ConversationClient({
   gatewayUrl: process.env.AGENTX_GATEWAY_URL!,
   apiKey: process.env.AGENTX_CONVERSATION_API_KEY!, // X-Api-Key 鉴权
+  llmApiKey: process.env.AGENTX_CONVERSATION_LLM_KEY, // 建议显式配置：并行任务自动带 BYOK（partner 任务必须，见下）
 })
 ```
 
@@ -155,6 +158,7 @@ const client = new ConversationClient({
 
 ```ts
 // 1. 创建会话（幂等：同 agent+租户重复创建返回已有会话）
+//    建议补传 agentId，将会话绑定到目标 Agent，任务上下文更完整
 const session = await client.createSession({ agentId: 1 })
 
 // 2. 提交任务，立即返回 taskId，后台并行执行（body: { agentId, message }）
