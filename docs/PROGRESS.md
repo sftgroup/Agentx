@@ -1,6 +1,6 @@
 # AgentX — 项目任务清单与进度
 
-> Last updated: 2026-08-08 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
+> Last updated: 2026-08-09 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
 > 状态图例：✅ 完成 · ⏸ 代码完成待外部前提 · 🔧 进行中 · ⏳ 待办 · 🔵 技术债
 
 ---
@@ -144,6 +144,7 @@
   - R14 ✅ 已完成（2026-08-06 · B 端仅对话 + MCP 仅注册用户）→ **2026-08-08 部分修订**：并行任务统一 P9 能力位（见 R15）
   - R15 ✅ 已完成（2026-08-08 · B 端能力修订补完：强制 BYOK + 端用户订阅转发 + kind 统一 + sdk@0.10.1）
   - R16 ✅ 已完成（2026-08-08 · 审计闭环与文档补完：createTask 签名修正 + 边界澄清 + BYOM 文档 + 新调用方 key）
+  - R17 ⏳ 待 infraX 集成完成（2026-08-08 代码提交 `323d3c9`，暂不发布；发布流程见下「### R17 支付引擎迁移发布流程」）
 
 ### 开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）
 
@@ -339,6 +340,35 @@
   10. **发布 sdk@0.10.3**（2026-08-08）：exports 暴露 `"./package.json"`（修复 `ERR_PACKAGE_PATH_NOT_EXPORTED`，调用方可直接 `require('@agentxv2/sdk/package.json').version`）——纯元数据 patch；生产三服务同步升级 + build + restart
 - 验收/验证：三处（本地 / GitHub / 生产）同步在最新 HEAD `8f22e88`；SDK typecheck + 单测 **32/32**；gateway **46/46** 无回归（本次无 gateway 代码变更）；新 key `GET /tenant/me` **200**
 - 影响面：调用方零代码改动；partner 建任务带 BYOK 是唯一新增要求（已文档化为显式 `AGENTX_CONVERSATION_LLM_KEY` 建议）
+
+### R17 支付引擎迁移发布流程（⏳ 待 infraX 集成完成，2026-08-08）
+
+> 背景：通用支付引擎移交 infraX，以 `@0xinfrax/payments@0.1.0` 发布；AgentX 依赖切换代码已完成并提交（commit `323d3c9`），**暂不发布**，等 infraX 集成完成后再执行本流程。
+> 方案文档：[docs/payments-infrax-migration.md](payments-infrax-migration.md)
+
+| 阶段 | # | 任务 | 命令 / 通过标准 | 状态 |
+|---|---|---|---|---|
+| A 前置确认 | A1 | 确认 infraX 集成完成 | 对方确认 / infraX 仓库已有消费方接入 | ⏳ |
+| | A2 | 本地 main 最新且干净 | `git pull`；`git status` 干净 | ⏳ |
+| | A3 | 新包可查 | `npm view @0xinfrax/payments version` → `0.1.0`（404 则 `--prefer-online` 或等待 CDN） | ⏳ |
+| B sdk 验证+发布 | B1 | sdk 全量验证 | `npm run build && npm run typecheck && npm test` 全绿 | ⏳ |
+| | B2 | dist 引用确认 | `dist/` 无 `@agentxv2/payments` 残留 | ⏳ |
+| | B3 | bump 0.11.0 | `npm version 0.11.0`（commit + tag） | ⏳ |
+| | B4 | 发布 | `npm publish --registry=https://registry.npmjs.org/` | ⏳ |
+| | B5 | 发布验证 | `npm view @agentxv2/sdk@0.11.0 dependencies` 含 `@0xinfrax/payments` | ⏳ |
+| C gateway 升级 | C1 | 升级 sdk | `npm install @agentxv2/sdk@^0.11.0 --registry=https://registry.npmjs.org/` | ⏳ |
+| | C2 | lock 干净 | `package-lock.json` 无 `@agentxv2/payments` / `../payments` | ⏳ |
+| | C3 | 复跑验证 | `npm run build && npm run typecheck && npm test` 全绿 | ⏳ |
+| D 旧包+文档 | D1 | 旧包 deprecate | `npm deprecate @agentxv2/payments "已迁移至 @0xinfrax/payments"` | ⏳ |
+| | D2 | sdk CHANGELOG 0.11.0 条目 | 依赖切换 / `PAYMENT_VERSION`→0.1.0 / 升级提示 | ⏳ |
+| | D3 | PROGRESS + 方案文档更新 | 本表打勾、§三/§四标记完成 | ⏳ |
+| | D4 | 提交推送 | commit + push | ⏳ |
+| E 生产升级 | E1 | 生产机升级 sdk | `npm install @agentxv2/sdk@^0.11.0 --registry=https://registry.npmjs.org/`（生产 `~/.npmrc` 为腾讯云镜像，须显式官方 registry，不改全局） | ⏳ |
+| | E2 | 重启 + 冒烟 | `/api/v1/payments/info`、`/access` 正常；x402/fiat 各验一笔 | ⏳ |
+| F 通知收尾 | F1 | 应用方通知 | 通用文案：升级 `@agentxv2/sdk` 至 0.11.x，业务零改动 | ⏳ |
+| | F2 | 首次跟随演练 | 与 infraX 约 `@0xinfrax/payments@0.1.1` 走一遍完整跟随 check-list | ⏳ |
+
+- 回滚预案：依赖回滚 `npm install @agentxv2/sdk@0.10.3` / `@agentxv2/payments@^0.2.2`（官方 registry）；代码回滚 `git revert 323d3c9`（旧包未删，双保险）
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 
