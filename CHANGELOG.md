@@ -56,6 +56,9 @@ AgentX 平台侧已全部闭环。剩余为**应用侧（B 端调用方）实践
 - **`@agentxv2/sdk@0.10.1` 已发布 npm**（patch，非破坏性增量）：
   - `ConversationCreateTaskParams.endUserId?` / `ConversationChatParams.endUserId?` — per-request 端用户钱包透传（B 端订阅转发：`0x` 钱包按该钱包订阅授权，`createSession` 原本已支持）
   - 文档：B 端 key 与用户 JWT 差异对照（UPGRADE.md）、MCP 边界说明（README）
+- **仓库级加固（未发版，随下次发版带上，2026-08-08 审查后）**：
+  - `createTask()` 的 per-request `endUserId` 统一以 `X-End-User-Id` header 发送（与 `stream()` 机制一致；0.10.1 已发布版本走请求体透传，Gateway 优先 header、回退 body，两版行为兼容，调用方无需改动）
+- **澄清（防误解，2026-08-08 审查后写入 UPGRADE/README/integration-callers）**：`endUserId` **全程可选、缺省不会被拒**——缺省授权主体回退租户自身钱包（user 天然=用户钱包可用；partner 不代理，链上授权失败时返回 `403 AGENT_ACCESS_DENIED`）；非 `0x` 值仅记忆隔离。平台**无**「必须带 endUserId」的强制校验。
 - **平台侧强制变化（Gateway 已上线，调用方需知悉）**：
   - partner（B 端）任务**强制 BYOK**：`X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId` 三者之一，否则 `400 LLM_KEY_REQUIRED`（防平台预算被后台任务消耗）
   - **平台 MCP**（`/mcp`，6 个 `agentx_gateway_*` 工具）仅接受注册用户 `access_token`；调用方**自建** MCP 不受限

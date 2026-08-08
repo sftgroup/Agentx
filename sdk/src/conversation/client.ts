@@ -340,9 +340,11 @@ export class ConversationClient {
    * configured to disallow multi-task / sub-agent.
    */
   async createTask(params: ConversationCreateTaskParams): Promise<ConversationTask> {
+    const headers = this._headers()
+    if (params.endUserId) headers['X-End-User-Id'] = params.endUserId
     const res = await fetch(`${this.baseUrl}/api/v1/sessions/${params.sessionId}/tasks`, {
       method: 'POST',
-      headers: this._headers(),
+      headers,
       body: JSON.stringify(params),
     })
     const body = await res.json().catch(() => ({}))

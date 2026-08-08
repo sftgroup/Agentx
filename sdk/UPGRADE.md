@@ -29,6 +29,8 @@
 
 B 端（partner 租户）请求带 `X-End-User-Id: 0x<钱包地址>`（或 body `endUserId`）时，网关改用该钱包做「拥有 / 订阅」授权检查，通过即放行对话 / 任务——实现「我的最终用户已订阅 → 我可代为对话」。不传或非 `0x` 地址时回退到租户自身授权；端用户记忆隔离不变。
 
+> ⚠️ **`endUserId` 是可选字段，缺省**不会**被拒**（2026-08-08 澄清）：不传时授权主体回退为**租户自身钱包**——注册用户（kind=user）租户钱包即用户钱包，**天然可用**；partner 租户不传 `0x` 端用户钱包则**不代理**（退化为租户自身 `partner-*` 地址，非链地址无法命中链上订阅，链上授权失败时返回 `403 AGENT_ACCESS_DENIED`），但这与「缺 `endUserId` 被拒绝」语义不同——不存在「必须带 endUserId」的强制校验。非 `0x` 的 `endUserId` 仅作记忆隔离，不触发订阅转发。
+
 ### B 端 key 与用户 JWT 调用 sessions/tasks 的差异对照
 
 两者在「会话 / 并行任务」能力判定上一致（统一 P9 能力位），其余维度差异如下：
@@ -46,11 +48,11 @@ B 端（partner 租户）请求带 `X-End-User-Id: 0x<钱包地址>`（或 body 
 
 ### SDK 0.10.1 — per-request `endUserId`（已发布 npm，2026-08-08）
 
-新增（non-breaking）：
+新增（non-breaking，`endUserId` 全程可选）：
 
-- `ConversationCreateTaskParams.endUserId?` — `createTask({ ..., endUserId })` 请求体透传
-- `ConversationChatParams.endUserId?` — `stream({ ..., endUserId })` 时作为 `X-End-User-Id` header 发送（覆盖构造级）
-- `createSession({ ..., endUserId })` 原本已支持
+- `ConversationChatParams.endUserId?` — `stream({ ..., endUserId })` 作为 `X-End-User-Id` header 发送（覆盖构造级）
+- `ConversationCreateTaskParams.endUserId?` — `createTask({ ..., endUserId })`：请求体透传 + 仓库级加固统一以 `X-End-User-Id` header 发送（覆盖构造级；Gateway 优先 header、回退 body，老客户端 body 透传仍兼容）
+- `createSession({ ..., endUserId })` 原本已支持（请求体透传）
 
 ```ts
 // B 端代调：按最终用户订阅授权

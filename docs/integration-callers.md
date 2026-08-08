@@ -248,7 +248,7 @@ const client = new ConversationClient({
 | DELETE | `/api/v1/tasks/:taskId` | 取消任务 |
 | GET | `/api/v1/tasks/:taskId/events` | SSE 事件流（重放历史事件后实时推送，30s 心跳） |
 
-> `X-End-User-Id` 请求头（或 body `endUserId`）可选：传 `0x` 钱包地址时按该用户订阅授权（B 端代调）；传其他值仅作记忆隔离。
+> `X-End-User-Id` 请求头（或 body `endUserId`）**可选，缺省不会被拒**（2026-08-08 澄清）：传 `0x` 钱包地址时按该用户订阅授权（B 端代调）；传其他值仅作记忆隔离。不传时授权主体回退到**租户自身钱包**——注册用户天然可用；partner 租户仅表示**不代理**（`partner-*` 非链地址无法命中链上订阅，授权失败时返回 `403 AGENT_ACCESS_DENIED`，非「缺 endUserId」拒绝）。平台**无**「必须带 endUserId」的强制校验。
 
 ### 对话
 
