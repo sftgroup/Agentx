@@ -220,6 +220,7 @@ const client = new ConversationClient({
 - 优先级：`tenantKeyId`（服务器解密注入）> 请求头 / `llmApiKey` > 平台兜底 Key
 
 > ⚠️ **B 端（partner）任务强制 BYOK**（2026-08-08 起）：partner 租户创建任务（`POST /sessions/:id/tasks`）**必须**携带 LLM Key——`X-Llm-Api-Key` 请求头、`llmApiKey` 或 `tenantKeyId` 三者之一，否则返回 `400 { code: "LLM_KEY_REQUIRED" }`（防止后台任务消耗平台 LLM 预算）。对话（chat）与 user 类租户不受此限制，未传时走平台兜底 Key。
+> **适用范围**：BYOK 守卫约束 partner 经 **REST / SDK 创建的并行任务**（`POST /sessions/:id/tasks`）。平台托管后台路径（用户定时任务 schedule、编排触发）不经过该守卫——它们按租户存储 Key（`tenantKeyId`）或平台兜底执行；若需后台任务也走调用方自己的 Key，配置存储式 `tenantKeyId` 即可。
 > 若任务「瞬间 error」，先检查是否未配置 BYOK / BYOK 无效（见[常见问题](#9-常见问题)）
 
 ## 7. HTTP API 参考
@@ -267,6 +268,8 @@ const client = new ConversationClient({
 > ⚠️ **MCP 通道的对话 / 任务工具仅接受注册用户 `access_token`（钱包签名登录 Gateway 签发的 JWT），B 端集成 Key（`agentx_...`）不可用于 MCP 对话 / 任务**（R14 收紧，2026-08-06 起）。若你的调用方只有 B 端 Key，请改用 REST（`/api/v1/sessions*`）或 SDK `ConversationClient`——REST 通道一个 `agentx_` Key 即可。链上只读 / 写工具不受此限制。
 >
 > **边界说明（通用）**：以上仅针对 **AgentX 平台 MCP**（Gateway `/mcp` 的 `agentx_gateway_*` 工具，共 6 个：`chat` / `create_session` / `create_task` / `get_task` / `list_tasks` / `cancel_task`）。调用方**自建**的 MCP 服务器（如自部署的 aitrader-mcp、RAG MCP）鉴权由其自行配置，**不在平台边界内**——是否匿名放行、是否提供会话/任务工具，由调用方自己决定。
+>
+> **B 端（含 aihunter 等）最终用户的使用路径**：B 端 Key **不能**调平台 MCP 对话/任务工具（仅注册用户 JWT，R14 收紧，维持不变）。B 端用户的对话/任务能力已由 **REST + 一个 `agentx_` Key + `X-End-User-Id: 0x<钱包>`** 完整覆盖（端用户订阅转发，见 [§6](#6-sdk-接入示例)）——无需走 MCP。若未来需打通「B 端用户 → AgentX 注册用户 JWT」接入平台 MCP，作为独立需求另行设计。
 
 对话/任务工具的参数使用 snake_case（`access_token`/`session_id`/`task_id`/`agent_id`），鉴权凭据直接放在 `arguments` 中：
 
