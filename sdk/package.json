@@ -1,6 +1,6 @@
 {
   "name": "@agentxv2/sdk",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "description": "AgentX — Decentralized AI Agent SDK with ReAct AgentLoop + Multi-Tenant LLM Providers",
   "main": "dist/index.js",
   "types": "dist/index.d.mts",
@@ -65,7 +65,8 @@
       "types": "./dist/conversation/index.d.mts",
       "import": "./dist/conversation/index.mjs",
       "require": "./dist/conversation/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
