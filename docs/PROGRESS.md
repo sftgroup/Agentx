@@ -336,6 +336,7 @@
   7. **SDK 审查加固 + endUserId 澄清**（`8f22e88`，**已随 0.10.2 发版**）：① `createTask()` per-request `endUserId` 统一以 `X-End-User-Id` header 发送（与 `stream()` 机制一致；0.10.1 已发布版本走请求体透传，Gateway 优先 header 回退 body，两版兼容，调用方零改动）；② 澄清 `endUserId` **全程可选、缺省不会被拒**——缺省授权主体回退租户自身钱包（user 天然=用户钱包；partner 不代理，链上失败返回 `403 AGENT_ACCESS_DENIED`），非 `0x` 仅记忆隔离，平台**无**「必须带 endUserId」强制校验（否定审计方第 6 条「sessions/tasks 必须带 endUserId / gatewayConfig() 统一注入」的不实描述，`gatewayConfig()` 全仓库 0 匹配）
   8. **tenantKeyId 租户隔离澄清**（B 端审计反馈 ②）：`tenant_api_keys` 按 `tenant_id` 归属，`tenantKeyId` 跨租户复用报 `400 Tenant API key not found or inactive`（pocketx-wallet 沿用 autoops 的 tenantKeyId 触发）；已文档化「key 轮换 / 切换租户后必须用新 Key 重新存 BYOK」——`integration-callers.md` §6 + FAQ、`sdk/README.md` tenantKeyId note；无代码变更
   9. **发布 sdk@0.10.2**（2026-08-08）：#7 的仓库级加固正式纳入 npm（patch）——build + typecheck 通过、vitest **32/32**、远端 `latest = 0.10.2` 确认；UPGRADE/CHANGELOG 同步
+  10. **发布 sdk@0.10.3**（2026-08-08）：exports 暴露 `"./package.json"`（修复 `ERR_PACKAGE_PATH_NOT_EXPORTED`，调用方可直接 `require('@agentxv2/sdk/package.json').version`）——纯元数据 patch；生产三服务同步升级 + build + restart
 - 验收/验证：三处（本地 / GitHub / 生产）同步在最新 HEAD `8f22e88`；SDK typecheck + 单测 **32/32**；gateway **46/46** 无回归（本次无 gateway 代码变更）；新 key `GET /tenant/me` **200**
 - 影响面：调用方零代码改动；partner 建任务带 BYOK 是唯一新增要求（已文档化为显式 `AGENTX_CONVERSATION_LLM_KEY` 建议）
 

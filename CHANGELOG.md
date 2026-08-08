@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-08-08 — 发布 sdk@0.10.3（exports 暴露 ./package.json）
+
+- **`@agentxv2/sdk@0.10.3` 已发布 npm**（patch，纯元数据，无行为变化）：
+  - `exports` 新增 `"./package.json": "./package.json"`——此前 `require('@agentxv2/sdk/package.json')` 报 `ERR_PACKAGE_PATH_NOT_EXPORTED`（exports 模式未列出的子路径全部禁止），调用方/运维读取包版本需用绝对路径绕过
+  - 现在调用方与验证脚本可直接 `require('@agentxv2/sdk/package.json').version`（Node 社区惯例，viem/ethers 等均暴露）
+- 验证：build + typecheck 通过；vitest **32/32**；npm `latest = 0.10.3` 确认
+
+---
+
 ## 2026-08-08 — 发布 sdk@0.10.2（createTask endUserId header 加固 + tenantKeyId 隔离说明）
 
 - **`@agentxv2/sdk@0.10.2` 已发布 npm**（patch，非破坏性增量）：

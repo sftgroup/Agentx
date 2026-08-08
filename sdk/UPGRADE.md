@@ -67,6 +67,13 @@ const t = await client.createTask({ sessionId: session.id, agentId: 42, message:
 - `createTask()` 的 per-request `endUserId` 与 `stream()` 机制完全一致——统一以 `X-End-User-Id` header 发送（覆盖构造级）。0.10.1 的已发布版本走请求体透传（Gateway 优先 header、回退 body），两版行为兼容
 - 文档同步：`tenantKeyId` **严格按租户隔离**——Key 轮换 / 切换租户后必须用新 Key 重新调 `POST /api/v1/tenant/keys` 存 BYOK 并更新 `tenantKeyId`，沿用旧租户的 ID 会报 `400 Tenant API key not found or inactive`
 
+### SDK 0.10.3 — exports 暴露 `./package.json`（已发布 npm，2026-08-08）
+
+纯元数据 patch，无行为变化：
+
+- `exports` 新增 `"./package.json": "./package.json"`——此前 `require('@agentxv2/sdk/package.json')` 报 `ERR_PACKAGE_PATH_NOT_EXPORTED`（exports 模式下未列出的子路径全部禁止），现在可直接读取版本：`require('@agentxv2/sdk/package.json').version`
+- 对调用方无影响（正常 API 子路径不变）；仅为工具链 / 运维提供版本读取能力
+
 ---
 
 ## v0.9.6 → v0.10.0 (完整功能版)
