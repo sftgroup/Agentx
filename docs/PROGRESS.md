@@ -333,7 +333,8 @@
   4. **应用侧建议项文档化**（`2607ec0`）：显式配置 `AGENTX_CONVERSATION_LLM_KEY`（SDK 构造 `llmApiKey`，任务自动 BYOK）+ `createSession` 补传 `agentId`（绑定会话到 Agent）；交付包 `agentx-callers.env` 更新为 7 调用方 + LLM Key 建议段 + SDK ≥0.10.1 示例（含真实 key，不入库，仅本地交付）
   5. **对话 Skill 执行模型文档**（`538e9a2`）：`publish-subscribe-pay.md` §1.6「如何在对话中引入你自己的 MCP」——对话工具 = 发布时声明的 skills（**无 MCP server 注册表**，注册点=发布）；`execution.type` 三模型 `open`/`mcp`/`a2a`；路径 A（发布者 skill 配自定义 MCP endpoint，平台不代理其鉴权）+ 路径 B（B 端 `loadInline` 注入自定义 MCP/HTTP 工具）；最终用户不能给别人的 Agent 临时加工具
   6. **新集成方 key 签发**（生产数据，无代码）：`partner-pocketx-wallet`、`partner-infrax`（均 enterprise、parallel_tasks 放行、kind=partner），key 明文已单次交付调用方；生产 7 个 partner-* 租户 kind 全部为 `partner`
-- 验收/验证：三处（本地 / GitHub / 生产）同步在最新 HEAD `538e9a2`；无代码变更仅文档+依赖（单测 46/46 无回归）；新 key `GET /tenant/me` **200**
+  7. **SDK 审查加固 + endUserId 澄清**（`8f22e88`，不发布 npm）：① `createTask()` per-request `endUserId` 统一以 `X-End-User-Id` header 发送（与 `stream()` 机制一致；0.10.1 已发布版本走请求体透传，Gateway 优先 header 回退 body，两版兼容，调用方零改动）；② 澄清 `endUserId` **全程可选、缺省不会被拒**——缺省授权主体回退租户自身钱包（user 天然=用户钱包；partner 不代理，链上失败返回 `403 AGENT_ACCESS_DENIED`），非 `0x` 仅记忆隔离，平台**无**「必须带 endUserId」强制校验（否定审计方第 6 条「sessions/tasks 必须带 endUserId / gatewayConfig() 统一注入」的不实描述，`gatewayConfig()` 全仓库 0 匹配）
+- 验收/验证：三处（本地 / GitHub / 生产）同步在最新 HEAD `8f22e88`；SDK typecheck + 单测 **32/32**；gateway **46/46** 无回归（本次无 gateway 代码变更）；新 key `GET /tenant/me` **200**
 - 影响面：调用方零代码改动；partner 建任务带 BYOK 是唯一新增要求（已文档化为显式 `AGENTX_CONVERSATION_LLM_KEY` 建议）
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
