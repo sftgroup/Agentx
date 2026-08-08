@@ -27,7 +27,7 @@
 ## 2026-08-08 — 文档澄清：`tenantKeyId` 严格按租户隔离（B 端审计反馈）
 
 **现象**：`createTask` 报 `400 Tenant API key not found or inactive`。
-**根因**：新租户（如 `partner-pocketx-wallet`）沿用了旧租户（如 `partner-autoops`）的 `tenantKeyId` —— [chat-tasks.ts](gateway/src/routes/chat-tasks.ts) / `agent-runs.ts` 按 `tenant_id` 查 `tenant_api_keys`（`WHERE id = $1 AND tenant_id = $2`），`tenantKeyId` 严格租户隔离，跨租户复用必然 400。
+**根因**：新租户（如切换租户 / Key 轮换后）沿用了旧租户的 `tenantKeyId` —— [chat-tasks.ts](gateway/src/routes/chat-tasks.ts) / `agent-runs.ts` 按 `tenant_id` 查 `tenant_api_keys`（`WHERE id = $1 AND tenant_id = $2`），`tenantKeyId` 严格租户隔离，跨租户复用必然 400。
 **处理（调用方侧）**：用新 Key 调 `POST /api/v1/tenant/keys` 为新租户存 BYOK → 取新 `tenantKeyId` 更新环境变量。
 **文档**：`integration-callers.md`（§6 BYOK 段 + FAQ 新增该错误条目）、`sdk/README.md`（tenantKeyId note 补充英文说明）。**无代码变更**。
 
