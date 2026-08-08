@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-08-08 — 文档：对话中引入自己的 MCP（Skill 执行模型）
+
+新增 [publish-subscribe-pay.md §1.6](docs/publish-subscribe-pay.md)「Skill 执行模型：如何在对话中引入你自己的 MCP」：
+
+- 明确「对话工具=发布时声明的 skills（私有加密上链），注册点=发布，无 MCP server 注册表」
+- Skill `execution.type` 三种执行模型：`open`（SDK 本地）/ `mcp`（远程 MCP server，endpoint 默认 AgentX 平台 `/mcp`）/ `a2a`（委托子 Agent）
+- **路径 A（发布者）**：skill 配 `execution.type='mcp'` + 自定义 MCP server 地址示例；安全模型=AgentX 不代理你的 MCP 鉴权，server 自行验证调用者链上订阅
+- **路径 B（B 端应用）**：Conversation Service `loadInline` 直接注入自定义 prompt + MCP/HTTP 工具（integration-callers.md MCP 段已加指针）
+- 边界：最终用户不能给别人的 Agent 临时加工具，工具由发布者决定
+
+无代码变更。
+
+---
+
 ## 2026-08-08 — 应用侧建议项文档化（audit 收尾）
 
 AgentX 平台侧已全部闭环。剩余为**应用侧（B 端调用方）实践建议**，已在 `integration-callers.md` 与交付包 `agentx-callers.env` 中显式化：

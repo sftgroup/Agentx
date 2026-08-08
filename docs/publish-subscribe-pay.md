@@ -116,6 +116,71 @@ const result = await publishAgent({ agent, publicKey, uploader })
 
 > **服务端代理**：浏览器前端不应持有 Pinata JWT。推荐后端代理 `/api/ipfs/upload-json` 方式（JWT 只在服务端），SDK `IPFSUploader` 也支持 `customEndpoint` 指向你自己的代理。
 
+### 1.6 Skill 执行模型：如何在对话中引入你自己的 MCP
+
+> 背景问题：**对话中的工具（MCP）是不是都要先在对话中注册？用户能否引入自己的 MCP？**
+> 答：AgentX **没有「MCP server 注册表」**（不像 Claude Desktop 要先配置 server 列表）。对话可用的工具 = **Agent 发布时声明的 `skills`**（私有加密上链，见 1.4），对话时由 Conversation Service 从 metadata 加载注入 LLM——**注册点就是发布，不是对话中**。
+
+**Skill 结构**（SDK `Skill` 类型）：
+
+```ts
+interface Skill {
+  name: string
+  description: string
+  version?: string
+  inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] }
+  outputSchema?: Record<string, unknown>
+  execution?: {
+    type: 'open' | 'mcp' | 'a2a'   // 三种执行模型
+    endpoint?: string             // mcp：你的 MCP server 地址（默认 AgentX 平台 /mcp）
+    toolName?: string             // mcp：MCP server 上的工具名（默认 = skill.name）
+    targetAgentId?: number        // a2a：委托的目标 Agent
+    skillFilter?: string[]        // a2a：只暴露目标 Agent 的部分 skills
+    promptOverride?: string       // a2a：覆盖目标 Agent 的系统提示词
+  }
+}
+```
+
+**三种执行模型**：
+
+| `execution.type` | 含义 | 调用目标 | 典型用途 |
+|---|---|---|---|
+| `open` | SDK 本地实现 | 内置逻辑 | 纯计算 / 本地函数 |
+| `mcp` | 远程 MCP server | `execution.endpoint ?? 平台 /mcp`（38 个工具） | **接入你自己的 MCP / 平台 MCP** |
+| `a2a` | 委托另一个 AgentX Agent | `execution.targetAgentId` | 多 Agent 编排 / 子 Agent |
+
+**引入自己的 MCP（路径 A：作为发布者）**——给 skill 配 `execution.type='mcp'` + 你自己部署的 MCP server 地址：
+
+```ts
+import { publishAgent, IPFSUploader } from '@agentxv2/sdk'
+
+const agent = {
+  name: 'My Agent',
+  description: '...',
+  category: 'operations',
+  prompt: 'You are ...',
+  pricing: { type: 'subscription', currency: 'ETH', amount: '100000000000000000' },
+  // 对话中可调用的工具：LLM 触发时对话服务会转发到你的 MCP server
+  skills: [{
+    name: 'my_internal_tool',
+    description: 'Queries my team internal system',
+    inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+    execution: { type: 'mcp', endpoint: 'https://my-team-mcp.example.com/mcp', toolName: 'search' },
+  }],
+  // 不写 endpoint 时默认走 AgentX 平台 MCP（/mcp，38 个工具）
+  // mcp: { type: 'http', url: 'https://...' },
+}
+const result = await publishAgent({ agent, publicKey, uploader })
+```
+
+发布后：订阅者与该 Agent 对话时，LLM 可调用 `my_internal_tool` → Conversation Service 按 MCP JSON-RPC 协议转发到你的 MCP server（[agent-context-loader.ts](file:///home/ubuntu/Agentx/conversation-service/src/services/agent-context-loader.ts)）。
+
+**安全模型（重要）**：
+- AgentX **不代理你的 MCP 鉴权**——你的 MCP server 应在每次调用时自行验证调用者的链上订阅（SDK 注释明示）
+- 默认走平台 `/mcp` 时，平台 MCP 有自己的鉴权：对话/任务工具仅接受注册用户 `access_token`（B 端 key 不能调）
+
+**边界（最终用户视角）**：最终用户**不能**给别人的 Agent 临时加工具——工具由发布者决定。最终用户想要自定义工具，只能：① 自己发布带自定义 MCP skill 的 Agent；② 由 B 端应用通过 **inline 注入**（Conversation Service `loadInline`，外部应用可直接注入自己的 prompt + MCP/HTTP 工具，跳过平台 Agent 查找，见 [integration-callers.md](integration-callers.md)）。
+
 ---
 
 ## 二、订阅 Agent（Subscribe）
