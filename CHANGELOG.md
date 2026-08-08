@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-08-08 — 边界澄清：BYOK 适用范围 + B 端 MCP 路径（文档）
+
+审计确认后更新文档，明确两条边界（决策维持现状，无代码变更）：
+
+1. **BYOK 守卫适用范围**：只约束 partner 经 **REST / SDK 创建的并行任务**（`POST /sessions/:id/tasks`）；平台托管后台路径（用户定时任务 schedule、编排触发）不经过该守卫，按租户存储 `tenantKeyId` 或平台兜底执行——需走自己的 Key 时配置存储式 `tenantKeyId` 即可
+2. **B 端用户与平台 MCP**：平台 MCP 对话/任务工具仅接受注册用户 JWT（R14 收紧不变）；B 端（含 aihunter）最终用户的对话/任务由 **REST + `agentx_` Key + `X-End-User-Id: 0x<钱包>`** 完整覆盖，无需走 MCP；「B 端用户 → AgentX JWT」接入 MCP 属未来独立设计项
+
+- 文档：`docs/integration-callers.md`（§6 适用范围 + §7.5 B 端路径）、`sdk/README.md`（英文 note 同步）
+
+---
+
 ## 2026-08-08 — 文档修正：`createTask` 参数签名与字段（B 端反馈）
 
 - **integration-callers.md §6 / §7**：SDK 示例 `createTask(session.sessionId, { input: '你好' })` → 改为 `createTask({ sessionId: session.sessionId, agentId: 1, message: '你好' })`；HTTP 参考 `body: { input }` → `body: { agentId, message }`（或 inline `{ message, prompt/skills }`）
