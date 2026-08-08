@@ -121,6 +121,19 @@ const result = await publishAgent({ agent, publicKey, uploader })
 > 背景问题：**对话中的工具（MCP）是不是都要先在对话中注册？用户能否引入自己的 MCP？**
 > 答：AgentX **没有「MCP server 注册表」**（不像 Claude Desktop 要先配置 server 列表）。对话可用的工具 = **Agent 发布时声明的 `skills`**（私有加密上链，见 1.4），对话时由 Conversation Service 从 metadata 加载注入 LLM——**注册点就是发布，不是对话中**。
 
+**对话工具的来源（注入链路，2026-08-08 代码确认）**——对话运行时工具注入逻辑（`AgentRunner.streamRun`）：请求带 `prompt`/`skills` 即走 inline 模式，否则按 `agentId` 从链上 metadata 加载：
+
+| 来源 | 注册时机 | 机制 | 需要先注册？ |
+|---|---|---|---|
+| ① Agent 发布的 skills | 发布 Agent 时声明（私有加密上链，见 1.4） | 对话按 `agentId` 从链上 metadata 加载（`AgentContextLoader.load`） | **预声明**（发布即注册），最常见的用法 |
+| ② 对话请求 inline 注入 | 运行时，**无预注册** | 请求体直接带 `prompt` + `skills[]` → `loadInline`，跳过平台 Agent 查找 | **不需要**——现传 `execution.type='mcp'` + endpoint 即可，无任何注册校验 |
+| ③ 平台编排工具 | 自动 | `agentx_list_agents` / `agentx_delegate` 由 `AgentRunner.buildOrchestrationSkills` 自动注入 | 不需要 |
+
+> **关键澄清**：
+> - **不存在「MCP server 注册表」**——无需把 MCP server 先登记到平台。「注册」仅有两层含义：**① Agent 发布时把 skills 写进链上 metadata**（对订阅者生效）；**② 对话请求 inline 现传 skills**（运行时注入，随请求生效）。
+> - Gateway `POST /api/v1/skills` 是 **skill 模板市场**（提交模板供公开浏览/复用，admin 审核，见 gateway `routes/skills.ts`），**不是对话的运行注册表**——不提交模板也能在对话中使用（inline 或发布时声明）。
+> - 无论哪种来源，MCP 调用都由你的 MCP server 自行鉴权（平台不代理，见下方安全模型）。
+
 **Skill 结构**（SDK `Skill` 类型）：
 
 ```ts

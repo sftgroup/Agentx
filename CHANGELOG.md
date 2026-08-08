@@ -14,6 +14,7 @@
 - **路径 A（发布者）**：skill 配 `execution.type='mcp'` + 自定义 MCP server 地址示例；安全模型=AgentX 不代理你的 MCP 鉴权，server 自行验证调用者链上订阅
 - **路径 B（B 端应用）**：Conversation Service `loadInline` 直接注入自定义 prompt + MCP/HTTP 工具（integration-callers.md MCP 段已加指针）
 - 边界：最终用户不能给别人的 Agent 临时加工具，工具由发布者决定
+- （补充 2026-08-08 确认结论：对话工具来源三途径——① Agent 发布时声明（预声明）② 对话请求 inline 注入（运行时，无注册校验）③ 平台编排工具自动注入；`POST /api/v1/skills` 为 skill 模板市场，**非**对话运行注册表）
 
 无代码变更。
 
