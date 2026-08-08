@@ -60,6 +60,13 @@ const session = await client.createSession({ agentId: 42, endUserId: '0x<user-wa
 const t = await client.createTask({ sessionId: session.id, agentId: 42, message: 'hi', endUserId: '0x<user-wallet>' })
 ```
 
+### SDK 0.10.2 — createTask `endUserId` header 加固发版（已发布 npm，2026-08-08）
+
+将 0.10.1 发布后的**仓库级加固**正式纳入 npm 版本（纯 patch，无行为变化，调用方零改动）：
+
+- `createTask()` 的 per-request `endUserId` 与 `stream()` 机制完全一致——统一以 `X-End-User-Id` header 发送（覆盖构造级）。0.10.1 的已发布版本走请求体透传（Gateway 优先 header、回退 body），两版行为兼容
+- 文档同步：`tenantKeyId` **严格按租户隔离**——Key 轮换 / 切换租户后必须用新 Key 重新调 `POST /api/v1/tenant/keys` 存 BYOK 并更新 `tenantKeyId`，沿用旧租户的 ID 会报 `400 Tenant API key not found or inactive`
+
 ---
 
 ## v0.9.6 → v0.10.0 (完整功能版)

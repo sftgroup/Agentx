@@ -7118,6 +7118,7 @@ var ConversationClient = class {
    */
   async *stream(params, opts) {
     const headers = this._headers();
+    if (params.endUserId) headers["X-End-User-Id"] = params.endUserId;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 12e4);
     const onExternalAbort = () => controller.abort();
@@ -7240,9 +7241,11 @@ var ConversationClient = class {
    * configured to disallow multi-task / sub-agent.
    */
   async createTask(params) {
+    const headers = this._headers();
+    if (params.endUserId) headers["X-End-User-Id"] = params.endUserId;
     const res = await fetch(`${this.baseUrl}/api/v1/sessions/${params.sessionId}/tasks`, {
       method: "POST",
-      headers: this._headers(),
+      headers,
       body: JSON.stringify(params)
     });
     const body = await res.json().catch(() => ({}));
