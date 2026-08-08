@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-08-08 — 应用侧建议项文档化（audit 收尾）
+
+AgentX 平台侧已全部闭环。剩余为**应用侧（B 端调用方）实践建议**，已在 `integration-callers.md` 与交付包 `agentx-callers.env` 中显式化：
+
+1. **显式配置 `AGENTX_CONVERSATION_LLM_KEY`**：每个调用方建议配置自己的 LLM Key 并传入 SDK 构造参数 `llmApiKey`——并行任务自动带 BYOK（partner 任务强制，未带 `400 LLM_KEY_REQUIRED`），避免每次请求重复传参、也防止误用平台兜底 Key
+2. **`createSession` 补传 `agentId`**：将会话绑定到目标 Agent，任务上下文更完整（SDK 已支持 `ConversationCreateSessionParams.agentId`，示例已带）
+
+> 注：这两项属 B 端应用部署/代码实践，AgentX 仓库无代码改动；`agentx-callers.env` 为本地交付物（含真实 key，不入库），已同步新增 pocketx-wallet / infrax 两个调用方与 SDK ≥0.10.1 示例。
+
+---
+
 ## 2026-08-08 — 边界澄清：BYOK 适用范围 + B 端 MCP 路径（文档）
 
 审计确认后更新文档，明确两条边界（决策维持现状，无代码变更）：
