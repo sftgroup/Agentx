@@ -143,6 +143,7 @@
   - R13 ✅ 已完成（2026-08-06 · 开发者自助申请）
   - R14 ✅ 已完成（2026-08-06 · B 端仅对话 + MCP 仅注册用户）→ **2026-08-08 部分修订**：并行任务统一 P9 能力位（见 R15）
   - R15 ✅ 已完成（2026-08-08 · B 端能力修订补完：强制 BYOK + 端用户订阅转发 + kind 统一 + sdk@0.10.1）
+  - R16 ✅ 已完成（2026-08-08 · 审计闭环与文档补完：createTask 签名修正 + 边界澄清 + BYOM 文档 + 新调用方 key）
 
 ### 开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）
 
@@ -322,6 +323,18 @@
   - 生产实测：partner key `/sessions` **201**（原 403）；无 BYOK 建 task **400 `LLM_KEY_REQUIRED`**；带 `X-Llm-Api-Key` 建 task **201**（真实执行 done）；smoke 数据已清理
   - `sdk@0.10.1` 已发布 npm（0.10.1，CI 自动回推版本号 `b04f6f8`）；三服务 `^0.10.0` semver 兼容无需强制升级
 - 影响面（对调用方）：零代码改动；仅 partner 建任务需新增传 LLM key（header/参数，非代码改动）；`aiops-saas/aihunter-saas/aitrader` 原即 partner，`aiservicer/autoops` 由 user→partner 后任务同样强制 BYOK + 获得端用户转发能力；MCP 通道维持仅注册用户 `access_token`（R14 收紧不变）；A2A 上链/发布/订阅仍走用户钱包签名（平台不持私钥）
+
+**R16 审计闭环与文档补完（createTask 签名修正 + 边界澄清 + BYOM 文档 + 新调用方 key）** —— 优先级：高 · ✅ 完成（2026-08-08）
+- 来源：B 端/审计反馈闭环（createTask 参数不一致、BYOK 适用范围、MCP 边界、应用侧建议项、对话工具模型）+ 新集成方接入
+- 实施：
+  1. **createTask 签名文档修正**（`793470d`）：`integration-callers.md` §6/§7 由过时签名 `createTask(sessionId, { input })` / body `{ input }` → `createTask({ sessionId, agentId, message })` / body `{ agentId, message }`（与 SDK 0.10.1 签名 `ConversationCreateTaskParams` 及 gateway 校验一致：`message` 必填、`agentId` 或 inline `prompt/skills` 必填）；无代码/API 变更
+  2. **三服务 SDK 对齐 `^0.10.1`**（`2e4fdb6`）：gateway / conversation-service / frontend 依赖 0.10.0 → `^0.10.1`（生产机 conversation 未提交的手动升级正式化）；本地+生产 node_modules 均 0.10.1，三服务 tsc 全绿
+  3. **边界澄清**（`29a87de`，决策维持现状）：BYOK 守卫**适用范围**——只约束 partner 经 REST/SDK 创建的并行任务，平台托管后台路径（定时任务/编排）按存储 `tenantKeyId` 或平台兜底；**B 端最终用户路径**——对话/任务由 REST + `agentx_` key + `X-End-User-Id` 完整覆盖，平台 MCP 维持仅注册用户 JWT，「B 端用户 → AgentX JWT」记作未来独立设计项（无需求 + 自建 MCP 替代路径 + 需安全设计）
+  4. **应用侧建议项文档化**（`2607ec0`）：显式配置 `AGENTX_CONVERSATION_LLM_KEY`（SDK 构造 `llmApiKey`，任务自动 BYOK）+ `createSession` 补传 `agentId`（绑定会话到 Agent）；交付包 `agentx-callers.env` 更新为 7 调用方 + LLM Key 建议段 + SDK ≥0.10.1 示例（含真实 key，不入库，仅本地交付）
+  5. **对话 Skill 执行模型文档**（`538e9a2`）：`publish-subscribe-pay.md` §1.6「如何在对话中引入你自己的 MCP」——对话工具 = 发布时声明的 skills（**无 MCP server 注册表**，注册点=发布）；`execution.type` 三模型 `open`/`mcp`/`a2a`；路径 A（发布者 skill 配自定义 MCP endpoint，平台不代理其鉴权）+ 路径 B（B 端 `loadInline` 注入自定义 MCP/HTTP 工具）；最终用户不能给别人的 Agent 临时加工具
+  6. **新集成方 key 签发**（生产数据，无代码）：`partner-pocketx-wallet`、`partner-infrax`（均 enterprise、parallel_tasks 放行、kind=partner），key 明文已单次交付调用方；生产 7 个 partner-* 租户 kind 全部为 `partner`
+- 验收/验证：三处（本地 / GitHub / 生产）同步在最新 HEAD `538e9a2`；无代码变更仅文档+依赖（单测 46/46 无回归）；新 key `GET /tenant/me` **200**
+- 影响面：调用方零代码改动；partner 建任务带 BYOK 是唯一新增要求（已文档化为显式 `AGENTX_CONVERSATION_LLM_KEY` 建议）
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 
