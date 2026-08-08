@@ -15,6 +15,7 @@
 - **路径 B（B 端应用）**：Conversation Service `loadInline` 直接注入自定义 prompt + MCP/HTTP 工具（integration-callers.md MCP 段已加指针）
 - 边界：最终用户不能给别人的 Agent 临时加工具，工具由发布者决定
 - （补充 2026-08-08 确认结论：对话工具来源三途径——① Agent 发布时声明（预声明）② 对话请求 inline 注入（运行时，无注册校验）③ 平台编排工具自动注入；`POST /api/v1/skills` 为 skill 模板市场，**非**对话运行注册表）
+- （补充 2026-08-08 §1.7：SDK 连接机制——「我们的 SDK + 我们签发的 `agentx_` Key」= 连接我们的 AgentX 市场（Key 仅我们的 Gateway 可校验）；订阅付费分账——chain 进合约 escrow（平台 2.5% + 发布者 97.5%）/ fiat 走平台统一 Stripe + 渠道 share_bps / x402 收平台收款钱包；平台=托管+抽成+台账，大头归发布者）
 
 无代码变更。
 
