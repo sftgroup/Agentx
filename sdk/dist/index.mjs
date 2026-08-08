@@ -5583,7 +5583,7 @@ var AgentX402 = class {
 var SUBSCRIPTION_VERSION = "0.3.0";
 
 // src/payment/payments.ts
-import { PaymentsClient } from "@agentxv2/payments";
+import { PaymentsClient } from "@0xinfrax/payments";
 var PERIODS = ["day", "week", "month", "year"];
 var SubscriptionPayments = class {
   constructor(config) {
@@ -5740,8 +5740,8 @@ var SubscriptionPayments = class {
 };
 
 // src/payment/index.ts
-import { MPPClient, A2AClient, PeriodClient, X402Client, PaymentsClient as PaymentsClient2 } from "@agentxv2/payments";
-var PAYMENT_VERSION = "0.2.0";
+import { MPPClient, A2AClient, PeriodClient, X402Client, PaymentsClient as PaymentsClient2 } from "@0xinfrax/payments";
+var PAYMENT_VERSION = "0.1.0";
 
 // src/a2a/a2a.ts
 var A2A_ABI = {

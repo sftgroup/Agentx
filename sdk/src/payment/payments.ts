@@ -8,15 +8,15 @@
 //   method: 'x402'   → native-token period payment via the unified endpoint
 //
 // 0.9.0: the fiat / x402 / access rails now talk to the generic
-// `@agentxv2/payments` engine through the Gateway's unified endpoint
+// `@0xinfrax/payments` engine through the Gateway's unified endpoint
 // (/api/v1/payments) via PaymentsClient. AgentX subscription semantics
 // (planId/agentId/subscription state) still live here — the generic module
 // never interprets them.
 // ---------------------------------------------------------------------------
 
 import type { Address, Hash, WalletClient } from 'viem'
-import { PaymentsClient } from '@agentxv2/payments'
-import type { ChainKey as PaymentsChainKey } from '@agentxv2/payments'
+import { PaymentsClient } from '@0xinfrax/payments'
+import type { ChainKey as PaymentsChainKey } from '@0xinfrax/payments'
 import { SubscriptionManager } from '../subscription/subscription'
 
 export type SubscriptionPaymentMethod = 'chain' | 'fiat' | 'x402'

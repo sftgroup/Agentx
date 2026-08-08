@@ -9,7 +9,7 @@
 // have the main agent delegate to — agents they are entitled to use.
 // ---------------------------------------------------------------------------
 
-import type { ChainKey } from '@agentxv2/payments'
+import type { ChainKey } from '@0xinfrax/payments'
 import { hasSubscriptionAccess } from './subscription-access'
 import { chainDataReader, log } from './chain-data-reader'
 

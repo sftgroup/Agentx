@@ -14,7 +14,7 @@ export { MemoryConfig, MemoryFact, MemoryProvider } from './memory/index.js';
 export { HttpTraceEmitter, NoopTraceEmitter, TraceConfig, TraceEmitter, TraceEvent } from './traces/index.js';
 export { BrowserAction, BrowserActionResult, executeBrowserAction, extractAccessibleDOM, sleep } from './skills/index.js';
 export { ConversationChatParams, ConversationChatResult, ConversationClient, ConversationClientConfig, ConversationCreateSessionParams, ConversationCreateTaskParams, ConversationSSEEvent, ConversationSkillDef, ConversationTask, ConversationTaskError, ConversationTaskStatus, OnChainApprovalRequest } from './conversation/index.js';
-export { A2AClient, ClientOptions, MPPClient, PaymentsClient, PeriodClient, X402Client } from '@agentxv2/payments';
+export { A2AClient, ClientOptions, MPPClient, PaymentsClient, PeriodClient, X402Client } from '@0xinfrax/payments';
 export { C as ChainConfig, a as ConfigRegistryOpts, b as ConfigurationRegistry, K as KNOWN_CHAINS } from './config-BFeSR_GK.js';
 export { bytesToHex, hexToBytes } from '@noble/ciphers/utils.js';
 import 'events';
@@ -163,7 +163,7 @@ declare class SubscriptionPayments {
     private _fetchJson;
 }
 
-declare const PAYMENT_VERSION = "0.2.0";
+declare const PAYMENT_VERSION = "0.1.0";
 
 declare const A2A_VERSION = "0.1.0";
 

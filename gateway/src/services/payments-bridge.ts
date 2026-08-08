@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Implements the PaymentStore over AgentX's own tables (x402_*, fiat_*) and
 // handles the business callbacks (webhook → fiat_subscriptions, x402 subscribe
-// registration) that the generic @agentxv2/payments module intentionally
+// registration) that the generic @0xinfrax/payments module intentionally
 // does NOT know about. All AgentX-specific persistence lives here.
 // ---------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@ import type {
   PaymentCredit,
   PaymentStore,
   WebhookEvent,
-} from '@agentxv2/payments'
+} from '@0xinfrax/payments'
 import { getPool } from '../lib/db'
 import { chainDataReader, log } from './chain-data-reader'
 

@@ -1,6 +1,6 @@
 // SubscriptionPayments — three-rail subscription payment unit tests.
 // 0.9.0: fiat/x402/access talk to the unified payments endpoint through
-// @agentxv2/payments' PaymentsClient; chain stays on SubscriptionManager.
+// @0xinfrax/payments' PaymentsClient; chain stays on SubscriptionManager.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { SubscriptionPayments } from '../src/payment/payments'
 import { MPPClient, A2AClient, PeriodClient, X402Client, PaymentsClient, PAYMENT_VERSION } from '../src/payment'

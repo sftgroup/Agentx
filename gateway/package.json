@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@agentxv2/payments": "file:../payments",
+    "@0xinfrax/payments": "^0.1.0",
     "@agentxv2/sdk": "^0.10.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

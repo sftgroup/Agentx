@@ -5672,7 +5672,7 @@ var AgentX402 = class {
 var SUBSCRIPTION_VERSION = "0.3.0";
 
 // src/payment/payments.ts
-var import_payments = require("@agentxv2/payments");
+var import_payments = require("@0xinfrax/payments");
 var PERIODS = ["day", "week", "month", "year"];
 var SubscriptionPayments = class {
   constructor(config) {
@@ -5829,8 +5829,8 @@ var SubscriptionPayments = class {
 };
 
 // src/payment/index.ts
-var import_payments3 = require("@agentxv2/payments");
-var PAYMENT_VERSION = "0.2.0";
+var import_payments3 = require("@0xinfrax/payments");
+var PAYMENT_VERSION = "0.1.0";
 
 // src/a2a/a2a.ts
 var A2A_ABI = {

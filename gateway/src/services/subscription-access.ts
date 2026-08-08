@@ -6,11 +6,11 @@
 //   2. fiat      — Stripe billing mirrored into fiat_subscriptions (provider='stripe')
 //   3. x402      — period payment verified into fiat_subscriptions (provider='x402')
 // This helper is the single access check used by gateways (chain API, MCP tools).
-// It delegates to the generic @agentxv2/payments engine — the AgentX-backed
+// It delegates to the generic @0xinfrax/payments engine — the AgentX-backed
 // PaymentStore implements the "off-chain first, then on-chain" policy.
 // ---------------------------------------------------------------------------
 
-import type { ChainKey } from '@agentxv2/payments'
+import type { ChainKey } from '@0xinfrax/payments'
 import { paymentsService } from './payments'
 import { log } from './chain-data-reader'
 

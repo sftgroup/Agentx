@@ -2,7 +2,7 @@
 // AgentX Gateway — Unified payments endpoint (P5)
 // ---------------------------------------------------------------------------
 // One transport entry for every payment rail, backed by the generic
-// @agentxv2/payments engine + the AgentX payments bridge:
+// @0xinfrax/payments engine + the AgentX payments bridge:
 //
 //   POST /api/v1/payments          → create a payment (fiat checkout / chain
 //                                    intent / x402 subscription)
@@ -20,8 +20,8 @@
 
 import { Router, Request, Response } from 'express'
 import { config } from '../config'
-import { decodeHeader, isPaymentError } from '@agentxv2/payments'
-import type { X402PaymentRequired } from '@agentxv2/payments'
+import { decodeHeader, isPaymentError } from '@0xinfrax/payments'
+import type { X402PaymentRequired } from '@0xinfrax/payments'
 import { paymentsService } from '../services/payments'
 import { paymentsBridge } from '../services/payments-bridge'
 import { verifyAndCredit, x402Available } from '../services/x402'

@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------------------
 // AgentX Gateway — PaymentsService assembly (generic engine + AgentX store)
 // ---------------------------------------------------------------------------
-// Maps AgentX environment config onto the generic @agentxv2/payments module.
+// Maps AgentX environment config onto the generic @0xinfrax/payments module.
 // The engine itself has zero AgentX knowledge; everything AgentX-specific
 // (tables, subscription business) lives in payments-bridge.ts.
 // ---------------------------------------------------------------------------
 
-import { PaymentsService, PgMPPSessionStore, PgAuthorizationStore } from '@agentxv2/payments'
-import type { ChainKey } from '@agentxv2/payments'
+import { PaymentsService, PgMPPSessionStore, PgAuthorizationStore } from '@0xinfrax/payments'
+import type { ChainKey } from '@0xinfrax/payments'
 import { config } from '../config'
 import { getPool } from '../lib/db'
 import { agentxPaymentStore, paymentsBridge } from './payments-bridge'

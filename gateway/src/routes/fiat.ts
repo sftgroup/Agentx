@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // AgentX Gateway — Fiat Subscriptions (A1, SaaS-style card billing)
 // ---------------------------------------------------------------------------
-// Thin transport layer over the generic @agentxv2/payments engine:
+// Thin transport layer over the generic @0xinfrax/payments engine:
 //   - checkout  → paymentsService.createPayment({ method: 'fiat', ... })
 //   - webhook   → paymentsService.handleWebhook (signature verified in-engine;
 //                 business events handled by the AgentX payments bridge)
@@ -14,7 +14,7 @@ import { getPool } from '../lib/db'
 import { config } from '../config'
 import { log } from '../services/chain-data-reader'
 import { paymentsService } from '../services/payments'
-import { isPaymentError } from '@agentxv2/payments'
+import { isPaymentError } from '@0xinfrax/payments'
 
 const router = Router()
 

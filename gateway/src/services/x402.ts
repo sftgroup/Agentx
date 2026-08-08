@@ -2,15 +2,15 @@
 // AgentX Gateway — x402 pay-per-request (thin layer over the payments engine)
 // ---------------------------------------------------------------------------
 // All verification / balance / deduct logic now lives in the generic
-// @agentxv2/payments engine (X402Adapter + injected AgentX store). This file
+// @0xinfrax/payments engine (X402Adapter + injected AgentX store). This file
 // only keeps the express middleware and the legacy export surface used by
 // routes, so callers (`x402Guard`, `routes/x402.ts`) are unchanged.
 // ---------------------------------------------------------------------------
 
 import { randomUUID } from 'node:crypto'
 import { Request } from 'express'
-import type { ChainKey } from '@agentxv2/payments'
-import { encodeHeader } from '@agentxv2/payments'
+import type { ChainKey } from '@0xinfrax/payments'
+import { encodeHeader } from '@0xinfrax/payments'
 import { log } from './chain-data-reader'
 import { paymentsService } from './payments'
 
