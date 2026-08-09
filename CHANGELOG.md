@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-08-10 — 发布 sdk@0.11.1（F2 跟随演练：@0xinfrax/payments@0.1.1）
+
+- **`@agentxv2/sdk@0.11.1` 已发布 npm**（patch，R17-F2 首次跟随演练）：
+  - infraX 发布通用支付引擎 `@0xinfrax/payments@0.1.1`（补丁版：新增 `createWebhookForwarder` 事件出站转发、`ChainAdapter.rpcHeaders`）——按长期跟随策略（`docs/payments-infrax-migration.md` §六）AgentX 完成跟随
+  - sdk/gateway 依赖 `@0xinfrax/payments` `^0.1.0` → `^0.1.1`；`PAYMENT_VERSION` 对齐 `0.1.1`；`SubscriptionPayments` 与协议客户端 **API 完全不变**（非 breaking，业务方零改动）
+  - scripts/local-payments 解耦测试改为消费「已安装的 npm 包」；tag `v0.11.1` 已推送
+- **执行与确认**：本次演练由 infraX 侧代为执行（commit `99427a9`）；AgentX 审阅核实——解耦回归 19 项断言全绿、sdk 32/32、gateway 46/46、生产实装 0.11.1/0.1.1 冒烟与 R17 基线一致——**确认保留**（commit `c13db37`）
+- **生产**：生产机（43.159.60.46）gateway 已升级 sdk 0.11.1 + @0xinfrax/payments 0.1.1（官方 registry），pm2 restart，`/payments/info`、`/payments/access` 冒烟正常
+
+---
+
 ## 2026-08-10 — 发布 sdk@0.11.0（支付引擎迁移至 @0xinfrax/payments）
 
 - **`@agentxv2/sdk@0.11.0` 已发布 npm**（minor，R17 支付引擎迁移）：

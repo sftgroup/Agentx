@@ -360,7 +360,7 @@
 | | C2 | lock 干净 | `package-lock.json` 无 `@agentxv2/payments` / `../payments` | ✅ 残留 0（手动移除 extraneous `../payments` 块） |
 | | C3 | 复跑验证 | `npm run build && npm run typecheck && npm test` 全绿 | ✅ 46/46 全绿 |
 | D 旧包+文档 | D1 | 旧包 deprecate | `npm deprecate @agentxv2/payments "已迁移至 @0xinfrax/payments"` | ✅ 4 版本（0.1.0/0.2.0/0.2.1/0.2.2）全部 deprecate |
-| | D2 | sdk CHANGELOG 0.11.0 条目 | 依赖切换 / `PAYMENT_VERSION`→0.1.0 / 升级提示 | ✅ 2026-08-10 条目 |
+| | D2 | sdk 版本更新文档（root CHANGELOG.md） | 0.11.0 + 0.11.1 条目：依赖切换 / `PAYMENT_VERSION` 对齐 / 升级提示 / F2 演练与确认 | ✅ 2026-08-10 两条均已补（0.11.1 于 c13db37 后补充） |
 | | D3 | PROGRESS + 方案文档更新 | 本表打勾、§三/§四标记完成 | ✅ 本文档 + `payments-infrax-migration.md` |
 | | D4 | 提交推送 | commit + push | ✅ commit `47d3d72` + tag `v0.11.0` 已推送 origin/main |
 | E 生产升级 | E1 | 生产机升级 sdk | `npm install @agentxv2/sdk@^0.11.0 --registry=https://registry.npmjs.org/`（生产 `~/.npmrc` 为腾讯云镜像，须显式官方 registry，不改全局） | ✅ 生产 pull 至 `2e2aaa8`，gateway `npm install --registry=https://registry.npmjs.org/`，sdk=0.11.0 / @0xinfrax/payments=0.1.0，旧 `@agentxv2/payments` 已移除 |
