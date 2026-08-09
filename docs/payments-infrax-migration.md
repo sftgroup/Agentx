@@ -56,6 +56,11 @@ gateway（直接依赖）
 
 > 升级 `@agentxv2/sdk` 至 **0.11.x** 即可。支付引擎底层由 AgentX 自维护包切换为 InfraX 维护的 `@0xinfrax/payments`（能力与之前完全一致，仅依赖来源变化）。业务代码、API、配置均无需修改。
 
+**应用方清单（2026-08-10 生产机 43.159.60.46 盘点）**：
+- `aiservicer`（sdk `^0.9.1`）——未消费新支付引擎，`@agentxv2/payments@0.2.x` 已 deprecate 但 npm 仍可安装，**不受影响**；升级至 0.11.x 为推荐项（可选，非阻塞）
+- `autoops` / `pocketx-wallet-deploy`——无 `@agentxv2/sdk` 依赖，无需升级
+- AgentX 三服务（gateway/frontend/conversation-service）——gateway 已升级 0.11.0；frontend/conversation-service 保持 `^0.10.x`（仅用 ConversationClient，无支付引用，随下次升级即可）
+
 ## 六、长期跟随策略（infraX 后续发版）
 
 - 依赖锁 `^0.1.0`：只自动跟随 0.1.x 补丁（bugfix/安全），`0.2.0+`（潜在 breaking / 新能力）不会自动进入。
