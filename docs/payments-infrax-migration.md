@@ -25,6 +25,20 @@ gateway（直接依赖）
 
 应用方**不直接**依赖支付引擎，升级 `@agentxv2/sdk` 即完成迁移。
 
+### 两个 SDK 的定位区分（易混淆，务必区分）
+
+| 维度 | AgentX 定制 SDK | InfraX 通用支付通道 SDK |
+|---|---|---|
+| 包名 | `@agentxv2/sdk` | `@0xinfrax/payments` |
+| 维护方 / 归属 | AgentX（sftgroup/Agentx 仓库） | InfraX（sftgroup/infraX，`projects/payments/`） |
+| 定位 | AgentX 平台**业务 SDK**（定制层，支付只是其能力之一） | **通用支付引擎**（微服务客户端，与 WAAS/MPC 平级） |
+| 支付部分 | `SubscriptionPayments`（chain/fiat/x402 三轨封装 + MPP/A2A/Period/X402/Payments 协议客户端 **re-export**），保持 AgentX 既有 API 与行为 | 支付引擎本体：`PaymentsService` / 客户端 / `PaymentStore` 接缝 / db migrations，能力=链上+x402+法币+stablecoin+MPP+a2a-pay |
+| 依赖方向 | **依赖** `@0xinfrax/payments@^0.1.0` | **零 AgentX 依赖**（仅 pg+viem，express optional peer） |
+| 升级语义 | 升级 sdk = AgentX 业务能力升级（支付引擎跟随其内部版本） | 升级 payments = 支付引擎能力升级（bugfix / 新通道 / 新链） |
+| 升级触发 | 应用方业务接入升级 `@agentxv2/sdk`（如 0.11.x） | AgentX 侧由 sdk/gateway 间接跟随；直接消费方自行管理版本（跟随 check-list） |
+
+> 一句话：**`@agentxv2/sdk` 是 AgentX 卖给你的业务 SDK，`@0xinfrax/payments` 是它底下帮你接好的通用支付通道**——应用方只面对前者；后者由 AgentX 作为消费方负责跟随。
+
 ## 三、已完成的准备（本方案落盘时的状态）
 
 | 项 | 状态 |
