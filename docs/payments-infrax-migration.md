@@ -41,7 +41,7 @@ gateway（直接依赖）
 
 ## 四、执行步骤（按序，串行，注意低资源占用）
 
-> **执行状态：✅ 全部完成（2026-08-10）**，对应 AgentX `docs/PROGRESS.md` R17 清单 A-E；F（通知收尾）待执行。
+> **执行状态：✅ 全部完成（2026-08-10）**，对应 AgentX `docs/PROGRESS.md` R17 清单 A-E + F1；F2（首次跟随演练）待 infraX 发布 `@0xinfrax/payments@0.1.1`。
 
 1. **sdk 验证**：`npm run build` → `npm run typecheck` → `npm test`（在 `Agentx/sdk/`）— ✅ 32/32 全绿
 2. **gateway 验证**：`npm run build` → `npm run typecheck` → `npm test`（在 `Agentx/gateway/`）— ✅ 46/46 全绿
@@ -50,7 +50,7 @@ gateway（直接依赖）
 5. **旧包处理**：`npm deprecate @agentxv2/payments@0.2.x`（提示迁移至 `@0xinfrax/payments`）；AgentX `payments/` 目录保留为历史 — ✅ 4 版本全部 deprecate
 6. **文档**：sdk `CHANGELOG.md` 0.11.0 条目、`docs/PROGRESS.md` 记录、应用方通知通用文案（§五）— ✅ CHANGELOG + PROGRESS R17 已更新（D 阶段）；应用方通知见 F1
 7. **生产升级（E）**：生产机（43.159.60.46，`~/Agentx`）`git pull` 至 `2e2aaa8` → gateway `npm install --registry=https://registry.npmjs.org/`（sdk=0.11.0 / @0xinfrax/payments=0.1.0）→ `npm run build` → `pm2 restart agentx-gateway` — ✅ 完成，冒烟 `/api/v1/payments/info`（统一引擎 payload，fiat/x402 disabled 按配置）与 `/access`（active:false）正常
-8. **提交推送**：AgentX 仓库（本次涉及文件单独提交，不含无关改动）— ⏳ 与 F 一并提交推送
+8. **提交推送**：AgentX 仓库（本次涉及文件单独提交，不含无关改动）— ✅ E/F1 已分别提交推送（`8b3970f` / `35c51ec`，origin/main）
 
 ## 五、应用方通知（通用文案要点）
 
