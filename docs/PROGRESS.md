@@ -1,6 +1,6 @@
 # AgentX — 项目任务清单与进度
 
-> Last updated: 2026-08-09 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
+> Last updated: 2026-08-10 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
 > 状态图例：✅ 完成 · ⏸ 代码完成待外部前提 · 🔧 进行中 · ⏳ 待办 · 🔵 技术债
 
 ---
@@ -127,8 +127,8 @@
 
 ## 二、当前状态
 
-- **当前**：可立即开发任务已清零（R6-R10 ✅ 2026-08-06）
-- **待办**：遗留待办已整理为具体开发任务清单，见下「### 开发任务清单 R」
+- **当前**：可立即开发任务已清零；R17 支付引擎迁移发布 A-E + F1 已完成（2026-08-10：sdk@0.11.0 发布、gateway 升级、旧包 deprecate、生产升级+冒烟、应用方通知）
+- **待办**：均为外部前提——R4/R5（业务方凭据）+ R17-F2（首次跟随演练，待 infraX 发布 `@0xinfrax/payments@0.1.1`），见下「### 开发任务清单 R」
   - R1 ✅ 已完成（2026-08-06 · commit `0f5c30d`；SDK 0.8.7 已发布 npm）
   - R2 ✅ 已完成（2026-08-06 · 集成测试补 task 并行链路，生产 28/28 通过）
   - R4-R5 = 待外部前提任务（R4/R5 需业务方提供凭据）
@@ -341,10 +341,10 @@
 - 验收/验证：三处（本地 / GitHub / 生产）同步在最新 HEAD `8f22e88`；SDK typecheck + 单测 **32/32**；gateway **46/46** 无回归（本次无 gateway 代码变更）；新 key `GET /tenant/me` **200**
 - 影响面：调用方零代码改动；partner 建任务带 BYOK 是唯一新增要求（已文档化为显式 `AGENTX_CONVERSATION_LLM_KEY` 建议）
 
-### R17 支付引擎迁移发布流程（⏳ 待 infraX 集成完成，2026-08-08）
+### R17 支付引擎迁移发布流程（✅ 2026-08-10 已执行；仅 F2 待 infraX 0.1.1）
 
-> 背景：通用支付引擎移交 infraX，以 `@0xinfrax/payments@0.1.0` 发布；AgentX 依赖切换代码已完成并提交（commit `323d3c9`），**暂不发布**，等 infraX 集成完成后再执行本流程。
-> 方案文档：[docs/payments-infrax-migration.md](payments-infrax-migration.md)
+> 背景：通用支付引擎移交 infraX，以 `@0xinfrax/payments@0.1.0` 发布（2026-08-08）；AgentX 依赖切换代码提交（`323d3c9`）后按本流程执行——sdk@0.11.0 发布、gateway 升级、生产升级与冒烟、应用方通知全部完成（2026-08-10）。
+> 方案文档：[docs/payments-infrax-migration.md](payments-infrax-migration.md)（§四执行状态：✅ 全部完成）
 
 | 阶段 | # | 任务 | 命令 / 通过标准 | 状态 |
 |---|---|---|---|---|
