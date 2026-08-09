@@ -41,13 +41,15 @@ gateway（直接依赖）
 
 ## 四、执行步骤（按序，串行，注意低资源占用）
 
-1. **sdk 验证**：`npm run build` → `npm run typecheck` → `npm test`（在 `Agentx/sdk/`）
-2. **gateway 验证**：`npm run build` → `npm run typecheck` → `npm test`（在 `Agentx/gateway/`）
-3. **发布 sdk 0.11.0**：`npm version 0.11.0` → `npm publish`（确认 prepublish 构建产物）
-4. **gateway 升级 sdk**：`npm install @agentxv2/sdk@^0.11.0` → 复跑 gateway 验证，确认 lock 彻底移除 `@agentxv2/payments` / `../payments` 残留
-5. **旧包处理**：`npm deprecate @agentxv2/payments@0.2.x`（提示迁移至 `@0xinfrax/payments`）；AgentX `payments/` 目录保留为历史
-6. **文档**：sdk `CHANGELOG.md` 0.11.0 条目、`docs/PROGRESS.md` 记录、应用方通知通用文案（§五）
-7. **提交推送**：AgentX 仓库（本次涉及文件单独提交，不含无关改动）
+> **执行状态：✅ 全部完成（2026-08-10）**，对应 AgentX `docs/PROGRESS.md` R17 清单 A-D；E（生产升级）/ F（通知收尾）待执行。
+
+1. **sdk 验证**：`npm run build` → `npm run typecheck` → `npm test`（在 `Agentx/sdk/`）— ✅ 32/32 全绿
+2. **gateway 验证**：`npm run build` → `npm run typecheck` → `npm test`（在 `Agentx/gateway/`）— ✅ 46/46 全绿
+3. **发布 sdk 0.11.0**：`npm version 0.11.0` → `npm publish`（确认 prepublish 构建产物）— ✅ `@agentxv2/sdk@0.11.0` 已发布（commit `3435a01` + tag `v0.11.0`）
+4. **gateway 升级 sdk**：`npm install @agentxv2/sdk@^0.11.0` → 复跑 gateway 验证，确认 lock 彻底移除 `@agentxv2/payments` / `../payments` 残留 — ✅ lock 残留 0
+5. **旧包处理**：`npm deprecate @agentxv2/payments@0.2.x`（提示迁移至 `@0xinfrax/payments`）；AgentX `payments/` 目录保留为历史 — ✅ 4 版本全部 deprecate
+6. **文档**：sdk `CHANGELOG.md` 0.11.0 条目、`docs/PROGRESS.md` 记录、应用方通知通用文案（§五）— ✅ CHANGELOG + PROGRESS R17 已更新（D 阶段）；应用方通知见 F1
+7. **提交推送**：AgentX 仓库（本次涉及文件单独提交，不含无关改动）— ⏳ 与 E/F 一并提交推送
 
 ## 五、应用方通知（通用文案要点）
 

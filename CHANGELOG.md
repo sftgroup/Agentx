@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-08-10 — 发布 sdk@0.11.0（支付引擎迁移至 @0xinfrax/payments）
+
+- **`@agentxv2/sdk@0.11.0` 已发布 npm**（minor，R17 支付引擎迁移）：
+  - 支付引擎底层由自维护包 `@agentxv2/payments`（已 deprecate）切换为 InfraX 维护的 `@0xinfrax/payments@^0.1.0`——能力完全一致，仅依赖来源变化
+  - `PAYMENT_VERSION` 对齐 `0.1.0`（原 0.2.0）；`src/payment/*` import 全部换包；`SubscriptionPayments` + 协议客户端（MPP/A2A/Period/X402/Payments）行为不变
+- **升级提示**：应用方升级 `@agentxv2/sdk` 至 **0.11.x** 即可，业务代码、API、配置均无需修改
+- 验证：build + typecheck 通过；vitest **32/32**；npm `latest = 0.11.0`、`dependencies` 含 `@0xinfrax/payments@^0.1.0` 确认
+- 配套：gateway 依赖 `file:../payments` → `@0xinfrax/payments@^0.1.0`，lock 残留清理，build+typecheck+test 46/46；旧包 `@agentxv2/payments@0.2.x` 全部版本 deprecate
+
+---
+
 ## 2026-08-08 — 发布 sdk@0.10.3（exports 暴露 ./package.json）
 
 - **`@agentxv2/sdk@0.10.3` 已发布 npm**（patch，纯元数据，无行为变化）：
