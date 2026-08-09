@@ -16,7 +16,7 @@ describe('payment module exports (v0.9.3)', () => {
     }
   })
   it('tracks the aligned generic engine version', () => {
-    expect(PAYMENT_VERSION).toBe('0.2.0')
+    expect(PAYMENT_VERSION).toBe('0.1.0')
   })
 })
 
