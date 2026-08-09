@@ -127,8 +127,8 @@
 
 ## 二、当前状态
 
-- **当前**：可立即开发任务已清零；R17 支付引擎迁移发布 A-E + F1 已完成（2026-08-10：sdk@0.11.0 发布、gateway 升级、旧包 deprecate、生产升级+冒烟、应用方通知）
-- **待办**：均为外部前提——R4/R5（业务方凭据）+ R17-F2（首次跟随演练，待 infraX 发布 `@0xinfrax/payments@0.1.1`），见下「### 开发任务清单 R」
+- **当前**：可立即开发任务已清零；R17 支付引擎迁移发布 A-E + F1 + F2 全部完成（2026-08-10：sdk@0.11.0/0.11.1 发布、gateway 升级、旧包 deprecate、生产升级+冒烟、应用方通知、0.1.1 首次跟随演练）
+- **待办**：均为外部前提——R4/R5（业务方凭据），见下「### 开发任务清单 R」
   - R1 ✅ 已完成（2026-08-06 · commit `0f5c30d`；SDK 0.8.7 已发布 npm）
   - R2 ✅ 已完成（2026-08-06 · 集成测试补 task 并行链路，生产 28/28 通过）
   - R4-R5 = 待外部前提任务（R4/R5 需业务方提供凭据）
@@ -341,9 +341,9 @@
 - 验收/验证：三处（本地 / GitHub / 生产）同步在最新 HEAD `8f22e88`；SDK typecheck + 单测 **32/32**；gateway **46/46** 无回归（本次无 gateway 代码变更）；新 key `GET /tenant/me` **200**
 - 影响面：调用方零代码改动；partner 建任务带 BYOK 是唯一新增要求（已文档化为显式 `AGENTX_CONVERSATION_LLM_KEY` 建议）
 
-### R17 支付引擎迁移发布流程（✅ 2026-08-10 已执行；仅 F2 待 infraX 0.1.1）
+### R17 支付引擎迁移发布流程（✅ 2026-08-10 全部完成，含 F2 跟随演练）
 
-> 背景：通用支付引擎移交 infraX，以 `@0xinfrax/payments@0.1.0` 发布（2026-08-08）；AgentX 依赖切换代码提交（`323d3c9`）后按本流程执行——sdk@0.11.0 发布、gateway 升级、生产升级与冒烟、应用方通知全部完成（2026-08-10）。
+> 背景：通用支付引擎移交 infraX，以 `@0xinfrax/payments@0.1.0` 发布（2026-08-08）；AgentX 依赖切换代码提交（`323d3c9`）后按本流程执行——sdk@0.11.0 发布、gateway 升级、生产升级与冒烟、应用方通知、F2 首次跟随演练全部完成（2026-08-10）。
 > 方案文档：[docs/payments-infrax-migration.md](payments-infrax-migration.md)（§四执行状态：✅ 全部完成）
 
 | 阶段 | # | 任务 | 命令 / 通过标准 | 状态 |
@@ -369,6 +369,8 @@
 | | F2 | 首次跟随演练 | 与 infraX 约 `@0xinfrax/payments@0.1.1` 走一遍完整跟随 check-list | ✅ **F2 完成（2026-08-10）**——infraX 已发布 `@0xinfrax/payments@0.1.1`；AgentX 升级依赖（sdk/gateway `^0.1.1`）、解耦回归 19 项断言通过（run-decouple.sh 改为消费已安装 npm 包）、sdk build+typecheck+32/32、发布 `@agentxv2/sdk@0.11.1`（tag `v0.11.1`）、gateway 升级 `^0.11.1`（46/46） |
 
 - 回滚预案：依赖回滚 `npm install @agentxv2/sdk@0.10.3` / `@agentxv2/payments@^0.2.2`（官方 registry）；代码回滚 `git revert 323d3c9`（旧包未删，双保险）
+
+> **附：生产组件源码覆盖核查（2026-08-10）**：AgentX 三服务（gateway/conversation/frontend）✅ `sftgroup/Agentx`；pocketx-alto ✅ 第三方开源（npm 安装的 alto bundler，上游 pimlico）；pocketx-mpc（`@wallet/mpc-server`，自研）❌ **源码未上 GitHub**（sftgroup 全部 20 仓库 main/master 扫描 0 命中，仅存于生产机 `/opt/pocketx/mpc-server/server.js`）——建议补 Git 仓库（含敏感信息处理），作为遗留待办。
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 
