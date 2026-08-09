@@ -5741,7 +5741,7 @@ var SubscriptionPayments = class {
 
 // src/payment/index.ts
 import { MPPClient, A2AClient, PeriodClient, X402Client, PaymentsClient as PaymentsClient2 } from "@0xinfrax/payments";
-var PAYMENT_VERSION = "0.1.0";
+var PAYMENT_VERSION = "0.1.1";
 
 // src/a2a/a2a.ts
 var A2A_ABI = {

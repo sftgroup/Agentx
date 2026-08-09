@@ -82,18 +82,23 @@ IR_ADDR="$(grep -oE 'IdentityRegistry: 0x[0-9a-fA-F]{40}' "$DEPLOY_OUT" | head -
 echo "    SubscriptionManager = $SM_ADDR"
 echo "    IdentityRegistry    = $IR_ADDR"
 
+# ── 跟随演练（F2）：解耦测试消费「npm 安装的 @0xinfrax/payments」，而非本地历史 payments/ ──
+MODULE_DIR="$ROOT/gateway/node_modules/@0xinfrax/payments"
+echo "    module dir: $MODULE_DIR (version=$(grep '"version"' "$MODULE_DIR/package.json" | head -1 | cut -d'"' -f4))"
+[ -d "$MODULE_DIR" ] || { echo "✗ 未找到已安装的 @0xinfrax/payments（请先在 gateway/ 执行 npm install）"; exit 1; }
+
 echo "==> [3/7] 独立数据库 $DB_NAME + 只应用模块迁移（payment_*）"
 $DOCKER exec agentx-local-db psql -U agentx -d postgres -v ON_ERROR_STOP=1 \
   -c "DROP DATABASE IF EXISTS $DB_NAME WITH (FORCE);" \
   -c "CREATE DATABASE $DB_NAME OWNER agentx;" >/dev/null
-for f in "$ROOT"/payments/db/migrations/*.sql; do
+for f in "$MODULE_DIR"/db/migrations/*.sql; do
   $DOCKER exec -i agentx-local-db psql -U agentx -d "$DB_NAME" -v ON_ERROR_STOP=1 < "$f" >/dev/null
 done
 echo "    migrations applied (payment_intents / payment_credits / payment_sessions)"
 
-echo "==> [4/7] 静态解耦扫描（payments/src + db + dist 无 AgentX 业务 token）"
+echo "==> [4/7] 静态解耦扫描（module src + db + dist 无 AgentX 业务 token）"
 FORBIDDEN='fiat_subscriptions|x402_payments|x402_balances|chain_subscriptions|@agentxv2/sdk|agentx_local|gateway/'
-if grep -rnE "$FORBIDDEN" "$ROOT/payments/src" "$ROOT/payments/db" "$ROOT/payments/dist" 2>/dev/null; then
+if grep -rnE "$FORBIDDEN" "$MODULE_DIR/src" "$MODULE_DIR/db" "$MODULE_DIR/dist" 2>/dev/null; then
   echo "    ✗ 发现 AgentX 业务耦合，解耦失败"
   exit 1
 fi

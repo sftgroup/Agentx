@@ -1,10 +1,12 @@
 // =============================================================================
-// @agentxv2/payments — decoupling verification (version-A standalone shape)
+// @0xinfrax/payments — decoupling verification (version-A standalone shape)
 // =============================================================================
 // Proves the payment engine is truly independent of AgentX:
 //
-//   • LOADS ONLY the module: every import resolves from payments/ (its own
-//     dist + its own node_modules for pg / viem). No gateway, no @agentxv2/sdk.
+//   • LOADS ONLY the module: every import resolves from the INSTALLED
+//     @0xinfrax/payments npm package (its own dist + its own deps pg/viem).
+//     No gateway, no @agentxv2/sdk. (F2 跟随演练：消费外部发布包，而非本地
+//     历史 AgentX payments/ 目录。)
 //   • USES ONLY the generic schema: PgPaymentStore over the module-owned
 //     `payment_*` tables — no fiat_subscriptions / x402_* / chain_*.
 //   • Exercises all three rails purely through the PaymentsService API:
@@ -24,9 +26,10 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// ── Resolve the module from ITS OWN package — not from gateway/node_modules ──
+// ── Resolve the module from ITS OWN package — not from gateway/src ──────────
 const SCRIPT_DIR = fileURLToPath(new URL('.', import.meta.url))
-const PAYMENTS_DIR = join(SCRIPT_DIR, '..', '..', 'payments')
+// F2：解析 npm 安装的 @0xinfrax/payments（run-decouple.sh 注入 PAYMENTS_MODULE_DIR）
+const PAYMENTS_DIR = process.env.PAYMENTS_MODULE_DIR || join(SCRIPT_DIR, '..', '..', 'gateway', 'node_modules', '@0xinfrax', 'payments')
 const requireP = createRequire(join(PAYMENTS_DIR, 'package.json'))
 const moduleEntry = requireP.resolve('./dist/index.js')
 const modulePkg = JSON.parse(readFileSync(join(PAYMENTS_DIR, 'package.json'), 'utf8'))
@@ -64,7 +67,9 @@ const expectThrow = async (fn, msgPart) => {
   catch (e) { return msgPart ? String(e.message).includes(msgPart) : true }
 }
 const walk = (dir, out = []) => {
-  for (const ent of readdirSync(dir)) {
+  let ents
+  try { ents = readdirSync(dir) } catch { return out }   // 缺失目录跳过（npm 包仅发布 dist+db）
+  for (const ent of ents) {
     const p = join(dir, ent)
     if (statSync(p).isDirectory()) walk(p, out)
     else if (p.endsWith('.js') || p.endsWith('.ts') || p.endsWith('.sql')) out.push(p)
@@ -150,13 +155,13 @@ console.log(`SubscriptionManager: ${SM_ADDR}`)
 console.log('\n=== Part 1: decoupling proofs (zero AgentX coupling) ===')
 
 check(
-  'load: module resolved from payments/ own dist (not gateway)',
+  'load: module resolved from installed @0xinfrax/payments dist (not gateway)',
   moduleEntry.startsWith(PAYMENTS_DIR),
   moduleEntry
 )
 check(
-  'pkg: name is @agentxv2/payments',
-  modulePkg.name === '@agentxv2/payments',
+  'pkg: name is @0xinfrax/payments',
+  modulePkg.name === '@0xinfrax/payments',
   modulePkg.name
 )
 const agentxDeps = Object.keys(modulePkg.dependencies ?? {}).filter(d => d.startsWith('@agentxv2') || d.includes('sdk'))
@@ -316,7 +321,7 @@ check(
 // ═══════════════════════════════════════════════════════════════════════════
 console.log('\n==================================================')
 if (failures === 0) {
-  console.log('ALL DECOUPLING CHECKS PASSED — @agentxv2/payments runs three rails')
+  console.log('ALL DECOUPLING CHECKS PASSED — @0xinfrax/payments runs three rails')
   console.log('standalone: no AgentX import, no AgentX table, no AgentX business logic.')
 } else {
   console.log(`${failures} check(s) FAILED`)

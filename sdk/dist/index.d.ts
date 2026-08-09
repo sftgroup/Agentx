@@ -163,7 +163,7 @@ declare class SubscriptionPayments {
     private _fetchJson;
 }
 
-declare const PAYMENT_VERSION = "0.1.0";
+declare const PAYMENT_VERSION = "0.1.1";
 
 declare const A2A_VERSION = "0.1.0";
 

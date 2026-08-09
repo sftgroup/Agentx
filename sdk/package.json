@@ -1,6 +1,6 @@
 {
   "name": "@agentxv2/sdk",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "AgentX — Decentralized AI Agent SDK with ReAct AgentLoop + Multi-Tenant LLM Providers",
   "main": "dist/index.js",
   "types": "dist/index.d.mts",
@@ -89,7 +89,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@0xinfrax/payments": "^0.1.0",
+    "@0xinfrax/payments": "^0.1.1",
     "@noble/ciphers": "^1.0.0",
     "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.5.0"

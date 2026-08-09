@@ -15,4 +15,4 @@ export type {
 export { MPPClient, A2AClient, PeriodClient, X402Client, PaymentsClient } from '@0xinfrax/payments'
 export type { ClientOptions } from '@0xinfrax/payments'
 
-export const PAYMENT_VERSION = '0.1.0'
+export const PAYMENT_VERSION = '0.1.1'

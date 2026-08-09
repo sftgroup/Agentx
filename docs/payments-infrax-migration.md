@@ -77,6 +77,8 @@ gateway（直接依赖）
 
 ## 六、长期跟随策略（infraX 后续发版）
 
+> **F2 首次跟随演练（✅ 2026-08-10）**：infraX 发布 `@0xinfrax/payments@0.1.1`（补丁版，新增 `createWebhookForwarder` + `rpcHeaders`）后，按下方 check-list 完整走通一遍：AgentX 升级依赖 `^0.1.1` → 解耦回归 19 项断言通过（`run-decouple.sh` 已改为消费**已安装的 npm 包** `gateway/node_modules/@0xinfrax/payments`，而非本地历史 `payments/`）→ sdk build+typecheck+32/32 → 发布 `@agentxv2/sdk@0.11.1`（tag `v0.11.1`，`PAYMENT_VERSION='0.1.1'`）→ gateway 升级 `^0.11.1`，build+typecheck+46/46。
+
 - 依赖锁 `^0.1.0`：只自动跟随 0.1.x 补丁（bugfix/安全），`0.2.0+`（潜在 breaking / 新能力）不会自动进入。
 - 生产环境有 lock 文件，**不重装不会变**；依赖生效需显式升级。
 - infraX 每次发版 → AgentX 走固定 check-list：
