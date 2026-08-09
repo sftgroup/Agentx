@@ -362,7 +362,7 @@
 | D 旧包+文档 | D1 | 旧包 deprecate | `npm deprecate @agentxv2/payments "已迁移至 @0xinfrax/payments"` | ✅ 4 版本（0.1.0/0.2.0/0.2.1/0.2.2）全部 deprecate |
 | | D2 | sdk CHANGELOG 0.11.0 条目 | 依赖切换 / `PAYMENT_VERSION`→0.1.0 / 升级提示 | ✅ 2026-08-10 条目 |
 | | D3 | PROGRESS + 方案文档更新 | 本表打勾、§三/§四标记完成 | ✅ 本文档 + `payments-infrax-migration.md` |
-| | D4 | 提交推送 | commit + push | ⏳ 与 E/F 一并提交 |
+| | D4 | 提交推送 | commit + push | ✅ commit `47d3d72` + tag `v0.11.0` 已推送 origin/main |
 | E 生产升级 | E1 | 生产机升级 sdk | `npm install @agentxv2/sdk@^0.11.0 --registry=https://registry.npmjs.org/`（生产 `~/.npmrc` 为腾讯云镜像，须显式官方 registry，不改全局） | ⏳ |
 | | E2 | 重启 + 冒烟 | `/api/v1/payments/info`、`/access` 正常；x402/fiat 各验一笔 | ⏳ |
 | F 通知收尾 | F1 | 应用方通知 | 通用文案：升级 `@agentxv2/sdk` 至 0.11.x，业务零改动 | ⏳ |
