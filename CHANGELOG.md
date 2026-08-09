@@ -13,6 +13,7 @@
 - **升级提示**：应用方升级 `@agentxv2/sdk` 至 **0.11.x** 即可，业务代码、API、配置均无需修改
 - 验证：build + typecheck 通过；vitest **32/32**；npm `latest = 0.11.0`、`dependencies` 含 `@0xinfrax/payments@^0.1.0` 确认
 - 配套：gateway 依赖 `file:../payments` → `@0xinfrax/payments@^0.1.0`，lock 残留清理，build+typecheck+test 46/46；旧包 `@agentxv2/payments@0.2.x` 全部版本 deprecate
+- **生产部署（E 阶段）**：生产机（43.159.60.46）`git pull` 至 `2e2aaa8`，gateway 升级 sdk 0.11.0 + @0xinfrax/payments 0.1.0（官方 registry），rebuild + pm2 restart；冒烟 `/api/v1/payments/info`（统一引擎 payload）与 `/api/v1/payments/access` 正常，fiat/x402 轨道按配置 disabled（待 R4/R5 凭据）
 
 ---
 
