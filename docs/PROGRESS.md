@@ -366,7 +366,7 @@
 | E 生产升级 | E1 | 生产机升级 sdk | `npm install @agentxv2/sdk@^0.11.0 --registry=https://registry.npmjs.org/`（生产 `~/.npmrc` 为腾讯云镜像，须显式官方 registry，不改全局） | ✅ 生产 pull 至 `2e2aaa8`，gateway `npm install --registry=https://registry.npmjs.org/`，sdk=0.11.0 / @0xinfrax/payments=0.1.0，旧 `@agentxv2/payments` 已移除 |
 | | E2 | 重启 + 冒烟 | `/api/v1/payments/info`、`/access` 正常；x402/fiat 各验一笔 | ✅ pm2 restart，日志干净（indexer/A2A/schedule 全启动）；`/info` 返回统一引擎 payload（fiat/x402 按配置 disabled、chain enabled、oxachain 19505），`/access` 正常返回 active:false；x402/fiat 轨道生产配置 disabled（待 R4/R5 外部凭据），info 已正确反映，无法各验一笔 |
 | F 通知收尾 | F1 | 应用方通知 | 通用文案：升级 `@agentxv2/sdk` 至 0.11.x，业务零改动 | ✅ 文案见 `payments-infrax-migration.md` §五；应用方盘点：aiservicer（^0.9.1，不受影响，升级为推荐项）、autoops/pocketx-wallet（无 sdk 依赖） |
-| | F2 | 首次跟随演练 | 与 infraX 约 `@0xinfrax/payments@0.1.1` 走一遍完整跟随 check-list | ✅ **F2 完成（2026-08-10）**——infraX 已发布 `@0xinfrax/payments@0.1.1`；AgentX 升级依赖（sdk/gateway `^0.1.1`）、解耦回归 19 项断言通过（run-decouple.sh 改为消费已安装 npm 包）、sdk build+typecheck+32/32、发布 `@agentxv2/sdk@0.11.1`（tag `v0.11.1`）、gateway 升级 `^0.11.1`（46/46） |
+| | F2 | 首次跟随演练 | 与 infraX 约 `@0xinfrax/payments@0.1.1` 走一遍完整跟随 check-list | ✅ **F2 完成（2026-08-10）**——infraX 已发布 `@0xinfrax/payments@0.1.1`；AgentX 升级依赖（sdk/gateway `^0.1.1`）、解耦回归 19 项断言通过（run-decouple.sh 改为消费已安装 npm 包）、sdk build+typecheck+32/32、发布 `@agentxv2/sdk@0.11.1`（tag `v0.11.1`）、gateway 升级 `^0.11.1`（46/46）；**本次演练由 infraX 侧代为执行，AgentX 审阅核实后确认「保留」**（生产实装 0.11.1/0.1.1 冒烟一致） |
 
 - 回滚预案：依赖回滚 `npm install @agentxv2/sdk@0.10.3` / `@agentxv2/payments@^0.2.2`（官方 registry）；代码回滚 `git revert 323d3c9`（旧包未删，双保险）
 
