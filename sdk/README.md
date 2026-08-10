@@ -254,6 +254,21 @@ Streams agent conversations from the hosted **Conversation Service** via the Gat
 >
 > **B-end end-user auth over MCP conversation — how it works (2026-08-11)**: the 6 conversation/task tools authenticate *only* via the `access_token` argument — a registered-user JWT issued by wallet-signed login (EIP-191). The MCP executor reads `access_token`, drops the call with `access_token (registered-user JWT) is required` if absent, and forwards it as `Authorization: Bearer` to the Gateway REST channel; B-end `agentx_` keys are rejected on these tools (R14). Subscription gating therefore resolves against the **JWT holder's wallet**. A B-end end-user who is not a registered AgentX user has **no wallet-signed JWT** and cannot call these tools directly — that is by design: their identity (and subscription) is proxied through the B-end key + `X-End-User-Id: 0x<wallet>` on REST instead. If MCP-native conversation for such end-users is ever required, the bridge keeps the same semantics as REST — exchange (B-end key + end-user subscription check) for a **short-lived scoped JWT** (`sub=partner-<slug>`, `end_user=0x<wallet>`, TTL ~5 min, no refresh) so the MCP tools still do their subscription check against the end-user wallet. Until then, paths 1–3 above apply.
 >
+> **B-end end-user auth over MCP conversation — step-by-step flow (2026-08-11)**: the same call goes through two distinct auth paths depending on the caller's credential:
+>
+> * **Registered user (JWT)** — `agentx_gateway_chat` with `access_token=eyJ...`:
+>   1. MCP executor calls `gatewayAuthHeaders()` → token present → `Authorization: Bearer <JWT>`.
+>   2. Forwards to Gateway `POST /api/v1/agent/runs`.
+>   3. Gateway resolves the access subject as the **JWT holder's wallet**, then `canAccessAgent(wallet, agentId)` checks on-chain ownership/subscription — `403 AGENT_ACCESS_DENIED` if the JWT wallet holds no subscription to the target agent.
+>   4. SSE stream returned, aggregated into the MCP tool result `{ reply, tool_calls }`.
+> * **B-end end-user (partner key + proxied wallet)** — the *same* conversation over **REST**:
+>   1. `X-Api-Key: agentx_...` + `X-End-User-Id: 0x<endUserWallet>` → `POST /api/v1/agent/runs`.
+>   2. `resolveAccessSubject()` (see [gateway agent-access.ts](gateway/src/services/agent-access.ts)) detects `kind=partner` + hex `endUserId` and substitutes the **end-user's wallet** as the access subject.
+>   3. `canAccessAgent(endUserWallet, agentId)` gates on the **end-user's** on-chain subscription (not the partner tenant's).
+>   4. Same SSE stream, same `{ reply, tool_calls }` shape — the two paths differ **only in credential exchange**, never in conversation behavior.
+>
+> Decision rule: a B-end caller holds only `agentx_` keys → use REST (path 1 or 2 above); a registered user holds a wallet-signed JWT → MCP is available as-is; a B-end caller that insists on MCP-native conversation for unregistered end-users → future bridge (above), not yet implemented.
+>
 > **B-end key vs user JWT — sessions/tasks behavior (v0.10.1)**: both credentials are gated by the same P9 capability bits and can create sessions/parallel tasks; the differences are (1) **access subject** — a B-end key authorizes as the partner tenant, or as a proxied end-user wallet when `endUserId` is a `0x` address; a JWT authorizes as the user's own wallet; (2) **task LLM key** — partner tasks **require BYOK** (`X-Llm-Api-Key` / `llmApiKey` / `tenantKeyId`, else `400 LLM_KEY_REQUIRED`), user tasks fall back to the platform key; (3) **platform MCP chat/task tools** and **on-chain A2A/publish/subscribe** are available to JWTs only. A B-end key covers all REST chat + parallel tasks; a JWT additionally covers MCP and on-chain.
 >
 > **`endUserId` is always optional — omitting it is NOT rejected** (2026-08-08 clarification): without it the access subject falls back to the **tenant's own wallet** — for a registered user (kind=user) that *is* the user's wallet (works naturally); for a partner tenant it simply means **no end-user proxying** (the `partner-*` address is not an on-chain address, so subscription-gated agents return `403 AGENT_ACCESS_DENIED` when the chain check fails — not a "missing endUserId" rejection). A non-`0x` `endUserId` is used for memory isolation only. There is **no "must send endUserId" enforcement** anywhere.
