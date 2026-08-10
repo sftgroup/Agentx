@@ -10,6 +10,7 @@ import { ethers } from 'ethers'
 import { parseTokenURIJSON } from '@agentxv2/sdk'
 import { getPool } from '../lib/db'
 import { config } from '../config'
+import { ZERO_ADDRESS } from '../lib/constants'
 
 const IDENTITY_ABI = [
   'function tokenURI(uint256 tokenId) view returns (string)',
@@ -35,8 +36,6 @@ const SUBSCRIPTION_DETAIL_ABI = [
   'event SubscriptionCancelled(uint256 indexed subscriptionId)',
   'event SubscriptionExpired(uint256 indexed subscriptionId)',
 ]
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 // ── Structured metadata extraction ──────────────────────────────────────────
 

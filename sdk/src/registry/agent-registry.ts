@@ -13,6 +13,7 @@
 import { encodeAbiParameters, parseAbiParameters, stringToHex, hexToString } from 'viem'
 import type { PublicClient, WalletClient, Address, Hash } from 'viem'
 import type { OnChainAgentMetadata } from '../core/types'
+import { ZERO_ADDRESS } from '../subscription/subscription'
 
 // ── Minimal ABI Fragments ──────────────────────────────────────────────────
 
@@ -164,8 +165,6 @@ export interface StructuredAgentMetadata {
 }
 
 // ── tokenURI parsing helpers ────────────────────────────────────────────────
-
-const ZERO_ADDRESS: Address = '0x0000000000000000000000000000000000000000'
 
 /** Decode base64 in both Node and browser environments. */
 function decodeBase64(b64: string): string {

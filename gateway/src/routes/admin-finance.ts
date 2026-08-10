@@ -17,16 +17,13 @@ import { getPool } from '../lib/db'
 import { config } from '../config'
 import { chainDataReader, log } from '../services/chain-data-reader'
 import { x402Available, priceWei } from '../services/x402'
+import { KNOWN_ERC20_SYMBOLS } from '../lib/constants'
 
 const router = Router()
 
-// R9: known ERC20 token symbols for platform-fee display (per chain).
 // Unlisted tokens fall back to a short address label.
-const KNOWN_ERC20: Record<string, string> = {
-  '0x1c7d4b196cb0c7b01d743fbc6116a902379c7238': 'USDC', // Sepolia USDC
-}
 const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
-const tokenLabel = (a: string) => KNOWN_ERC20[a.toLowerCase()] || shortAddr(a)
+const tokenLabel = (a: string) => KNOWN_ERC20_SYMBOLS[a.toLowerCase()] || shortAddr(a)
 
 // ── Revenue ────────────────────────────────────────────────────────────────
 

@@ -13,9 +13,7 @@ import { CHAINS } from '../services/chain-config'
 import type { ChainKey, ChainInfo } from '../services/chain-config'
 import { hasSubscriptionAccess } from '../services/subscription-access'
 import { MCP_TOOLS } from './mcp-tools'
-
-/** address(0) — native token / ETH sentinel for payToken. */
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+import { ZERO_ADDRESS } from '../lib/constants'
 
 function resolveChain(args: Record<string, unknown>): ChainInfo {
   const key = (args.chain as string)?.toLowerCase() === 'oxachain' ? 'oxachain' : 'sepolia'

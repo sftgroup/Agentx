@@ -1,14 +1,8 @@
 /** @type {import('next').NextConfig} */
+// 代码审查 D1：已移除 typescript.ignoreBuildErrors / eslint.ignoreDuringBuilds
+// 历史豁免（@x402/* 类型解析问题已不存在，typecheck 零错误），恢复构建期检查。
 const nextConfig = {
   output: 'standalone',
-  // FIXME: 临时禁用类型检查以绕过 @x402/* 类型解析问题。
-  //        待 @x402 提供正确的类型声明后应移除 ignoreBuildErrors。
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   experimental: {
     workerThreads: false,
     cpus: 1,

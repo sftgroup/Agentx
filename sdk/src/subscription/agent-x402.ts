@@ -19,6 +19,7 @@
 import type { PublicClient, WalletClient, Address } from 'viem'
 import { AgentXError, AgentXErrorCode } from '../core/types'
 import type { SubscriptionRequired } from '../core/types'
+import { ZERO_ADDRESS } from './subscription'
 
 // ── ABI Fragments (v3 compatible) ──────────────────────────────────────────
 
@@ -153,7 +154,7 @@ export class AgentX402 {
     payToken: Address,
   ): Promise<number> {
     const { publicClient, walletClient, subscriptionManagerAddress } = this.config
-    const isETH = payToken === '0x0000000000000000000000000000000000000000'
+    const isETH = payToken === ZERO_ADDRESS
 
     const { request } = await publicClient.simulateContract({
       address: subscriptionManagerAddress,

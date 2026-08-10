@@ -23,11 +23,9 @@ import { AgentRegistry, SubscriptionManager, subscribeToEvents } from '@agentxv2
 import type { AgentSummary, AgentXChainEvent, AgentXEventType, PlanDetail, SubscriptionDetail } from '@agentxv2/sdk'
 import { CHAINS } from './chain-config'
 import type { ChainInfo, ChainKey } from './chain-config'
+import { ZERO_ADDRESS } from '../lib/constants'
 
 export type { ChainKey }
-
-/** address(0) — native token sentinel for payToken / platformFeesCollected. */
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 /** Minimal ABI for raw viem reads the SDK does not wrap yet. */
 const PLATFORM_FEES_ABI = [
