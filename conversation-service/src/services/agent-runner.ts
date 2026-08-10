@@ -40,6 +40,8 @@ export interface AgentRunSSEEvent {
   toolResult?: unknown
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
   iterations?: number
+  /** LLM billing source — 'byok' (tenant key) or 'platform' (AgentX official key). */
+  llmSource?: 'byok' | 'platform'
   error?: string
   /** On-chain delegation approval payload (rail: onchain) — the user's wallet must create the A2A task */
   approval?: OnChainApprovalRequest
@@ -99,7 +101,7 @@ export class AgentRunnerService {
       ]
 
       // 2. Resolve LLM provider — tenant key > header key > AgentX key
-      const llmProvider = await this.llmResolver.resolve(
+      const { provider: llmProvider, source: llmSource } = await this.llmResolver.resolve(
         { agentId: runAgentId, prompt: loadedCtx.prompt, skills: [] },
         request.tenantAddress,
         request.headerApiKey,
@@ -115,7 +117,7 @@ export class AgentRunnerService {
         const question = await this.checkClarification(llmProvider, loadedCtx.prompt, request.message)
         if (question) {
           yield { type: 'clarification', question }
-          yield { type: 'done', usage: undefined, iterations: 0 }
+          yield { type: 'done', usage: undefined, iterations: 0, llmSource }
           return
         }
       }
@@ -178,6 +180,7 @@ export class AgentRunnerService {
         type: 'done',
         usage: result.usage,
         iterations: result.totalIterations,
+        llmSource,
       }
 
       // 6. Memory store on session end

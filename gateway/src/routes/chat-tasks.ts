@@ -13,8 +13,16 @@ import { canAccessAgent, resolveAccessSubject } from '../services/agent-access'
 import { getPool } from '../lib/db'
 import { decryptApiKey } from '../lib/crypto'
 import { config } from '../config'
+import { pipeSSEWithUsage } from '../services/sse-usage'
+import { updateQuota } from '../middleware/rate-limiter'
 
 const router = Router()
+
+/**
+ * Quota metering for background tasks — idempotent per task across repeated
+ * SSE subscriptions (replay + live) so tokens are counted exactly once.
+ */
+const billedTaskIds = new Set<string>()
 
 /**
  * P9 capability gate (2026-08-08): sessions / tasks are gated uniformly by
@@ -58,7 +66,19 @@ async function resolveStoredKey(
   return { key: decryptApiKey(tk.api_key, config.masterEncryptionKey), endpoint: tk.endpoint, model: tk.model }
 }
 
-async function pipeSSE(upstream: globalThis.Response, res: ExpressResponse): Promise<void> {
+/**
+ * Pipe a task's SSE stream to the client, metering platform-LLM tokens exactly
+ * once per task. The `done` event carries usage + llmSource from the
+ * conversation service (exact billing source). If llmSource is absent (older
+ * conversation-service versions), no metering happens for tasks — the caller's
+ * BYOK headers at creation time gate platform-key usage anyway.
+ */
+async function pipeTaskSSE(
+  upstream: globalThis.Response,
+  res: ExpressResponse,
+  taskId: string,
+  tenantId?: string,
+): Promise<void> {
   if (!upstream.ok) {
     res.status(upstream.status).json({ error: 'Conversation service error' })
     return
@@ -69,21 +89,17 @@ async function pipeSSE(upstream: globalThis.Response, res: ExpressResponse): Pro
     'Connection': 'keep-alive',
     'X-Accel-Buffering': 'no',
   })
-  const reader = upstream.body?.getReader()
-  if (!reader) {
-    res.end()
-    return
-  }
-  const decoder = new TextDecoder()
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      res.write(decoder.decode(value, { stream: true }))
+
+  let platformTokens = 0
+  await pipeSSEWithUsage(upstream, res, ({ totalTokens, llmSource }) => {
+    if (llmSource === 'platform' && totalTokens > 0) {
+      platformTokens += totalTokens
     }
-  } finally {
-    reader.releaseLock()
-    res.end()
+  })
+
+  if (platformTokens > 0 && tenantId && !billedTaskIds.has(taskId)) {
+    billedTaskIds.add(taskId)
+    updateQuota(tenantId, platformTokens).catch(() => {})
   }
 }
 
@@ -206,7 +222,7 @@ router.get('/tasks/:taskId', async (req: Request, res: ExpressResponse) => {
 router.get('/tasks/:taskId/events', async (req: Request, res: ExpressResponse) => {
   try {
     const upstream = await getConversationProxy().streamTaskEvents(req.params.taskId)
-    await pipeSSE(upstream, res)
+    await pipeTaskSSE(upstream, res, req.params.taskId, req.tenant?.id)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     res.write(`data: ${JSON.stringify({ type: 'error', error: message })}\n\n`)

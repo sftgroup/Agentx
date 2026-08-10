@@ -8,6 +8,8 @@ import { canAccessAgent, resolveAccessSubject } from '../services/agent-access'
 import { getPool } from '../lib/db'
 import { decryptApiKey } from '../lib/crypto'
 import { config } from '../config'
+import { pipeSSEWithUsage } from '../services/sse-usage'
+import { updateQuota } from '../middleware/rate-limiter'
 
 const router = Router()
 
@@ -80,12 +82,13 @@ router.post('/runs', (req: Request, res: Response, next: () => void) => {
       prompt: typeof prompt === 'string' ? prompt : undefined,
       skills,
     })
-
     if (!upstream.ok) {
       return res.status(upstream.status).json({ error: 'Conversation service error' })
     }
 
-    // Pipe SSE stream from Conversation Service to client
+    // Pipe SSE stream from Conversation Service to client.
+    // Platform-mode runs (no BYOK headers / stored key) are metered against the
+    // tenant's plan quota using the `done` event's usage + llmSource.
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -93,21 +96,19 @@ router.post('/runs', (req: Request, res: Response, next: () => void) => {
       'X-Accel-Buffering': 'no',
     })
 
-    const reader = upstream.body?.getReader()
-    if (!reader) {
-      return res.end()
-    }
-
-    const decoder = new TextDecoder()
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        res.write(decoder.decode(value, { stream: true }))
+    let platformTokens = 0
+    await pipeSSEWithUsage(upstream, res, ({ totalTokens, llmSource }) => {
+      // Only count when the run actually used the platform LLM key. Fall back to
+      // the header heuristic for older conversation-service versions that don't
+      // emit llmSource yet.
+      const isPlatform = llmSource === 'platform' || (llmSource === undefined && !headerApiKey && !tenantKeyId)
+      if (isPlatform && totalTokens > 0) {
+        platformTokens += totalTokens
       }
-    } finally {
-      reader.releaseLock()
-      res.end()
+    })
+    // Meter after the stream closes — fire-and-forget, never blocks the response.
+    if (platformTokens > 0 && req.tenant) {
+      updateQuota(req.tenant.id, platformTokens).catch(() => {})
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

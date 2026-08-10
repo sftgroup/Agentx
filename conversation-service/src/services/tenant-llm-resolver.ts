@@ -33,6 +33,10 @@ export class TenantLLMResolver {
    *   1. Tenant's own API key from DB (encrypted at rest)
    *   2. Tenant's own key from request header (X-Llm-Api-Key, for stateless mode)
    *   3. AgentX official key (platform default)
+   *
+   * Returns the provider together with its billing source:
+   *   - 'byok'     → tenant's own key (platform quota must NOT be charged)
+   *   - 'platform' → AgentX official key (charged against the tenant's plan quota)
    */
   async resolve(
     ctx: LoopRunContext,
@@ -40,16 +44,19 @@ export class TenantLLMResolver {
     headerApiKey?: string,
     headerEndpoint?: string,
     headerModel?: string,
-  ): Promise<LLMProvider> {
+  ): Promise<{ provider: LLMProvider; source: 'byok' | 'platform' }> {
     // 1. Stateless BYOK request headers (ephemeral, not stored) — caller's own
     //    key + endpoint + model, so no AgentX-side configuration is needed at all.
     if (headerApiKey) {
-      return new OpenAIProvider({
-        apiKey: headerApiKey,
-        model: headerModel || ctx.model || 'gpt-4o',
-        // Provider-specific endpoint (e.g. DeepSeek) — falls back to OpenAI default
-        endpoint: headerEndpoint || undefined,
-      })
+      return {
+        source: 'byok',
+        provider: new OpenAIProvider({
+          apiKey: headerApiKey,
+          model: headerModel || ctx.model || 'gpt-4o',
+          // Provider-specific endpoint (e.g. DeepSeek) — falls back to OpenAI default
+          endpoint: headerEndpoint || undefined,
+        }),
+      }
     }
 
     // 2. Check DB for tenant's persistent key
@@ -57,12 +64,15 @@ export class TenantLLMResolver {
       const record = await this.getTenantKey(this.db, tenantAddress)
       if (record) {
         const decrypted = decryptSecret(record.encrypted_key)
-        return new OpenAIProvider({
-          apiKey: decrypted,
-          model: record.model || ctx.model || 'gpt-4o',
-          // Provider-specific endpoint (e.g. DeepSeek) — falls back to OpenAI default
-          endpoint: record.endpoint_url || undefined,
-        })
+        return {
+          source: 'byok',
+          provider: new OpenAIProvider({
+            apiKey: decrypted,
+            model: record.model || ctx.model || 'gpt-4o',
+            // Provider-specific endpoint (e.g. DeepSeek) — falls back to OpenAI default
+            endpoint: record.endpoint_url || undefined,
+          }),
+        }
       }
     } catch (err) {
       console.warn(`[TenantLLM] Failed to load/decrypt tenant key for ${tenantAddress}:`, (err as Error).message)
@@ -71,19 +81,25 @@ export class TenantLLMResolver {
     // 3. Fallback: AgentX official key (OpenAI-compatible; optional LLM_ENDPOINT/LLM_MODEL
     //    envs let the platform default to e.g. DeepSeek instead of api.openai.com)
     if (config.openaiApiKey) {
-      return new OpenAIProvider({
-        apiKey: config.openaiApiKey,
-        model: ctx.model || config.llmModel || 'gpt-4o',
-        endpoint: config.llmEndpoint || undefined,
-      })
+      return {
+        source: 'platform',
+        provider: new OpenAIProvider({
+          apiKey: config.openaiApiKey,
+          model: ctx.model || config.llmModel || 'gpt-4o',
+          endpoint: config.llmEndpoint || undefined,
+        }),
+      }
     }
 
     // 4. Last resort: internal Gateway
-    return new GatewayProvider({
-      gatewayUrl: config.gatewayUrl,
-      accessToken: '',
-      keySource: 'platform',
-    })
+    return {
+      source: 'platform',
+      provider: new GatewayProvider({
+        gatewayUrl: config.gatewayUrl,
+        accessToken: '',
+        keySource: 'platform',
+      }),
+    }
   }
 
   /** Fetch tenant LLM config from DB */
