@@ -335,9 +335,9 @@
   3. **边界澄清**（`29a87de`，决策维持现状）：BYOK 守卫**适用范围**——只约束 partner 经 REST/SDK 创建的并行任务，平台托管后台路径（定时任务/编排）按存储 `tenantKeyId` 或平台兜底；**B 端最终用户路径**——对话/任务由 REST + `agentx_` key + `X-End-User-Id` 完整覆盖，平台 MCP 维持仅注册用户 JWT，「B 端用户 → AgentX JWT」记作未来独立设计项（无需求 + 自建 MCP 替代路径 + 需安全设计）
   4. **应用侧建议项文档化**（`2607ec0`）：显式配置 `AGENTX_CONVERSATION_LLM_KEY`（SDK 构造 `llmApiKey`，任务自动 BYOK）+ `createSession` 补传 `agentId`（绑定会话到 Agent）；交付包 `agentx-callers.env` 更新为 7 调用方 + LLM Key 建议段 + SDK ≥0.10.1 示例（含真实 key，不入库，仅本地交付）
   5. **对话 Skill 执行模型文档**（`538e9a2`）：`publish-subscribe-pay.md` §1.6「如何在对话中引入你自己的 MCP」——对话工具 = 发布时声明的 skills（**无 MCP server 注册表**，注册点=发布）；`execution.type` 三模型 `open`/`mcp`/`a2a`；路径 A（发布者 skill 配自定义 MCP endpoint，平台不代理其鉴权）+ 路径 B（B 端 `loadInline` 注入自定义 MCP/HTTP 工具）；最终用户不能给别人的 Agent 临时加工具
-  6. **新集成方 key 签发**（生产数据，无代码）：`partner-pocketx-wallet`、`partner-infrax`（均 enterprise、parallel_tasks 放行、kind=partner），key 明文已单次交付调用方；生产 7 个 partner-* 租户 kind 全部为 `partner`
+  6. **新集成方 key 签发**（生产数据，无代码）：`partner-infrax`（enterprise、parallel_tasks 放行、kind=partner），key 明文已单次交付调用方；生产 7 个 partner-* 租户 kind 全部为 `partner`
   7. **SDK 审查加固 + endUserId 澄清**（`8f22e88`，**已随 0.10.2 发版**）：① `createTask()` per-request `endUserId` 统一以 `X-End-User-Id` header 发送（与 `stream()` 机制一致；0.10.1 已发布版本走请求体透传，Gateway 优先 header 回退 body，两版兼容，调用方零改动）；② 澄清 `endUserId` **全程可选、缺省不会被拒**——缺省授权主体回退租户自身钱包（user 天然=用户钱包；partner 不代理，链上失败返回 `403 AGENT_ACCESS_DENIED`），非 `0x` 仅记忆隔离，平台**无**「必须带 endUserId」强制校验（否定审计方第 6 条「sessions/tasks 必须带 endUserId / gatewayConfig() 统一注入」的不实描述，`gatewayConfig()` 全仓库 0 匹配）
-  8. **tenantKeyId 租户隔离澄清**（B 端审计反馈 ②）：`tenant_api_keys` 按 `tenant_id` 归属，`tenantKeyId` 跨租户复用报 `400 Tenant API key not found or inactive`（pocketx-wallet 沿用 autoops 的 tenantKeyId 触发）；已文档化「key 轮换 / 切换租户后必须用新 Key 重新存 BYOK」——`integration-callers.md` §6 + FAQ、`sdk/README.md` tenantKeyId note；无代码变更
+  8. **tenantKeyId 租户隔离澄清**（B 端审计反馈 ②）：`tenant_api_keys` 按 `tenant_id` 归属，`tenantKeyId` 跨租户复用报 `400 Tenant API key not found or inactive`（已有调用方沿用其他租户的 tenantKeyId 触发）；已文档化「key 轮换 / 切换租户后必须用新 Key 重新存 BYOK」——`integration-callers.md` §6 + FAQ、`sdk/README.md` tenantKeyId note；无代码变更
   9. **发布 sdk@0.10.2**（2026-08-08）：#7 的仓库级加固正式纳入 npm（patch）——build + typecheck 通过、vitest **32/32**、远端 `latest = 0.10.2` 确认；UPGRADE/CHANGELOG 同步
   10. **发布 sdk@0.10.3**（2026-08-08）：exports 暴露 `"./package.json"`（修复 `ERR_PACKAGE_PATH_NOT_EXPORTED`，调用方可直接 `require('@agentxv2/sdk/package.json').version`）——纯元数据 patch；生产三服务同步升级 + build + restart
 - 验收/验证：三处（本地 / GitHub / 生产）同步在最新 HEAD `8f22e88`；SDK typecheck + 单测 **32/32**；gateway **46/46** 无回归（本次无 gateway 代码变更）；新 key `GET /tenant/me` **200**
@@ -367,12 +367,10 @@
 | | D4 | 提交推送 | commit + push | ✅ commit `47d3d72` + tag `v0.11.0` 已推送 origin/main |
 | E 生产升级 | E1 | 生产机升级 sdk | `npm install @agentxv2/sdk@^0.11.0 --registry=https://registry.npmjs.org/`（生产 `~/.npmrc` 为腾讯云镜像，须显式官方 registry，不改全局） | ✅ 生产 pull 至 `2e2aaa8`，gateway `npm install --registry=https://registry.npmjs.org/`，sdk=0.11.0 / @0xinfrax/payments=0.1.0，旧 `@agentxv2/payments` 已移除 |
 | | E2 | 重启 + 冒烟 | `/api/v1/payments/info`、`/access` 正常；x402/fiat 各验一笔 | ✅ pm2 restart，日志干净（indexer/A2A/schedule 全启动）；`/info` 返回统一引擎 payload（fiat/x402 按配置 disabled、chain enabled、oxachain 19505），`/access` 正常返回 active:false；x402/fiat 轨道生产配置 disabled（待 R4/R5 外部凭据），info 已正确反映，无法各验一笔 |
-| F 通知收尾 | F1 | 应用方通知 | 通用文案：升级 `@agentxv2/sdk` 至 0.11.x，业务零改动 | ✅ 文案见 `payments-infrax-migration.md` §五；应用方盘点：aiservicer（^0.9.1，不受影响，升级为推荐项）、autoops/pocketx-wallet（无 sdk 依赖） |
+| F 通知收尾 | F1 | 应用方通知 | 通用文案：升级 `@agentxv2/sdk` 至 0.11.x，业务零改动 | ✅ 文案见 `payments-infrax-migration.md` §五；应用方盘点：aiservicer（^0.9.1，不受影响，升级为推荐项）、autoops（无 sdk 依赖） |
 | | F2 | 首次跟随演练 | 与 infraX 约 `@0xinfrax/payments@0.1.1` 走一遍完整跟随 check-list | ✅ **F2 完成（2026-08-10）**——infraX 已发布 `@0xinfrax/payments@0.1.1`；AgentX 升级依赖（sdk/gateway `^0.1.1`）、解耦回归 19 项断言通过（run-decouple.sh 改为消费已安装 npm 包）、sdk build+typecheck+32/32、发布 `@agentxv2/sdk@0.11.1`（tag `v0.11.1`）、gateway 升级 `^0.11.1`（46/46）；**本次演练由 infraX 侧代为执行，AgentX 审阅核实后确认「保留」**（生产实装 0.11.1/0.1.1 冒烟一致） |
 
 - 回滚预案：依赖回滚 `npm install @agentxv2/sdk@0.10.3` / `@agentxv2/payments@^0.2.2`（官方 registry）；代码回滚 `git revert 323d3c9`（旧包未删，双保险）
-
-> **附：生产组件源码覆盖核查（2026-08-10）**：AgentX 三服务（gateway/conversation/frontend）✅ `sftgroup/Agentx`；pocketx-alto ✅ 第三方开源（npm 安装的 alto bundler，上游 pimlico）；pocketx-mpc（`@wallet/mpc-server`，自研）❌ **源码未上 GitHub**（sftgroup 全部 20 仓库 main/master 扫描 0 命中，仅存于生产机 `/opt/pocketx/mpc-server/server.js`）——建议补 Git 仓库（含敏感信息处理），作为遗留待办。
 
 ---
 
