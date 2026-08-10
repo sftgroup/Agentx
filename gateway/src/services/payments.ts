@@ -6,7 +6,7 @@
 // (tables, subscription business) lives in payments-bridge.ts.
 // ---------------------------------------------------------------------------
 
-import { PaymentsService, PgMPPSessionStore, PgAuthorizationStore } from '@0xinfrax/payments'
+import { PaymentsService, PgMPPSessionStore } from '@0xinfrax/payments'
 import type { ChainKey } from '@0xinfrax/payments'
 import { config } from '../config'
 import { getPool } from '../lib/db'
@@ -54,12 +54,11 @@ export const paymentsService = new PaymentsService({
             permit2: config.stablecoinPermit2,
           }
         : undefined,
-    period: config.periodEnabled
-      ? { enabled: true, periodPriceWei: config.periodPriceWei, maxPeriods: config.periodMaxPeriods }
-      : undefined,
   },
-  // MPP channels + period authorizations use the generic module-owned tables
-  // (payment_sessions / payment_authorizations) on the gateway database.
+  // MPP channels use the generic module-owned payment_sessions tables on the
+  // gateway database. a2a / period-authorization rails are self-hosted by
+  // AgentX (services/payments-a2a-period.ts) since @0xinfrax/payments@0.1.2
+  // removed them from the generic engine (see PROGRESS R17.5).
   mpp:
     config.mppEnabled && config.mppDomain && config.mppPayee
       ? {
@@ -72,7 +71,6 @@ export const paymentsService = new PaymentsService({
         }
       : undefined,
   mppStore: config.mppEnabled ? new PgMPPSessionStore(getPool()) : undefined,
-  authorizations: config.periodEnabled ? new PgAuthorizationStore(getPool()) : undefined,
   onWebhookEvent: (event) => paymentsBridge.handleWebhookEvent(event),
   logger: {
     info: (msg) => console.log(`[payments] ${msg}`),

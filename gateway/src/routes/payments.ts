@@ -23,6 +23,7 @@ import { config } from '../config'
 import { decodeHeader, isPaymentError } from '@0xinfrax/payments'
 import type { X402PaymentRequired } from '@0xinfrax/payments'
 import { paymentsService } from '../services/payments'
+import { a2aPeriodService } from '../services/payments-a2a-period'
 import { paymentsBridge } from '../services/payments-bridge'
 import { verifyAndCredit, x402Available } from '../services/x402'
 import { log } from '../services/chain-data-reader'
@@ -172,21 +173,22 @@ router.post('/', async (req: Request, res: Response, next) => {
       }
       case 'a2a': {
         // Phase 1 of a2a-pay: create a payment intent (paymentId, amount, payee).
+        // Self-hosted rail (R17.5): @0xinfrax/payments removed a2a from the
+        // generic engine, so this goes through A2APeriodService on the
+        // AgentX-owned payment_intents table.
         const amountWei = body.valueWei ?? metadata.valueWei ?? body.amountWei
         if (!subscriber || !amountWei) {
           res.status(400).json({ error: 'a2a: subscriber and valueWei are required' })
           return
         }
-        const result = await paymentsService.createPayment({
-          method: 'a2a',
-          subscriber,
-          valueWei: String(amountWei),
+        const result = await a2aPeriodService.createA2AIntent({
+          payer: subscriber,
+          amountWei: String(amountWei),
           payee: body.payee,
           asset: body.asset,
           chain,
           metadata,
         })
-        if (result.method !== 'a2a') throw new Error('Unexpected a2a payment result')
         res.json({ method: 'a2a', paymentId: result.paymentId, amountWei: result.amountWei, payee: result.payee })
         return
       }
@@ -474,6 +476,7 @@ router.get('/mpp/session', async (req: Request, res: Response, next) => {
 // ── a2a-pay (paymentId two-phase, P4) ────────────────────────────────────────
 
 // POST /api/v1/payments/a2a — phase 1: create a payment intent
+// (self-hosted rail, R17.5 — see services/payments-a2a-period.ts)
 router.post('/a2a', async (req: Request, res: Response, next) => {
   try {
     const { payer, amountWei, payee, asset, chain, metadata } = req.body ?? {}
@@ -481,16 +484,14 @@ router.post('/a2a', async (req: Request, res: Response, next) => {
       res.status(400).json({ error: 'payer and amountWei are required' })
       return
     }
-    const result = await paymentsService.createPayment({
-      method: 'a2a',
-      subscriber: String(payer),
-      valueWei: String(amountWei),
+    const result = await a2aPeriodService.createA2AIntent({
+      payer: String(payer),
+      amountWei: String(amountWei),
       payee: payee ? String(payee) : undefined,
       asset: asset ? String(asset) : undefined,
       chain: chain ? resolveChain(chain) : resolveChain(),
       metadata,
     })
-    if (result.method !== 'a2a') throw new Error('Unexpected a2a result')
     res.json({ method: 'a2a', paymentId: result.paymentId, amountWei: result.amountWei, payee: result.payee })
   } catch (err) {
     if (sendPaymentError(res, err)) return
@@ -500,6 +501,7 @@ router.post('/a2a', async (req: Request, res: Response, next) => {
 })
 
 // POST /api/v1/payments/a2a/settle — phase 2: verify the payer's on-chain payment
+// (self-hosted rail, R17.5 — reuses the module's x402 verify path internally)
 router.post('/a2a/settle', async (req: Request, res: Response, next) => {
   try {
     const { paymentId, txHash, chain } = req.body ?? {}
@@ -507,17 +509,16 @@ router.post('/a2a/settle', async (req: Request, res: Response, next) => {
       res.status(400).json({ error: 'paymentId and txHash are required' })
       return
     }
-    const verified = await paymentsService.a2aSettle({
+    const result = await a2aPeriodService.a2aSettle({
       paymentId: String(paymentId),
       txHash: String(txHash),
       chain: chain ? resolveChain(chain) : resolveChain(),
     })
-    if (!verified) {
+    if (!result.verified) {
       res.status(422).json({ error: 'Transaction is not a valid payment to the platform wallet' })
       return
     }
-    const balance = await paymentsService.balanceOf(verified.payer)
-    res.json({ verified: true, paymentId: String(paymentId), payer: verified.payer, creditedWei: verified.creditedWei, balanceWei: balance.toString() })
+    res.json({ verified: true, paymentId: String(paymentId), payer: result.payer, creditedWei: result.creditedWei, balanceWei: result.balanceWei })
   } catch (err) {
     if (sendPaymentError(res, err)) return
     log.error(`a2a settle failed: ${(err as Error).message}`)
@@ -527,7 +528,36 @@ router.post('/a2a/settle', async (req: Request, res: Response, next) => {
 
 // ── Period authorizations (P4) ───────────────────────────────────────────────
 
+// POST /api/v1/payments/period/authorize — create an authorization from an
+// on-chain funding tx (replaces the x402 `period` accept removed in
+// @0xinfrax/payments@0.1.2; self-hosted rail, R17.5)
+router.post('/period/authorize', async (req: Request, res: Response, next) => {
+  try {
+    const body = req.body ?? {}
+    const { payer, txHash, amountWei, periodPriceWei, periods, asset, chain } = body
+    if (!payer || !txHash || !amountWei) {
+      res.status(400).json({ error: 'payer, txHash and amountWei are required' })
+      return
+    }
+    const result = await a2aPeriodService.createPeriodAuthorization({
+      payer: String(payer),
+      txHash: String(txHash),
+      amountWei: String(amountWei),
+      periodPriceWei: periodPriceWei !== undefined ? String(periodPriceWei) : undefined,
+      periods: periods !== undefined ? Number(periods) : undefined,
+      asset: asset !== undefined ? String(asset) : undefined,
+      chain: chain ? resolveChain(chain) : resolveChain(),
+    })
+    res.json(result)
+  } catch (err) {
+    if (sendPaymentError(res, err)) return
+    log.error(`period authorize failed: ${(err as Error).message}`)
+    next(err)
+  }
+})
+
 // POST /api/v1/payments/period/charge — charge one period of an authorization
+// (self-hosted rail, R17.5 — atomic charge on payment_authorizations)
 router.post('/period/charge', async (req: Request, res: Response, next) => {
   try {
     const authorizationId = String(req.body?.authorizationId ?? '')
@@ -535,7 +565,7 @@ router.post('/period/charge', async (req: Request, res: Response, next) => {
       res.status(400).json({ error: 'authorizationId is required' })
       return
     }
-    const result = await paymentsService.chargePeriod(authorizationId)
+    const result = await a2aPeriodService.chargePeriod(authorizationId)
     res.json({ authorizationId, ...result })
   } catch (err) {
     if (sendPaymentError(res, err)) return
@@ -552,7 +582,7 @@ router.get('/period/authorization', async (req: Request, res: Response, next) =>
       res.status(400).json({ error: 'authorizationId is required' })
       return
     }
-    const auth = await paymentsService.getAuthorization(authorizationId)
+    const auth = await a2aPeriodService.getAuthorization(authorizationId)
     if (!auth) {
       res.status(404).json({ error: 'Authorization not found' })
       return

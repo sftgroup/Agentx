@@ -2478,7 +2478,7 @@ var init_decodeAbiParameters = __esm({
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
-  A2AClient: () => import_payments3.A2AClient,
+  A2AClient: () => A2AClient,
   A2ADaemon: () => A2ADaemon,
   A2AProtocol: () => A2AProtocol,
   A2A_VERSION: () => A2A_VERSION,
@@ -2510,7 +2510,7 @@ __export(index_exports, {
   OpenAIProvider: () => OpenAIProvider,
   PAYMENT_VERSION: () => PAYMENT_VERSION,
   PaymentsClient: () => import_payments3.PaymentsClient,
-  PeriodClient: () => import_payments3.PeriodClient,
+  PeriodClient: () => PeriodClient,
   REGISTRY_VERSION: () => REGISTRY_VERSION,
   REPUTATION_VERSION: () => REPUTATION_VERSION,
   ReputationRegistry: () => ReputationRegistry,
@@ -4413,14 +4413,14 @@ var OpenAIProvider = class {
       timeoutMs: config.timeoutMs ?? 6e4
     };
   }
-  async *chatStream(request, signal) {
+  async *chatStream(request2, signal) {
     const endpoint = `${this.config.endpoint}/chat/completions`;
     const body = JSON.stringify({
-      model: request.model || this.config.model,
-      messages: request.messages,
-      tools: request.tools,
-      temperature: request.temperature ?? this.config.temperature,
-      max_tokens: request.maxTokens ?? this.config.maxTokens,
+      model: request2.model || this.config.model,
+      messages: request2.messages,
+      tools: request2.tools,
+      temperature: request2.temperature ?? this.config.temperature,
+      max_tokens: request2.maxTokens ?? this.config.maxTokens,
       stream: true,
       stream_options: { include_usage: true }
     });
@@ -4548,17 +4548,17 @@ var GatewayProvider = class {
       timeoutMs: config.timeoutMs ?? 12e4
     };
   }
-  async *chatStream(request, signal) {
+  async *chatStream(request2, signal) {
     const endpoint = `${this.config.gatewayUrl}/api/v1/chat/completions`;
     const body = {
-      model: request.model || this.config.model || "gpt-4o",
-      messages: request.messages,
+      model: request2.model || this.config.model || "gpt-4o",
+      messages: request2.messages,
       stream: true,
       key_source: this.config.keySource
     };
-    if (request.tools && request.tools.length > 0) body.tools = request.tools;
-    if (request.temperature !== void 0) body.temperature = request.temperature;
-    if (request.maxTokens !== void 0) body.max_tokens = request.maxTokens;
+    if (request2.tools && request2.tools.length > 0) body.tools = request2.tools;
+    if (request2.temperature !== void 0) body.temperature = request2.temperature;
+    if (request2.maxTokens !== void 0) body.max_tokens = request2.maxTokens;
     if (this.config.tenantKeyId) body.tenant_key_id = this.config.tenantKeyId;
     let response;
     try {
@@ -4874,7 +4874,7 @@ var AgentRegistry = class {
       key: m.key,
       value: stringToHex(m.value)
     }));
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account,
       address: this.address,
       abi: [IDENTITY_REGISTRY_ABI.registerWithMetadata],
@@ -4882,7 +4882,7 @@ var AgentRegistry = class {
       args: [tokenURI, encodedMetadata],
       value: valueWei
     });
-    const hash2 = await this.walletClient.writeContract(request);
+    const hash2 = await this.walletClient.writeContract(request2);
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
     const agentId = this._parseAgentIdFromReceipt(receipt);
     return { agentId, txHash: hash2 };
@@ -4895,7 +4895,7 @@ var AgentRegistry = class {
     if (!account) throw new Error("Wallet not connected");
     const abi = tokenURI ? [IDENTITY_REGISTRY_ABI.registerWithTokenURI] : [IDENTITY_REGISTRY_ABI.register];
     const args = tokenURI ? [tokenURI] : [];
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account,
       address: this.address,
       abi,
@@ -4903,7 +4903,7 @@ var AgentRegistry = class {
       args,
       value: valueWei
     });
-    const hash2 = await this.walletClient.writeContract(request);
+    const hash2 = await this.walletClient.writeContract(request2);
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
     const agentId = this._parseAgentIdFromReceipt(receipt);
     return { agentId, txHash: hash2 };
@@ -5321,14 +5321,14 @@ var SubscriptionManager = class {
       throw new Error("trialDays must be between 0 and 30");
     }
     const account = await this._resolveAccount();
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account,
       address: this.address,
       abi: [SUBSCRIPTION_ABI_V2.createPlan],
       functionName: "createPlan",
       args: [BigInt(agentId), price, period, payToken, BigInt(trialDays)]
     });
-    const hash2 = await this.walletClient.writeContract({ ...request, account });
+    const hash2 = await this.walletClient.writeContract({ ...request2, account });
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
     return { planId: this._parsePlanIdFromReceipt(receipt), txHash: hash2 };
   }
@@ -5347,7 +5347,7 @@ var SubscriptionManager = class {
     if (!plan.active) throw new Error("Plan not active");
     if (plan.payToken === ZERO_ADDRESS2) {
       const value = opts?.valueWei ?? plan.price;
-      const { request } = await this.publicClient.simulateContract({
+      const { request: request2 } = await this.publicClient.simulateContract({
         account,
         address: this.address,
         abi: [SUBSCRIPTION_ABI_V2.subscribe],
@@ -5355,7 +5355,7 @@ var SubscriptionManager = class {
         args: [BigInt(planId)],
         value
       });
-      const hash2 = await this.walletClient.writeContract({ ...request, account });
+      const hash2 = await this.walletClient.writeContract({ ...request2, account });
       const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
       return { txHash: hash2, ...this._parseSubscribedFromReceipt(receipt) };
     } else {
@@ -5378,14 +5378,14 @@ var SubscriptionManager = class {
           await this.walletClient.writeContract({ ...approveReq, account });
         }
       }
-      const { request } = await this.publicClient.simulateContract({
+      const { request: request2 } = await this.publicClient.simulateContract({
         account,
         address: this.address,
         abi: [SUBSCRIPTION_ABI_V2.subscribe],
         functionName: "subscribe",
         args: [BigInt(planId)]
       });
-      const hash2 = await this.walletClient.writeContract({ ...request, account });
+      const hash2 = await this.walletClient.writeContract({ ...request2, account });
       const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
       return { txHash: hash2, ...this._parseSubscribedFromReceipt(receipt) };
     }
@@ -5402,26 +5402,26 @@ var SubscriptionManager = class {
   /** Release escrowed funds to creator after trial window ends. */
   async releaseFunds(subscriptionId) {
     const account = await this._resolveAccount();
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account,
       address: this.address,
       abi: [SUBSCRIPTION_ABI_V2.releaseFunds],
       functionName: "releaseFunds",
       args: [BigInt(subscriptionId)]
     });
-    return this.walletClient.writeContract({ ...request, account });
+    return this.walletClient.writeContract({ ...request2, account });
   }
   /** Cancel subscription (trial refund if within window). */
   async cancel(subscriptionId) {
     const account = await this._resolveAccount();
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account,
       address: this.address,
       abi: [SUBSCRIPTION_ABI_V2.cancelSubscription],
       functionName: "cancelSubscription",
       args: [BigInt(subscriptionId)]
     });
-    return this.walletClient.writeContract({ ...request, account });
+    return this.walletClient.writeContract({ ...request2, account });
   }
   // ── Read ─────────────────────────────────────────────────────────────────
   async hasActiveSubscription(subscriber, agentId) {
@@ -5650,7 +5650,7 @@ var AgentX402 = class {
   async subscribeAndWait(planId, price, payToken) {
     const { publicClient, walletClient, subscriptionManagerAddress } = this.config;
     const isETH = payToken === "0x0000000000000000000000000000000000000000";
-    const { request } = await publicClient.simulateContract({
+    const { request: request2 } = await publicClient.simulateContract({
       address: subscriptionManagerAddress,
       abi: [subscribeAbi],
       functionName: "subscribe",
@@ -5658,7 +5658,7 @@ var AgentX402 = class {
       account: walletClient.account?.address,
       value: isETH ? price : 0n
     });
-    const hash2 = await walletClient.writeContract(request);
+    const hash2 = await walletClient.writeContract(request2);
     const receipt = await publicClient.waitForTransactionReceipt({ hash: hash2 });
     const subIdHex = receipt.logs[0]?.topics?.[1];
     if (!subIdHex || subIdHex === "0x") {
@@ -5830,6 +5830,71 @@ var SubscriptionPayments = class {
 
 // src/payment/index.ts
 var import_payments3 = require("@0xinfrax/payments");
+
+// src/payment/a2a-client.ts
+async function request(baseUrl, path, init, accessToken) {
+  const base = baseUrl.replace(/\/$/, "");
+  const headers = {
+    ...init?.headers ?? {}
+  };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const resp = await fetch(`${base}${path}`, { ...init, headers });
+  if (!resp.ok) {
+    let message = `Payments request failed (${resp.status}): ${path}`;
+    try {
+      const body = await resp.json();
+      if (body.error) message = body.error;
+    } catch {
+    }
+    throw new Error(message);
+  }
+  return resp.json();
+}
+var A2AClient = class {
+  constructor(opts) {
+    this.opts = opts;
+  }
+  opts;
+  /** Phase 1: create a payment intent. */
+  async create(input) {
+    return request(
+      this.opts.baseUrl,
+      "/api/v1/payments/a2a",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) },
+      this.opts.accessToken
+    );
+  }
+  /** Phase 2: verify the payer's on-chain payment tx and credit it. */
+  async settle(input) {
+    return request(
+      this.opts.baseUrl,
+      "/api/v1/payments/a2a/settle",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) },
+      this.opts.accessToken
+    );
+  }
+};
+
+// src/payment/period-client.ts
+var PeriodClient = class {
+  constructor(opts) {
+    this.opts = opts;
+  }
+  opts;
+  async charge(authorizationId) {
+    return request(
+      this.opts.baseUrl,
+      "/api/v1/payments/period/charge",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorizationId }) },
+      this.opts.accessToken
+    );
+  }
+  async authorization(authorizationId) {
+    return request(this.opts.baseUrl, `/api/v1/payments/period/authorization?authorizationId=${encodeURIComponent(authorizationId)}`, void 0, this.opts.accessToken);
+  }
+};
+
+// src/payment/index.ts
 var PAYMENT_VERSION = "0.1.1";
 
 // src/a2a/a2a.ts
@@ -5987,7 +6052,7 @@ var A2AProtocol = class {
   // ── Agent Card ──────────────────────────────────────────────────────────
   async createAgentCard(agentId, card) {
     const acct = await this.account;
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account: acct,
       address: this.address,
       abi: [A2A_ABI.createAgentCard],
@@ -6004,7 +6069,7 @@ var A2AProtocol = class {
         card.cardURI ?? ""
       ]
     });
-    const hash2 = await this.walletClient.writeContract(request);
+    const hash2 = await this.walletClient.writeContract(request2);
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
     const cardId = this._parseUintFromLog(receipt, "AgentCardCreated");
     return { cardId, txHash: hash2 };
@@ -6031,14 +6096,14 @@ var A2AProtocol = class {
   async createTask(agentId, taskType, input) {
     const acct = await this.account;
     const inputStr = typeof input === "string" ? input : JSON.stringify(input);
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account: acct,
       address: this.address,
       abi: [A2A_ABI.createTask],
       functionName: "createTask",
       args: [BigInt(agentId), taskType, inputStr]
     });
-    const hash2 = await this.walletClient.writeContract(request);
+    const hash2 = await this.walletClient.writeContract(request2);
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
     const taskId = this._parseUintFromLog(receipt, "TaskCreated");
     return { taskId, txHash: hash2 };
@@ -6046,14 +6111,14 @@ var A2AProtocol = class {
   async completeTask(taskId, output, status = 3) {
     const acct = await this.account;
     const outputStr = typeof output === "string" ? output : JSON.stringify(output);
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account: acct,
       address: this.address,
       abi: [A2A_ABI.completeTask],
       functionName: "completeTask",
       args: [BigInt(taskId), outputStr, BigInt(status)]
     });
-    return this.walletClient.writeContract(request);
+    return this.walletClient.writeContract(request2);
   }
   async getTask(taskId) {
     const r = await this.publicClient.readContract({
@@ -6269,14 +6334,14 @@ var ReputationRegistry = class {
   async rate(agentId, rating, comment = "") {
     if (rating < 1 || rating > 5) throw new Error("Rating must be 1-5");
     const acct = await this.account;
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account: acct,
       address: this.address,
       abi: [REPUTATION_ABI.rateAgent],
       functionName: "rateAgent",
       args: [BigInt(agentId), rating, comment]
     });
-    return this.walletClient.writeContract(request);
+    return this.walletClient.writeContract(request2);
   }
   /** Get average rating and total count. */
   async getRating(agentId) {
@@ -6393,14 +6458,14 @@ var ConfigurationRegistry = class {
   }
   async set(key, value) {
     const acct = await this.account;
-    const { request } = await this.publicClient.simulateContract({
+    const { request: request2 } = await this.publicClient.simulateContract({
       account: acct,
       address: this.address,
       abi: [CONFIG_ABI.setConfig],
       functionName: "setConfig",
       args: [key, stringToHex(value)]
     });
-    return this.walletClient.writeContract(request);
+    return this.walletClient.writeContract(request2);
   }
   async get(key) {
     const r = await this.publicClient.readContract({

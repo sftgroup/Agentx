@@ -385,10 +385,18 @@
   - 不受影响：agent-loop `a2a-daemon.ts`/`executor.ts` 的 `a2a.*`（链上 A2A 协议客户端，非 payments 能力）；`subscription.ts` 的 `period`（通用字段）
 - **防护动作（✅ 已完成）**：sdk/gateway 依赖 `@0xinfrax/payments` `^0.1.1` → **`0.1.1`（exact 锁定）**，lock 已同步（commit `6071ce6`），阻止任何 `npm install` 静默拉到剥离版；typecheck 通过
 - **待办**：
-  - [ ] 业务侧方案评估：a2a-pay / period 授权端点是否有业务在用——A) 业务侧重建（gateway 自持表+逻辑）B) 移除（若无业务）C) 请 infraX 以插件/可选模块保留（**已决策 A：业务侧重建，保持 sdk API 兼容，B 端零改动**）
+  - [x] 业务侧方案评估：a2a-pay / period 授权端点是否有业务在用——A) 业务侧重建（gateway 自持表+逻辑）B) 移除（若无业务）C) 请 infraX 以插件/可选模块保留（**已决策 A：业务侧重建，保持 sdk API 兼容，B 端零改动**）
   - [x] GitHub issue 留痕（✅ 2026-08-10 issue #1 https://github.com/sftgroup/Agentx/issues/1，label dependency+payments）
   - [ ] 回复 infraX：确认引用点 + 请求协助评估
   - [ ] 方案落地后：解除锁定 → 升级验证（解耦回归 + sdk/gateway 全量）→ 发 sdk 新版本
+- **业务侧重建实施（R17.5，代码已落地，本地回归全绿）**：
+  - 迁移 `gateway/db/migrations/021_payments_a2a_period_selfhost.sql`：`payment_intents`（含 payee 列）+ `payment_authorizations`，幂等建表（019 已有同构表，语句 IF NOT EXISTS）
+  - 新服务 `gateway/src/services/payments-a2a-period.ts`：`A2APeriodService`（createA2AIntent / a2aSettle（复用引擎 verifyPayment 链上验收入账）/ createPeriodAuthorization（新，verifyPayment + 幂等写授权）/ chargePeriod / getAuthorization）
+  - 组装剥离 `gateway/src/services/payments.ts`：移除 `PgAuthorizationStore` import + x402.period 配置块 + `authorizations` store，保留 mpp/mppStore
+  - 路由 `gateway/src/routes/payments.ts`：`/payments/a2a`、`/payments/a2a/settle`、`/payments/period/charge`、`/payments/period/authorization` 改走 `a2aPeriodService`（HTTP 契约不变）；统一 `POST /payments` a2a 分支同步改造；**新增** `POST /payments/period/authorize`（0.1.2 移除 x402 `period` accept 后的授权创建入口，链上验证 + 幂等落表）
+  - sdk 本地客户端 `sdk/src/payment/a2a-client.ts` + `period-client.ts`：`A2AClient`/`PeriodClient` 签名与引擎版逐字一致（`ClientOptions` 仍从引擎导入），`index.ts` re-export 改本地
+  - 回归：sdk typecheck / 32 tests / build ✓；gateway tsc ✓；本地完整环境（anvil + MockUSDC + gateway + DB）**F7（改造为 authorize 端点流程）/ F8 全 PASS**；统一端点 a2a 分支 ✓；authorize 幂等（同 txHash 不重复创建）✓
+  - 行为变更记录：x402 challenge 不再提供 `period` accept（与 0.1.2 引擎一致）；period 授权改由 `POST /payments/period/authorize` 显式创建
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 

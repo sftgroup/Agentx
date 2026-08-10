@@ -14,7 +14,8 @@ export { MemoryConfig, MemoryFact, MemoryProvider } from './memory/index.js';
 export { HttpTraceEmitter, NoopTraceEmitter, TraceConfig, TraceEmitter, TraceEvent } from './traces/index.js';
 export { BrowserAction, BrowserActionResult, executeBrowserAction, extractAccessibleDOM, sleep } from './skills/index.js';
 export { ConversationChatParams, ConversationChatResult, ConversationClient, ConversationClientConfig, ConversationCreateSessionParams, ConversationCreateTaskParams, ConversationSSEEvent, ConversationSkillDef, ConversationTask, ConversationTaskError, ConversationTaskStatus, OnChainApprovalRequest } from './conversation/index.js';
-export { A2AClient, ClientOptions, MPPClient, PaymentsClient, PeriodClient, X402Client } from '@0xinfrax/payments';
+import { ClientOptions, ChainKey as ChainKey$1 } from '@0xinfrax/payments';
+export { ClientOptions, MPPClient, PaymentsClient, X402Client } from '@0xinfrax/payments';
 export { C as ChainConfig, a as ConfigRegistryOpts, b as ConfigurationRegistry, K as KNOWN_CHAINS } from './config-BFeSR_GK.js';
 export { bytesToHex, hexToBytes } from '@noble/ciphers/utils.js';
 import 'events';
@@ -163,6 +164,53 @@ declare class SubscriptionPayments {
     private _fetchJson;
 }
 
+/** a2a-pay client: paymentId two-phase (create → pay → settle). */
+declare class A2AClient {
+    private opts;
+    constructor(opts: ClientOptions);
+    /** Phase 1: create a payment intent. */
+    create(input: {
+        payer: string;
+        amountWei: string;
+        payee?: string;
+        chain?: ChainKey$1;
+        metadata?: Record<string, unknown>;
+    }): Promise<{
+        paymentId: string;
+        amountWei: string;
+        payee: string;
+    }>;
+    /** Phase 2: verify the payer's on-chain payment tx and credit it. */
+    settle(input: {
+        paymentId: string;
+        txHash: string;
+        chain?: ChainKey$1;
+    }): Promise<{
+        verified: boolean;
+        paymentId: string;
+        payer: string;
+        creditedWei: string;
+        balanceWei: string;
+    }>;
+}
+
+/** Period-authorization client (P4): charge a period / read state. */
+declare class PeriodClient {
+    private opts;
+    constructor(opts: ClientOptions);
+    charge(authorizationId: string): Promise<{
+        renewed: boolean;
+        remainingWei: string;
+    }>;
+    authorization(authorizationId: string): Promise<{
+        id: string;
+        owner: string;
+        remainingWei: string;
+        periods: number;
+        status: string;
+    }>;
+}
+
 declare const PAYMENT_VERSION = "0.1.1";
 
 declare const A2A_VERSION = "0.1.0";
@@ -239,4 +287,4 @@ declare const REPUTATION_VERSION = "0.1.0";
 
 declare const CONFIG_VERSION = "0.1.0";
 
-export { A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, PAYMENT_VERSION, type PaySubscriptionInput, type PaySubscriptionResult, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, SubscriptionManager, type SubscriptionPaymentMethod, SubscriptionPayments, type SubscriptionPaymentsConfig, type X402Info, subscribeToEvents };
+export { A2AClient, A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, PAYMENT_VERSION, type PaySubscriptionInput, type PaySubscriptionResult, PeriodClient, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, SubscriptionManager, type SubscriptionPaymentMethod, SubscriptionPayments, type SubscriptionPaymentsConfig, type X402Info, subscribeToEvents };
