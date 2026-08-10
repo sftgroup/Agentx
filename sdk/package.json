@@ -89,7 +89,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@0xinfrax/payments": "^0.1.1",
+    "@0xinfrax/payments": "0.1.1",
     "@noble/ciphers": "^1.0.0",
     "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.5.0"
