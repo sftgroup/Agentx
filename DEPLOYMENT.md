@@ -1,7 +1,7 @@
 # AgentX Deployment Guide
 
-> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-08
-> Server code: `~/Agentx` @ main · SDK published: `@agentxv2/sdk@0.10.0` (完整版) (+ `@agentxv2/payments@0.2.2`)
+> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-10
+> Server code: `~/Agentx` @ main · SDK published: `@agentxv2/sdk@0.11.3`（依赖 `@0xinfrax/payments@0.1.3`）
 > ⚠️ 测试策略（2026-08-07 起）：**所有功能/回归测试一律在生产环境 `43.159.60.46` 直接进行**（不再使用独立测试服务器）
 
 ---
@@ -29,7 +29,7 @@
 ├── :3100 → Next.js Frontend (standalone, calls Gateway API for agent data)
 ├── :3090 → Express Gateway (wallet auth / rate-limit / LLM proxy / MCP / Agents API / Admin)
 ├── :8100 → Conversation Service (agent dialogue microservice, SSE)
-└── :5433 → PostgreSQL (localhost only, agentx_gateway + agentx_conversation DBs)
+└── :5433 → PostgreSQL (localhost only, 单库 `agentx_conversation` —— gateway 与 conversation 服务共用；gateway 的 `agentx_gateway` 库不存在)
 ```
 
 ### Firewall — Ports to Open
@@ -43,10 +43,11 @@ sudo ufw allow 18545/tcp  # OxaChain RPC (REQUIRED for browser wallet RPC calls)
 ### SSH Access
 
 ```bash
-# Direct: ssh ubuntu@43.159.60.46
-# Via jump host:
-ssh -J ubuntu@43.156.78.59 -i agentx_new_prod.pem ubuntu@43.159.60.46
+# Direct（密码认证，直连即可，无需跳板机 / pem）
+ssh ubuntu@43.159.60.46
 ```
+
+> 凭证：`ubuntu` 用户密码认证。密码**不入库**，记录在部署机本地 `~/.ssh/agentx-prod`（密码自动应答脚本 `~/.ssh/agentx-askpass.sh`）。旧文档的跳板机方式（`43.156.78.59` + `agentx_new_prod.pem`）已不可用。
 
 ---
 
@@ -120,7 +121,7 @@ pm2 restart agentx-gateway
 ```
 PORT=3090
 NODE_ENV=production
-DATABASE_URL=postgresql://agentx:AgentX2024!Gateway@localhost:5432/agentx_gateway
+DATABASE_URL=postgresql://agentx:AgentX2024!Gateway@127.0.0.1:5433/agentx_conversation
 REDIS_URL=redis://localhost:6379
 JWT_SECRET=agentx-prod-jwt-secret-key-2026
 MASTER_ENCRYPTION_KEY=agentx-master-encryption-key-32b
@@ -160,9 +161,9 @@ Agents are synced from the IdentityRegistry contract (OxaChain L1) into the `age
 
 ```bash
 # Create the agents + subscription_plans tables
-psql -U agentx -d agentx_gateway -f db/migrations/002_agents.sql
-psql -U agentx -d agentx_gateway -f db/migrations/005_agents_structured.sql
-psql -U agentx -d agentx_gateway -f db/migrations/006_plans.sql
+psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation -f db/migrations/002_agents.sql
+psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation -f db/migrations/005_agents_structured.sql
+psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation -f db/migrations/006_plans.sql
 
 # Sync agents from chain to DB (plans backfill runs automatically on boot)
 curl -X POST http://localhost:3090/api/v1/agents-sync
@@ -276,7 +277,7 @@ Agent A's task → Worker LLM(Agent A) analyzes
 ### Migration
 
 ```bash
-psql -h localhost -U agentx -d agentx_gateway -f db/migrations/003_a2a_results.sql
+psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation -f db/migrations/003_a2a_results.sql
 ```
 
 ### Health Check
@@ -348,12 +349,13 @@ sudo apt-get install -y postgresql postgresql-client
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
 sudo -u postgres psql -c "CREATE USER agentx WITH PASSWORD 'AgentX2024!Gateway' CREATEDB;"
-sudo -u postgres psql -c "CREATE DATABASE agentx_gateway OWNER agentx;"
+# 生产实际只有单库（5433）：gateway 与 conversation 共用 agentx_conversation
 sudo -u postgres psql -c "CREATE DATABASE agentx_conversation OWNER agentx;"
-for f in db/migrations/*.sql; do psql -U agentx -d agentx_gateway -f "$f"; done
+# gateway 迁移同样打入该库
+for f in db/migrations/*.sql; do psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation -f "$f"; done
 ```
 
-### Schema (28 tables, gateway DB)
+### Schema (28 tables, 共用库 agentx_conversation)
 
 | Table | Purpose |
 |-------|---------|
@@ -639,11 +641,11 @@ curl -X POST http://43.159.60.46:3090/api/v1/admin/platform-keys \
 cd /home/ubuntu/Agentx/gateway
 export PGPASSWORD='AgentX2024!Gateway'
 for f in db/migrations/*.sql; do
-  psql -h localhost -U agentx -d agentx_gateway -f "$f"
+  psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation -f "$f"
 done
 ```
 
-Migration files (020): `001_init` (core auth/billing) → `002_agents` → `003_a2a_results` → `004_tenant_platform_api_key` → `005_agents_structured` → `006_plans` → `007_channel_attributions` (channels + attributions) → `008_fiat_subscriptions` → `009_x402` → `010_channel_admin` (**P7**: `channel_settlements` ledger + `settled_at`/`settlement_id` on attributions) → `011_partner_applications` (**P7**: B-end onboarding applications) → `012_parallel_tasks_control` → `014_integration_partners` → `015_developer_applications` → `016_tenant_kind` → `017_schedules` → `018_chain_subscriptions` → `019_payments_mpp_period` → `020_agents_category` (**category 列 + 索引，2026-08-08 生产已执行**).
+Migration files (021): `001_init` (core auth/billing) → `002_agents` → `003_a2a_results` → `004_tenant_platform_api_key` → `005_agents_structured` → `006_plans` → `007_channel_attributions` (channels + attributions) → `008_fiat_subscriptions` → `009_x402` → `010_channel_admin` (**P7**: `channel_settlements` ledger + `settled_at`/`settlement_id` on attributions) → `011_partner_applications` (**P7**: B-end onboarding applications) → `012_parallel_tasks_control` → `014_integration_partners` → `015_developer_applications` → `016_tenant_kind` → `017_schedules` → `018_chain_subscriptions` → `019_payments_mpp_period` (**payment_sessions/vouchers，2026-08-10 生产已执行**) → `020_agents_category` (**category 列 + 索引，2026-08-08 生产已执行**) → `021_payments_a2a_period_selfhost` (**payment_intents + payment_authorizations + payee 列，R17.6 2026-08-10 生产已执行**).
 
 ### Conversation Service (`conversation-service/migrations/`)
 
