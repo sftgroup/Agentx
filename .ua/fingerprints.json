@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "30cb855b8902d7f8cf46639c59cdedf1c11665b2",
-  "generatedAt": "2026-08-10T15:20:56.225Z",
+  "gitCommitHash": "10824f07a57d0d4592015a81f730b08a95e6a47f",
+  "generatedAt": "2026-08-10T15:28:40.636Z",
   "files": {
     ".github/workflows/ci.yml": {
       "filePath": ".github/workflows/ci.yml",
@@ -33,6 +33,1326 @@
       "totalLines": 7,
       "hasStructuralAnalysis": false
     },
+    ".ua/.trash-1786320827/assembled-graph.json": {
+      "filePath": ".ua/.trash-1786320827/assembled-graph.json",
+      "contentHash": "ee398b00f93913d5780de961a439c27195e44b97baac1c631d8d2ddf251cf452",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-10.json": {
+      "filePath": ".ua/.trash-1786320827/batch-10.json",
+      "contentHash": "3cd4bf432bb3117a1e5d607743a86c347cbb602e23c9e4425da2f019c8c58408",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 41,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-12.json": {
+      "filePath": ".ua/.trash-1786320827/batch-12.json",
+      "contentHash": "7fca4fc27442cff17965d510526724a49bb1925f3007f9163faa578b57fbea36",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 58,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-14.json": {
+      "filePath": ".ua/.trash-1786320827/batch-14.json",
+      "contentHash": "9f918078b5e0b8c06e7ffe0a5a791ec99163e9edf1a4e6c4565b582021b19213",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 193,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-15.json": {
+      "filePath": ".ua/.trash-1786320827/batch-15.json",
+      "contentHash": "530eae0b2adb33f34f90bf4141c3975add943e36da0f97f2999f0c5cbef70010",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 404,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-16.json": {
+      "filePath": ".ua/.trash-1786320827/batch-16.json",
+      "contentHash": "0c9b5eccfe3f66e6c7350e28cf0bc5b2ed980f92556f13bb6a12732a2de0758d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 421,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-17.json": {
+      "filePath": ".ua/.trash-1786320827/batch-17.json",
+      "contentHash": "09ba70865d3eba8e67755b2945c309382d80330016f47f3fd671ddd731efbd85",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 724,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-18.json": {
+      "filePath": ".ua/.trash-1786320827/batch-18.json",
+      "contentHash": "106a75e48e2cb5c590314bc8881337405b10a719aa3842a469c17f3b21a5a73a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 402,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-19.json": {
+      "filePath": ".ua/.trash-1786320827/batch-19.json",
+      "contentHash": "fd098f3eb5091a20576b14f39de04ac01ab5686538e4fe019cd00b0a803a5597",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 649,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-23.json": {
+      "filePath": ".ua/.trash-1786320827/batch-23.json",
+      "contentHash": "fd2ec8325f319d02ed4436aebc1cfce754a8fb46e098df52d7ce63fc6ade5d55",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 276,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-24.json": {
+      "filePath": ".ua/.trash-1786320827/batch-24.json",
+      "contentHash": "1a2524197e72a3ebf674fabea1783eb591de11a8db3c2f608aa534bc789dc8d3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 639,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-25.json": {
+      "filePath": ".ua/.trash-1786320827/batch-25.json",
+      "contentHash": "48d9cfc87b23e14b213fe77805bc8d0f595ec41c41ce0367a0105d765cfb966c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 618,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-26.json": {
+      "filePath": ".ua/.trash-1786320827/batch-26.json",
+      "contentHash": "59acac1c9efa1b5ea8d62c1b7f116df91ef9e53367181d2ff1264c5cc6696415",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 264,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-6.json": {
+      "filePath": ".ua/.trash-1786320827/batch-6.json",
+      "contentHash": "6096037cefb04e5ecb32f1bfb4d3461d77c87c890385b4048255fff3091f149d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 255,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-8.json": {
+      "filePath": ".ua/.trash-1786320827/batch-8.json",
+      "contentHash": "22aa9cf8ffa270ad8a43e8fb5b52eb57414f6957185cd42509c0abfb41c42619",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 41,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-9.json": {
+      "filePath": ".ua/.trash-1786320827/batch-9.json",
+      "contentHash": "63804eea8da1f8afe73df4bad7a675f0bf4871878de9992ad831e7a1d157051b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 41,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batch-existing.json": {
+      "filePath": ".ua/.trash-1786320827/batch-existing.json",
+      "contentHash": "f59d81c1dbd55be60ef391fe60b7de818908063adf3d84b79b0afa525c11c407",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 17801,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/batches.json": {
+      "filePath": ".ua/.trash-1786320827/batches.json",
+      "contentHash": "72fb5b4cee9e267c913f0f903e35a2a668acbb37dc922ad2fc1fd4a42b435654",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1796,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/fingerprint-input.json": {
+      "filePath": ".ua/.trash-1786320827/fingerprint-input.json",
+      "contentHash": "1304318eab2b20705f6e82c39ee388db94abb24aa4c9f5aba97a769f988ab21e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 375,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/layers.json": {
+      "filePath": ".ua/.trash-1786320827/layers.json",
+      "contentHash": "5942b693d1d2226e3ecc4da93ef43a62ab77dd960ef2dbcb1771096037804f68",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 577,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/review.json": {
+      "filePath": ".ua/.trash-1786320827/review.json",
+      "contentHash": "3dc9261b96194d87a05219439589ff9e9ca72e1ec75a4989a5b9784b930a8f9d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 190,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-10.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-10.json",
+      "contentHash": "4849a854481477b3c613f23d1f06f4db89dd27a0ba068978f09822de9b945675",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 21,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-12.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-12.json",
+      "contentHash": "027b7fdf0fc8e3f7733a1160d49c114eb1fa34ddc15539a8ff321d779756f58c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-14.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-14.json",
+      "contentHash": "f798298ba486c59b823ef5f4fb808c35b5138b50ff97bcea26b213c12c8a67f7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-15.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-15.json",
+      "contentHash": "95248bccdd407167813fbaba9553983835cfdb4c0d947ef0c2f45cdf092b1da6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 105,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-16.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-16.json",
+      "contentHash": "102e288f06fface503220c9d14d2e02647ee9a4d54fabfefb53949f815ada0f3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 63,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-17.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-17.json",
+      "contentHash": "a4184fefad7034347767c04a288f6cbff0a78c63a2df1efd74b0125bca6e8f58",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 133,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-18.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-18.json",
+      "contentHash": "aa4b15f1f2a8c2caad0717602db2c6bbc8c512036656f1a522be10d65cfbbcc8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 70,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-19.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-19.json",
+      "contentHash": "7ebde8b4656b7f1289a854ea89db907400676eb8ee7ecb3bc33432c50e95e216",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 77,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-23.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-23.json",
+      "contentHash": "137c9bee544d0aa7aeff13d422f953b8f0040b70bad0ad7f41db6481bf916437",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 56,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-24.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-24.json",
+      "contentHash": "3aadc694658f6616f9815840dccabe6835949030918f3a60a9ba7a79b74f03ab",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 77,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-25.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-25.json",
+      "contentHash": "dda9affcdf12dbb2c48deabe724d7103b0279811c5b07fb04ed44766ea524f09",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 56,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-26.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-26.json",
+      "contentHash": "55e9433bc1be676d9281d4c7671e702ba557fc450d060dbf49185b64b01143d5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 42,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-6.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-6.json",
+      "contentHash": "77cc4ad9dde240b60580994383b34fd0222170c9bcbe75b58189132e2b5fb944",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 42,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-8.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-8.json",
+      "contentHash": "8f7de87103ae569408bf6b5aa6ec46821f54d1333673270c45ac274af1d31b4e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 21,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/batch-data-9.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/batch-data-9.json",
+      "contentHash": "79f1fc9f7287e206816a1ff36d3ddda52e80c3e33c148be5f63a89eaf9267f7d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 21,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/changed-files.txt": {
+      "filePath": ".ua/.trash-1786320827/tmp/changed-files.txt",
+      "contentHash": "f4ee45e6f51adca9436fbd62fcb92c7c773292c7a6567017f371c832810cd882",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 350,
+      "hasStructuralAnalysis": false
+    },
+    ".ua/.trash-1786320827/tmp/layers-input.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/layers-input.json",
+      "contentHash": "374f68f8a5c6d8d50c96027d33cf3ba4919a31cd2513c2519bca5960c300b4e2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 12351,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-0.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-0.json",
+      "contentHash": "baec2171b64394bed94e602a3cd01876c911979b8071785049f4e66165d51633",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 19,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-1.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-1.json",
+      "contentHash": "2f3b7e8757a4f633b1492354820d16de6a055e34b4214421ad1e2271889971ab",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 12,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-14.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-14.json",
+      "contentHash": "ebf483ee59a04d467f74bfb95be424cfcf426c6addd057830ceacc30023cf75a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 30,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-15.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-15.json",
+      "contentHash": "900fb21de215db21cdfa80af46c75b3d466deab661ad1d3603c90d95730bd4e3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 36,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-17.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-17.json",
+      "contentHash": "e6760cb49e768c60e5882d2f24823f9d15035f8133bbc22057b703bb9242bf94",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 44,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-18.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-18.json",
+      "contentHash": "031a9ab600ea3fa5d476d69a4247ffb8cfafd5710828eb2c6d1b42e72997fe8c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 26,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-19.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-19.json",
+      "contentHash": "7c2f1df7f03b446424892ac019a71eb2839a8ba8dc3f6b963b309381103d80fa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-2.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-2.json",
+      "contentHash": "09df908dfe8e30dbca9dc88a6dde45c6a8eadb10f0b71be7d71923ffc6a23551",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 12,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-23.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-23.json",
+      "contentHash": "f330a1e66a5f0f377e17d896790fe276862bde34de67e148776ccb0e66ffad23",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 22,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-24.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-24.json",
+      "contentHash": "a6d759b50b4fc7033470b38b4b8b3d32664a92664ba70361ac104389b673b3ca",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-25.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-25.json",
+      "contentHash": "9bd6314ec461f1c3084be72d8310d28292ae612e09e2cb4cbff9ed07a9d89b62",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 22,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-26.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-26.json",
+      "contentHash": "8c99674a8d6fa138556a8e0ba46d0d1669a944a77cc59f905381f4f7e27881e4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 18,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-3.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-3.json",
+      "contentHash": "f0da92d5a2f8ece4a0a2572de185474cec39e686eeb238698fefa62fd4080d6b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 12,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-4.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-4.json",
+      "contentHash": "bec53009b4811e189ca03b4cb265e93c5b2a2019bb03452edd5b234793d98de8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-6.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-6.json",
+      "contentHash": "900fb21de215db21cdfa80af46c75b3d466deab661ad1d3603c90d95730bd4e3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 36,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-7.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-analyzer-input-7.json",
+      "contentHash": "9881eaedc96c80d2abda5ab0a53e0e73a8e7dfbcee5483f4640cfde249e9b514",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 24,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-0.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-0.json",
+      "contentHash": "161eec2530693094ac49570fca47a52ccad3985be1f0bbdc1bc6efe4df29b942",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1023,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-1.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-1.json",
+      "contentHash": "3d406a078b6f576e777ecd6c4c3b0d45097b75a029205fb864753d9cf8eb0a2f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 197,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-14.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-14.json",
+      "contentHash": "b6c48274f263908bbb64d9cceaa686313fff01037232d37dd1c64ab82f6f6614",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 41,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-15.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-15.json",
+      "contentHash": "9f05e01272b7134c3e79e811d7208be09b6c48e29663839961b01e817215fe23",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1985,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-17.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-17.json",
+      "contentHash": "3c2e3de208f810a32be62e3344fc58f983084269a9f677c430fb7906e7945e01",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 9027,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-18.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-18.json",
+      "contentHash": "32fde33aef5ee238bb79742ae3394e6c1d8097b49f8b0d7e0f54607a121b92e8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1032,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-19.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-19.json",
+      "contentHash": "5eb3deb73d1aa29d863f15076ad175800ac733437e4b5708b419cc7a9dd0f9e7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2320,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-2.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-2.json",
+      "contentHash": "af25f749ac0cf68739d2c3c6a201603ad7edf67c53f5c9279b49aa866be2b27e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 244,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-23.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-23.json",
+      "contentHash": "2ee5a6030f6bd5c0efce83304e7006aecf1f30c02a3efd3fa5b82a34758f57bb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 873,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-24.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-24.json",
+      "contentHash": "8e87194bec65cbd5f8f30818c22078540942fda2187b0bc278a3e4e37e621c5b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2146,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-25.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-25.json",
+      "contentHash": "38015594560642721cf93d4747806eac9af2c074ea15cdc0c70aca747714a28d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1586,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-26.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-26.json",
+      "contentHash": "75b35f11c74c2bf104e60c1928ad5350e91de0f87adaedf59efe327a1c8f3ab5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1530,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-3.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-3.json",
+      "contentHash": "638b3891e0f74fcecb291076e4e197a63daf329008e3b43152fc92edc169b546",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 286,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-4.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-4.json",
+      "contentHash": "07d9459352e8405f3e70f8250535cdd79dc4370ef423f626bb6e04d55d43ebeb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 856,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-6.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-6.json",
+      "contentHash": "9f05e01272b7134c3e79e811d7208be09b6c48e29663839961b01e817215fe23",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1985,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-file-extract-results-7.json": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-file-extract-results-7.json",
+      "contentHash": "cdaf84f6246619e1275286f32f364546cad5e186bf24df2cca5a244644b07c34",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2755,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tmp/ua-inline-validate.cjs": {
+      "filePath": ".ua/.trash-1786320827/tmp/ua-inline-validate.cjs",
+      "contentHash": "11d35012e97d258954813204d1a92dbf400c03b3b35f88bcb91cdae21cc1e54d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786320827/tour.json": {
+      "filePath": ".ua/.trash-1786320827/tour.json",
+      "contentHash": "e3575a22a3a052238ad4279bf573ce0ef0011ebe264ffbfa402905daa10f300b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 104,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/assembled-graph.json": {
+      "filePath": ".ua/.trash-1786375078/assembled-graph.json",
+      "contentHash": "adf9deddaf76854286b69b01438ad5725076942f2d7c8188631965037b03cf5e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 24740,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-11.json": {
+      "filePath": ".ua/.trash-1786375078/batch-11.json",
+      "contentHash": "c603d5fb6ea0ef3375169b2ab0640008a0a0e7fb10f61b2eafa1bacd84b0d495",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 151,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-13.json": {
+      "filePath": ".ua/.trash-1786375078/batch-13.json",
+      "contentHash": "657b8c2a5fb0f803b963bfec3bb271e682545e7962a08f23a480d6eb880ebabe",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 24,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-18.json": {
+      "filePath": ".ua/.trash-1786375078/batch-18.json",
+      "contentHash": "4f5c8e1850d5254968d17f1f845594b6888ad4cc933001717e27ebb0d8b729dc",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 24,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-32.json": {
+      "filePath": ".ua/.trash-1786375078/batch-32.json",
+      "contentHash": "42c59dc0eed06ed4e3b527881da3ad4d72277590dc63e857b2ab6ee1236b81db",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-33.json": {
+      "filePath": ".ua/.trash-1786375078/batch-33.json",
+      "contentHash": "6bf92e625fe29afb0ae3a11e0f899f4992677f80f6800d09a566962927023cd9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 51,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-34.json": {
+      "filePath": ".ua/.trash-1786375078/batch-34.json",
+      "contentHash": "340f642bf255a3cc252573d695b4e0f9ddfc8689804973e15cdc2b58458c75d6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-36.json": {
+      "filePath": ".ua/.trash-1786375078/batch-36.json",
+      "contentHash": "2130707d41aad4062d72c1be627babc81bd795a087fc633aab63eb515b88ac73",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 114,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-37.json": {
+      "filePath": ".ua/.trash-1786375078/batch-37.json",
+      "contentHash": "03f5c9fb754295afbb1fc4c67b7b01214945f7d23f255fa4a1c2f629d2284575",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 133,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-4.json": {
+      "filePath": ".ua/.trash-1786375078/batch-4.json",
+      "contentHash": "963b6a10553f587fae9c50de0e6d391346eff9daa69fc0526aa8864b95085e50",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 49,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-8.json": {
+      "filePath": ".ua/.trash-1786375078/batch-8.json",
+      "contentHash": "c4f13379dc510d453ff4473e9c681c58e041a5d75008a4fdbd68398fe45c545a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 38,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batch-existing.json": {
+      "filePath": ".ua/.trash-1786375078/batch-existing.json",
+      "contentHash": "8b4d0cdfd95a5d61182a0bc6f9449c1ad924d2b76bb56c2d6e14b23ab943e137",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 23328,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/batches.json": {
+      "filePath": ".ua/.trash-1786375078/batches.json",
+      "contentHash": "d7de3a2ba3b3bba4ad949e365c5b46782405b29b1ab29b8ffc592495e410949c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1545,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/fingerprint-input.json": {
+      "filePath": ".ua/.trash-1786375078/fingerprint-input.json",
+      "contentHash": "aa680a2075894fc0b5ff03c086eb6329ea50d5fe1696fd183fba1978cb81852c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 552,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/layers.json": {
+      "filePath": ".ua/.trash-1786375078/layers.json",
+      "contentHash": "e32b6d0aa861a69e8b9a0edc722ef73997124d0a5d773abcfe80911cba140e08",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 602,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/review.json": {
+      "filePath": ".ua/.trash-1786375078/review.json",
+      "contentHash": "944e3450275367c7048cd1da5c5ea17a1fcfad201dbf57af04f4f21dac2abbf2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 192,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-11.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-11.json",
+      "contentHash": "4c91c5e8d9c89880a65271b52259c99f269622b36add14889d076129fa2493c4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 21,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-13.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-13.json",
+      "contentHash": "0ed5e74d1378759b57a9400c89919ce5a6f5231366f4e4ab718ab6248bf896de",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-18.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-18.json",
+      "contentHash": "09a38d3f7ef1cbe55605f0df017a9d39c78d9eee4be11e019d05feaad523ce71",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-32.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-32.json",
+      "contentHash": "3a51fd1b04a3669f3a2f0af12c3473d5031e3891dda686e3e968ba478e77fb03",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-33.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-33.json",
+      "contentHash": "d624bfb437e24647166db54618eef81f47e2157d0f57c62b8908d8d905ed9cd2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 21,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-34.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-34.json",
+      "contentHash": "fbff50852345c89c292b13166f26e8c8b733a7360dfb4144580a601e6fcecea1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-36.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-36.json",
+      "contentHash": "359a4b2e0e89afc6cb76d4a534eecb0e49112a0346118c80acd0a914c8f5a9ee",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-37.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-37.json",
+      "contentHash": "b514533f4d99b0832be39e7c4e12c1119f107e8a91063d2b1dc51a64dee16f94",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-4.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-4.json",
+      "contentHash": "732eacffdf9afe0e34c97bc84157b285f20a8a1935be22a8238e74932cc6da85",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/batch-data-8.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/batch-data-8.json",
+      "contentHash": "eb61b4a81560cf2c96b472daea4d65006511eb4cb4af015cef2d119b3359ea83",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/changed-files.txt": {
+      "filePath": ".ua/.trash-1786375078/tmp/changed-files.txt",
+      "contentHash": "32d3b422059ea9e4c071dd7094026c8b0b69360d832a181c1506ad2b70c34c49",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 23,
+      "hasStructuralAnalysis": false
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-11.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-11.json",
+      "contentHash": "c5ec0f4faeb17056b52bfbdbad6df55f74cb05f668a0f66260991f84e27f15d7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 12,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-13.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-13.json",
+      "contentHash": "08fe4e73afa827b4854e7e3d7e3d734f4ea512c1e39c3a4857437e7d7543b1df",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-18.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-18.json",
+      "contentHash": "ed9524fc2527fa096246089f524027f20e2465762da6324024ff775c8a87009a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-32.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-32.json",
+      "contentHash": "1135a19047edc919d854696362c8efdb8bb427fad713245e1040a4bd6ab7b4f6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-33.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-33.json",
+      "contentHash": "fabeee96c4c11434dda3a1f80759dc6589dafeb53971d156a8d7b487b254de85",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 12,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-34.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-34.json",
+      "contentHash": "348415547ac6fdfe22ba7071b15b997906a163fd5a5bcf23531228163e29f9e6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-36.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-36.json",
+      "contentHash": "655cfb14a847bc27bbb899556cdf6cd2ed93571532681a89b2b72d17e0a6b012",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-37.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-37.json",
+      "contentHash": "0fd7b05eca709b7d7cdc6a6e225319cdc4632c9509af846ddf34492b0293cf8e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-4.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-4.json",
+      "contentHash": "5b2119b41c3bf19ca2ec299928acf4421c96740c93a886a738c5b2ced1584937",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-8.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-analyzer-input-8.json",
+      "contentHash": "850a19b317ad710326ae773893fdd4f118788930386aa32262950ef5934f1438",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-11.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-11.json",
+      "contentHash": "d8b2366811852faca07800709434af275b5d47b910aae26a0d5a987933d15c5f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 205,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-13.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-13.json",
+      "contentHash": "ba0115d128176652b7107705dc8f472e047887654f6842cb3301143ff7a15838",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 74,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-18.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-18.json",
+      "contentHash": "d261a33c02ca22b7757babe2efc795fda119bdfdaf989f7220fe0fbd8ef6893d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 109,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-32.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-32.json",
+      "contentHash": "c22e9a068f784cbe071ba8535b84a1f0f1918b94f564d4209e4c4ff37982227b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 97,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-33.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-33.json",
+      "contentHash": "b080fac4c4374d1a9995193c190a029d66873c7f8cc48d1d4847b5935dbfb518",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 263,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-34.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-34.json",
+      "contentHash": "26003734af987e2739c135657c2211dacba0ef209723e266fdbd96763e5072a7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 74,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-36.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-36.json",
+      "contentHash": "920d6d1b0301eb221a0b20973f0a370f65d428a5c3ac71cd72f03fcfb3f9f878",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 246,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-37.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-37.json",
+      "contentHash": "fca12182e8d85e739631120f705c3f822f7d26ec2c23ce652bcede379c334ed0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 54,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-4.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-4.json",
+      "contentHash": "9406e7340920cf4769df4db14d6c9e5cae7b9ab0d44c3f14c7cc352a1884a3fc",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 87,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-file-extract-results-8.json": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-file-extract-results-8.json",
+      "contentHash": "f92e3d5fa217735daf5febc6d5ef0d04869fd994811ced735fec74786d3e70ad",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 269,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tmp/ua-inline-validate.cjs": {
+      "filePath": ".ua/.trash-1786375078/tmp/ua-inline-validate.cjs",
+      "contentHash": "11d35012e97d258954813204d1a92dbf400c03b3b35f88bcb91cdae21cc1e54d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375078/tour.json": {
+      "filePath": ".ua/.trash-1786375078/tour.json",
+      "contentHash": "fbc31b3c0832c1ff9e49a1139d1b3e52c3f02f7845e5aaa6c6073f07869e0c4f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 109,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/assembled-graph.json": {
+      "filePath": ".ua/.trash-1786375261/assembled-graph.json",
+      "contentHash": "37cad117d18a330f2e60baae8b030b8e97efb80586437362df3755d495965c93",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 24762,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/batch-11.json": {
+      "filePath": ".ua/.trash-1786375261/batch-11.json",
+      "contentHash": "53718a124c8390f2e8cc6ad34c9021a7b36c0102fa8dfe778ae25346528c6ec6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 122,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/batch-existing.json": {
+      "filePath": ".ua/.trash-1786375261/batch-existing.json",
+      "contentHash": "bf9145dc873543aeaa04f4b89a10762b3bb6decdd9a7da0d5de60274c2076c8b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 23925,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/batches.json": {
+      "filePath": ".ua/.trash-1786375261/batches.json",
+      "contentHash": "623831403a5596a93253dfcfd30a72f4bd7847456a8705f9adf238030a6d2fef",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1382,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/review.json": {
+      "filePath": ".ua/.trash-1786375261/review.json",
+      "contentHash": "7d175642cdc8980ad98a10a416a6a7c2da38b601bcae428e9f74ae7c218c0d5e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 192,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/tmp/batch-data-11.json": {
+      "filePath": ".ua/.trash-1786375261/tmp/batch-data-11.json",
+      "contentHash": "d0cbfcf1f30686097f5c2fe7de1d14e9cac6abf456ab1542f8ce53da2743fdf2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/tmp/changed-files.txt": {
+      "filePath": ".ua/.trash-1786375261/tmp/changed-files.txt",
+      "contentHash": "728b924256e0afd9684ee700e7dc14f8ea9d7b7fac9fce339ab31c55bd4638a1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": false
+    },
+    ".ua/.trash-1786375261/tmp/fingerprint-input.json": {
+      "filePath": ".ua/.trash-1786375261/tmp/fingerprint-input.json",
+      "contentHash": "1b00c5900daea524c787d838d23f80aa8129d2146028a111e8f7122b6d88d68c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 552,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/tmp/ua-file-analyzer-input-11.json": {
+      "filePath": ".ua/.trash-1786375261/tmp/ua-file-analyzer-input-11.json",
+      "contentHash": "69b33635c0fc9f4edb96bdc5ba1eb48aa466bb0d68fdadb54e1089d87906fa9b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/tmp/ua-file-extract-results-11.json": {
+      "filePath": ".ua/.trash-1786375261/tmp/ua-file-extract-results-11.json",
+      "contentHash": "9e72838689124a049eb116c1958e4875452e81a93fa4e9e21f490fbd406eb290",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 144,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.trash-1786375261/tmp/ua-inline-validate.cjs": {
+      "filePath": ".ua/.trash-1786375261/tmp/ua-inline-validate.cjs",
+      "contentHash": "11d35012e97d258954813204d1a92dbf400c03b3b35f88bcb91cdae21cc1e54d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
     ".ua/.understandignore": {
       "filePath": ".ua/.understandignore",
       "contentHash": "e27b8469a1ec73e59fd826befdef287140677bb395bfca4e938558046e811c31",
@@ -55,7 +1375,7 @@
     },
     ".ua/fingerprints.json": {
       "filePath": ".ua/fingerprints.json",
-      "contentHash": "381e999a7acf8abb459004c0df9cf6c09753f0f619bde173d19278431f9236aa",
+      "contentHash": "c367b270b4ec5de8a6dfc7912776bdf4cc5b06725b449c582cb38eee9a272474",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -75,7 +1395,7 @@
     },
     ".ua/meta.json": {
       "filePath": ".ua/meta.json",
-      "contentHash": "d415a97336d1a745689d0b6d4709db2d28b9513bbd8ff2f148f9b6861ac208e2",
+      "contentHash": "84b94e18c09eb129eb360ba1d7cc7e9028527a00c6f82bd871ead933f5e5f44e",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -85,13 +1405,23 @@
     },
     ".ua/scan-result.json": {
       "filePath": ".ua/scan-result.json",
-      "contentHash": "d8071568517cf4e146e7dd0bbb7fc3c9e71a5a5ae8a8c0cd23d48b8adee4bfda",
+      "contentHash": "8dd2c410f84abc05561c95d887d6a1b3cd411dddda94dad02b83b77f0fe49cd4",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 3314,
+      "totalLines": 4113,
       "hasStructuralAnalysis": true
+    },
+    ".ua/tmp/changed-files.txt": {
+      "filePath": ".ua/tmp/changed-files.txt",
+      "contentHash": "7dd6f04c468c1701cd5e43018fd32ab81c86ddddf90cd038651d4e405df715a4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": false
     },
     "AISERVICER_INTEGRATION.md": {
       "filePath": "AISERVICER_INTEGRATION.md",

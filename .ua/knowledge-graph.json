@@ -22,8 +22,8 @@
    "Tailwind CSS"
   ],
   "description": "去中心化 AI Agent 平台：发布者链上创建/加密/分发 AI Agent，订阅者通过 AgentLoop 自主推理运行，E2E 加密与链上订阅门控保障安全。",
-  "analyzedAt": "2026-08-10T15:20:37.862Z",
-  "gitCommitHash": "30cb855b8902d7f8cf46639c59cdedf1c11665b2"
+  "analyzedAt": "2026-08-10T15:28:48.743Z",
+  "gitCommitHash": "10824f07a57d0d4592015a81f730b08a95e6a47f"
  },
  "nodes": [
   {
