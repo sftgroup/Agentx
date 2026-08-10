@@ -397,7 +397,7 @@
   - sdk 本地客户端 `sdk/src/payment/a2a-client.ts` + `period-client.ts`：`A2AClient`/`PeriodClient` 签名与引擎版逐字一致（`ClientOptions` 仍从引擎导入），`index.ts` re-export 改本地
   - 回归：sdk typecheck / 32 tests / build ✓；gateway tsc ✓；本地完整环境（anvil + MockUSDC + gateway + DB）**F7（改造为 authorize 端点流程）/ F8 全 PASS**；统一端点 a2a 分支 ✓；authorize 幂等（同 txHash 不重复创建）✓
   - 行为变更记录：x402 challenge 不再提供 `period` accept（与 0.1.2 引擎一致）；period 授权改由 `POST /payments/period/authorize` 显式创建
-- **infraX 通知文案（待发送，2026-08-10 备好）**：
+- **infraX 通知文案（✅ 2026-08-10 已发送，issue #1 评论 #issuecomment-5242199966）**：
   > 主题：AgentX 对 `@0xinfrax/payments@0.1.2` 剥离 a2a/period rail 的回应（issue #1）
   > 1. **引用点确认**：AgentX 定制层确实引用了 a2a rail 与 period 授权 rail——sdk re-export `A2AClient`/`PeriodClient`；gateway 路由 `POST /payments/a2a`、`POST /payments/a2a/settle`、`POST /payments/period/charge`、`GET /payments/period/authorization` + 统一 `POST /payments` 的 a2a 分支（issue #1 已列明，与贵司移除点一一对应）。
   > 2. **已按「业务侧重建」落地（R17.5）**：gateway 自持 `payment_intents`/`payment_authorizations` 表（迁移 021）+ `A2APeriodService`（复用引擎 `verifyPayment` 链上验收入账，保持依赖解耦）；新增 `POST /payments/period/authorize` 作为 0.1.2 移除 x402 `period` accept 后的授权创建入口；HTTP 契约与 sdk 公开 API 完全不变，B 端调用方零改动。
