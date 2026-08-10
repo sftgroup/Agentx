@@ -1,0 +1,148 @@
+{
+  "nodes": [
+    {
+      "id": "document:sdk/README.md",
+      "type": "document",
+      "name": "sdk/README.md",
+      "filePath": "sdk/README.md",
+      "summary": "AgentX SDK（@agentxv2/sdk v0.11.3）总文档：覆盖安装与 Peer 依赖、Quick Start（AgentLoop / useAgentRunner / publishAgent）、AES-256-GCM + ECIES 端到端加密、IPFS 上传、MCP Connector、ConversationClient 远程会话与并行任务（含 BYOK / B 端 key 能力澄清）、链上批量查询与订阅写操作、A2A Daemon 多 Agent 互操作、多轨订阅支付（SubscriptionPayments + 协议客户端）、多 Agent 编排分层（off-chain/on-chain 双轨）以及完整 API 参考与版本历史。R17.6 关键变化：引擎升至 @0xinfrax/payments 0.1.3（模块内置恢复 a2a/period rails），A2AClient 改为 SDK 本地实现（修复 0.11.1 ESM 导入崩溃），PAYMENT_VERSION 对齐 0.1.3。",
+      "tags": ["SDK 使用文档", "支付多轨", "ConversationClient", "AgentLoop", "R17.6"],
+      "complexity": "complex",
+      "languageNotes": "README 为全英文文档，但版本历史与 R17.6 说明含中文段落；与 UPGRADE.md 互为补充。"
+    },
+    {
+      "id": "document:sdk/UPGRADE.md",
+      "type": "document",
+      "name": "sdk/UPGRADE.md",
+      "filePath": "sdk/UPGRADE.md",
+      "summary": "AgentX SDK 升级指南：逐版本说明 0.6.3 → 0.11.3 的升级动作、破坏性变更与示例。顶部重点阐述 v0.11.1 → v0.11.3（R17.6）：跟随 @0xinfrax/payments ^0.1.3，SubscriptionPayments 与协议客户端（MPP/A2A/Period/X402/Payments）API 签名与 HTTP 契约不变、无需改代码；修复 0.11.1 ESM 构建从引擎导入已移除的 A2AClient 导出的崩溃问题（0.11.2 起改为 SDK 本地实现），PAYMENT_VERSION 0.1.1 → 0.1.3。同时澄清 B 端集成 key（agentx_）能力判定、BYOK LLM key 透传、端用户订阅转发（endUserId）等服务端行为。",
+      "tags": ["升级指南", "R17.6", "A2AClient ESM 修复", "@0xinfrax/payments", "破坏性变更"],
+      "complexity": "complex",
+      "languageNotes": "文档以中文为主，部分早期版本章节为英文；0.11.x 版本段为 2026-08-10 更新。"
+    },
+    {
+      "id": "config:sdk/package.json",
+      "type": "config",
+      "name": "sdk/package.json",
+      "filePath": "sdk/package.json",
+      "summary": "AgentX SDK（@agentxv2/sdk）包配置：版本 0.11.3，入口 dist/index.js（ESM: dist/index.mjs），exports 暴露根路径及 core/react/agent-loop/llm/endpoint/configuration/ipfs/memory/traces/skills/conversation 子路径与 ./package.json。依赖 @0xinfrax/payments 0.1.3（R17.6 支付引擎）、@noble/ciphers/curves/hashes；peer 依赖 react/wagmi/@tanstack/react-query（均可选）；构建使用 tsup 打包 12 个入口，测试使用 vitest。",
+      "tags": ["包配置", "npm", "0.11.3", "@0xinfrax/payments", "tsup"],
+      "complexity": "simple",
+      "languageNotes": "package.json 为纯 JSON 元数据，无文本内容。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/payment/index.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README 的 Multi-Rail Subscription Payments 与 Protocol Clients 章节描述支付模块出口（SubscriptionPayments、MPP/A2AClient/PeriodClient/X402/PaymentsClient、PAYMENT_VERSION）"
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/payment/payments.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README 描述 SubscriptionPayments 统一入口：chain/fiat/x402 多轨 pay()、hasAccess() 统一授权检查"
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/payment/a2a-client.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README 的 Protocol Clients 章节说明 A2AClient 由 SDK 本地实现（R17.6 修复 0.11.1 ESM 崩溃），两阶段 paymentId 支付流程"
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/payment/period-client.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README 的 Protocol Clients 章节描述 PeriodClient 周期授权（charge/authorization），R17.6 引擎 0.1.3 恢复 period rails"
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/conversation/client.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README 大篇幅描述 ConversationClient：SSE 流式对话、sessions & parallel tasks、BYOK（llmApiKey/tenantKeyId）、endUserId 订阅转发、MCP 边界与 B 端 key 能力澄清"
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/agent-loop/loop.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README Quick Start 演示 AgentLoop ReAct 自主工具调用引擎（maxIterations/contextBudget/memory/trace 回调）"
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/llm/index.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README 描述 OpenAIProvider（直连）与 GatewayProvider（多租户 SaaS）及 createLLMProvider 工厂选择逻辑"
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/mcp/connector.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README 描述 MCPConnector 远程工具执行（http/sse/stdio 传输、ecdsa 签名认证、listTools/callTool）"
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/registry/agent-registry.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README 的 On-Chain Data 章节描述 AgentRegistry 批量读取（getAllAgents/getAgentMetadata/totalAgents）与容错解析"
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/subscription/subscription.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "README 描述 SubscriptionManager 订阅写操作（createPlan/subscribe/createPlanAndSubscribe）与链上订阅验证"
+    },
+    {
+      "source": "document:sdk/UPGRADE.md",
+      "target": "file:sdk/src/payment/index.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "UPGRADE 顶部说明 0.11.x 跟随 @0xinfrax/payments 版本、协议客户端与 PAYMENT_VERSION 常量变更（0.1.1 → 0.1.3）"
+    },
+    {
+      "source": "document:sdk/UPGRADE.md",
+      "target": "file:sdk/src/payment/a2a-client.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "UPGRADE 详细记录 A2AClient ESM 修复：0.11.1 从引擎导入已移除导出导致 Named export not found 崩溃，0.11.2 起改为 SDK 本地实现，0.11.3 继续本地实现"
+    },
+    {
+      "source": "document:sdk/UPGRADE.md",
+      "target": "file:sdk/src/payment/period-client.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "UPGRADE 说明 R17.6 引擎 0.1.3 恢复 a2a/period rails，PeriodClient API 签名不变"
+    },
+    {
+      "source": "document:sdk/UPGRADE.md",
+      "target": "file:sdk/src/conversation/client.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "UPGRADE 澄清 ConversationClient 的 B 端 key 能力判定（统一 P9 能力位）、BYOK LLM key 透传与 endUserId 端用户订阅转发（0.10.1/0.10.2 变更）"
+    },
+    {
+      "source": "document:sdk/UPGRADE.md",
+      "target": "file:sdk/src/index.ts",
+      "type": "documents",
+      "weight": 0.5,
+      "summary": "UPGRADE 说明 SDK 根导出（含 PAYMENT_VERSION）对齐 @0xinfrax/payments 版本、0.10.3 exports 暴露 ./package.json"
+    },
+    {
+      "source": "config:sdk/package.json",
+      "target": "file:sdk/src/index.ts",
+      "type": "configures",
+      "weight": 0.6,
+      "summary": "package.json 声明 SDK 根入口 src/index.ts（build 脚本首个入口、exports 根路径映射到 dist/index），依赖 @0xinfrax/payments 0.1.3 与 @noble 加密库"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "fixedSectionOk": true,
+  "nodesRecovered": 9,
+  "edgesRestored": 28,
+  "crossBatchEdgesAdded": 11,
+  "typesRemapped": 0,
+  "complexityRemapped": 0,
+  "notes": [
+    "合并脚本 Fixed 部分合理：复杂度已归一化（low/medium/high → simple/moderate/complex，全图仅此三值）；新增批次节点类型（document/config/file/class/function/service）均在规范内，无未知类型；对不存在目标的悬空边按规则剔除属预期行为。",
+    "被剔除的悬空边已按语义恢复：document:DEPLOYMENT.md 恢复 12 条 documents 边、document:CHANGELOG.md 恢复 13 条 documents 边、document:sdk/README.md → file:sdk/src/payment/payments.ts 1 条、file:sdk/src/payment/index.ts → payments.ts exports 1 条、payments.ts → file:sdk/test/payment.test.ts tested_by 1 条（合计 28 条）。",
+    "module:<path> 前缀目标已修正为图中真实存在的节点：file:gateway/src/routes/a2a.ts → file:421e055151c3、file:sdk/src/agent-loop/a2a-daemon.ts → file:4703df338e80、file:frontend/hooks/user/useMyAgentIds.ts → hook 节点 file:b18_use_my_agent_ids、file:gateway/src/lib/db.ts → file:76cb31ac8888（均为旧图别名 ID，经 filePath 字段比对确认）。",
+    "新建 9 个节点（7 file + 2 document，均为项目内真实文件，经 Glob/Read 验证）：.github/workflows/publish-sdk.yml、gateway/db/migrations/020_agents_category.sql、conversation-service/migrations/001_memory.sql、contracts/script/DeployOxaChain.s.sol、sdk/src/payment/payments.ts、gateway/src/routes/chat-tasks.ts、gateway/src/services/agent-access.ts、docs/integration-callers.md、docs/publish-subscribe-pay.md；均为中文 summary、tags、规范化 complexity。",
+    "交叉批次 imports 边补齐 11 条（batchImportData 为空数组，改按新批次文件代码 import 语句核对，仅补目标节点存在于图中的内部依赖）：period-client→a2a-client、payment.test→index/payments、payments→subscription/subscription.ts、gateway payments.ts→payments-bridge/config/db、payments-a2a-period→payments/config/db、payments-bridge→db。",
+    "遗留（不在本轮范围）：旧图 batch-existing 的 gateway/src/services/chain-data-reader.ts、subscription-access.ts 等文件无节点，相关 imports 边无法落地；旧图 file 节点（node-XX / bXX 别名 ID）字段格式（label/properties）与新批次（name/filePath）不一致，且存在同一文件双节点（如 node-18-18 与 b18_use_my_agent_ids），属历史遗留重复，未做去重。"
+  ]
+}

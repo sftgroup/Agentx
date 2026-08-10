@@ -1,0 +1,35 @@
+{
+  "batchImportData": {
+    "sdk/src/payment/a2a-client.ts": [],
+    "sdk/src/payment/index.ts": [],
+    "sdk/src/payment/period-client.ts": [],
+    "sdk/test/payment.test.ts": []
+  },
+  "neighborMap": {},
+  "files": [
+    {
+      "path": "sdk/src/payment/a2a-client.ts",
+      "language": "typescript",
+      "sizeLines": 54,
+      "fileCategory": "code"
+    },
+    {
+      "path": "sdk/src/payment/index.ts",
+      "language": "typescript",
+      "sizeLines": 26,
+      "fileCategory": "code"
+    },
+    {
+      "path": "sdk/src/payment/period-client.ts",
+      "language": "typescript",
+      "sizeLines": 29,
+      "fileCategory": "code"
+    },
+    {
+      "path": "sdk/test/payment.test.ts",
+      "language": "typescript",
+      "sizeLines": 191,
+      "fileCategory": "code"
+    }
+  ]
+}

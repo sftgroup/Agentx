@@ -1,0 +1,21 @@
+{
+  "batchImportData": {
+    "CHANGELOG.md": [],
+    "DEPLOYMENT.md": []
+  },
+  "neighborMap": {},
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "language": "markdown",
+      "sizeLines": 449,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "DEPLOYMENT.md",
+      "language": "markdown",
+      "sizeLines": 668,
+      "fileCategory": "docs"
+    }
+  ]
+}

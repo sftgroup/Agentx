@@ -1,0 +1,22 @@
+{
+  "nodes": [
+    {
+      "id": "config:gateway/package.json",
+      "type": "config",
+      "name": "gateway/package.json",
+      "filePath": "gateway/package.json",
+      "summary": "AgentX Gateway 服务的包清单与构建配置（@agentxv2/gateway v0.2.0）。Gateway 是多租户 LLM 代理网关，承担钱包认证（wallet auth）、限流与 API Key 管理。关键运行时依赖包括：@0xinfrax/payments（通用支付引擎，版本 0.1.2 → 0.1.3，本次升级恢复了被 0.1.2 剥离的 a2a rail 与 period 授权 rail）、@agentxv2/sdk、express（HTTP 框架）、express-rate-limit（限流）、helmet（安全头）、ioredis、pg（PostgreSQL）、ethers/viem/wagmi（链上交互）、jsonwebtoken（JWT 认证）。脚本覆盖 build/start/dev/typecheck/test，入口为 dist/index.js（src/index.ts）。",
+      "tags": ["构建配置", "依赖清单", "支付引擎", "LLM 代理网关", "钱包认证"],
+      "complexity": "low"
+    }
+  ],
+  "edges": [
+    {
+      "source": "config:gateway/package.json",
+      "target": "file:gateway/src/index.ts",
+      "type": "configures",
+      "weight": 0.6,
+      "summary": "package.json 定义 Gateway 服务的依赖与脚本（main 指向 dist/index.js，dev 指向 src/index.ts），配置并影响服务入口的构建与启动；@0xinfrax/payments@0.1.3 升级直接影响 src/index.ts 挂载的 payments 路由及其底层支付服务。"
+    }
+  ]
+}

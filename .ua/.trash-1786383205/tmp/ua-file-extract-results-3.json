@@ -1,0 +1,696 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 3,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 3,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 3,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "gateway/src/services/payments-a2a-period.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 210,
+      "nonEmptyLines": 196,
+      "classes": [
+        {
+          "name": "A2APeriodService",
+          "startLine": 78,
+          "endLine": 208,
+          "methods": [
+            "createA2AIntent",
+            "a2aSettle",
+            "createPeriodAuthorization",
+            "chargePeriod",
+            "getAuthorization"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "A2APeriodService",
+          "line": 78,
+          "isDefault": false
+        },
+        {
+          "name": "a2aPeriodService",
+          "line": 210,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "createA2AIntent",
+          "callee": "String(input.payer ?? '').toLowerCase",
+          "lineNumber": 81
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "String",
+          "lineNumber": 81
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "String(input.payee ?? paymentsService.x402?.payTo() ?? '').toLowerCase",
+          "lineNumber": 82
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "String",
+          "lineNumber": 82
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "paymentsService.x402?.payTo",
+          "lineNumber": 82
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "String",
+          "lineNumber": 83
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "paymentsService.createPayment",
+          "lineNumber": 90
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "getPool().query",
+          "lineNumber": 104
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "getPool",
+          "lineNumber": 104
+        },
+        {
+          "caller": "a2aSettle",
+          "callee": "paymentsService.a2aSettle",
+          "lineNumber": 117
+        },
+        {
+          "caller": "a2aSettle",
+          "callee": "(await paymentsService.balanceOf(verified.payer)).toString",
+          "lineNumber": 125
+        },
+        {
+          "caller": "a2aSettle",
+          "callee": "paymentsService.balanceOf",
+          "lineNumber": 125
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String(input.payer ?? '').toLowerCase",
+          "lineNumber": 143
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 143
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String(input.txHash ?? '').toLowerCase",
+          "lineNumber": 144
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 144
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 145
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 146
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "Number",
+          "lineNumber": 147
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String(input.asset ?? '0x0000000000000000000000000000000000000000').toLowerCase",
+          "lineNumber": 148
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 148
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "BigInt",
+          "lineNumber": 156
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "BigInt",
+          "lineNumber": 156
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "BigInt",
+          "lineNumber": 156
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "paymentsService.verifyPayment",
+          "lineNumber": 159
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "getPool().query",
+          "lineNumber": 164
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "getPool",
+          "lineNumber": 164
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "this.getAuthorization",
+          "lineNumber": 171
+        },
+        {
+          "caller": "chargePeriod",
+          "callee": "this.getAuthorization",
+          "lineNumber": 184
+        },
+        {
+          "caller": "chargePeriod",
+          "callee": "paymentsService.chargePeriod",
+          "lineNumber": 188
+        },
+        {
+          "caller": "chargePeriod",
+          "callee": "isPaymentError",
+          "lineNumber": 190
+        },
+        {
+          "caller": "getAuthorization",
+          "callee": "paymentsService.getAuthorization",
+          "lineNumber": 197
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "gateway/src/services/payments-bridge.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 293,
+      "nonEmptyLines": 272,
+      "functions": [
+        {
+          "name": "resolvePlatformFeeBps",
+          "startLine": 28,
+          "endLine": 40,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "AgentxPaymentStore",
+          "startLine": 44,
+          "endLine": 142,
+          "methods": [
+            "balanceOf",
+            "credit",
+            "isCreditRecorded",
+            "deduct",
+            "resolveAccess",
+            "recordIntent",
+            "updateIntentStatus"
+          ],
+          "properties": []
+        },
+        {
+          "name": "PaymentsBridge",
+          "startLine": 155,
+          "endLine": 291,
+          "methods": [
+            "handleWebhookEvent",
+            "registerX402Subscription",
+            "subscribeX402"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "AgentxPaymentStore",
+          "line": 44,
+          "isDefault": false
+        },
+        {
+          "name": "agentxPaymentStore",
+          "line": 144,
+          "isDefault": false
+        },
+        {
+          "name": "PaymentsBridge",
+          "line": 155,
+          "isDefault": false
+        },
+        {
+          "name": "paymentsBridge",
+          "line": 293,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "resolvePlatformFeeBps",
+          "callee": "Date.now",
+          "lineNumber": 29
+        },
+        {
+          "caller": "resolvePlatformFeeBps",
+          "callee": "chainDataReader.platformFeeBps",
+          "lineNumber": 34
+        },
+        {
+          "caller": "balanceOf",
+          "callee": "getPool().query",
+          "lineNumber": 46
+        },
+        {
+          "caller": "balanceOf",
+          "callee": "getPool",
+          "lineNumber": 46
+        },
+        {
+          "caller": "balanceOf",
+          "callee": "address.toLowerCase",
+          "lineNumber": 46
+        },
+        {
+          "caller": "balanceOf",
+          "callee": "BigInt",
+          "lineNumber": 47
+        },
+        {
+          "caller": "credit",
+          "callee": "getPool",
+          "lineNumber": 51
+        },
+        {
+          "caller": "credit",
+          "callee": "pool.query",
+          "lineNumber": 52
+        },
+        {
+          "caller": "credit",
+          "callee": "credit.reference.toLowerCase",
+          "lineNumber": 56
+        },
+        {
+          "caller": "credit",
+          "callee": "pool.query",
+          "lineNumber": 59
+        },
+        {
+          "caller": "isCreditRecorded",
+          "callee": "getPool().query",
+          "lineNumber": 69
+        },
+        {
+          "caller": "isCreditRecorded",
+          "callee": "getPool",
+          "lineNumber": 69
+        },
+        {
+          "caller": "isCreditRecorded",
+          "callee": "reference.toLowerCase",
+          "lineNumber": 69
+        },
+        {
+          "caller": "deduct",
+          "callee": "getPool().query",
+          "lineNumber": 74
+        },
+        {
+          "caller": "deduct",
+          "callee": "getPool",
+          "lineNumber": 74
+        },
+        {
+          "caller": "deduct",
+          "callee": "address.toLowerCase",
+          "lineNumber": 77
+        },
+        {
+          "caller": "deduct",
+          "callee": "amount.toString",
+          "lineNumber": 77
+        },
+        {
+          "caller": "resolveAccess",
+          "callee": "Number",
+          "lineNumber": 84
+        },
+        {
+          "caller": "resolveAccess",
+          "callee": "getPool().query",
+          "lineNumber": 89
+        },
+        {
+          "caller": "resolveAccess",
+          "callee": "getPool",
+          "lineNumber": 89
+        },
+        {
+          "caller": "resolveAccess",
+          "callee": "subscriber.toLowerCase",
+          "lineNumber": 94
+        },
+        {
+          "caller": "resolveAccess",
+          "callee": "log.warn",
+          "lineNumber": 98
+        },
+        {
+          "caller": "resolveAccess",
+          "callee": "chainDataReader.hasActiveSubscription",
+          "lineNumber": 102
+        },
+        {
+          "caller": "resolveAccess",
+          "callee": "log.warn",
+          "lineNumber": 104
+        },
+        {
+          "caller": "recordIntent",
+          "callee": "getPool().query",
+          "lineNumber": 117
+        },
+        {
+          "caller": "recordIntent",
+          "callee": "getPool",
+          "lineNumber": 117
+        },
+        {
+          "caller": "recordIntent",
+          "callee": "subscriber?.toLowerCase",
+          "lineNumber": 124
+        },
+        {
+          "caller": "recordIntent",
+          "callee": "String",
+          "lineNumber": 126
+        },
+        {
+          "caller": "recordIntent",
+          "callee": "JSON.stringify",
+          "lineNumber": 130
+        },
+        {
+          "caller": "updateIntentStatus",
+          "callee": "getPool().query",
+          "lineNumber": 137
+        },
+        {
+          "caller": "updateIntentStatus",
+          "callee": "getPool",
+          "lineNumber": 137
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "getPool",
+          "lineNumber": 158
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "String(obj.client_reference_id ?? '').split",
+          "lineNumber": 163
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "String",
+          "lineNumber": 163
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "Number",
+          "lineNumber": 165
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "Number",
+          "lineNumber": 167
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "pool.query",
+          "lineNumber": 168
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "String",
+          "lineNumber": 172
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "String",
+          "lineNumber": 172
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "log.info",
+          "lineNumber": 174
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "String",
+          "lineNumber": 178
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "Array.isArray",
+          "lineNumber": 180
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "Number",
+          "lineNumber": 182
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "pool.query",
+          "lineNumber": 184
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "pool.query",
+          "lineNumber": 190
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "pool.query",
+          "lineNumber": 196
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "String",
+          "lineNumber": 201
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "Number",
+          "lineNumber": 206
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "pool.query",
+          "lineNumber": 207
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "Math.floor",
+          "lineNumber": 208
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "resolvePlatformFeeBps",
+          "lineNumber": 208
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "pool.query",
+          "lineNumber": 209
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "String",
+          "lineNumber": 212
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "String",
+          "lineNumber": 212
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "log.info",
+          "lineNumber": 215
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "periodEnd?.toISOString",
+          "lineNumber": 215
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "String",
+          "lineNumber": 219
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "pool.query",
+          "lineNumber": 220
+        },
+        {
+          "caller": "handleWebhookEvent",
+          "callee": "log.info",
+          "lineNumber": 221
+        },
+        {
+          "caller": "registerX402Subscription",
+          "callee": "getPool().query",
+          "lineNumber": 239
+        },
+        {
+          "caller": "registerX402Subscription",
+          "callee": "getPool",
+          "lineNumber": 239
+        },
+        {
+          "caller": "registerX402Subscription",
+          "callee": "input.subscriber.toLowerCase",
+          "lineNumber": 245
+        },
+        {
+          "caller": "registerX402Subscription",
+          "callee": "input.txHash.toLowerCase",
+          "lineNumber": 245
+        },
+        {
+          "caller": "registerX402Subscription",
+          "callee": "log.info",
+          "lineNumber": 248
+        },
+        {
+          "caller": "registerX402Subscription",
+          "callee": "sub.expires_at.toISOString",
+          "lineNumber": 248
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "input.verify",
+          "lineNumber": 269
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "getPool().query",
+          "lineNumber": 271
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "getPool",
+          "lineNumber": 271
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "input.txHash.toLowerCase",
+          "lineNumber": 273
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "(payRows[0]?.from_address ?? '').toLowerCase",
+          "lineNumber": 275
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "input.subscriber.toLowerCase",
+          "lineNumber": 276
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "chainDataReader.getPlan",
+          "lineNumber": 278
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "this.registerX402Subscription",
+          "lineNumber": 281
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "sub.expires_at.toISOString",
+          "lineNumber": 289
+        },
+        {
+          "caller": "subscribeX402",
+          "callee": "credited.toString",
+          "lineNumber": 289
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 4,
+        "functionCount": 1,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "gateway/src/services/payments.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 86,
+      "nonEmptyLines": 83,
+      "functions": [
+        {
+          "name": "resolveX402Chain",
+          "startLine": 15,
+          "endLine": 17,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "paymentsService",
+          "line": 19,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 1,
+        "functionCount": 1,
+        "classCount": 0
+      }
+    }
+  ]
+}

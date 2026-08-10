@@ -1,0 +1,14 @@
+{
+  "batchImportData": {
+    "gateway/package.json": []
+  },
+  "neighborMap": {},
+  "files": [
+    {
+      "path": "gateway/package.json",
+      "language": "json",
+      "sizeLines": 41,
+      "fileCategory": "config"
+    }
+  ]
+}

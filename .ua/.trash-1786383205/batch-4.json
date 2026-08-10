@@ -1,0 +1,131 @@
+{
+  "nodes": [
+    {
+      "id": "file:sdk/src/payment/a2a-client.ts",
+      "type": "file",
+      "name": "sdk/src/payment/a2a-client.ts",
+      "filePath": "sdk/src/payment/a2a-client.ts",
+      "summary": "@agentxv2/sdk 支付模块中 A2AClient（a2a rail 客户端）的本地实现文件。R17.5 时 @0xinfrax/payments@0.1.2 移除了 a2a rail，AgentX 将其自托管并保持客户端契约逐字节一致；R17.6 起（@0xinfrax/payments@0.1.3）rail 回归通用引擎、网关委托给模块，但公开客户端契约不变，B 端调用方零感知。导出共享 JSON 请求助手 request()（拼接 baseUrl/path、可选 Bearer accessToken、非 2xx 抛出网关错误消息）与两阶段（create → settle）a2a 支付客户端 A2AClient。",
+      "tags": ["代码", "支付", "a2a rail", "A2AClient", "客户端", "支付引擎"],
+      "complexity": "medium"
+    },
+    {
+      "id": "file:sdk/src/payment/index.ts",
+      "type": "file",
+      "name": "sdk/src/payment/index.ts",
+      "filePath": "sdk/src/payment/index.ts",
+      "summary": "@agentxv2/sdk 支付模块的 barrel 入口（entry-point）。重新导出订阅支付门面 SubscriptionPayments 及其类型（SubscriptionPaymentMethod、SubscriptionPaymentsConfig、PaySubscriptionInput、PaySubscriptionResult、X402Info），从通用引擎 @0xinfrax/payments 转发协议级客户端（MPPClient、X402Client、PaymentsClient、ClientOptions），并从本地导出 A2AClient 与 PeriodClient。声明 PAYMENT_VERSION = '0.1.3'（R17.6 跟随 @0xinfrax/payments 0.1.2 → 0.1.3 的演练版本）。注释说明 a2a 与 period rails 现由通用引擎模块支撑、网关委托但 HTTP 契约与公开签名不变，B 端调用方零感知。",
+      "tags": ["entry-point", "barrel", "支付模块", "订阅支付", "通用支付引擎", "导出"],
+      "complexity": "low"
+    },
+    {
+      "id": "file:sdk/src/payment/period-client.ts",
+      "type": "file",
+      "name": "sdk/src/payment/period-client.ts",
+      "filePath": "sdk/src/payment/period-client.ts",
+      "summary": "@agentxv2/sdk 支付模块中 PeriodClient（period 授权 rail 客户端）的本地实现文件。R17.5 时 @0xinfrax/payments@0.1.2 移除了 period-authorization rail，AgentX 自托管并保持客户端契约一致；R17.6 起（@0xinfrax/payments@0.1.3）rail 回归通用引擎、网关委托给模块（PgAuthorizationStore seam），公开客户端契约不变，B 端调用方零感知。提供 charge（周期扣费）与 authorization（查询授权状态）两个方法，复用 a2a-client.ts 的 request 助手。",
+      "tags": ["代码", "支付", "period rail", "PeriodClient", "客户端", "授权"],
+      "complexity": "medium"
+    },
+    {
+      "id": "file:sdk/test/payment.test.ts",
+      "type": "file",
+      "name": "sdk/test/payment.test.ts",
+      "filePath": "sdk/test/payment.test.ts",
+      "summary": "三轨（chain/fiat/x402）订阅支付单元测试（vitest）。覆盖：支付模块导出（MPPClient/A2AClient/PeriodClient/X402Client/PaymentsClient 均可实例化、PAYMENT_VERSION = '0.1.3'）；chain rail 委托 SubscriptionManager.subscribe 并返回链上结果；fiat rail 走统一网关端点 POST /api/v1/payments 创建 Stripe checkout（支持自动按 planId 定价、省略 amountCents）；x402 rail 支持携带 txHash 直发，以及无 txHash 时先查 /api/v1/payments/info 再用钱包客户端自动支付；hasAccess 与 fetchX402Info 访问统一 access/info 端点；错误处理（非 2xx 透传网关错误消息、配置了 accessToken 时发送 Bearer token）。",
+      "tags": ["test", "单元测试", "订阅支付", "vitest", "三轨支付", "fetch mock"],
+      "complexity": "medium"
+    },
+    {
+      "id": "function:sdk/src/payment/a2a-client.ts:request",
+      "type": "function",
+      "name": "request",
+      "filePath": "sdk/src/payment/a2a-client.ts",
+      "startLine": 13,
+      "endLine": 29,
+      "summary": "对 AgentX 网关的最小 JSON 请求助手（与 period-client.ts 共享）：拼接 baseUrl（去尾部斜杠）与 path，可选附加 Bearer accessToken 请求头；非 2xx 时尝试解析响应体 error 消息并抛出，否则抛通用失败消息；成功时返回 JSON 响应体。",
+      "tags": ["函数", "请求助手", "HTTP", "JSON"],
+      "complexity": "low"
+    },
+    {
+      "id": "class:sdk/src/payment/a2a-client.ts:A2AClient",
+      "type": "class",
+      "name": "A2AClient",
+      "filePath": "sdk/src/payment/a2a-client.ts",
+      "startLine": 32,
+      "endLine": 54,
+      "summary": "a2a 支付客户端，两阶段流程：create（创建支付意图，POST /api/v1/payments/a2a，入参 payer/amountWei/payee/chain/metadata）与 settle（验证付款方链上交易并入账，POST /api/v1/payments/a2a/settle，入参 paymentId/txHash/chain）。由本地 a2a-client.ts 实现（R17.6 修复 0.11.1 ESM 崩溃后签名保持与 0.1.1 起一致，公开契约不变）。",
+      "tags": ["类", "a2a rail", "客户端", "支付", "两阶段支付"],
+      "complexity": "low"
+    },
+    {
+      "id": "class:sdk/src/payment/period-client.ts:PeriodClient",
+      "type": "class",
+      "name": "PeriodClient",
+      "filePath": "sdk/src/payment/period-client.ts",
+      "startLine": 15,
+      "endLine": 30,
+      "summary": "period 授权客户端（P4 授权流程）：charge（对授权执行周期扣费，POST /api/v1/payments/period/charge）与 authorization（查询授权状态，GET /api/v1/payments/period/authorization，返回 id/owner/remainingWei/periods/status）。由本地 period-client.ts 实现，公开契约自 0.1.1 起不变。",
+      "tags": ["类", "period rail", "客户端", "授权", "周期扣费"],
+      "complexity": "low"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:sdk/src/payment/a2a-client.ts",
+      "target": "function:sdk/src/payment/a2a-client.ts:request",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "a2a-client.ts 定义了共享 JSON 请求助手 request()。"
+    },
+    {
+      "source": "file:sdk/src/payment/a2a-client.ts",
+      "target": "class:sdk/src/payment/a2a-client.ts:A2AClient",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "a2a-client.ts 定义了 a2a 两阶段支付客户端 A2AClient。"
+    },
+    {
+      "source": "file:sdk/src/payment/period-client.ts",
+      "target": "class:sdk/src/payment/period-client.ts:PeriodClient",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "period-client.ts 定义了 period 授权客户端 PeriodClient。"
+    },
+    {
+      "source": "file:sdk/src/payment/index.ts",
+      "target": "file:sdk/src/payment/payments.ts",
+      "type": "exports",
+      "weight": 0.8,
+      "summary": "index.ts 从 ./payments 重新导出 SubscriptionPayments 及其类型（SubscriptionPaymentMethod、SubscriptionPaymentsConfig、PaySubscriptionInput、PaySubscriptionResult、X402Info）。"
+    },
+    {
+      "source": "file:sdk/src/payment/index.ts",
+      "target": "file:sdk/src/payment/a2a-client.ts",
+      "type": "exports",
+      "weight": 0.8,
+      "summary": "index.ts 从 ./a2a-client 重新导出 A2AClient。"
+    },
+    {
+      "source": "file:sdk/src/payment/index.ts",
+      "target": "file:sdk/src/payment/period-client.ts",
+      "type": "exports",
+      "weight": 0.8,
+      "summary": "index.ts 从 ./period-client 重新导出 PeriodClient。"
+    },
+    {
+      "source": "file:sdk/src/payment/payments.ts",
+      "target": "file:sdk/test/payment.test.ts",
+      "type": "tested_by",
+      "weight": 0.5,
+      "summary": "payment.test.ts 导入并测试 SubscriptionPayments 的三轨（chain/fiat/x402）订阅支付逻辑、hasAccess 与 fetchX402Info、错误处理。"
+    },
+    {
+      "source": "file:sdk/src/payment/index.ts",
+      "target": "file:sdk/test/payment.test.ts",
+      "type": "tested_by",
+      "weight": 0.5,
+      "summary": "payment.test.ts 导入 sdk/src/payment 模块，验证模块导出（MPPClient/A2AClient/PeriodClient/X402Client/PaymentsClient 可实例化）及 PAYMENT_VERSION = '0.1.3'。"
+    }
+  ]
+}

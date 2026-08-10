@@ -1,0 +1,192 @@
+{
+  "nodes": [
+    {
+      "id": "document:CHANGELOG.md",
+      "type": "document",
+      "name": "CHANGELOG.md",
+      "filePath": "CHANGELOG.md",
+      "summary": "记录 AgentX 平台近期重要变更：Conversation Service 与 @agentxv2/sdk 的版本演进（sdk@0.7.2 → 0.11.3）、支付引擎向 @0xinfrax/payments 的迁移、网关支付 rails（a2a/period/mpp）与 B 端能力（BYOK、端用户订阅转发、并行任务）的变更说明。",
+      "tags": ["changelog", "release-notes", "sdk", "payments", "gateway"],
+      "complexity": "complex"
+    },
+    {
+      "id": "document:DEPLOYMENT.md",
+      "type": "document",
+      "name": "DEPLOYMENT.md",
+      "filePath": "DEPLOYMENT.md",
+      "summary": "生产部署指南：覆盖生产服务器 43.159.60.46 上 frontend/gateway/conversation-service 三服务的部署与重启、端口与防火墙、PostgreSQL 单库（5433）与数据库迁移、合约 Foundry 部署、SDK npm 发布（CI workflow）以及健康检查与合约地址清单。",
+      "tags": ["deployment", "production", "devops", "gateway", "migrations"],
+      "complexity": "complex"
+    }
+  ],
+  "edges": [
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:gateway/src/routes/chat-tasks.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:gateway/src/routes/agent-runs.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:gateway/src/services/agent-access.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:gateway/src/services/payments-a2a-period.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:gateway/src/services/payments.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:gateway/src/services/a2a-worker.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:gateway/src/lib/crypto.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:sdk/src/payment/a2a-client.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:sdk/src/payment/period-client.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:sdk/src/llm/gateway-provider.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "module:sdk/src/llm/openai-provider.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "document:sdk/README.md",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "document:sdk/UPGRADE.md",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "document:docs/integration-callers.md",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "document:docs/publish-subscribe-pay.md",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:gateway/src/services/a2a-worker.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:gateway/src/routes/a2a.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:gateway/src/services/agent-indexer.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:gateway/src/routes/agents.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:gateway/src/lib/crypto.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:sdk/src/agent-loop/a2a-daemon.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:frontend/hooks/user/useMyAgentIds.ts",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:.github/workflows/publish-sdk.yml",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:gateway/db/migrations/021_payments_a2a_period_selfhost.sql",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:gateway/db/migrations/020_agents_category.sql",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:conversation-service/migrations/001_memory.sql",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "module:contracts/script/DeployOxaChain.s.sol",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:DEPLOYMENT.md",
+      "target": "document:CONVERSATION_SERVICE.md",
+      "type": "documents",
+      "weight": 0.5
+    }
+  ]
+}

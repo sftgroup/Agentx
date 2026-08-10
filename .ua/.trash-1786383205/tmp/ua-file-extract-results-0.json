@@ -1,0 +1,585 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 2,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 2,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 2
+    }
+  },
+  "results": [
+    {
+      "path": "CHANGELOG.md",
+      "language": "markdown",
+      "fileCategory": "docs",
+      "totalLines": 468,
+      "nonEmptyLines": 326,
+      "sections": [
+        {
+          "heading": "AgentX Changelog",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "2026-08-10 — 发布 sdk@0.11.3（R17.6：a2a/period 回归模块内置 rails，引擎升级 @0xinfrax/payments@0.1.3）",
+          "level": 2,
+          "line": 8
+        },
+        {
+          "heading": "2026-08-10 — 发布 sdk@0.11.2（R17.5：本地化 A2AClient/PeriodClient，引擎升级 @0xinfrax/payments@0.1.2）",
+          "level": 2,
+          "line": 27
+        },
+        {
+          "heading": "2026-08-10 — 发布 sdk@0.11.1（F2 跟随演练：@0xinfrax/payments@0.1.1）",
+          "level": 2,
+          "line": 39
+        },
+        {
+          "heading": "2026-08-10 — 发布 sdk@0.11.0（支付引擎迁移至 @0xinfrax/payments）",
+          "level": 2,
+          "line": 50
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.10.3（exports 暴露 ./package.json）",
+          "level": 2,
+          "line": 62
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.10.2（createTask endUserId header 加固 + tenantKeyId 隔离说明）",
+          "level": 2,
+          "line": 71
+        },
+        {
+          "heading": "2026-08-08 — 文档澄清：`tenantKeyId` 严格按租户隔离（B 端审计反馈）",
+          "level": 2,
+          "line": 81
+        },
+        {
+          "heading": "2026-08-08 — 文档：对话中引入自己的 MCP（Skill 执行模型）",
+          "level": 2,
+          "line": 90
+        },
+        {
+          "heading": "2026-08-08 — 应用侧建议项文档化（audit 收尾）",
+          "level": 2,
+          "line": 106
+        },
+        {
+          "heading": "2026-08-08 — 边界澄清：BYOK 适用范围 + B 端 MCP 路径（文档）",
+          "level": 2,
+          "line": 117
+        },
+        {
+          "heading": "2026-08-08 — 文档修正：`createTask` 参数签名与字段（B 端反馈）",
+          "level": 2,
+          "line": 128
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.10.1（per-request endUserId + B 端能力澄清）",
+          "level": 2,
+          "line": 136
+        },
+        {
+          "heading": "2026-08-08 — B 端（partner）并行任务强制 BYOK（预算约束）",
+          "level": 2,
+          "line": 153
+        },
+        {
+          "heading": "2026-08-08 — B 端端用户订阅转发（B-end subscription proxying）",
+          "level": 2,
+          "line": 165
+        },
+        {
+          "heading": "2026-08-08 — B 端集成 key 的并行任务能力统一为 P9 能力位（R14 策略修订）",
+          "level": 2,
+          "line": 177
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.10.0（完整版）+ 用户钱包签名上链轨道",
+          "level": 2,
+          "line": 192
+        },
+        {
+          "heading": "@agentxv2/sdk@0.10.0 — 完整功能版（已发布 npm）",
+          "level": 3,
+          "line": 194
+        },
+        {
+          "heading": "用户钱包签名上链轨道（仓库级，2026-08-08）",
+          "level": 3,
+          "line": 200
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.9.5（流式 tool_call 参数修复）",
+          "level": 2,
+          "line": 210
+        },
+        {
+          "heading": "@agentxv2/sdk@0.9.5 — 流式 tool_call 参数增量 chunk callId 丢失修复",
+          "level": 3,
+          "line": 212
+        },
+        {
+          "heading": "2026-08-07 — 多 Agent 编排分层（链下默认 / 链上可选）+ 发布 sdk@0.9.4、payments@0.2.2",
+          "level": 2,
+          "line": 222
+        },
+        {
+          "heading": "多 Agent 编排分层（Conversation Service + Gateway，仓库级）",
+          "level": 3,
+          "line": 224
+        },
+        {
+          "heading": "@agentxv2/sdk@0.9.4 — Agent 应用类别（category）字段（已发布 npm）",
+          "level": 3,
+          "line": 232
+        },
+        {
+          "heading": "@agentxv2/payments@0.2.2 — 归属元数据（已发布 npm）",
+          "level": 3,
+          "line": 241
+        },
+        {
+          "heading": "2026-08-07 — 生产升级 sdk@0.9.3 + payments@0.2.1",
+          "level": 2,
+          "line": 249
+        },
+        {
+          "heading": "@agentxv2/payments@0.2.1 — 浏览器/bundler 兼容修复",
+          "level": 3,
+          "line": 251
+        },
+        {
+          "heading": "2026-08-07",
+          "level": 2,
+          "line": 268
+        },
+        {
+          "heading": "SDK v0.8.11 — 三轨订阅支付（chain / fiat / x402）",
+          "level": 3,
+          "line": 270
+        },
+        {
+          "heading": "2026-08-06",
+          "level": 2,
+          "line": 295
+        },
+        {
+          "heading": "SDK v0.8.10 — 主密钥加解密 + subscription 状态映射修正",
+          "level": 3,
+          "line": 297
+        },
+        {
+          "heading": "2026-08-06",
+          "level": 2,
+          "line": 309
+        },
+        {
+          "heading": "Gateway — R13 外部项目方自助申请 API Key",
+          "level": 3,
+          "line": 311
+        },
+        {
+          "heading": "Gateway — MCP 新增对话与任务管理工具（33→38）",
+          "level": 3,
+          "line": 324
+        },
+        {
+          "heading": "SDK v0.9.0 — Browser Control Skill 扩展",
+          "level": 3,
+          "line": 334
+        },
+        {
+          "heading": "2026-08-05",
+          "level": 2,
+          "line": 345
+        },
+        {
+          "heading": "Gateway v0.2.1 — SDK-based ChainDataReader + 实时链上读取 API",
+          "level": 3,
+          "line": 347
+        },
+        {
+          "heading": "SDK v0.8.1 — 容错 tokenURI 解析",
+          "level": 3,
+          "line": 361
+        },
+        {
+          "heading": "2026-08-04",
+          "level": 2,
+          "line": 372
+        },
+        {
+          "heading": "SDK v0.8.0 — 链上数据能力",
+          "level": 3,
+          "line": 374
+        },
+        {
+          "heading": "SDK v0.7.5 — AgentLoop 模型覆盖修复",
+          "level": 3,
+          "line": 394
+        },
+        {
+          "heading": "SDK v0.7.4 — BYOK 模型透传（X-Llm-Model）",
+          "level": 3,
+          "line": 405
+        },
+        {
+          "heading": "SDK v0.7.3 — 无状态 BYOK（X-Llm-Endpoint）",
+          "level": 3,
+          "line": 414
+        },
+        {
+          "heading": "SDK v0.7.2 — 澄清打断（Clarification Interruption）",
+          "level": 3,
+          "line": 431
+        },
+        {
+          "heading": "Conversation Service — 记忆置信度过滤",
+          "level": 3,
+          "line": 439
+        },
+        {
+          "heading": "Conversation Service — 质量重构",
+          "level": 3,
+          "line": 443
+        },
+        {
+          "heading": "前端（agentx-frontend）— SDK 升级 + 生产配置恢复",
+          "level": 3,
+          "line": 451
+        },
+        {
+          "heading": "文档（2026-08-04）",
+          "level": 2,
+          "line": 458
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 48
+      }
+    },
+    {
+      "path": "DEPLOYMENT.md",
+      "language": "markdown",
+      "fileCategory": "docs",
+      "totalLines": 670,
+      "nonEmptyLines": 506,
+      "sections": [
+        {
+          "heading": "AgentX Deployment Guide",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "Production Server: 43.159.60.46",
+          "level": 2,
+          "line": 9
+        },
+        {
+          "heading": "Port Layout",
+          "level": 3,
+          "line": 25
+        },
+        {
+          "heading": "Firewall — Ports to Open",
+          "level": 3,
+          "line": 35
+        },
+        {
+          "heading": "SSH Access",
+          "level": 3,
+          "line": 43
+        },
+        {
+          "heading": "1. Frontend Deploy",
+          "level": 2,
+          "line": 54
+        },
+        {
+          "heading": "Path: `/home/ubuntu/Agentx/frontend` (pm2: `agentx-frontend`)",
+          "level": 3,
+          "line": 56
+        },
+        {
+          "heading": "`.env.production` (key values)",
+          "level": 3,
+          "line": 76
+        },
+        {
+          "heading": "Wallet auto-switch to OxaChain L1",
+          "level": 3,
+          "line": 88
+        },
+        {
+          "heading": "2. Gateway Deploy",
+          "level": 2,
+          "line": 102
+        },
+        {
+          "heading": "Path: `/home/ubuntu/Agentx/gateway` (pm2: `agentx-gateway`)",
+          "level": 3,
+          "line": 104
+        },
+        {
+          "heading": "`.env` (all required variables)",
+          "level": 3,
+          "line": 119
+        },
+        {
+          "heading": "2.5 Agents API & Indexer (v0.2.0+)",
+          "level": 2,
+          "line": 155
+        },
+        {
+          "heading": "Initial Setup",
+          "level": 3,
+          "line": 160
+        },
+        {
+          "heading": "API Endpoints",
+          "level": 3,
+          "line": 172
+        },
+        {
+          "heading": "Agent Indexer Features",
+          "level": 3,
+          "line": 182
+        },
+        {
+          "heading": "Cron Sync (optional — event watcher + fallback timer usually suffice)",
+          "level": 3,
+          "line": 191
+        },
+        {
+          "heading": "Why Database Index?",
+          "level": 3,
+          "line": 198
+        },
+        {
+          "heading": "2.6 A2A Auto-Processing Worker v2 — ReAct AgentLoop + Multi-Agent Orchestration (v0.6.6)",
+          "level": 2,
+          "line": 212
+        },
+        {
+          "heading": "Architecture",
+          "level": 3,
+          "line": 231
+        },
+        {
+          "heading": "Key Parameters",
+          "level": 3,
+          "line": 240
+        },
+        {
+          "heading": "LLM Tools Available",
+          "level": 3,
+          "line": 249
+        },
+        {
+          "heading": "Prerequisites",
+          "level": 3,
+          "line": 257
+        },
+        {
+          "heading": "A2A API Endpoints",
+          "level": 3,
+          "line": 262
+        },
+        {
+          "heading": "Tenant Isolation",
+          "level": 3,
+          "line": 270
+        },
+        {
+          "heading": "Migration",
+          "level": 3,
+          "line": 277
+        },
+        {
+          "heading": "Health Check",
+          "level": 3,
+          "line": 283
+        },
+        {
+          "heading": "2.7 Conversation Service (v0.7.1 · SDK 0.8.11 · 链下编排默认)",
+          "level": 2,
+          "line": 292
+        },
+        {
+          "heading": "Deploy (pm2: `agentx-conversation`)",
+          "level": 3,
+          "line": 298
+        },
+        {
+          "heading": "`.env` (key values)",
+          "level": 3,
+          "line": 312
+        },
+        {
+          "heading": "Migrations (pgvector required)",
+          "level": 3,
+          "line": 327
+        },
+        {
+          "heading": "Gateway `.env` — connect",
+          "level": 3,
+          "line": 333
+        },
+        {
+          "heading": "3. PostgreSQL Setup",
+          "level": 2,
+          "line": 345
+        },
+        {
+          "heading": "Schema (28 tables, 共用库 agentx_conversation)",
+          "level": 3,
+          "line": 358
+        },
+        {
+          "heading": "4. Contract Deployment (Foundry)",
+          "level": 2,
+          "line": 380
+        },
+        {
+          "heading": "Gas Note",
+          "level": 3,
+          "line": 405
+        },
+        {
+          "heading": "5. Health Checks",
+          "level": 2,
+          "line": 411
+        },
+        {
+          "heading": "6. Contract Addresses (Dual-Chain)",
+          "level": 2,
+          "line": 445
+        },
+        {
+          "heading": "7. npm SDK Publish",
+          "level": 2,
+          "line": 463
+        },
+        {
+          "heading": "SDK v0.10.0 New Features (完整功能版 — 整合 0.9.x 全部能力)",
+          "level": 3,
+          "line": 484
+        },
+        {
+          "heading": "SDK v0.8.10 / v0.8.11 New Features",
+          "level": 3,
+          "line": 493
+        },
+        {
+          "heading": "SDK v0.8.7 New Features (sessions & parallel tasks)",
+          "level": 3,
+          "line": 501
+        },
+        {
+          "heading": "SDK v0.8.6 New Features",
+          "level": 3,
+          "line": 510
+        },
+        {
+          "heading": "SDK v0.8.4 / v0.8.5 New Features",
+          "level": 3,
+          "line": 516
+        },
+        {
+          "heading": "SDK v0.7.1 New Features",
+          "level": 3,
+          "line": 525
+        },
+        {
+          "heading": "SDK v0.7.0 New Features",
+          "level": 3,
+          "line": 532
+        },
+        {
+          "heading": "SDK v0.6.6 New Features",
+          "level": 3,
+          "line": 539
+        },
+        {
+          "heading": "SDK v0.6.5 New Features",
+          "level": 3,
+          "line": 554
+        },
+        {
+          "heading": "SDK v0.6.4 New Features",
+          "level": 3,
+          "line": 563
+        },
+        {
+          "heading": "PINATA_JWT Configuration",
+          "level": 3,
+          "line": 571
+        },
+        {
+          "heading": "8. Admin Dashboard",
+          "level": 2,
+          "line": 582
+        },
+        {
+          "heading": "Access",
+          "level": 3,
+          "line": 584
+        },
+        {
+          "heading": "Admin Key",
+          "level": 3,
+          "line": 587
+        },
+        {
+          "heading": "Admin API Endpoints",
+          "level": 3,
+          "line": 593
+        },
+        {
+          "heading": "Platform LLM Key Setup (DeepSeek example)",
+          "level": 3,
+          "line": 619
+        },
+        {
+          "heading": "9. Database Migrations",
+          "level": 2,
+          "line": 636
+        },
+        {
+          "heading": "Gateway (`gateway/db/migrations/`)",
+          "level": 3,
+          "line": 638
+        },
+        {
+          "heading": "Conversation Service (`conversation-service/migrations/`)",
+          "level": 3,
+          "line": 650
+        },
+        {
+          "heading": "Legacy Servers",
+          "level": 2,
+          "line": 663
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 59
+      }
+    }
+  ]
+}

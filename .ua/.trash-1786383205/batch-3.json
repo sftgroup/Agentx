@@ -1,0 +1,307 @@
+{
+  "nodes": [
+    {
+      "id": "file:gateway/src/services/payments-a2a-period.ts",
+      "type": "file",
+      "name": "payments-a2a-period.ts",
+      "filePath": "gateway/src/services/payments-a2a-period.ts",
+      "summary": "a2a-pay 与周期授权（period authorization）服务（R17.6）。自托管实现已迁移为委托 @0xinfrax/payments@0.1.3 模块：createA2AIntent 委托 createPayment({method:'a2a'}) 并在 payment_intents 表回填 payee；a2aSettle 委托模块幂等结算并报告 ledger 余额；createPeriodAuthorization 委托 verifyPayment 校验链上资金交易后幂等提交授权；chargePeriod/getAuthorization 委托模块的 chargePeriod/getAuthorization（PgAuthorizationStore seam）。错误处理统一为 PaymentError（400/404/409/422/503），替代原裸 500。公开 HTTP 契约与 SDK 签名不变。",
+      "tags": ["a2a rail", "period authorization", "模块委托", "PaymentError", "R17.6"],
+      "complexity": "medium"
+    },
+    {
+      "id": "file:gateway/src/services/payments-bridge.ts",
+      "type": "file",
+      "name": "payments-bridge.ts",
+      "filePath": "gateway/src/services/payments-bridge.ts",
+      "summary": "AgentX 侧的支付桥接（generic payments engine 的 AgentX 实现）：AgentxPaymentStore 实现 PaymentStore 接口，读写 AgentX 自有表（x402_balances/x402_payments/fiat_subscriptions），含 balanceOf/credit/deduct/resolveAccess，并新增 recordIntent/updateIntentStatus 将支付意图审计写入 payment_intents 表（migration 021）；PaymentsBridge 处理引擎业务回调：handleWebhookEvent 将 stripe webhook 归一化为 fiat_subscriptions/fiat_payouts 状态（含平台费率 TTL 缓存 resolvePlatformFeeBps），registerX402Subscription/subscribeX402 完成 x402 订阅注册（校验付款人=订阅者、覆盖计划价格）。",
+      "tags": ["PaymentStore", "webhook", "x402 订阅", "fiat 订阅", "审计表"],
+      "complexity": "high"
+    },
+    {
+      "id": "file:gateway/src/services/payments.ts",
+      "type": "file",
+      "name": "payments.ts",
+      "filePath": "gateway/src/services/payments.ts",
+      "summary": "PaymentsService 装配（R17.6）。将 AgentX 环境配置映射到通用 @0xinfrax/payments 引擎：store 使用 agentxPaymentStore、chains（sepolia/oxachain）、stripe/x402（含 stablecoin 子配置）/mpp 配置项、mppStore 使用 PgMPPSessionStore；新增 a2a rail（enabled 跟随 config.x402Enabled）与 authorizations: PgAuthorizationStore seam（模块持有 payment_authorizations 表，migration 021）；onWebhookEvent 委托 paymentsBridge.handleWebhookEvent；logger 桥接 console。引擎本身对 AgentX 零感知，AgentX 特定逻辑全部在 payments-bridge.ts。",
+      "tags": ["装配", "PaymentsService", "PgAuthorizationStore", "a2a rail", "seam"],
+      "complexity": "low"
+    },
+    {
+      "id": "class:gateway/src/services/payments-a2a-period.ts:A2APeriodService",
+      "type": "class",
+      "name": "A2APeriodService",
+      "filePath": "gateway/src/services/payments-a2a-period.ts",
+      "lineRange": "78-208",
+      "summary": "a2a-pay + 周期授权服务类，两阶段 a2a 流程（createA2AIntent → a2aSettle）与周期授权流程（createPeriodAuthorization → chargePeriod/getAuthorization），全部委托 @0xinfrax/payments 模块，错误归一为 PaymentError。",
+      "tags": ["a2a", "period", "委托", "PaymentError"],
+      "complexity": "medium"
+    },
+    {
+      "id": "function:gateway/src/services/payments-a2a-period.ts:createA2AIntent",
+      "type": "function",
+      "name": "createA2AIntent",
+      "filePath": "gateway/src/services/payments-a2a-period.ts",
+      "lineRange": "80-109",
+      "summary": "阶段一：创建 a2a 意图。委托 paymentsService.createPayment({method:'a2a'})，payee 缺省用 x402.payTo()，非法输入抛 PaymentError(400/503)；随后 UPDATE payment_intents 回填 payee（模块 recordIntent 无 payee 列，兼容 AgentX 审计表）。",
+      "tags": ["a2a", "intent", "模块委托"],
+      "complexity": "medium"
+    },
+    {
+      "id": "function:gateway/src/services/payments-a2a-period.ts:a2aSettle",
+      "type": "function",
+      "name": "a2aSettle",
+      "filePath": "gateway/src/services/payments-a2a-period.ts",
+      "lineRange": "116-133",
+      "summary": "阶段二：校验链上付款交易并入账。委托模块幂等 a2aSettle（按 tx hash 防重放双花），成功则查询并报告付款方 ledger 余额。",
+      "tags": ["a2a", "settle", "幂等"],
+      "complexity": "low"
+    },
+    {
+      "id": "function:gateway/src/services/payments-a2a-period.ts:createPeriodAuthorization",
+      "type": "function",
+      "name": "createPeriodAuthorization",
+      "filePath": "gateway/src/services/payments-a2a-period.ts",
+      "lineRange": "142-174",
+      "summary": "从链上资金交易创建周期授权：校验 amountWei == periodPriceWei × periods、委托 verifyPayment 验证付款、INSERT 提交授权（ON CONFLICT(reference) 幂等防重放），随后读取授权视图返回。错误抛 PaymentError(400/422)。",
+      "tags": ["period", "授权", "幂等"],
+      "complexity": "medium"
+    },
+    {
+      "id": "function:gateway/src/services/payments-a2a-period.ts:chargePeriod",
+      "type": "function",
+      "name": "chargePeriod",
+      "filePath": "gateway/src/services/payments-a2a-period.ts",
+      "lineRange": "181-193",
+      "summary": "扣减授权的一个周期。先经 getAuthorization 检查存在性（缺失抛 404），再委托模块原子 chargePeriod；模块抛裸 Error 时转换为 PaymentError(409)，避免 raw 500。",
+      "tags": ["period", "charge", "错误归一"],
+      "complexity": "low"
+    },
+    {
+      "id": "function:gateway/src/services/payments-a2a-period.ts:getAuthorization",
+      "type": "function",
+      "name": "getAuthorization",
+      "filePath": "gateway/src/services/payments-a2a-period.ts",
+      "lineRange": "196-207",
+      "summary": "经模块 seam 读取周期授权（paymentsService.getAuthorization）并映射为 PeriodAuthorizationView，不存在返回 null。",
+      "tags": ["period", "查询", "模块委托"],
+      "complexity": "low"
+    },
+    {
+      "id": "class:gateway/src/services/payments-bridge.ts:AgentxPaymentStore",
+      "type": "class",
+      "name": "AgentxPaymentStore",
+      "filePath": "gateway/src/services/payments-bridge.ts",
+      "lineRange": "44-142",
+      "summary": "PaymentStore 的 AgentX 实现，全部持久化于 AgentX 自有表：balanceOf/credit/deduct 操作 x402_balances（credit 幂等按 tx_hash），resolveAccess 先查 off-chain fiat_subscriptions 再查链上合约订阅；recordIntent/updateIntentStatus 新增审计写入 payment_intents 表（migration 021），作为各 rail（chain/a2a/batch/x402）统一审计 sink。",
+      "tags": ["PaymentStore", "x402_*", "审计", "访问控制"],
+      "complexity": "high"
+    },
+    {
+      "id": "class:gateway/src/services/payments-bridge.ts:PaymentsBridge",
+      "type": "class",
+      "name": "PaymentsBridge",
+      "filePath": "gateway/src/services/payments-bridge.ts",
+      "lineRange": "155-291",
+      "summary": "通用引擎的业务回调桥：handleWebhookEvent 归一化 stripe webhook（checkout.session.completed / invoice.paid / customer.subscription.deleted）写入 fiat_subscriptions 与 fiat_payouts（按 resolvePlatformFeeBps 平台分成）；registerX402Subscription/subscribeX402 完成 x402 订阅注册（校验付款人=订阅者且金额覆盖计划价格）。",
+      "tags": ["webhook", "fiat_subscriptions", "x402 订阅", "平台分成"],
+      "complexity": "high"
+    },
+    {
+      "id": "function:gateway/src/services/payments-bridge.ts:recordIntent",
+      "type": "function",
+      "name": "recordIntent",
+      "filePath": "gateway/src/services/payments-bridge.ts",
+      "lineRange": "114-133",
+      "summary": "新增审计写入：0.1.3 起通用引擎对每条 rail 调用该回调，将支付意图（paymentId/method/subscriber/amount/status/metadata）INSERT 进 payment_intents 表（ON CONFLICT DO NOTHING）。",
+      "tags": ["审计", "payment_intents", "回调"],
+      "complexity": "low"
+    },
+    {
+      "id": "function:gateway/src/services/payments-bridge.ts:updateIntentStatus",
+      "type": "function",
+      "name": "updateIntentStatus",
+      "filePath": "gateway/src/services/payments-bridge.ts",
+      "lineRange": "136-141",
+      "summary": "推进支付意图生命周期：UPDATE payment_intents 的状态（如 a2a/batch settle 后置为 paid）。",
+      "tags": ["审计", "payment_intents", "状态机"],
+      "complexity": "low"
+    },
+    {
+      "id": "function:gateway/src/services/payments-bridge.ts:resolvePlatformFeeBps",
+      "type": "function",
+      "name": "resolvePlatformFeeBps",
+      "filePath": "gateway/src/services/payments-bridge.ts",
+      "lineRange": "28-40",
+      "summary": "解析平台费率（basis points），带 5 分钟 TTL 缓存；经 chainDataReader 链上读取失败时回退到 250 bps 默认值。",
+      "tags": ["平台费率", "TTL 缓存", "回退"],
+      "complexity": "low"
+    },
+    {
+      "id": "service:gateway/src/services/payments.ts:paymentsService",
+      "type": "service",
+      "name": "paymentsService",
+      "filePath": "gateway/src/services/payments.ts",
+      "lineRange": "19-86",
+      "summary": "装配完成的 PaymentsService 单例（@0xinfrax/payments@0.1.3）：store=agentxPaymentStore、chains 双链配置、stripe/x402/mpp 可选启用、a2a rail（enabled 跟随 config.x402Enabled）、authorizations: PgAuthorizationStore seam、onWebhookEvent 委托 paymentsBridge。是 a2a/period/x402 等 rail 的引擎入口。",
+      "tags": ["PaymentsService", "装配", "单例", "a2a rail", "seam"],
+      "complexity": "medium"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:gateway/src/services/payments-a2a-period.ts",
+      "target": "class:gateway/src/services/payments-a2a-period.ts:A2APeriodService",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含 A2APeriodService 类（L78-208）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-a2a-period.ts",
+      "target": "function:gateway/src/services/payments-a2a-period.ts:createA2AIntent",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含方法 createA2AIntent（L80-109）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-a2a-period.ts",
+      "target": "function:gateway/src/services/payments-a2a-period.ts:a2aSettle",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含方法 a2aSettle（L116-133）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-a2a-period.ts",
+      "target": "function:gateway/src/services/payments-a2a-period.ts:createPeriodAuthorization",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含方法 createPeriodAuthorization（L142-174）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-a2a-period.ts",
+      "target": "function:gateway/src/services/payments-a2a-period.ts:chargePeriod",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含方法 chargePeriod（L181-193）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-a2a-period.ts",
+      "target": "function:gateway/src/services/payments-a2a-period.ts:getAuthorization",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含方法 getAuthorization（L196-207）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-bridge.ts",
+      "target": "class:gateway/src/services/payments-bridge.ts:AgentxPaymentStore",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含 AgentxPaymentStore 类（L44-142）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-bridge.ts",
+      "target": "class:gateway/src/services/payments-bridge.ts:PaymentsBridge",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含 PaymentsBridge 类（L155-291）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-bridge.ts",
+      "target": "function:gateway/src/services/payments-bridge.ts:resolvePlatformFeeBps",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含模块级函数 resolvePlatformFeeBps（L28-40）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-bridge.ts",
+      "target": "function:gateway/src/services/payments-bridge.ts:recordIntent",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含方法 recordIntent（L114-133）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-bridge.ts",
+      "target": "function:gateway/src/services/payments-bridge.ts:updateIntentStatus",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含方法 updateIntentStatus（L136-141）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments.ts",
+      "target": "service:gateway/src/services/payments.ts:paymentsService",
+      "type": "contains",
+      "weight": 1.0,
+      "summary": "文件包含导出的 paymentsService 装配实例（L19-86）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-a2a-period.ts",
+      "target": "class:gateway/src/services/payments-a2a-period.ts:A2APeriodService",
+      "type": "exports",
+      "weight": 0.8,
+      "summary": "文件导出 A2APeriodService 类（另有实例 a2aPeriodService）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-bridge.ts",
+      "target": "class:gateway/src/services/payments-bridge.ts:AgentxPaymentStore",
+      "type": "exports",
+      "weight": 0.8,
+      "summary": "文件导出 AgentxPaymentStore 类（另有实例 agentxPaymentStore）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments-bridge.ts",
+      "target": "class:gateway/src/services/payments-bridge.ts:PaymentsBridge",
+      "type": "exports",
+      "weight": 0.8,
+      "summary": "文件导出 PaymentsBridge 类（另有实例 paymentsBridge）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments.ts",
+      "target": "service:gateway/src/services/payments.ts:paymentsService",
+      "type": "exports",
+      "weight": 0.8,
+      "summary": "文件导出 paymentsService 装配实例，供 a2a-period/x402/routes 等消费。"
+    },
+    {
+      "source": "function:gateway/src/services/payments-a2a-period.ts:createA2AIntent",
+      "target": "service:gateway/src/services/payments.ts:paymentsService",
+      "type": "calls",
+      "weight": 0.8,
+      "summary": "委托 paymentsService.createPayment({method:'a2a'}) 创建支付意图（L90）。"
+    },
+    {
+      "source": "function:gateway/src/services/payments-a2a-period.ts:a2aSettle",
+      "target": "service:gateway/src/services/payments.ts:paymentsService",
+      "type": "calls",
+      "weight": 0.8,
+      "summary": "委托 paymentsService.a2aSettle 校验并结算，随后 paymentsService.balanceOf 读取余额（L117/L125）。"
+    },
+    {
+      "source": "function:gateway/src/services/payments-a2a-period.ts:createPeriodAuthorization",
+      "target": "service:gateway/src/services/payments.ts:paymentsService",
+      "type": "calls",
+      "weight": 0.8,
+      "summary": "委托 paymentsService.verifyPayment 校验链上资金交易（L159）。"
+    },
+    {
+      "source": "function:gateway/src/services/payments-a2a-period.ts:chargePeriod",
+      "target": "service:gateway/src/services/payments.ts:paymentsService",
+      "type": "calls",
+      "weight": 0.8,
+      "summary": "委托 paymentsService.chargePeriod 原子扣减周期（L188）。"
+    },
+    {
+      "source": "function:gateway/src/services/payments-a2a-period.ts:getAuthorization",
+      "target": "service:gateway/src/services/payments.ts:paymentsService",
+      "type": "calls",
+      "weight": 0.8,
+      "summary": "经 paymentsService.getAuthorization seam 读取授权（L197）。"
+    },
+    {
+      "source": "file:gateway/src/services/payments.ts",
+      "target": "class:gateway/src/services/payments-bridge.ts:PaymentsBridge",
+      "type": "calls",
+      "weight": 0.8,
+      "summary": "onWebhookEvent 回调委托 paymentsBridge.handleWebhookEvent 处理 webhook（L80）。"
+    }
+  ]
+}

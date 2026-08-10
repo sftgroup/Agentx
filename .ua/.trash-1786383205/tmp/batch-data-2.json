@@ -1,0 +1,28 @@
+{
+  "batchImportData": {
+    "sdk/README.md": [],
+    "sdk/UPGRADE.md": [],
+    "sdk/package.json": []
+  },
+  "neighborMap": {},
+  "files": [
+    {
+      "path": "sdk/README.md",
+      "language": "markdown",
+      "sizeLines": 766,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "sdk/UPGRADE.md",
+      "language": "markdown",
+      "sizeLines": 870,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "sdk/package.json",
+      "language": "json",
+      "sizeLines": 123,
+      "fileCategory": "config"
+    }
+  ]
+}
