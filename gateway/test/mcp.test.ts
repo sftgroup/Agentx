@@ -8,6 +8,21 @@ import express from 'express'
 import request from 'supertest'
 import mcpRouter from '../src/routes/mcp'
 
+// R14 isolation-scope contract: only the 6 agentx_gateway_* conversation/task
+// tools require a registered-user JWT. Non-conversation tools (on-chain reads,
+// identity, subscription, …) must stay usable without one (B-end path). Mock
+// only the on-chain read used below; keep the rest of the module real.
+vi.mock('../src/services/chain-data-reader', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../src/services/chain-data-reader')>()
+  return {
+    ...mod,
+    chainDataReader: {
+      ...mod.chainDataReader,
+      totalAgents: vi.fn(async () => 2),
+    },
+  }
+})
+
 const app = express()
 app.use(express.json())
 app.use('/mcp', mcpRouter)
@@ -169,5 +184,18 @@ describe('agentx_gateway session & task management tools', () => {
     vi.stubGlobal('fetch', fetchMock)
     const body = await callTool('agentx_gateway_cancel_task', { task_id: 't9', access_token: 'jwt' })
     expect(JSON.parse(textOf(body)).status).toBe('cancelled')
+  })
+})
+
+// ── 非对话 MCP 工具 —— R14 隔离范围契约 ──────────────────────────────────
+// R14 的「仅注册用户 JWT」只作用于 6 个 agentx_gateway_* 对话/任务工具；
+// 其余 32 个非对话工具（链上读/写、identity、subscription 等）不带 access_token
+// 也应可用——这正是 B 端替代路径 3 的契约（B 端 key 直接走 MCP 读链上数据）。
+
+describe('non-conversation MCP tools — no JWT required (R14 isolation scope)', () => {
+  it('agentx_identity_total_count succeeds without access_token', async () => {
+    const body = await callTool('agentx_identity_total_count', { chain: 'oxachain' })
+    expect(JSON.parse(textOf(body)).totalAgents).toBe(2)
+    expect(JSON.parse(textOf(body)).chain).toBe('OxaChain L1')
   })
 })
