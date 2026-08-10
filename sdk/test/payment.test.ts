@@ -16,7 +16,7 @@ describe('payment module exports (v0.9.3)', () => {
     }
   })
   it('tracks the aligned generic engine version', () => {
-    expect(PAYMENT_VERSION).toBe('0.1.2') // F2 跟随演练：@0xinfrax/payments 0.1.0→0.1.1
+    expect(PAYMENT_VERSION).toBe('0.1.3') // R17.6: 跟随演练 @0xinfrax/payments 0.1.2→0.1.3
   })
 })
 

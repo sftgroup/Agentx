@@ -14,13 +14,14 @@ export type {
 // directly; the business semantics stay in `@0xinfrax/payments` metadata.
 //
 // R17.5: @0xinfrax/payments@0.1.2 removed the a2a and period rails from the
-// generic engine, so A2AClient / PeriodClient are now self-hosted local
-// clients (same public contract — they talk to the AgentX gateway endpoints
-// backed by services/payments-a2a-period.ts). MPP / x402 / unified clients
-// still come from the engine.
+// generic engine, so AgentX self-hosted both (services/payments-a2a-period.ts).
+// R17.6: @0xinfrax/payments@0.1.3 restored both rails inside the engine. The
+// gateway now delegates to the module rails while keeping the HTTP contract
+// identical, so A2AClient / PeriodClient keep their public signatures and
+// B-side callers see zero change.
 export { MPPClient, X402Client, PaymentsClient } from '@0xinfrax/payments'
 export { A2AClient } from './a2a-client'
 export { PeriodClient } from './period-client'
 export type { ClientOptions } from '@0xinfrax/payments'
 
-export const PAYMENT_VERSION = '0.1.2'
+export const PAYMENT_VERSION = '0.1.3'

@@ -5895,7 +5895,7 @@ var PeriodClient = class {
 };
 
 // src/payment/index.ts
-var PAYMENT_VERSION = "0.1.2";
+var PAYMENT_VERSION = "0.1.3";
 
 // src/a2a/a2a.ts
 var A2A_ABI = {

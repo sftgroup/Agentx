@@ -211,7 +211,7 @@ declare class PeriodClient {
     }>;
 }
 
-declare const PAYMENT_VERSION = "0.1.2";
+declare const PAYMENT_VERSION = "0.1.3";
 
 declare const A2A_VERSION = "0.1.0";
 

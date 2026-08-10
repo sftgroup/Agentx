@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// @agentxv2/sdk — A2AClient (self-hosted a2a rail, R17.5)
+// @agentxv2/sdk — A2AClient (a2a rail, module-backed since R17.6)
 // ---------------------------------------------------------------------------
-// @0xinfrax/payments@0.1.2 removed the a2a rail from the generic engine.
-// AgentX re-implements it on the gateway (payment_intents table) while keeping
-// the public client contract byte-for-byte identical, so B-side callers that
-// construct A2AClient with the same options see zero change.
+// @0xinfrax/payments@0.1.2 removed the a2a rail; AgentX self-hosted it (R17.5)
+// while keeping the client contract byte-for-byte identical. Since 0.1.3 the
+// rail lives in the generic engine again and the gateway delegates to it, but
+// the public client contract is unchanged — B-side callers see zero change.
 // ---------------------------------------------------------------------------
 
 import type { ChainKey, ClientOptions } from '@0xinfrax/payments'

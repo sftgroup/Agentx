@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
-// @agentxv2/sdk — PeriodClient (self-hosted period rail, R17.5)
+// @agentxv2/sdk — PeriodClient (period rail, module-backed since R17.6)
 // ---------------------------------------------------------------------------
-// @0xinfrax/payments@0.1.2 removed the period-authorization rail from the
-// generic engine. AgentX re-implements it on the gateway
-// (payment_authorizations table) while keeping the public client contract
-// identical, so B-side callers see zero change.
+// @0xinfrax/payments@0.1.2 removed the period-authorization rail; AgentX
+// self-hosted it (R17.5) while keeping the client contract identical. Since
+// 0.1.3 the rail lives in the generic engine again and the gateway delegates
+// to it (module PgAuthorizationStore seam), but the public client contract is
+// unchanged — B-side callers see zero change.
 // ---------------------------------------------------------------------------
 
 import type { ClientOptions } from '@0xinfrax/payments'

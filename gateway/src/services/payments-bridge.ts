@@ -12,6 +12,8 @@ import type {
   AccessResource,
   ChainKey,
   PaymentCredit,
+  PaymentIntentInput,
+  PaymentIntentStatus,
   PaymentStore,
   WebhookEvent,
 } from '@0xinfrax/payments'
@@ -102,6 +104,40 @@ export class AgentxPaymentStore implements PaymentStore {
       log.warn(`resolveAccess onchain check failed: ${(err as Error).message}`)
       return false
     }
+  }
+
+  /**
+   * Record a payment intent (audit trail). Since 0.1.3 the generic engine
+   * calls this for every rail (chain / a2a / batch / x402 verify path); the
+   * AgentX-owned `payment_intents` table (migration 021) is the shared sink.
+   */
+  async recordIntent(intent: PaymentIntentInput): Promise<void> {
+    const { paymentId, method, subscriber, asset, amountWei, currency, chain, status, metadata } = intent
+    if (!paymentId) return
+    await getPool().query(
+      `INSERT INTO payment_intents (intent_id, method, subscriber, asset, amount_wei, currency, chain, status, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (intent_id) DO NOTHING`,
+      [
+        paymentId,
+        method,
+        subscriber?.toLowerCase() ?? null,
+        asset ?? null,
+        amountWei !== undefined ? String(amountWei) : null,
+        currency ?? null,
+        chain ?? null,
+        status ?? 'created',
+        metadata ? JSON.stringify(metadata) : null,
+      ]
+    )
+  }
+
+  /** Advance a payment intent's lifecycle (a2a / batch settle → paid). */
+  async updateIntentStatus(paymentId: string, status: PaymentIntentStatus): Promise<void> {
+    await getPool().query(
+      `UPDATE payment_intents SET status = $2, updated_at = NOW() WHERE intent_id = $1`,
+      [paymentId, status]
+    )
   }
 }
 

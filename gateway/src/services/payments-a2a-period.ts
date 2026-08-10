@@ -1,17 +1,15 @@
 // ---------------------------------------------------------------------------
-// AgentX Gateway — self-hosted a2a-pay + period-authorization rails (R17.5)
+// AgentX Gateway — a2a-pay + period-authorization rails (R17.6)
 // ---------------------------------------------------------------------------
 // @0xinfrax/payments@0.1.2 removed the a2a rail (create → settle) and the
-// period-authorization rail. To keep the public HTTP contract and the SDK
-// client signatures unchanged (B-side callers see zero change), both rails are
-// re-implemented here on AgentX-owned tables:
-//   - a2a     → payment_intents (method='a2a', payee column); settle reuses the
-//               module's x402 verify path for on-chain verification + crediting
-//   - period  → payment_authorizations (atomic one-period charge, drain → exhausted)
-// The generic engine stays locked at @0xinfrax/payments@0.1.1 for the rails it
-// still provides (chain / fiat / x402 / MPP / stablecoin).
+// period-authorization rail, so AgentX self-hosted both (R17.5). Since
+// @0xinfrax/payments@0.1.3 restored both rails inside the generic engine, this
+// service now delegates to the module:
+//   - a2a    → PaymentsService.createPayment({ method: 'a2a' }) + a2aSettle()
+//   - period → PaymentsService.getAuthorization() + chargePeriod()
+// The public HTTP contract and the SDK client signatures are unchanged, so
+// B-side callers see zero change.
 // ---------------------------------------------------------------------------
-import { randomUUID } from 'node:crypto'
 import type { ChainKey } from '@0xinfrax/payments'
 import { getPool } from '../lib/db'
 import { config } from '../config'
@@ -77,7 +75,7 @@ export interface PeriodAuthorizationView {
 }
 
 export class A2APeriodService {
-  /** Phase 1: create an a2a intent → paymentId + amount + payee. */
+  /** Phase 1: create an a2a intent → paymentId + amount + payee (module rail). */
   async createA2AIntent(input: A2ACreateInput): Promise<A2ACreateResult> {
     const payer = String(input.payer ?? '').toLowerCase()
     const payee = String(input.payee ?? paymentsService.x402?.payTo() ?? '').toLowerCase()
@@ -85,29 +83,41 @@ export class A2APeriodService {
     if (!payer || !payee || !amountWei) {
       throw new Error('a2a: payer, payee (or x402 payTo) and amountWei are required')
     }
-    const paymentId = `a2a_${randomUUID()}`
+    const result = await paymentsService.createPayment({
+      method: 'a2a',
+      subscriber: payer,
+      valueWei: amountWei,
+      payee,
+      asset: input.asset,
+      chain: input.chain,
+      metadata: input.metadata,
+    })
+    if (result.method !== 'a2a') throw new Error('Unexpected a2a payment result')
+    // The module's recordIntent (PaymentIntentInput) carries no payee column,
+    // but the AgentX payment_intents audit table (migration 021) has one —
+    // backfill it so the a2a receiving wallet is recorded like the self-hosted
+    // rail did.
     await getPool().query(
-      `INSERT INTO payment_intents (intent_id, method, subscriber, amount_wei, chain, status, metadata, payee, asset)
-       VALUES ($1, 'a2a', $2, $3, $4, 'created', $5, $6, $7)`,
-      [paymentId, payer, amountWei, input.chain ?? 'oxachain', input.metadata ? JSON.stringify(input.metadata) : null, payee, input.asset ?? '0x0000000000000000000000000000000000000000']
+      `UPDATE payment_intents SET payee = $2, updated_at = NOW() WHERE intent_id = $1 AND payee IS NULL`,
+      [result.paymentId, payee]
     )
-    return { paymentId, amountWei, payee }
+    return { paymentId: result.paymentId, amountWei: result.amountWei, payee: result.payee }
   }
 
   /**
-   * Phase 2: verify the payer's on-chain payment tx and credit it. Reuses the
-   * module's x402 verify path (idempotent per tx hash — replay cannot double
-   * credit), then marks the intent paid.
+   * Phase 2: verify the payer's on-chain payment tx and credit it. Delegates to
+   * the module's a2aSettle (idempotent per tx hash — replay cannot double
+   * credit), then reports the payer's ledger balance.
    */
   async a2aSettle(input: A2ASettleInput): Promise<A2ASettleResult> {
-    const verified = await paymentsService.verifyPayment(input.txHash, input.chain)
+    const verified = await paymentsService.a2aSettle({
+      paymentId: input.paymentId,
+      txHash: input.txHash,
+      chain: input.chain,
+    })
     if (!verified) {
       return { verified: false, paymentId: input.paymentId, payer: '', creditedWei: '0', balanceWei: '0' }
     }
-    await getPool().query(
-      `UPDATE payment_intents SET status = 'paid', updated_at = NOW() WHERE intent_id = $1 AND status <> 'paid'`,
-      [input.paymentId]
-    )
     const balanceWei = (await paymentsService.balanceOf(verified.payer)).toString()
     return {
       verified: true,
@@ -160,43 +170,25 @@ export class A2APeriodService {
   }
 
   /**
-   * Charge one period of an authorization. Atomic: remaining -= periodPrice;
-   * marks `exhausted` when the remainder can no longer cover a full period.
-   * Throws when not active / insufficient funds (matches the generic store).
+   * Charge one period of an authorization. Delegates to the module's atomic
+   * chargePeriod (remaining -= periodPrice; marks `exhausted` when the
+   * remainder can no longer cover a full period).
    */
   async chargePeriod(authorizationId: string): Promise<PeriodChargeResult> {
-    const res = await getPool().query(
-      `UPDATE payment_authorizations
-       SET remaining_wei = (remaining_wei::numeric - period_price_wei::numeric)::text,
-           status = CASE
-             WHEN (remaining_wei::numeric - period_price_wei::numeric) < period_price_wei::numeric THEN 'exhausted'
-             ELSE 'active'
-           END
-       WHERE id = $1 AND status = 'active' AND remaining_wei::numeric >= period_price_wei::numeric
-       RETURNING remaining_wei, status`,
-      [authorizationId]
-    )
-    if (!res.rows.length) {
-      throw new Error(`Authorization ${authorizationId} cannot be charged (not active or insufficient funds)`)
-    }
-    return { renewed: res.rows[0].status === 'active', remainingWei: res.rows[0].remaining_wei }
+    return paymentsService.chargePeriod(authorizationId)
   }
 
-  /** Read a period authorization (HTTP contract kept unchanged). */
+  /** Read a period authorization via the module seam (HTTP contract unchanged). */
   async getAuthorization(authorizationId: string): Promise<PeriodAuthorizationView | null> {
-    const { rows } = await getPool().query(
-      'SELECT id, owner, amount_wei, remaining_wei, periods, status FROM payment_authorizations WHERE id = $1',
-      [authorizationId]
-    )
-    if (!rows.length) return null
-    const r = rows[0]
+    const auth = await paymentsService.getAuthorization(authorizationId)
+    if (!auth) return null
     return {
-      id: r.id,
-      owner: r.owner,
-      amountWei: r.amount_wei,
-      remainingWei: r.remaining_wei,
-      periods: r.periods,
-      status: r.status,
+      id: auth.id,
+      owner: auth.owner,
+      amountWei: auth.amountWei,
+      remainingWei: auth.remainingWei,
+      periods: auth.periods,
+      status: auth.status,
     }
   }
 }
