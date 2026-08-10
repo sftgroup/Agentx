@@ -29,6 +29,7 @@ import {
 } from './subscription-utils'
 import { SubscriptionPlanCard } from './SubscriptionPlanCard'
 import { SubscriptionPlanModal } from './SubscriptionPlanModal'
+import { ZERO_ADDRESS } from '../hooks/contract-address'
 
 export function SubscriptionManager() {
   const { address, isConnected } = useAccount()
@@ -39,7 +40,7 @@ export function SubscriptionManager() {
     description: '',
     price: 0,
     billingPeriod: BillingPeriod.Monthly,
-    token: '0x0000000000000000000000000000000000000000',
+    token: ZERO_ADDRESS,
     maxUsage: 1000
   })
   const [validation, setValidation] = useState<ValidationResult>({ isValid: true, message: '' })
@@ -78,7 +79,7 @@ export function SubscriptionManager() {
           description: '',
           price: 0,
           billingPeriod: BillingPeriod.Monthly,
-          token: '0x0000000000000000000000000000000000000000',
+          token: ZERO_ADDRESS,
           maxUsage: 1000
         })
       }
@@ -148,7 +149,7 @@ export function SubscriptionManager() {
       description: '',
       price: 0,
       billingPeriod: BillingPeriod.Monthly,
-      token: '0x0000000000000000000000000000000000000000',
+      token: ZERO_ADDRESS,
       maxUsage: 1000
     })
     setValidation({ isValid: true, message: '' })

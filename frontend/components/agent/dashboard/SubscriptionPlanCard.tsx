@@ -11,6 +11,7 @@ import {
   formatTimestamp,
   isPlanDeactivated
 } from './subscription-utils'
+import { ZERO_ADDRESS } from '../hooks/contract-address'
 
 interface SubscriptionPlanCardProps {
   plan: SubscriptionPlan
@@ -58,7 +59,7 @@ export function SubscriptionPlanCard({ plan }: SubscriptionPlanCardProps) {
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">价格</span>
           <span className="font-semibold">
-            {formatPrice(plan.price, plan.token ?? '0x0000000000000000000000000000000000000000')}
+            {formatPrice(plan.price, plan.token ?? ZERO_ADDRESS)}
           </span>
         </div>
         <div className="flex justify-between items-center">
@@ -70,7 +71,7 @@ export function SubscriptionPlanCard({ plan }: SubscriptionPlanCardProps) {
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">代币</span>
           <span className="text-sm">
-            {getTokenSymbol(plan.token ?? '0x0000000000000000000000000000000000000000')}
+            {getTokenSymbol(plan.token ?? ZERO_ADDRESS)}
           </span>
         </div>
         <div className="flex justify-between items-center">

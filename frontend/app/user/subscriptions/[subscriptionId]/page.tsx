@@ -10,8 +10,9 @@ import { Loader2, AlertCircle, CheckCircle, Clock, CreditCard, ArrowLeft, Brain,
 import Link from 'next/link'
 import { SubscriptionManager, SubscriptionPayments } from '@agentxv2/sdk'
 import { GATEWAY_URL } from '@/lib/gateway'
+import { ZERO_ADDRESS } from '@/components/agent/hooks/contract-address'
 
-const SUBSCRIPTION_MANAGER_ADDRESS = (process.env.NEXT_PUBLIC_SUBSCRIPTION_MANAGER_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`
+const SUBSCRIPTION_MANAGER_ADDRESS = (process.env.NEXT_PUBLIC_SUBSCRIPTION_MANAGER_ADDRESS || ZERO_ADDRESS) as `0x${string}`
 
 type PayMethod = 'chain' | 'fiat' | 'x402'
 type Period = 'day' | 'week' | 'month' | 'year'

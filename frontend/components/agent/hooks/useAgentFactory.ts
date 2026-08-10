@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 // R7 拆分：类型、常量与合约地址移入独立模块
 import { AGENT_FACTORY_ADDRESS } from './agent-factory-types'
 import type { AgentTemplate, TemplateCreationData, UseAgentFactoryReturn } from './agent-factory-types'
+import { ZERO_ADDRESS } from './contract-address'
 
 // 保持对外 API 兼容（外部消费方从本文件导入类型）
 export type { AgentTemplate, TemplateCreationData, BatchCreationResult, UseAgentFactoryReturn } from './agent-factory-types'
@@ -161,7 +162,7 @@ export function useAgentFactory(): UseAgentFactoryReturn {
             dataTypes: Array.isArray(template.dataTypes) ? template.dataTypes : [],
             isActive: template.isActive !== undefined ? template.isActive : true,
             createdAt: Number(template.createdAt) || Math.floor(Date.now() / 1000),
-            createdBy: template.createdBy || '0x0000000000000000000000000000000000000000'
+            createdBy: template.createdBy || ZERO_ADDRESS
           }
 
           return processedTemplate

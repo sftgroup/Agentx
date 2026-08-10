@@ -5,13 +5,14 @@ import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionRec
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useCallback } from 'react'
 import { SUBSCRIPTION_MANAGER_V1_ABI } from '@/abis/SubscriptionManagerV1'
+import { ZERO_ADDRESS } from '@/components/agent/hooks/contract-address'
 
 // 环境变量验证
 const getSubscriptionManagerAddress = (): `0x${string}` => {
   const address = process.env.NEXT_PUBLIC_SUBSCRIPTION_MANAGER_ADDRESS
   if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
     console.error('Invalid subscription manager address:', address)
-    return '0x0000000000000000000000000000000000000000'
+    return ZERO_ADDRESS
   }
   return address as `0x${string}`
 }
@@ -92,7 +93,7 @@ const transformSubscriptionData = (rawData: any[]): Subscription[] => {
       if (item.subscriber && typeof item.subscriber === 'string' && item.subscriber.startsWith('0x')) {
         subscriber = item.subscriber as `0x${string}`
       } else {
-        subscriber = '0x0000000000000000000000000000000000000000'
+        subscriber = ZERO_ADDRESS
       }
       
       const status = Number(item.status) as SubscriptionStatus
@@ -131,7 +132,7 @@ const transformSubscriptionData = (rawData: any[]): Subscription[] => {
         subscriptionId: BigInt(0),
         planId: BigInt(0),
         agentId: BigInt(0),
-        subscriber: '0x0000000000000000000000000000000000000000',
+        subscriber: ZERO_ADDRESS,
         status: SubscriptionStatus.Expired,
         startDate: BigInt(0),
         nextBillingDate: BigInt(0),
@@ -296,7 +297,7 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
       // 如果提供了计划详情且使用原生代币支付，添加 value 参数
       if (planDetails) {
         // 如果代币地址是零地址，表示使用原生代币（ETH）
-        if (planDetails.token === '0x0000000000000000000000000000000000000000') {
+        if (planDetails.token === ZERO_ADDRESS) {
           contractConfig.value = planDetails.price
         }
       }

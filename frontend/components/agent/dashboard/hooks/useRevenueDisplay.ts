@@ -9,6 +9,7 @@ import {
 } from '../../hooks/usePaymentGateway'
 import { useSubscription, type Subscription, SubscriptionStatus } from '../../hooks/useSubscription'
 import { useOnChainAgentRegistry as useAgentRegistry } from '../../hooks/useAgentRegistry'
+import { ZERO_ADDRESS } from '../../hooks/contract-address'
 
 // Re-export 接口，供同目录组件引用
 export type { Payment } from '../../hooks/usePaymentGateway'
@@ -110,7 +111,7 @@ export function useRevenueDisplay() {
 
   const getTokenSymbol = useCallback((tokenAddress: string): string => {
     const tokenMap: Record<string, string> = {
-      '0x0000000000000000000000000000000000000000': 'ETH',
+      [ZERO_ADDRESS]: 'ETH',
       '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48': 'USDC',
       '0x6B175474E89094C44Da98b954EedeAC495271d0F': 'DAI'
     }
@@ -255,7 +256,7 @@ export function useRevenueDisplay() {
 
     const subscriptionEarnings = userSubscriptions.reduce((sum: number, sub: any) => sum + Number(sub.totalPaid || 0) / 1e18, 0)
     if (subscriptionEarnings > 0) {
-      const ethToken = '0x0000000000000000000000000000000000000000'
+      const ethToken = ZERO_ADDRESS
       tokenEarningsMap.set(ethToken, (tokenEarningsMap.get(ethToken) || 0) + subscriptionEarnings)
     }
 

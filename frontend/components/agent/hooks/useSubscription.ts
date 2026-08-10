@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { SubscriptionManager } from '@agentxv2/sdk'
 import { SUBSCRIPTION_MANAGER_ABI } from '@/abis/SubscriptionManager'
 
-import { validateAddress as validateAddr } from './contract-address'
+import { validateAddress as validateAddr, ZERO_ADDRESS } from './contract-address'
 import { GATEWAY_URL } from '@/lib/gateway'
 
 const CONTRACT_ADDR = validateAddr(process.env.NEXT_PUBLIC_SUBSCRIPTION_MANAGER_ADDRESS)
@@ -186,7 +186,7 @@ export function useSubscription(): UseSubscriptionReturn {
     const periodStr = BILLING_PERIOD_TO_ONCHAIN[period]
     if (!periodStr) throw new Error('Quarterly plans are not supported on-chain (only day/week/month/year)')
     try {
-      const h = await createAsync({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'createPlan', args:[BigInt(agentId),BigInt(price),periodStr,'0x0000000000000000000000000000000000000000' as `0x${string}`,BigInt(0)] })
+      const h = await createAsync({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'createPlan', args:[BigInt(agentId),BigInt(price),periodStr,ZERO_ADDRESS,BigInt(0)] })
       setTxHash(h); return h
     } catch(e) { setError(e as Error); return undefined }
   }, [isConnected,address,createAsync])

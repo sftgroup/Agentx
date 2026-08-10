@@ -4,6 +4,7 @@
 
 import { Brain, Zap, Server, ExternalLink, Edit, Plus, DollarSign, Coins } from 'lucide-react'
 import type { AgentCard, AgentSkill, A2ASkill } from '../hooks/useA2AProtocol'
+import { ZERO_ADDRESS } from '../hooks/contract-address'
 
 interface AgentCardListProps {
   selectedAgentId: number | null
@@ -305,7 +306,7 @@ export function AgentCardList({
                                 </div>
                               </div>
                             )}
-                            {skill.priceToken !== '0x0000000000000000000000000000000000000000' && (
+                            {skill.priceToken !== ZERO_ADDRESS && (
                               <div className="flex items-center gap-2">
                                 <Coins className="w-4 h-4 text-yellow-600 flex-shrink-0" />
                                 <div className="min-w-0">

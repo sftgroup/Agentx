@@ -3,6 +3,7 @@
 
 import { useWriteContract, useReadContract, useAccount } from 'wagmi'
 import { useState, useEffect } from 'react'
+import { ZERO_ADDRESS } from './contract-address'
 
 // 导出类型定义
 export interface AgentCard {
@@ -46,7 +47,7 @@ export interface A2ASkill {
 }
 
 // 确保地址是有效的 0x 格式
-const A2A_PROTOCOL_ADDRESS = (process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`
+const A2A_PROTOCOL_ADDRESS = (process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS || ZERO_ADDRESS) as `0x${string}`
 const A2A_PROTOCOL_ABI = [
   {
     name: 'createAgentCard',

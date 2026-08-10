@@ -11,6 +11,7 @@ import {
   type A2ASkill
 } from '../../hooks/useA2AProtocol'
 import { useOnChainAgentRegistry as useAgentRegistry } from '../../hooks/useAgentRegistry'
+import { ZERO_ADDRESS } from '../../hooks/contract-address'
 
 interface AgentCardForm {
   name: string
@@ -73,7 +74,7 @@ const DEFAULT_SKILL_CONFIG: SkillConfigForm = {
   skillEndpoint: '',
   version: '1.0.0',
   price: 0,
-  priceToken: '0x0000000000000000000000000000000000000000'
+  priceToken: ZERO_ADDRESS
 }
 
 export function useAgentCards() {
@@ -267,7 +268,7 @@ export function useAgentCards() {
     setSkillConfigData({
       skillId: Number(skill.skillId),
       skillEndpoint: `https://api.youragent.com/agents/${selectedAgentId}/skills/${skill.skillId}`,
-      version: '1.0.0', price: 0, priceToken: '0x0000000000000000000000000000000000000000'
+      version: '1.0.0', price: 0, priceToken: ZERO_ADDRESS
     })
     setShowSkillConfig(true)
   }, [selectedAgentId])

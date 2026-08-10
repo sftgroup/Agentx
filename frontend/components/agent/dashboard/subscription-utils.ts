@@ -1,6 +1,7 @@
 // components/agent/dashboard/subscription-utils.ts
 // R7 拆分：SubscriptionManager 的类型、常量与纯函数（供主组件与子组件引用）
 import { type SubscriptionPlan, BillingPeriod } from '../hooks/useSubscription'
+import { ZERO_ADDRESS } from '../hooks/contract-address'
 
 export interface PlanFormData {
   name: string
@@ -26,7 +27,7 @@ export const BILLING_PERIODS = [
 ]
 
 export const TOKENS = [
-  { value: '0x0000000000000000000000000000000000000000', label: 'ETH', decimals: 18 },
+  { value: ZERO_ADDRESS, label: 'ETH', decimals: 18 },
   { value: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', label: 'USDC', decimals: 6 },
   { value: '0x6B175474E89094C44Da98b954EedeAC495271d0F', label: 'DAI', decimals: 18 }
 ]

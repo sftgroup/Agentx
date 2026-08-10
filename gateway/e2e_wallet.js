@@ -1,6 +1,7 @@
 const { ethers } = require('ethers');
 
-const RPC_URL = 'http://43.156.99.215:18545';
+// e2e 脚本：RPC 从环境变量读取，未设置时回退本机 anvil
+const RPC_URL = process.env.RPC_URL || 'http://127.0.0.1:18545';
 const PK = '0x5a74fd11c022e5e1fdc099e9971ebcdbad8b813f91fa99e6861bc0bcac99e094';
 const GW = 'http://localhost:3090';
 
