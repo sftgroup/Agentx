@@ -10,6 +10,7 @@
 // The public HTTP contract and the SDK client signatures are unchanged, so
 // B-side callers see zero change.
 // ---------------------------------------------------------------------------
+import { PaymentError, isPaymentError } from '@0xinfrax/payments'
 import type { ChainKey } from '@0xinfrax/payments'
 import { getPool } from '../lib/db'
 import { config } from '../config'
@@ -80,8 +81,11 @@ export class A2APeriodService {
     const payer = String(input.payer ?? '').toLowerCase()
     const payee = String(input.payee ?? paymentsService.x402?.payTo() ?? '').toLowerCase()
     const amountWei = String(input.amountWei ?? '')
-    if (!payer || !payee || !amountWei) {
-      throw new Error('a2a: payer, payee (or x402 payTo) and amountWei are required')
+    if (!payer || !amountWei) {
+      throw new PaymentError('INVALID_INPUT', 'a2a: payer and amountWei are required', 400)
+    }
+    if (!payee) {
+      throw new PaymentError('NOT_CONFIGURED', 'a2a rail is not configured (x402 payTo is empty and no payee was supplied)', 503)
     }
     const result = await paymentsService.createPayment({
       method: 'a2a',
@@ -144,17 +148,17 @@ export class A2APeriodService {
     const asset = String(input.asset ?? '0x0000000000000000000000000000000000000000').toLowerCase()
     const chain = input.chain ?? 'oxachain'
     if (!payer || !txHash || !amountWei) {
-      throw new Error('period: payer, txHash and amountWei are required')
+      throw new PaymentError('INVALID_INPUT', 'period: payer, txHash and amountWei are required', 400)
     }
     if (!periodPriceWei || periods <= 0) {
-      throw new Error('period: periodPriceWei and periods are required (or configured via PERIOD_PRICE_WEI / PERIOD_MAX_PERIODS)')
+      throw new PaymentError('INVALID_INPUT', 'period: periodPriceWei and periods are required (or configured via PERIOD_PRICE_WEI / PERIOD_MAX_PERIODS)', 400)
     }
     if (BigInt(amountWei) !== BigInt(periodPriceWei) * BigInt(periods)) {
-      throw new Error('period: amountWei must equal periodPriceWei × periods')
+      throw new PaymentError('INVALID_INPUT', 'period: amountWei must equal periodPriceWei × periods', 400)
     }
     const verified = await paymentsService.verifyPayment(txHash, chain)
     if (!verified) {
-      throw new Error('period: transaction is not a valid payment to the platform wallet')
+      throw new PaymentError('INVALID_INPUT', 'period: transaction is not a valid payment to the platform wallet', 422)
     }
     const id = `auth:${txHash}`
     await getPool().query(
@@ -175,7 +179,17 @@ export class A2APeriodService {
    * remainder can no longer cover a full period).
    */
   async chargePeriod(authorizationId: string): Promise<PeriodChargeResult> {
-    return paymentsService.chargePeriod(authorizationId)
+    // Graceful 404/409 instead of a raw 500: the module store throws a plain
+    // Error for missing / unchargeable authorizations (R17.6 delegation).
+    if (!(await this.getAuthorization(authorizationId))) {
+      throw new PaymentError('NOT_FOUND', `Authorization ${authorizationId} not found`, 404)
+    }
+    try {
+      return await paymentsService.chargePeriod(authorizationId)
+    } catch (err) {
+      if (isPaymentError(err)) throw err
+      throw new PaymentError('INSUFFICIENT_BALANCE', (err as Error).message, 409)
+    }
   }
 
   /** Read a period authorization via the module seam (HTTP contract unchanged). */
