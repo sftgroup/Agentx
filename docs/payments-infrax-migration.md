@@ -55,7 +55,7 @@ gateway（直接依赖）
 
 ## 四、执行步骤（按序，串行，注意低资源占用）
 
-> **执行状态：✅ 全部完成（2026-08-10）**，对应 AgentX `docs/PROGRESS.md` R17 清单 A-E + F1；F2（首次跟随演练）待 infraX 发布 `@0xinfrax/payments@0.1.1`。
+> **执行状态：✅ 全部完成（2026-08-10）**，对应 AgentX `docs/PROGRESS.md` R17 清单 A-E + F1 + F2（F2 已随 infraX 发布 `@0xinfrax/payments@0.1.1` 完成，见 §六）；**R17.5（`0.1.2` 剥离 a2a/period 应对、业务侧重建）与 R17.6（`0.1.3` 恢复后切换回模块委托）亦已完成**，详见 §六。
 
 1. **sdk 验证**：`npm run build` → `npm run typecheck` → `npm test`（在 `Agentx/sdk/`）— ✅ 32/32 全绿
 2. **gateway 验证**：`npm run build` → `npm run typecheck` → `npm test`（在 `Agentx/gateway/`）— ✅ 46/46 全绿
@@ -78,11 +78,19 @@ gateway（直接依赖）
 **R17.5 发布后通知结论（2026-08-10，`@agentxv2/sdk@0.11.2`）**：
 - 本次为 patch（本地化 A2AClient/PeriodClient + `@0xinfrax/payments@0.1.2` exact），**业务 API / HTTP 契约完全不变**——B 端调用方无任何改动，升级为推荐项（可选，非阻塞）
 - 本地依赖盘点（`aiservicer ^0.8.1`、`aihunter-saas/backend ^0.6.5`、`aitrader/backend ^0.6.4`、`autoops`/`pocketx-wallet-deploy` 无 sdk 依赖）：**全部未消费新支付引擎**（0.11.x 才引入 A2AClient/PeriodClient），不升级零影响——本次**不主动向 B 端调用方发升级通知**，仅在例行沟通中附带说明即可
-- 真正需通知对象为 **infraX**（0.1.2 剥离 a2a/period 的回应，见 PROGRESS R17.5「回复 infraX」待办，文案已备好）
+- 已通知 **infraX**（0.1.2 剥离 a2a/period 的回应，issue #1 评论已发送，见 PROGRESS R17.5「infraX 通知文案」）
+
+**R17.6 发布后通知结论（2026-08-10，`@agentxv2/sdk@0.11.3` + `@0xinfrax/payments@0.1.3`）**：
+- 0.1.3 **恢复 a2a/period rails（模块内置）**，AgentX 切回模块委托——**业务 API / HTTP 契约逐字不变，B 端调用方零改动**；`npm install` 吸收 0.11.3 即可（锁精确版本者升级至 0.11.3）
+- 唯一需知悉：曾用 **0.11.1 ESM 构建**（启动崩溃）的调用方必须升级 ≥0.11.2；`PAYMENT_VERSION` 0.1.2 → 0.1.3 仅当断言该常量时需感知
 
 ## 六、长期跟随策略（infraX 后续发版）
 
 > **F2 首次跟随演练（✅ 2026-08-10）**：infraX 发布 `@0xinfrax/payments@0.1.1`（补丁版，新增 `createWebhookForwarder` + `rpcHeaders`）后，按下方 check-list 完整走通一遍：AgentX 升级依赖 `^0.1.1` → 解耦回归 19 项断言通过（`run-decouple.sh` 已改为消费**已安装的 npm 包** `gateway/node_modules/@0xinfrax/payments`，而非本地历史 `payments/`）→ sdk build+typecheck+32/32 → 发布 `@agentxv2/sdk@0.11.1`（tag `v0.11.1`，`PAYMENT_VERSION='0.1.1'`）→ gateway 升级 `^0.11.1`，build+typecheck+46/46。
+
+> **R17.5 剥离跟随（✅ 2026-08-10，`@0xinfrax/payments@0.1.2`）**：0.1.2 按「通用引擎只提供通用通道」定位**移除 a2a rail 与 period 授权 rail**（行为变更）。AgentX 应对：sdk/gateway 依赖 `^0.1.1` → **`0.1.2`（exact，commit `6071ce6` 先锁 0.1.1 防静默拉到剥离版）** → 决策**业务侧重建**（gateway 自持 `payment_intents`/`payment_authorizations` 表（迁移 021）+ `A2APeriodService`，sdk 本地化 `A2AClient`/`PeriodClient`，HTTP 契约与 sdk API 不变）→ 发布 `@agentxv2/sdk@0.11.2`（依赖 0.1.2 exact）→ GitHub issue #1 留痕 + 评论回复 infraX 并请求协助评估。详见 AgentX `docs/PROGRESS.md` R17.5。
+
+> **R17.6 恢复跟随（✅ 2026-08-10，`@0xinfrax/payments@0.1.3`）**：0.1.3 **恢复 a2a/period rails（模块内置）**并新增 batch/invite/transfer rails（回应 R17.5 评估）。AgentX **迁移回模块委托**：`services/payments-a2a-period.ts` 的 `createPayment('a2a')`/`a2aSettle`/`chargePeriod`/`getAuthorization` 改委托模块（保留自托管 `createPeriodAuthorization`，模块无公开创建接口）、`payments.ts` 注入模块 `PgAuthorizationStore`、`payments-bridge.ts` 新增 `recordIntent`/`updateIntentStatus` 审计 seam → 发布 `@agentxv2/sdk@0.11.3`（依赖 0.1.3，`A2AClient` 继续本地实现以规避 0.11.1 ESM 崩溃）→ 生产部署 + 自测全绿（`4648bb8` 修复委托路径禁用/缺参 500 → 优雅 4xx）。**B 端调用方零改动**。详见 AgentX `docs/PROGRESS.md` R17.6 与 root CHANGELOG.md。
 
 - 依赖锁 `^0.1.0`：只自动跟随 0.1.x 补丁（bugfix/安全），`0.2.0+`（潜在 breaking / 新能力）不会自动进入。
 - 生产环境有 lock 文件，**不重装不会变**；依赖生效需显式升级。

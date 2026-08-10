@@ -127,8 +127,8 @@
 
 ## 二、当前状态
 
-- **当前**：可立即开发任务已清零；R17 支付引擎迁移发布 A-E + F1 + F2 全部完成（2026-08-10：sdk@0.11.0/0.11.1 发布、gateway 升级、旧包 deprecate、生产升级+冒烟、应用方通知、0.1.1 首次跟随演练）；**R17.5 支付引擎 0.1.2 剥离 a2a/period 影响处理中**（依赖已锁定 0.1.1，业务侧方案评估待决策）
-- **待办**：均为外部前提——R4/R5（业务方凭据）+ R17.5（业务侧方案评估 / GitHub issue 留痕 / 回复 infraX），见下
+- **当前**：可立即开发任务已清零；R17 / R17.5 / R17.6 支付引擎迁移全链路完成（2026-08-10：sdk@0.11.0~0.11.3 发布、0.1.1 首次跟随演练、0.1.2 剥离应对与业务侧重建、0.1.3 恢复 a2a/period 后切换回模块委托、生产部署+自测全绿、B 端零改动通知）
+- **待办**：均为外部前提——R4/R5（业务方凭据），见下
   - R1 ✅ 已完成（2026-08-06 · commit `0f5c30d`；SDK 0.8.7 已发布 npm）
   - R2 ✅ 已完成（2026-08-06 · 集成测试补 task 并行链路，生产 28/28 通过）
   - R4-R5 = 待外部前提任务（R4/R5 需业务方提供凭据）
@@ -145,6 +145,8 @@
   - R15 ✅ 已完成（2026-08-08 · B 端能力修订补完：强制 BYOK + 端用户订阅转发 + kind 统一 + sdk@0.10.1）
   - R16 ✅ 已完成（2026-08-08 · 审计闭环与文档补完：createTask 签名修正 + 边界澄清 + BYOM 文档 + 新调用方 key）
   - R17 ✅ 已完成（2026-08-10：A-E + F1 + F2 全部完成——sdk@0.11.0/0.11.1 发布、gateway 升级、旧包 deprecate、文档、生产升级、应用方通知、0.1.1 首次跟随演练；发布流程见下「### R17 支付引擎迁移发布流程」）
+  - R17.5 ✅ 已完成（2026-08-10：@0xinfrax/payments@0.1.2 剥离 a2a/period rail——exact 锁定 → 业务侧重建 → sdk@0.11.2 发布 → issue #1 留痕并回复 infraX；见下「## R17.5」）
+  - R17.6 ✅ 已完成（2026-08-10：@0xinfrax/payments@0.1.3 恢复 a2a/period rails（模块内置）→ AgentX 迁移回模块委托、sdk@0.11.3 发布、生产部署+自测（4648bb8 优雅 4xx 修复）、B 端零改动通知；见下「## R17.6」）
 
 ### 开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）
 
@@ -374,7 +376,7 @@
 
 ---
 
-## R17.5 支付引擎 0.1.2 剥离 a2a/period（2026-08-10，进行中）
+## R17.5 支付引擎 0.1.2 剥离 a2a/period（2026-08-10，✅ 完成）
 
 > **事件**：infraX 发布 `@0xinfrax/payments@0.1.2`，按「通用支付引擎只提供通用支付通道」定位，**移除 a2a rail 与 period 授权 rail**（删除 A2AClient/PeriodClient、`payment_authorizations` 表、005 迁移、a2a/period 端点与事件；保留通用字段 `PaymentPeriod` day/week/month/year 与 chain/fiat/x402/MPP/稳定币，测试 89/89）。按 MIGRATION.md 约定属**行为变更**，infraX 已主动知会。
 
@@ -387,7 +389,7 @@
 - **待办**：
   - [x] 业务侧方案评估：a2a-pay / period 授权端点是否有业务在用——A) 业务侧重建（gateway 自持表+逻辑）B) 移除（若无业务）C) 请 infraX 以插件/可选模块保留（**已决策 A：业务侧重建，保持 sdk API 兼容，B 端零改动**）
   - [x] GitHub issue 留痕（✅ 2026-08-10 issue #1 https://github.com/sftgroup/Agentx/issues/1，label dependency+payments）
-  - [ ] 回复 infraX：确认引用点 + 请求协助评估（✅ 2026-08-10 文案已备好，见下「infraX 通知文案（待发送）」；issue #1 已留痕，待发送）
+  - [x] 回复 infraX：确认引用点 + 请求协助评估（✅ 2026-08-10 已发送——issue #1 评论 #issuecomment-5242199966，文案见下「infraX 通知文案」）
   - [x] 解除锁定 → 升级验证（✅ 2026-08-10：sdk/gateway 升 0.1.2，typecheck/test/build 全绿、引擎解耦回归全 PASS、0.1.2 下 F7/F8 全 PASS；commit 78f6ae0）→ ✅ 发 sdk@0.11.2（2026-08-10 已发布 npm + tag v0.11.2）
 - **业务侧重建实施（R17.5，代码已落地，本地回归全绿）**：
   - 迁移 `gateway/db/migrations/021_payments_a2a_period_selfhost.sql`：`payment_intents`（含 payee 列）+ `payment_authorizations`，幂等建表（019 已有同构表，语句 IF NOT EXISTS）
@@ -403,6 +405,25 @@
   > 2. **已按「业务侧重建」落地（R17.5）**：gateway 自持 `payment_intents`/`payment_authorizations` 表（迁移 021）+ `A2APeriodService`（复用引擎 `verifyPayment` 链上验收入账，保持依赖解耦）；新增 `POST /payments/period/authorize` 作为 0.1.2 移除 x402 `period` accept 后的授权创建入口；HTTP 契约与 sdk 公开 API 完全不变，B 端调用方零改动。
   > 3. **已发布 `@agentxv2/sdk@0.11.2`**（依赖 `@0xinfrax/payments@0.1.2` exact），回归全绿（0.1.2 下 F7/F8 全 PASS）。
   > 4. **请求协助评估**：a) 后续若引擎计划回归 a2a/period 或提供插件/可选模块，AgentX 可评估切回引擎原生能力，业务侧重建代码保持独立不影响；b) period 授权语义（autorenew/exhaust、逐期 charge）引擎侧是否有路线图可共享，便于双方对齐契约。
+
+---
+
+## R17.6 支付引擎 0.1.3 恢复 a2a/period（2026-08-10，✅ 完成）
+
+> **事件**：infraX 发布 `@0xinfrax/payments@0.1.3`，**恢复 a2a rail 与 period 授权 rail（模块内置）**并新增 batch / invite / transfer rails——正是 R17.5 请求协助评估的方向（回归引擎原生能力）。AgentX 将 R17.5 的自托管实现**迁移回模块委托**（HTTP 契约与客户端签名逐字不变）。
+
+- **`@agentxv2/sdk@0.11.3` 已发布 npm**（patch，tag `v0.11.3`）：
+  - 依赖 `@0xinfrax/payments` 0.1.2 → **0.1.3**；`PAYMENT_VERSION` 对齐 0.1.3
+  - `A2AClient` 继续由 SDK 本地实现（修复 0.11.1 ESM 构建从引擎导入已移除导出导致的启动崩溃，签名不变）；`SubscriptionPayments` + 协议客户端（MPP/A2A/Period/X402/Payments）**API 不变——业务方零改动**
+- **网关变更（迁移回模块委托）**：
+  - `services/payments-a2a-period.ts`：`createPayment({ method: 'a2a' })` / `a2aSettle` / `chargePeriod` / `getAuthorization` 委托模块；**保留自托管 `createPeriodAuthorization`**（模块无公开创建接口）；period 授权表写入后回填 payee 审计列
+  - `services/payments.ts` 组装：a2a rail 开关跟随 `config.x402Enabled`；注入模块 `PgAuthorizationStore`（模块自有 `payment_authorizations` 表）
+  - `payments-bridge.ts` 新增审计 seam：`recordIntent` / `updateIntentStatus` 幂等写入 `payment_intents`（迁移 021 表）
+  - **错误修复（commit `4648bb8`）**：a2a/period 委托路径在 rail 禁用 / 参数不合法时由 **500 改为优雅 4xx**——400 `INVALID_INPUT` / 404 `NOT_FOUND` / 409 `INSUFFICIENT_BALANCE` / 503 `NOT_CONFIGURED`（R17.5 既有行为修复，非回归）
+- **数据库（生产已执行）**：迁移 **019**（`payment_sessions` / `payment_vouchers`）+ **021**（`payment_intents` / `payment_authorizations` / payee 列）——支付基础设施全部就位；生产 rails 保持**关闭（不对外开放）**，仅 chain rail 生效
+- **验证**：sdk vitest 32/32、gateway 46/46、双方 tsc 通过；生产自测全绿（health / payments/info / access / a2a worker + 禁用 rail 优雅 4xx）
+- **配套文档**：sdk README/UPGRADE 同步 0.11.3（commit `106e27f`）；DEPLOYMENT.md 修正生产 DB 端口（5433 单库）/ SSH 凭证 / 迁移执行标记（`f2f674a`）；CHANGELOG R17.6 条目（`a461c0b`）；知识图谱增量更新至 `a461c0b`（`.ua/`，`2a856c3`）
+- **通知（B 端零改动）**：`npm install` 吸收 0.11.3 即可（锁精确版本者升级至 0.11.3）；曾用 0.11.1 ESM 构建（启动崩溃）必须升级 ≥0.11.2；`PAYMENT_VERSION` 0.1.2 → 0.1.3 仅当断言该常量时需感知
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 
