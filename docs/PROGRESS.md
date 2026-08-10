@@ -385,8 +385,8 @@
   - 不受影响：agent-loop `a2a-daemon.ts`/`executor.ts` 的 `a2a.*`（链上 A2A 协议客户端，非 payments 能力）；`subscription.ts` 的 `period`（通用字段）
 - **防护动作（✅ 已完成）**：sdk/gateway 依赖 `@0xinfrax/payments` `^0.1.1` → **`0.1.1`（exact 锁定）**，lock 已同步（commit `6071ce6`），阻止任何 `npm install` 静默拉到剥离版；typecheck 通过
 - **待办**：
-  - [ ] 业务侧方案评估：a2a-pay / period 授权端点是否有业务在用——A) 业务侧重建（gateway 自持表+逻辑）B) 移除（若无业务）C) 请 infraX 以插件/可选模块保留
-  - [ ] GitHub issue 留痕（sftgroup/Agentx，可跟踪）
+  - [ ] 业务侧方案评估：a2a-pay / period 授权端点是否有业务在用——A) 业务侧重建（gateway 自持表+逻辑）B) 移除（若无业务）C) 请 infraX 以插件/可选模块保留（**已决策 A：业务侧重建，保持 sdk API 兼容，B 端零改动**）
+  - [x] GitHub issue 留痕（✅ 2026-08-10 issue #1 https://github.com/sftgroup/Agentx/issues/1，label dependency+payments）
   - [ ] 回复 infraX：确认引用点 + 请求协助评估
   - [ ] 方案落地后：解除锁定 → 升级验证（解耦回归 + sdk/gateway 全量）→ 发 sdk 新版本
 
