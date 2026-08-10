@@ -127,8 +127,8 @@
 
 ## 二、当前状态
 
-- **当前**：可立即开发任务已清零；R17 支付引擎迁移发布 A-E + F1 + F2 全部完成（2026-08-10：sdk@0.11.0/0.11.1 发布、gateway 升级、旧包 deprecate、生产升级+冒烟、应用方通知、0.1.1 首次跟随演练）
-- **待办**：均为外部前提——R4/R5（业务方凭据），见下「### 开发任务清单 R」
+- **当前**：可立即开发任务已清零；R17 支付引擎迁移发布 A-E + F1 + F2 全部完成（2026-08-10：sdk@0.11.0/0.11.1 发布、gateway 升级、旧包 deprecate、生产升级+冒烟、应用方通知、0.1.1 首次跟随演练）；**R17.5 支付引擎 0.1.2 剥离 a2a/period 影响处理中**（依赖已锁定 0.1.1，业务侧方案评估待决策）
+- **待办**：均为外部前提——R4/R5（业务方凭据）+ R17.5（业务侧方案评估 / GitHub issue 留痕 / 回复 infraX），见下
   - R1 ✅ 已完成（2026-08-06 · commit `0f5c30d`；SDK 0.8.7 已发布 npm）
   - R2 ✅ 已完成（2026-08-06 · 集成测试补 task 并行链路，生产 28/28 通过）
   - R4-R5 = 待外部前提任务（R4/R5 需业务方提供凭据）
@@ -371,6 +371,24 @@
 - 回滚预案：依赖回滚 `npm install @agentxv2/sdk@0.10.3` / `@agentxv2/payments@^0.2.2`（官方 registry）；代码回滚 `git revert 323d3c9`（旧包未删，双保险）
 
 > **附：生产组件源码覆盖核查（2026-08-10）**：AgentX 三服务（gateway/conversation/frontend）✅ `sftgroup/Agentx`；pocketx-alto ✅ 第三方开源（npm 安装的 alto bundler，上游 pimlico）；pocketx-mpc（`@wallet/mpc-server`，自研）❌ **源码未上 GitHub**（sftgroup 全部 20 仓库 main/master 扫描 0 命中，仅存于生产机 `/opt/pocketx/mpc-server/server.js`）——建议补 Git 仓库（含敏感信息处理），作为遗留待办。
+
+---
+
+## R17.5 支付引擎 0.1.2 剥离 a2a/period（2026-08-10，进行中）
+
+> **事件**：infraX 发布 `@0xinfrax/payments@0.1.2`，按「通用支付引擎只提供通用支付通道」定位，**移除 a2a rail 与 period 授权 rail**（删除 A2AClient/PeriodClient、`payment_authorizations` 表、005 迁移、a2a/period 端点与事件；保留通用字段 `PaymentPeriod` day/week/month/year 与 chain/fiat/x402/MPP/稳定币，测试 89/89）。按 MIGRATION.md 约定属**行为变更**，infraX 已主动知会。
+
+- **影响确认（AgentX 定制层确实引用 a2a/period）**：
+  - `sdk/src/payment/index.ts`：re-export `A2AClient`/`PeriodClient`（公开 API 面）→ 0.1.2 下编译失败
+  - `gateway/src/services/payments.ts`：import `PgAuthorizationStore` + period 配置块（`config.periodEnabled`）→ 0.1.2 下编译失败
+  - `gateway/src/routes/payments.ts`：`POST /payments/a2a`（`method:'a2a'`）、`POST /payments/a2a/settle`（`a2aSettle`）、`POST /payments/period/charge`（`chargePeriod`）、`GET /payments/period/authorization`（`getAuthorization`）→ 0.1.2 下方法不存在
+  - 不受影响：agent-loop `a2a-daemon.ts`/`executor.ts` 的 `a2a.*`（链上 A2A 协议客户端，非 payments 能力）；`subscription.ts` 的 `period`（通用字段）
+- **防护动作（✅ 已完成）**：sdk/gateway 依赖 `@0xinfrax/payments` `^0.1.1` → **`0.1.1`（exact 锁定）**，lock 已同步（commit `6071ce6`），阻止任何 `npm install` 静默拉到剥离版；typecheck 通过
+- **待办**：
+  - [ ] 业务侧方案评估：a2a-pay / period 授权端点是否有业务在用——A) 业务侧重建（gateway 自持表+逻辑）B) 移除（若无业务）C) 请 infraX 以插件/可选模块保留
+  - [ ] GitHub issue 留痕（sftgroup/Agentx，可跟踪）
+  - [ ] 回复 infraX：确认引用点 + 请求协助评估
+  - [ ] 方案落地后：解除锁定 → 升级验证（解耦回归 + sdk/gateway 全量）→ 发 sdk 新版本
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 
