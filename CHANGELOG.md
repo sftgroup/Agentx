@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-08-10 — 发布 sdk@0.11.3（R17.6：a2a/period 回归模块内置 rails，引擎升级 @0xinfrax/payments@0.1.3）
+
+- **事件**：infraX 发布 @0xinfrax/payments@0.1.3，恢复 0.1.2 移除的 **a2a rail 与 period 授权 rail**（模块内置），并新增 batch / invite / transfer rails。AgentX 将 R17.5 的自托管实现**迁移回模块委托**——HTTP 契约与客户端签名保持逐字不变。
+- **@agentxv2/sdk@0.11.3 已发布 npm**（patch）：
+  - 依赖 @0xinfrax/payments **0.1.2 → 0.1.3**；`PAYMENT_VERSION` 对齐 0.1.3
+  - `A2AClient` 继续由 SDK 本地实现（修复 0.11.1 ESM 构建从引擎导入已移除导出的启动崩溃，签名不变）
+  - `SubscriptionPayments` + 协议客户端（MPP/A2A/Period/X402/Payments）**API 不变——业务方零改动**
+- **网关变更（R17.6）**：
+  - **a2a/period 迁移至模块内置 rails**（services/payments-a2a-period.ts）：`createPayment({ method: 'a2a' })` / `a2aSettle` / `chargePeriod` / `getAuthorization`；保留自托管 `createPeriodAuthorization`（模块无公开创建接口）；period 授权表写入后回填 payee 审计列
+  - **PaymentsService 组装**（services/payments.ts）：a2a rail 开关跟随 `config.x402Enabled`；注入模块 `PgAuthorizationStore`（模块自有 `payment_authorizations` 表）
+  - **payments-bridge 新增审计 seam**：`recordIntent` / `updateIntentStatus` 幂等写入 `payment_intents`（迁移 021 表）
+  - **错误修复**：a2a/period 委托路径在 rail 禁用 / 参数不合法时由 500 改为优雅 4xx——400 `INVALID_INPUT` / 404 `NOT_FOUND` / 409 `INSUFFICIENT_BALANCE` / 503 `NOT_CONFIGURED`
+- **数据库（生产已执行）**：迁移 **019**（`payment_sessions` / `payment_vouchers`）+ **021**（`payment_intents` / `payment_authorizations` / payee 列）——支付基础设施全部就位；生产 rails 保持**关闭（不对外开放）**，仅 chain rail 生效
+- **验证**：sdk vitest 32/32、gateway 测试 46/46、双方 tsc 通过；生产自测全绿（health / payments/info / access / a2a worker + 禁用 rail 优雅 4xx）
+- **配套文档**：sdk README/UPGRADE 同步 0.11.3；DEPLOYMENT.md 修正生产 DB 端口（5433 单库）/ SSH 凭证 / 迁移执行标记
+- **升级提示**：B 端调用方**无需修改代码**——`npm install` 吸收 0.11.3 即可（锁精确版本者升级至 0.11.3）；若曾使用 0.11.1 ESM 构建（启动崩溃），必须升级至 ≥0.11.2；`PAYMENT_VERSION` 常量 0.1.2 → 0.1.3，仅当断言该版本号时需要感知
+
+---
+
 ## 2026-08-10 — 发布 sdk@0.11.2（R17.5：本地化 A2AClient/PeriodClient，引擎升级 @0xinfrax/payments@0.1.2）
 
 - **事件**：infraX 发布 @0xinfrax/payments@0.1.2，按「通用引擎只提供通用通道」定位**移除 a2a rail 与 period 授权 rail**（行为变更，issue #1 留痕）。AgentX 定制层按已确认方案**业务侧重建**（R17.5）：
