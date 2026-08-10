@@ -387,7 +387,7 @@
 - **待办**：
   - [x] 业务侧方案评估：a2a-pay / period 授权端点是否有业务在用——A) 业务侧重建（gateway 自持表+逻辑）B) 移除（若无业务）C) 请 infraX 以插件/可选模块保留（**已决策 A：业务侧重建，保持 sdk API 兼容，B 端零改动**）
   - [x] GitHub issue 留痕（✅ 2026-08-10 issue #1 https://github.com/sftgroup/Agentx/issues/1，label dependency+payments）
-  - [ ] 回复 infraX：确认引用点 + 请求协助评估
+  - [ ] 回复 infraX：确认引用点 + 请求协助评估（✅ 2026-08-10 文案已备好，见下「infraX 通知文案（待发送）」；issue #1 已留痕，待发送）
   - [x] 解除锁定 → 升级验证（✅ 2026-08-10：sdk/gateway 升 0.1.2，typecheck/test/build 全绿、引擎解耦回归全 PASS、0.1.2 下 F7/F8 全 PASS；commit 78f6ae0）→ ✅ 发 sdk@0.11.2（2026-08-10 已发布 npm + tag v0.11.2）
 - **业务侧重建实施（R17.5，代码已落地，本地回归全绿）**：
   - 迁移 `gateway/db/migrations/021_payments_a2a_period_selfhost.sql`：`payment_intents`（含 payee 列）+ `payment_authorizations`，幂等建表（019 已有同构表，语句 IF NOT EXISTS）
@@ -397,6 +397,12 @@
   - sdk 本地客户端 `sdk/src/payment/a2a-client.ts` + `period-client.ts`：`A2AClient`/`PeriodClient` 签名与引擎版逐字一致（`ClientOptions` 仍从引擎导入），`index.ts` re-export 改本地
   - 回归：sdk typecheck / 32 tests / build ✓；gateway tsc ✓；本地完整环境（anvil + MockUSDC + gateway + DB）**F7（改造为 authorize 端点流程）/ F8 全 PASS**；统一端点 a2a 分支 ✓；authorize 幂等（同 txHash 不重复创建）✓
   - 行为变更记录：x402 challenge 不再提供 `period` accept（与 0.1.2 引擎一致）；period 授权改由 `POST /payments/period/authorize` 显式创建
+- **infraX 通知文案（待发送，2026-08-10 备好）**：
+  > 主题：AgentX 对 `@0xinfrax/payments@0.1.2` 剥离 a2a/period rail 的回应（issue #1）
+  > 1. **引用点确认**：AgentX 定制层确实引用了 a2a rail 与 period 授权 rail——sdk re-export `A2AClient`/`PeriodClient`；gateway 路由 `POST /payments/a2a`、`POST /payments/a2a/settle`、`POST /payments/period/charge`、`GET /payments/period/authorization` + 统一 `POST /payments` 的 a2a 分支（issue #1 已列明，与贵司移除点一一对应）。
+  > 2. **已按「业务侧重建」落地（R17.5）**：gateway 自持 `payment_intents`/`payment_authorizations` 表（迁移 021）+ `A2APeriodService`（复用引擎 `verifyPayment` 链上验收入账，保持依赖解耦）；新增 `POST /payments/period/authorize` 作为 0.1.2 移除 x402 `period` accept 后的授权创建入口；HTTP 契约与 sdk 公开 API 完全不变，B 端调用方零改动。
+  > 3. **已发布 `@agentxv2/sdk@0.11.2`**（依赖 `@0xinfrax/payments@0.1.2` exact），回归全绿（0.1.2 下 F7/F8 全 PASS）。
+  > 4. **请求协助评估**：a) 后续若引擎计划回归 a2a/period 或提供插件/可选模块，AgentX 可评估切回引擎原生能力，业务侧重建代码保持独立不影响；b) period 授权语义（autorenew/exhaust、逐期 charge）引擎侧是否有路线图可共享，便于双方对齐契约。
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 

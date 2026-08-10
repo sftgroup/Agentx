@@ -75,6 +75,11 @@ gateway（直接依赖）
 - `autoops` / `pocketx-wallet-deploy`——无 `@agentxv2/sdk` 依赖，无需升级
 - AgentX 三服务（gateway/frontend/conversation-service）——gateway 已升级 0.11.0；frontend/conversation-service 保持 `^0.10.x`（仅用 ConversationClient，无支付引用，随下次升级即可）
 
+**R17.5 发布后通知结论（2026-08-10，`@agentxv2/sdk@0.11.2`）**：
+- 本次为 patch（本地化 A2AClient/PeriodClient + `@0xinfrax/payments@0.1.2` exact），**业务 API / HTTP 契约完全不变**——B 端调用方无任何改动，升级为推荐项（可选，非阻塞）
+- 本地依赖盘点（`aiservicer ^0.8.1`、`aihunter-saas/backend ^0.6.5`、`aitrader/backend ^0.6.4`、`autoops`/`pocketx-wallet-deploy` 无 sdk 依赖）：**全部未消费新支付引擎**（0.11.x 才引入 A2AClient/PeriodClient），不升级零影响——本次**不主动向 B 端调用方发升级通知**，仅在例行沟通中附带说明即可
+- 真正需通知对象为 **infraX**（0.1.2 剥离 a2a/period 的回应，见 PROGRESS R17.5「回复 infraX」待办，文案已备好）
+
 ## 六、长期跟随策略（infraX 后续发版）
 
 > **F2 首次跟随演练（✅ 2026-08-10）**：infraX 发布 `@0xinfrax/payments@0.1.1`（补丁版，新增 `createWebhookForwarder` + `rpcHeaders`）后，按下方 check-list 完整走通一遍：AgentX 升级依赖 `^0.1.1` → 解耦回归 19 项断言通过（`run-decouple.sh` 已改为消费**已安装的 npm 包** `gateway/node_modules/@0xinfrax/payments`，而非本地历史 `payments/`）→ sdk build+typecheck+32/32 → 发布 `@agentxv2/sdk@0.11.1`（tag `v0.11.1`，`PAYMENT_VERSION='0.1.1'`）→ gateway 升级 `^0.11.1`，build+typecheck+46/46。
