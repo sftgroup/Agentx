@@ -207,7 +207,7 @@ usePaymentGateway.ts（组合层，113 行）── 对外 API UsePaymentGateway
 
 运行远程 anvil 时传入 `RPC_URL=http://<host>:18545`。
 
-> ⚠️ 附带观察：e2e_wallet.js 另有硬编码测试私钥 `PK`，属测试网钱包（T0x），建议后续改为 `process.env.PK`（不在本轮范围内）。
+> 附带项（已修复）：e2e_wallet.js 原硬编码测试私钥 `PK` 已改为 `process.env.PK`（未设置时给出提示并退出），不再入库。
 
 ### 验证
 
