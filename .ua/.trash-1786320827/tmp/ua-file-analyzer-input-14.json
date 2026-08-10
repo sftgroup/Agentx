@@ -1,0 +1,29 @@
+{
+  "projectRoot": "/home/steven/Agentx",
+  "batchFiles": [
+    {
+      "path": "contracts/src/erc8004-core/IdentityRegistry.sol",
+      "language": "sol",
+      "sizeLines": 263,
+      "fileCategory": "code"
+    },
+    {
+      "path": "contracts/src/erc8004-interfaces/IERC8004Identity.sol",
+      "language": "sol",
+      "sizeLines": 89,
+      "fileCategory": "code"
+    },
+    {
+      "path": "conversation-service/src/config.ts",
+      "language": "typescript",
+      "sizeLines": 44,
+      "fileCategory": "code"
+    }
+  ],
+  "batchImportData": {
+    "contracts/src/erc8004-core/IdentityRegistry.sol": [],
+    "contracts/src/erc8004-interfaces/IERC8004Identity.sol": [],
+    "conversation-service/src/config.ts": []
+  },
+  "neighborMap": {}
+}

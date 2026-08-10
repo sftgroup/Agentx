@@ -1,0 +1,144 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 1
+    }
+  },
+  "results": [
+    {
+      "path": "docs/PROGRESS.md",
+      "language": "markdown",
+      "fileCategory": "docs",
+      "totalLines": 498,
+      "nonEmptyLines": 428,
+      "sections": [
+        {
+          "heading": "AgentX — 项目任务清单与进度",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "一、已完成任务",
+          "level": 2,
+          "line": 8
+        },
+        {
+          "heading": "P0 基础设施与合约（✅ 全部完成）",
+          "level": 3,
+          "line": 10
+        },
+        {
+          "heading": "P1 SDK 0.8.x 系列（✅ 全部发布 npm）",
+          "level": 3,
+          "line": 18
+        },
+        {
+          "heading": "P2 支付体系（✅ 代码完成并生产部署；部分待外部前提）",
+          "level": 3,
+          "line": 27
+        },
+        {
+          "heading": "P3 管理后台（✅ 完成）",
+          "level": 3,
+          "line": 35
+        },
+        {
+          "heading": "P4 生产部署与运维（✅ 完成）",
+          "level": 3,
+          "line": 43
+        },
+        {
+          "heading": "P5 代码审查修复（✅ 完成，2026-08-06 · commit `90bddc0`）",
+          "level": 3,
+          "line": 53
+        },
+        {
+          "heading": "P6 对话链路统一（✅ 完成，2026-08-06 · commit `5675346`）",
+          "level": 3,
+          "line": 67
+        },
+        {
+          "heading": "P7 平台商业化能力（✅ 完成，2026-08-06 · commits `1fa03b8` / `45703cd` / `25a3914`）",
+          "level": 3,
+          "line": 80
+        },
+        {
+          "heading": "P8 对话多任务并行管理（✅ 完成，2026-08-06 · commits `9129031` / `051b4a6` / `151e67b`）",
+          "level": 3,
+          "line": 93
+        },
+        {
+          "heading": "P9 集成方可配置禁用多 task / 子 agent（✅ 完成，2026-08-06 · commit `8023e6e`）",
+          "level": 3,
+          "line": 109
+        },
+        {
+          "heading": "二、当前状态",
+          "level": 2,
+          "line": 128
+        },
+        {
+          "heading": "开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）",
+          "level": 3,
+          "line": 149
+        },
+        {
+          "heading": "R17 支付引擎迁移发布流程（✅ 2026-08-10 全部完成，含 F2 跟随演练）",
+          "level": 3,
+          "line": 344
+        },
+        {
+          "heading": "R17.5 支付引擎 0.1.2 剥离 a2a/period（2026-08-10，进行中）",
+          "level": 2,
+          "line": 377
+        },
+        {
+          "heading": "P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）",
+          "level": 3,
+          "line": 407
+        },
+        {
+          "heading": "R7 收尾（✅ 2026-08-06 · 会话内，无 commit）",
+          "level": 3,
+          "line": 420
+        },
+        {
+          "heading": "三、生产环境",
+          "level": 2,
+          "line": 436
+        },
+        {
+          "heading": "四、链上合约地址",
+          "level": 2,
+          "line": 448
+        },
+        {
+          "heading": "五、验证记录（关键实测）",
+          "level": 2,
+          "line": 472
+        },
+        {
+          "heading": "归档说明",
+          "level": 2,
+          "line": 496
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 22
+      }
+    }
+  ]
+}

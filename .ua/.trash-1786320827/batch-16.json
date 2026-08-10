@@ -1,0 +1,420 @@
+{
+  "nodes": [
+    {
+      "id": "file:frontend/app/marketplace/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "frontend/app/marketplace/page.tsx",
+      "summary": "Agent 市场首页（MarketplacePage）：提供链上 Agent 注册表的搜索、分类与标签筛选，展示 Agent 卡片列表并支持跳转详情页，数据来自 useAgentRegistry 与 useAgentSearch hooks。",
+      "tags": ["component", "page", "marketplace", "agent-discovery", "filter"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:frontend/app/marketplace/skills/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "frontend/app/marketplace/skills/page.tsx",
+      "summary": "技能市场页面（SkillsPage）：浏览与搜索已发布技能、查看我的技能列表，并通过 gateway API 提交新技能（名称、描述、分类、inputSchema），展示发布状态。",
+      "tags": ["component", "page", "skills", "marketplace", "form"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:frontend/app/studio/basics/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "frontend/app/studio/basics/page.tsx",
+      "summary": "Studio Agent 创建流程的\"基础信息\"步骤（BasicsPage）：通过 useStudio 上下文读写表单，编辑 Agent 名称、简介、分类与预设标签等基础资料。",
+      "tags": ["component", "page", "studio", "form", "onboarding"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:frontend/app/user/chat/[agentId]/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "frontend/app/user/chat/[agentId]/page.tsx",
+      "summary": "用户与 Agent 的聊天页面（ChatPage）：支持 SSE 流式对话与本地 AgentLoop 运行、模型选择（含自定义模型配置持久化）、工具调用展示、澄清确认与链上审批流程，并缓存历史消息到 localStorage。",
+      "tags": ["component", "page", "chat", "sse", "agent-interaction"],
+      "complexity": "complex",
+      "languageNotes": "客户端组件大量使用 React hooks 组织状态机，包含多条回调链（发送、停止、澄清、审批）驱动 SSE 消息流。"
+    },
+    {
+      "id": "file:frontend/app/user/dashboard/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "frontend/app/user/dashboard/page.tsx",
+      "summary": "用户仪表盘（UserDashboard）：汇总链上数据（铸币数、订阅数、累计消费），展示我的 Agent 与订阅列表，支持 active/expired/all 订阅状态过滤及续费入口。",
+      "tags": ["component", "page", "dashboard", "subscription", "on-chain"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:frontend/app/user/settings/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "frontend/app/user/settings/page.tsx",
+      "summary": "用户设置页（SettingsPage）：管理 LLM API Key（provider 预设、模型选择、校验/删除/新增），并通过钱包签名 challenge/verify 流程申请平台 API Key。",
+      "tags": ["component", "page", "settings", "api-key", "wallet-auth"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+      "summary": "订阅详情页（SubscriptionDetailPage/SubscriptionContent）：展示订阅状态、起止日期与额度统计，支持链上/x402 续费与取消订阅，数据来自 useSubscriptionDetail 与 useAgentDetail。",
+      "tags": ["component", "page", "subscription", "detail", "renew"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:frontend/components/agent/dashboard/AgentCardList.tsx",
+      "type": "file",
+      "name": "AgentCardList.tsx",
+      "filePath": "frontend/components/agent/dashboard/AgentCardList.tsx",
+      "summary": "Agent 卡片管理列表组件（AgentCardList）：展示 Agent 卡元数据、能力/支持任务与已配置技能（含输入输出 schema），提供编辑卡片、配置技能、新建卡片等操作，供开发者仪表盘使用。",
+      "tags": ["component", "agent-card", "dashboard", "list", "crud"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:frontend/app/marketplace/page.tsx:MarketplacePage",
+      "type": "function",
+      "name": "MarketplacePage",
+      "filePath": "frontend/app/marketplace/page.tsx",
+      "lineRange": [12, 168],
+      "summary": "市场首页组件：组合搜索文本、分类与标签状态，从链上注册表筛选 Agent 列表并渲染卡片网格。",
+      "tags": ["component", "page", "marketplace", "agent-discovery"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/app/marketplace/skills/page.tsx:SkillsPage",
+      "type": "function",
+      "name": "SkillsPage",
+      "filePath": "frontend/app/marketplace/skills/page.tsx",
+      "lineRange": [26, 316],
+      "summary": "技能市场组件：加载/搜索技能、管理我的技能，并通过表单向 gateway 提交新技能定义。",
+      "tags": ["component", "page", "skills", "marketplace"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:frontend/app/studio/basics/page.tsx:BasicsPage",
+      "type": "function",
+      "name": "BasicsPage",
+      "filePath": "frontend/app/studio/basics/page.tsx",
+      "lineRange": [16, 102],
+      "summary": "Studio 基础信息步骤组件：通过 useStudio 读写 Agent 表单中的名称、简介、分类与标签字段。",
+      "tags": ["component", "page", "studio", "form"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/app/user/chat/[agentId]/page.tsx:ChatPage",
+      "type": "function",
+      "name": "ChatPage",
+      "filePath": "frontend/app/user/chat/[agentId]/page.tsx",
+      "lineRange": [23, 543],
+      "summary": "聊天组件：驱动 SSE 流式对话与本地 AgentLoop，处理模型选择、澄清、链上审批、停止与历史持久化等完整交互。",
+      "tags": ["component", "page", "chat", "sse", "agent-loop"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:frontend/app/user/dashboard/page.tsx:UserDashboard",
+      "type": "function",
+      "name": "UserDashboard",
+      "filePath": "frontend/app/user/dashboard/page.tsx",
+      "lineRange": [28, 210],
+      "summary": "仪表盘组件：读取链上铸币/订阅/消费统计，展示我的 Agent 与可过滤的订阅列表。",
+      "tags": ["component", "page", "dashboard", "subscription"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/app/user/settings/page.tsx:SettingsPage",
+      "type": "function",
+      "name": "SettingsPage",
+      "filePath": "frontend/app/user/settings/page.tsx",
+      "lineRange": [34, 186],
+      "summary": "设置页主组件：管理 LLM API Key 列表（校验、删除、新增），并渲染 KeyForm 与 PlatformApiKey 子组件。",
+      "tags": ["component", "page", "settings", "api-key"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/app/user/settings/page.tsx:KeyForm",
+      "type": "function",
+      "name": "KeyForm",
+      "filePath": "frontend/app/user/settings/page.tsx",
+      "lineRange": [190, 294],
+      "summary": "LLM API Key 录入表单组件：按 provider 预设自动填充 endpoint/model，支持自定义模型与提交回调。",
+      "tags": ["component", "form", "api-key", "settings"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/app/user/settings/page.tsx:PlatformApiKey",
+      "type": "function",
+      "name": "PlatformApiKey",
+      "filePath": "frontend/app/user/settings/page.tsx",
+      "lineRange": [298, 425],
+      "summary": "平台 API Key 组件：通过钱包签名 challenge/verify 流程申请 API Key，支持复制、显示/隐藏。",
+      "tags": ["component", "api-key", "wallet-auth", "settings"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/app/user/subscriptions/[subscriptionId]/page.tsx:SubscriptionDetailPage",
+      "type": "function",
+      "name": "SubscriptionDetailPage",
+      "filePath": "frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+      "lineRange": [21, 37],
+      "summary": "订阅详情页入口组件：解析 URL 中的 subscriptionId 与钱包账户，处理客户端挂载状态并渲染订阅内容。",
+      "tags": ["component", "page", "subscription", "entry-point"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/app/user/subscriptions/[subscriptionId]/page.tsx:SubscriptionContent",
+      "type": "function",
+      "name": "SubscriptionContent",
+      "filePath": "frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+      "lineRange": [39, 184],
+      "summary": "订阅详情主体组件：展示订阅信息与额度统计，支持链上/x402 续费支付及取消订阅流程。",
+      "tags": ["component", "subscription", "detail", "renew"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/components/agent/dashboard/AgentCardList.tsx:AgentCardList",
+      "type": "function",
+      "name": "AgentCardList",
+      "filePath": "frontend/components/agent/dashboard/AgentCardList.tsx",
+      "lineRange": [25, 416],
+      "summary": "Agent 卡片列表组件：展示卡片元数据、能力、支持任务与已配置技能详情，回调驱动的编辑/配置操作面板。",
+      "tags": ["component", "agent-card", "dashboard", "list"],
+      "complexity": "complex"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:frontend/app/marketplace/page.tsx",
+      "target": "function:frontend/app/marketplace/page.tsx:MarketplacePage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/marketplace/page.tsx",
+      "target": "function:frontend/app/marketplace/page.tsx:MarketplacePage",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/app/marketplace/skills/page.tsx",
+      "target": "function:frontend/app/marketplace/skills/page.tsx:SkillsPage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/marketplace/skills/page.tsx",
+      "target": "function:frontend/app/marketplace/skills/page.tsx:SkillsPage",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/app/studio/basics/page.tsx",
+      "target": "function:frontend/app/studio/basics/page.tsx:BasicsPage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/studio/basics/page.tsx",
+      "target": "function:frontend/app/studio/basics/page.tsx:BasicsPage",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/app/user/chat/[agentId]/page.tsx",
+      "target": "function:frontend/app/user/chat/[agentId]/page.tsx:ChatPage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/user/chat/[agentId]/page.tsx",
+      "target": "function:frontend/app/user/chat/[agentId]/page.tsx:ChatPage",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/app/user/dashboard/page.tsx",
+      "target": "function:frontend/app/user/dashboard/page.tsx:UserDashboard",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/user/dashboard/page.tsx",
+      "target": "function:frontend/app/user/dashboard/page.tsx:UserDashboard",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/app/user/settings/page.tsx",
+      "target": "function:frontend/app/user/settings/page.tsx:SettingsPage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/user/settings/page.tsx",
+      "target": "function:frontend/app/user/settings/page.tsx:SettingsPage",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/app/user/settings/page.tsx",
+      "target": "function:frontend/app/user/settings/page.tsx:KeyForm",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/user/settings/page.tsx",
+      "target": "function:frontend/app/user/settings/page.tsx:PlatformApiKey",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+      "target": "function:frontend/app/user/subscriptions/[subscriptionId]/page.tsx:SubscriptionDetailPage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+      "target": "function:frontend/app/user/subscriptions/[subscriptionId]/page.tsx:SubscriptionDetailPage",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+      "target": "function:frontend/app/user/subscriptions/[subscriptionId]/page.tsx:SubscriptionContent",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/components/agent/dashboard/AgentCardList.tsx",
+      "target": "function:frontend/components/agent/dashboard/AgentCardList.tsx:AgentCardList",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/components/agent/dashboard/AgentCardList.tsx",
+      "target": "function:frontend/components/agent/dashboard/AgentCardList.tsx:AgentCardList",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/app/marketplace/page.tsx",
+      "target": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/marketplace/page.tsx",
+      "target": "file:frontend/hooks/aimarket/useAgentSearch.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/marketplace/skills/page.tsx",
+      "target": "file:frontend/hooks/useGatewayAuth.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/studio/basics/page.tsx",
+      "target": "file:frontend/components/studio/StudioContext.tsx",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/chat/[agentId]/page.tsx",
+      "target": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/chat/[agentId]/page.tsx",
+      "target": "file:frontend/hooks/useGatewayAuth.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/chat/[agentId]/page.tsx",
+      "target": "file:frontend/hooks/useAgentChat.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/chat/[agentId]/page.tsx",
+      "target": "file:sdk/src/react/useAgentRunner.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/dashboard/page.tsx",
+      "target": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/dashboard/page.tsx",
+      "target": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/dashboard/page.tsx",
+      "target": "file:frontend/hooks/user/useMyAgentIds.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/settings/page.tsx",
+      "target": "file:frontend/hooks/useGatewayAuth.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+      "target": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+      "target": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

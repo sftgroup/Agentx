@@ -1,0 +1,18 @@
+{
+  "projectRoot": "/home/steven/Agentx",
+  "batchFiles": [
+    {"path": "CONVERSATION_SERVICE.md", "language": "markdown", "sizeLines": 401, "fileCategory": "docs"},
+    {"path": "DEPLOYMENT.md", "language": "markdown", "sizeLines": 507, "fileCategory": "docs"},
+    {"path": "INTEGRATION.md", "language": "markdown", "sizeLines": 603, "fileCategory": "docs"},
+    {"path": "MCP_SETUP.md", "language": "markdown", "sizeLines": 417, "fileCategory": "docs"},
+    {"path": "README.md", "language": "markdown", "sizeLines": 228, "fileCategory": "docs"}
+  ],
+  "batchImportData": {
+    "CONVERSATION_SERVICE.md": [],
+    "DEPLOYMENT.md": [],
+    "INTEGRATION.md": [],
+    "MCP_SETUP.md": [],
+    "README.md": []
+  },
+  "neighborMap": {}
+}

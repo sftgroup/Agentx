@@ -1,0 +1,263 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 2,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 2,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 2,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "gateway/src/services/payments-a2a-period.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 204,
+      "nonEmptyLines": 190,
+      "classes": [
+        {
+          "name": "A2APeriodService",
+          "startLine": 79,
+          "endLine": 202,
+          "methods": [
+            "createA2AIntent",
+            "a2aSettle",
+            "createPeriodAuthorization",
+            "chargePeriod",
+            "getAuthorization"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "A2APeriodService",
+          "line": 79,
+          "isDefault": false
+        },
+        {
+          "name": "a2aPeriodService",
+          "line": 204,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "createA2AIntent",
+          "callee": "String(input.payer ?? '').toLowerCase",
+          "lineNumber": 82
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "String",
+          "lineNumber": 82
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "String(input.payee ?? paymentsService.x402?.payTo() ?? '').toLowerCase",
+          "lineNumber": 83
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "String",
+          "lineNumber": 83
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "paymentsService.x402?.payTo",
+          "lineNumber": 83
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "String",
+          "lineNumber": 84
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "randomUUID",
+          "lineNumber": 88
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "getPool().query",
+          "lineNumber": 89
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "getPool",
+          "lineNumber": 89
+        },
+        {
+          "caller": "createA2AIntent",
+          "callee": "JSON.stringify",
+          "lineNumber": 92
+        },
+        {
+          "caller": "a2aSettle",
+          "callee": "paymentsService.verifyPayment",
+          "lineNumber": 103
+        },
+        {
+          "caller": "a2aSettle",
+          "callee": "getPool().query",
+          "lineNumber": 107
+        },
+        {
+          "caller": "a2aSettle",
+          "callee": "getPool",
+          "lineNumber": 107
+        },
+        {
+          "caller": "a2aSettle",
+          "callee": "(await paymentsService.balanceOf(verified.payer)).toString",
+          "lineNumber": 111
+        },
+        {
+          "caller": "a2aSettle",
+          "callee": "paymentsService.balanceOf",
+          "lineNumber": 111
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String(input.payer ?? '').toLowerCase",
+          "lineNumber": 129
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 129
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String(input.txHash ?? '').toLowerCase",
+          "lineNumber": 130
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 130
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 131
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 132
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "Number",
+          "lineNumber": 133
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String(input.asset ?? '0x0000000000000000000000000000000000000000').toLowerCase",
+          "lineNumber": 134
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "String",
+          "lineNumber": 134
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "BigInt",
+          "lineNumber": 142
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "BigInt",
+          "lineNumber": 142
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "BigInt",
+          "lineNumber": 142
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "paymentsService.verifyPayment",
+          "lineNumber": 145
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "getPool().query",
+          "lineNumber": 150
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "getPool",
+          "lineNumber": 150
+        },
+        {
+          "caller": "createPeriodAuthorization",
+          "callee": "this.getAuthorization",
+          "lineNumber": 157
+        },
+        {
+          "caller": "chargePeriod",
+          "callee": "getPool().query",
+          "lineNumber": 168
+        },
+        {
+          "caller": "chargePeriod",
+          "callee": "getPool",
+          "lineNumber": 168
+        },
+        {
+          "caller": "getAuthorization",
+          "callee": "getPool().query",
+          "lineNumber": 187
+        },
+        {
+          "caller": "getAuthorization",
+          "callee": "getPool",
+          "lineNumber": 187
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "gateway/src/services/payments.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 80,
+      "nonEmptyLines": 77,
+      "functions": [
+        {
+          "name": "resolveX402Chain",
+          "startLine": 15,
+          "endLine": 17,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "paymentsService",
+          "line": 19,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 1,
+        "functionCount": 1,
+        "classCount": 0
+      }
+    }
+  ]
+}

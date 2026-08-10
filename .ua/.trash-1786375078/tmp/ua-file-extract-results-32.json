@@ -1,0 +1,97 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "gateway/src/routes/payments.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 604,
+      "nonEmptyLines": 578,
+      "functions": [
+        {
+          "name": "resolveChain",
+          "startLine": 34,
+          "endLine": 36,
+          "params": [
+            "slot"
+          ]
+        },
+        {
+          "name": "sendPaymentError",
+          "startLine": 38,
+          "endLine": 54,
+          "params": [
+            "res",
+            "err"
+          ]
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "resolveChain",
+          "callee": "String(slot ?? config.x402Chain).toLowerCase",
+          "lineNumber": 35
+        },
+        {
+          "caller": "resolveChain",
+          "callee": "String",
+          "lineNumber": 35
+        },
+        {
+          "caller": "sendPaymentError",
+          "callee": "isPaymentError",
+          "lineNumber": 39
+        },
+        {
+          "caller": "sendPaymentError",
+          "callee": "res.status(502).json",
+          "lineNumber": 42
+        },
+        {
+          "caller": "sendPaymentError",
+          "callee": "res.status",
+          "lineNumber": 42
+        },
+        {
+          "caller": "sendPaymentError",
+          "callee": "res.status(503).json",
+          "lineNumber": 45
+        },
+        {
+          "caller": "sendPaymentError",
+          "callee": "res.status",
+          "lineNumber": 45
+        },
+        {
+          "caller": "sendPaymentError",
+          "callee": "res.status(err.status >= 400 && err.status < 600 ? err.status : 400).json",
+          "lineNumber": 49
+        },
+        {
+          "caller": "sendPaymentError",
+          "callee": "res.status",
+          "lineNumber": 49
+        }
+      ],
+      "metrics": {
+        "importCount": 7,
+        "exportCount": 0,
+        "functionCount": 2,
+        "classCount": 0
+      }
+    }
+  ]
+}

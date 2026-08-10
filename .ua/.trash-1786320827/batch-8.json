@@ -1,0 +1,40 @@
+{
+  "nodes": [
+    {
+      "id": "config:conversation-service/.env.example",
+      "type": "config",
+      "name": ".env.example",
+      "filePath": "conversation-service/.env.example",
+      "summary": "Conversation Service 的环境变量配置模板，定义服务端口、PostgreSQL（pgvector）数据库连接、与 Gateway 之间的内部认证 token、OpenAI 嵌入/上下文压缩模型配置、Sepolia 与 OxaChain 双链 RPC 及合约地址、AgentRunner 上下文缓存 TTL，以及多代理编排（offchain/onchain 双轨）的 token 与默认深度参数。",
+      "tags": ["configuration", "environment-variables", "service-config", "security"],
+      "complexity": "simple",
+      "languageNotes": "含 ORCHESTRATE_* 系列变量，用于多代理编排的 off-chain（实时零成本）与 on-chain（审计结算）双轨默认模式与最大嵌套深度配置。"
+    },
+    {
+      "id": "config:conversation-service/package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "conversation-service/package.json",
+      "summary": "@agentxv2/conversation 服务的包清单，定义 tsc 构建、tsx watch 开发、vitest 测试以及通过 psql 执行数据库迁移脚本的命令，声明 express、ethers、pg、uuid 等运行时依赖与 TypeScript 开发依赖。",
+      "tags": ["configuration", "package-manifest", "build-system", "service"],
+      "complexity": "simple",
+      "languageNotes": "migrate 脚本内联执行 psql 以应用 migrations/001_memory.sql 与 002_traces.sql，说明记忆与追踪功能依赖 PostgreSQL。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "config:conversation-service/.env.example",
+      "target": "file:conversation-service/src/config.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:conversation-service/package.json",
+      "target": "file:conversation-service/src/index.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+ "files": [
+  {
+   "path": "gateway/db/migrations/021_payments_a2a_period_selfhost.sql",
+   "language": "sql",
+   "sizeLines": 41,
+   "fileCategory": "data"
+  }
+ ],
+ "batchImportData": {
+  "gateway/db/migrations/021_payments_a2a_period_selfhost.sql": []
+ },
+ "neighborMap": {}
+}

@@ -1,0 +1,113 @@
+{
+  "nodes": [
+    {
+      "id": "file:sdk/src/payment/a2a-client.ts",
+      "type": "file",
+      "name": "a2a-client.ts",
+      "filePath": "sdk/src/payment/a2a-client.ts",
+      "summary": "R17.5 自托管的 a2a-pay 客户端：在 @0xinfrax/payments@0.1.2 将 a2a rail 从通用引擎移除后，由 AgentX 在网关 payment_intents 表之上重新实现，公共客户端契约与引擎版本保持字节级一致。导出共享的 request 请求助手与两阶段（create → settle）的 A2AClient 类。",
+      "tags": ["client", "payment", "a2a-pay", "api-client"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:sdk/src/payment/a2a-client.ts:request",
+      "type": "function",
+      "name": "request",
+      "filePath": "sdk/src/payment/a2a-client.ts",
+      "lineRange": [13, 29],
+      "summary": "通用的 JSON 请求助手，向 AgentX 网关发送带可选 Bearer accessToken 的请求，解析非 2xx 响应的错误体并抛出异常；与 period-client 共享使用。",
+      "tags": ["utility", "http-client", "fetch"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:sdk/src/payment/a2a-client.ts:A2AClient",
+      "type": "class",
+      "name": "A2AClient",
+      "filePath": "sdk/src/payment/a2a-client.ts",
+      "lineRange": [32, 54],
+      "summary": "a2a-pay 客户端类，封装支付意图创建（create，POST /api/v1/payments/a2a）与链上交易校验结算（settle，POST /api/v1/payments/a2a/settle）两个阶段，返回 paymentId 与余额等结果。",
+      "tags": ["client", "payment", "a2a-pay"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:sdk/src/payment/index.ts",
+      "type": "file",
+      "name": "index.ts",
+      "filePath": "sdk/src/payment/index.ts",
+      "summary": "支付模块的 barrel 入口，统一重导出订阅支付（SubscriptionPayments）及其类型、来自 @0xinfrax/payments 引擎的 MPP/x402/统一客户端、R17.5 自托管的 A2AClient/PeriodClient，并导出 PAYMENT_VERSION 版本常量。",
+      "tags": ["entry-point", "barrel", "payment", "exports"],
+      "complexity": "simple",
+      "languageNotes": "TypeScript barrel 文件，通过 re-export 聚合本地自托管客户端与外部引擎客户端，提供单一公共 API 面。"
+    },
+    {
+      "id": "file:sdk/src/payment/period-client.ts",
+      "type": "file",
+      "name": "period-client.ts",
+      "filePath": "sdk/src/payment/period-client.ts",
+      "summary": "R17.5 自托管的周期授权支付客户端（P4 rail）：在 @0xinfrax/payments@0.1.2 移除 period-authorization rail 后于网关 payment_authorizations 表之上重新实现，提供 charge（周期扣款）与 authorization（查询授权状态）能力，复用 a2a-client 的 request 助手。",
+      "tags": ["client", "payment", "period-authorization", "api-client"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:sdk/src/payment/period-client.ts:PeriodClient",
+      "type": "class",
+      "name": "PeriodClient",
+      "filePath": "sdk/src/payment/period-client.ts",
+      "lineRange": [14, 29],
+      "summary": "周期授权支付客户端类，封装对网关 /api/v1/payments/period/charge（POST）与 /api/v1/payments/period/authorization（GET）端点的调用。",
+      "tags": ["client", "payment", "period-authorization"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:sdk/src/payment/a2a-client.ts",
+      "target": "function:sdk/src/payment/a2a-client.ts:request",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:sdk/src/payment/a2a-client.ts",
+      "target": "function:sdk/src/payment/a2a-client.ts:request",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:sdk/src/payment/a2a-client.ts",
+      "target": "class:sdk/src/payment/a2a-client.ts:A2AClient",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:sdk/src/payment/a2a-client.ts",
+      "target": "class:sdk/src/payment/a2a-client.ts:A2AClient",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:sdk/src/payment/period-client.ts",
+      "target": "class:sdk/src/payment/period-client.ts:PeriodClient",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:sdk/src/payment/period-client.ts",
+      "target": "class:sdk/src/payment/period-client.ts:PeriodClient",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:sdk/src/payment/period-client.ts:PeriodClient",
+      "target": "function:sdk/src/payment/a2a-client.ts:request",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ]
+}

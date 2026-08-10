@@ -1,0 +1,9 @@
+{
+  "projectRoot": "/home/steven/Agentx",
+  "batchFiles": [
+    {"path": "CHANGELOG.md", "language": "markdown", "sizeLines": 449, "fileCategory": "docs"}
+  ],
+  "batchImportData": {
+    "CHANGELOG.md": []
+  }
+}

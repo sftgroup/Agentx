@@ -1,0 +1,57 @@
+{
+  "nodes": [
+    {
+      "id": "document:sdk/README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "sdk/README.md",
+      "summary": "@agentxv2/sdk 综合使用文档，覆盖安装与 peer dependencies、AgentLoop/React Hook/发布 Agent 快速开始、AES-256-GCM + ECIES 端到端加密、IPFS 上传、MCP 连接器、ConversationClient 会话与并行任务、链上批量查询与订阅写入、A2A 多代理互操作、多轨支付、架构图、完整 API 参考与 0.2.0 至 0.11.1 的版本历史。",
+      "tags": ["documentation", "entry-point", "api-reference", "getting-started"],
+      "complexity": "complex",
+      "languageNotes": "以表格形式组织 Main Exports 与 Sub-path Imports（@agentxv2/sdk 及其 /core、/react、/agent-loop、/conversation 等子路径），是 SDK 面向集成方的主要入口文档。"
+    },
+    {
+      "id": "document:sdk/UPGRADE.md",
+      "type": "document",
+      "name": "UPGRADE.md",
+      "filePath": "sdk/UPGRADE.md",
+      "summary": "SDK 升级指南，按版本分段记录 0.6.3 → 0.11.x 的新增能力（B 端集成 key 澄清、BYOK 透传、per-request endUserId、sessions/parallel tasks、多轨支付与协议客户端、Agent 应用分类、用户钱包签名 on-chain rail）、破坏性变更与升级步骤，并附代码示例。",
+      "tags": ["documentation", "upgrade-guide", "migration", "release-notes"],
+      "complexity": "complex",
+      "languageNotes": "文档强调 0.9.x → 0.10.0 为无破坏性变更的完整功能基线，多数版本为纯增量或文档同步发布（docs sync）。"
+    },
+    {
+      "id": "config:sdk/package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "sdk/package.json",
+      "summary": "@agentxv2/sdk 包清单，定义 tsup 多入口构建（root/core/react/endpoint/configuration/agent-loop/llm/ipfs/memory/traces/skills/conversation，CJS+ESM+DTS）、exports 子路径映射与发布文件，声明 @noble 系列 AES/ECIES 加密依赖与 @0xinfrax/payments 支付引擎依赖。",
+      "tags": ["configuration", "package-manifest", "build-system", "library"],
+      "complexity": "moderate",
+      "languageNotes": "exports 字段将 13 个源码入口映射为 dist 下的 .js/.mjs/.d.mts，react/wagmi/@tanstack/react-query 作为可选 peerDependencies，实现按需树摇。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "config:sdk/package.json",
+      "target": "file:sdk/src/index.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:sdk/README.md",
+      "target": "file:sdk/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:sdk/UPGRADE.md",
+      "target": "file:sdk/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

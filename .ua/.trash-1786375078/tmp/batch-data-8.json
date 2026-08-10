@@ -1,0 +1,14 @@
+{
+ "files": [
+  {
+   "path": "CHANGELOG.md",
+   "language": "markdown",
+   "sizeLines": 449,
+   "fileCategory": "docs"
+  }
+ ],
+ "batchImportData": {
+  "CHANGELOG.md": []
+ },
+ "neighborMap": {}
+}

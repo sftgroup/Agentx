@@ -1,0 +1,74 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "scripts/local-payments/run-flows-f7.mjs",
+      "language": "javascript",
+      "fileCategory": "code",
+      "totalLines": 144,
+      "nonEmptyLines": 131,
+      "functions": [
+        {
+          "name": "check",
+          "startLine": 47,
+          "endLine": 50,
+          "params": [
+            "name",
+            "cond",
+            "detail"
+          ]
+        },
+        {
+          "name": "gw",
+          "startLine": 51,
+          "endLine": 55,
+          "params": [
+            "path",
+            "init"
+          ]
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "check",
+          "callee": "console.log",
+          "lineNumber": 48
+        },
+        {
+          "caller": "gw",
+          "callee": "fetch",
+          "lineNumber": 52
+        },
+        {
+          "caller": "gw",
+          "callee": "r.json().catch",
+          "lineNumber": 53
+        },
+        {
+          "caller": "gw",
+          "callee": "r.json",
+          "lineNumber": 53
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 2,
+        "classCount": 0
+      }
+    }
+  ]
+}

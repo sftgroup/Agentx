@@ -1,0 +1,103 @@
+[
+  {
+    "order": 1,
+    "title": "项目概览与接入方式",
+    "description": "先读 README 建立对 AgentX 的整体认知：去中心化 AI Agent 平台，核心是 Agent 的发布/订阅/运行，并支持 SDK 直连链上与 MCP 客户端经 Gateway 两种接入方式。再配合 INTEGRATION、CONVERSATION_SERVICE 等文档了解集成路径与各服务职责，为后续逐层深入打下全局框架。",
+    "nodeIds": [
+      "document:README.md",
+      "document:INTEGRATION.md",
+      "document:CONVERSATION_SERVICE.md",
+      "document:DEPLOYMENT.md",
+      "document:memory/AGENTX_PROGRESS.md"
+    ]
+  },
+  {
+    "order": 2,
+    "title": "智能合约层：链上身份与订阅基础",
+    "description": "AgentX 的链上基石：ERC-8004 身份注册。IdentityRegistry.sol 是身份注册核心合约，配合 IERC8004Identity 接口理解其抽象，再结合 CONTRACTS.md 文档掌握合约架构与 Foundry 开发配置，为理解链上订阅门控与支付打下基础。",
+    "nodeIds": [
+      "file:contracts/src/erc8004-core/IdentityRegistry.sol",
+      "file:contracts/src/erc8004-interfaces/IERC8004Identity.sol",
+      "config:contracts/foundry.toml",
+      "document:contracts/CONTRACTS.md"
+    ]
+  },
+  {
+    "order": 3,
+    "title": "SDK 层：直连链上的 Agent 运行主线",
+    "description": "SDK 是第一种接入方式（直连链上运行 Agent）。从入口 index.ts 出发，顺着 agent-runner → agent-loop 这条执行主线理解 Agent 生命周期，再看 subscription（x402 订阅门控）与 registry（链上注册表交互）、core/crypto（E2E 加密），掌握 SDK 的完整能力。",
+    "nodeIds": [
+      "file:sdk/src/index.ts",
+      "file:sdk/src/agent/agent-runner.ts",
+      "file:sdk/src/agent-loop/loop.ts",
+      "file:sdk/src/subscription/subscription.ts",
+      "file:sdk/src/registry/agent-registry.ts",
+      "file:sdk/src/core/crypto.ts"
+    ]
+  },
+  {
+    "order": 4,
+    "title": "网关后端层：MCP 接入的 Express 服务",
+    "description": "网关是第二种接入方式（MCP 客户端经 Gateway）的后端入口，也是多租户 API 的统一出口。从 index.ts 看整体装配（路由、中间件、后台任务），再通过 agents 路由与 agent-indexer 理解链上数据同步，经 conversation-proxy 看对话请求如何转发到对话服务，auth 中间件则是租户鉴权的关键。",
+    "nodeIds": [
+      "file:gateway/src/index.ts",
+      "file:gateway/src/routes/agents.ts",
+      "file:gateway/src/routes/admin.ts",
+      "file:gateway/src/middleware/auth.ts",
+      "file:gateway/src/services/agent-indexer.ts",
+      "file:gateway/src/services/conversation-proxy.ts"
+    ]
+  },
+  {
+    "order": 5,
+    "title": "对话服务层：多租户 Agent 执行引擎",
+    "description": "对话服务是实际执行 Agent 的多租户后端：runs 路由接收运行请求，agent-runner 编排执行流程，memory-engine 负责记忆存取，tool-executor 执行技能工具，tenant-llm-resolver 按租户解析 LLM 提供方。读懂这一层就掌握了 Agent 一次对话/运行请求的完整服务端链路。",
+    "nodeIds": [
+      "file:conversation-service/src/index.ts",
+      "file:conversation-service/src/routes/runs.ts",
+      "file:conversation-service/src/services/agent-runner.ts",
+      "file:conversation-service/src/services/memory-engine.ts",
+      "file:conversation-service/src/services/tool-executor.ts",
+      "file:conversation-service/src/services/tenant-llm-resolver.ts"
+    ]
+  },
+  {
+    "order": 6,
+    "title": "前端层：从市场到创作再到使用的闭环",
+    "description": "Next.js 前端把 Agent 的发布/订阅/运行闭环可视化：首页了解产品入口，marketplace 是 Agent 市场，studio 是 Agent 创作工作室，user dashboard 查看订阅与运行情况；SubscriptionGuard 与 WalletConnect 则是前端与链上订阅门控、钱包交互的关键组件。",
+    "nodeIds": [
+      "file:frontend/app/page.tsx",
+      "file:frontend/app/marketplace/page.tsx",
+      "file:frontend/app/studio/page.tsx",
+      "file:frontend/app/user/dashboard/page.tsx",
+      "file:frontend/components/guard/SubscriptionGuard.tsx",
+      "file:frontend/components/wallet/WalletConnect.tsx"
+    ]
+  },
+  {
+    "order": 7,
+    "title": "MCP 协议与支付：两种接入的关键支撑",
+    "description": "MCP 是第二种接入方式的协议层：Gateway 的 mcp.ts / agent-mcp.ts 把链上 Agent 的 skills 暴露为 MCP tools（JSON-RPC），SDK 的 mcp connector 则让 Agent 反向调用外部 MCP 服务器。支付方面，agent-runs 路由内置 x402 支付门槛，前端 PaymentGateway ABI 对接链上支付网关，配合 MCP_SETUP 文档理解接入配置。",
+    "nodeIds": [
+      "file:gateway/src/routes/mcp.ts",
+      "file:gateway/src/routes/agent-mcp.ts",
+      "file:gateway/src/routes/agent-runs.ts",
+      "file:sdk/src/mcp/connector.ts",
+      "file:frontend/abis/PaymentGateway.ts",
+      "document:MCP_SETUP.md"
+    ]
+  },
+  {
+    "order": 8,
+    "title": "数据库与部署基础设施",
+    "description": "最后看支撑整个平台的数据模型与运维：001_init.sql 定义了多租户基础表，tenants 与 usage_logs 是计费与隔离的核心，对话服务的端用户隔离迁移保障多租户数据边界；部署脚本（deploy_a2a_v2.sh、deploy.sh）则展示了生产环境的发布方式。",
+    "nodeIds": [
+      "schema:gateway/db/migrations/001_init.sql",
+      "table:tenants",
+      "table:usage_logs",
+      "file:conversation-service/migrations/004_end_user_isolation.sql",
+      "file:gateway/deploy/deploy_a2a_v2.sh",
+      "file:frontend/deploy.sh"
+    ]
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    {
+      "id": "file:gateway/src/routes/payments.ts",
+      "type": "file",
+      "name": "payments.ts",
+      "filePath": "gateway/src/routes/payments.ts",
+      "summary": "AgentX Gateway 的统一支付端点路由（R17.5 A2A 周期自托管改造），通过单个 Express Router 覆盖 fiat / chain / x402 / mpp / a2a 多种支付轨道，提供统一创建支付、链上交易验证、统一访问检查、rails 发现、x402 报价与 Stripe webhook，以及自托管的 a2a-pay 两阶段支付和周期授权（payment_authorizations）等 17 个端点，后端委托给 @0xinfrax/payments 引擎、paymentsService、a2aPeriodService 与 paymentsBridge。",
+      "tags": ["api-handler", "express", "payment", "router", "a2a"],
+      "complexity": "complex",
+      "languageNotes": "Express Router 路由文件：脚本仅提取到 2 个顶层命名函数，17 个路由端点均以匿名箭头函数内联注册（router.post/get），统一通过 sendPaymentError 归一化错误响应；支付安全依赖链上凭证本身而非传输层鉴权。"
+    },
+    {
+      "id": "function:gateway/src/routes/payments.ts:sendPaymentError",
+      "type": "function",
+      "name": "sendPaymentError",
+      "filePath": "gateway/src/routes/payments.ts",
+      "lineRange": [38, 54],
+      "summary": "将 @0xinfrax/payments 模块抛出的支付错误统一转换为 HTTP 响应：PROVIDER_ERROR 返回 502、NOT_CONFIGURED 返回 503，其余按模块建议的 status（401/404/422 等）回退到 400；已处理时返回 true，否则交由调用方继续处理。",
+      "tags": ["error-handling", "http-response", "validation"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:gateway/src/routes/payments.ts",
+      "target": "function:gateway/src/routes/payments.ts:sendPaymentError",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    }
+  ]
+}

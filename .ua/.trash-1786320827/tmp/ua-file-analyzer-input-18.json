@@ -1,0 +1,25 @@
+{
+  "projectRoot": "/home/steven/Agentx",
+  "batchFiles": [
+    {"path": "frontend/components/guard/SubscriptionGuard.tsx", "language": "typescript", "sizeLines": 221, "fileCategory": "code"},
+    {"path": "frontend/components/layout/Header.tsx", "language": "typescript", "sizeLines": 49, "fileCategory": "code"},
+    {"path": "frontend/components/layout/MobileNav.tsx", "language": "typescript", "sizeLines": 57, "fileCategory": "code"},
+    {"path": "frontend/components/layout/Sidebar.tsx", "language": "typescript", "sizeLines": 92, "fileCategory": "code"},
+    {"path": "frontend/components/providers/index.ts", "language": "typescript", "sizeLines": 2, "fileCategory": "code"},
+    {"path": "frontend/components/studio/StudioContext.tsx", "language": "typescript", "sizeLines": 156, "fileCategory": "code"},
+    {"path": "frontend/components/studio/index.ts", "language": "typescript", "sizeLines": 7, "fileCategory": "code"},
+    {"path": "frontend/components/studio/types.ts", "language": "typescript", "sizeLines": 41, "fileCategory": "code"},
+    {"path": "frontend/hooks/aimarket/index.ts", "language": "typescript", "sizeLines": 4, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "frontend/components/guard/SubscriptionGuard.tsx": [],
+    "frontend/components/layout/Header.tsx": [],
+    "frontend/components/layout/MobileNav.tsx": [],
+    "frontend/components/layout/Sidebar.tsx": [],
+    "frontend/components/providers/index.ts": [],
+    "frontend/components/studio/StudioContext.tsx": [],
+    "frontend/components/studio/index.ts": [],
+    "frontend/components/studio/types.ts": [],
+    "frontend/hooks/aimarket/index.ts": []
+  }
+}

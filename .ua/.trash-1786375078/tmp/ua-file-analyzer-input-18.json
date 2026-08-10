@@ -1,0 +1,9 @@
+{
+  "projectRoot": "/home/steven/Agentx",
+  "batchFiles": [
+    {"path": "sdk/package.json", "language": "json", "sizeLines": 123, "fileCategory": "config"}
+  ],
+  "batchImportData": {
+    "sdk/package.json": []
+  }
+}

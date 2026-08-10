@@ -1,0 +1,40 @@
+{
+  "nodes": [
+    {
+      "id": "config:gateway/.env.example",
+      "type": "config",
+      "name": ".env.example",
+      "filePath": "gateway/.env.example",
+      "summary": "AgentX Gateway 的环境变量配置模板，涵盖服务端口与 CORS、PostgreSQL 数据库与 Redis 限流连接、JWT 密钥与管理密钥、租户 API Key 静态加密的主密钥，Sepolia 与 OxaChain L1 双链 RPC 及全部合约地址，以及 Conversation Service 地址/内部 token 与多代理编排共享 token。",
+      "tags": ["configuration", "environment-variables", "security", "service-config"],
+      "complexity": "moderate",
+      "languageNotes": "A2A_WORKER_PRIVATE_KEY 已标注废弃（2026-08-08）：Gateway 不再持有任何签名密钥，链上 A2A 轨道由用户自己的钱包签名 createTask。"
+    },
+    {
+      "id": "config:gateway/package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "gateway/package.json",
+      "summary": "@agentxv2/gateway 多租户 LLM 网关的包清单，定义 tsc 构建、node 启动、tsx watch 开发、类型检查与 vitest 测试脚本，声明 express、ethers、viem、ioredis、pg、jsonwebtoken、helmet 等网关依赖，并依赖 @agentxv2/sdk。",
+      "tags": ["configuration", "package-manifest", "build-system", "api-gateway"],
+      "complexity": "simple",
+      "languageNotes": "main 指向 dist/index.js，dev 模式通过 tsx watch src/index.ts 运行，说明 TypeScript 直接执行工作流。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "config:gateway/.env.example",
+      "target": "file:gateway/src/config.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:gateway/package.json",
+      "target": "file:gateway/src/index.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

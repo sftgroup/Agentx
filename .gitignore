@@ -40,8 +40,9 @@ package.json
 
 # Knowledge Graph — track core files, ignore intermediates
 .ua/intermediate/
-.ua/tmp/
-.ua/.trash-*/
 .ua/batches/
 .ua/logs/
 conversation-service/dist/
+# Knowledge Graph trash history — tracked for incremental update recovery
+.ua/.trash-*
+!**/.ua/.trash-*/

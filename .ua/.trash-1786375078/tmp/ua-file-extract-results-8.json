@@ -1,0 +1,269 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 1
+    }
+  },
+  "results": [
+    {
+      "path": "CHANGELOG.md",
+      "language": "markdown",
+      "fileCategory": "docs",
+      "totalLines": 449,
+      "nonEmptyLines": 310,
+      "sections": [
+        {
+          "heading": "AgentX Changelog",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "2026-08-10 — 发布 sdk@0.11.2（R17.5：本地化 A2AClient/PeriodClient，引擎升级 @0xinfrax/payments@0.1.2）",
+          "level": 2,
+          "line": 8
+        },
+        {
+          "heading": "2026-08-10 — 发布 sdk@0.11.1（F2 跟随演练：@0xinfrax/payments@0.1.1）",
+          "level": 2,
+          "line": 20
+        },
+        {
+          "heading": "2026-08-10 — 发布 sdk@0.11.0（支付引擎迁移至 @0xinfrax/payments）",
+          "level": 2,
+          "line": 31
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.10.3（exports 暴露 ./package.json）",
+          "level": 2,
+          "line": 43
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.10.2（createTask endUserId header 加固 + tenantKeyId 隔离说明）",
+          "level": 2,
+          "line": 52
+        },
+        {
+          "heading": "2026-08-08 — 文档澄清：`tenantKeyId` 严格按租户隔离（B 端审计反馈）",
+          "level": 2,
+          "line": 62
+        },
+        {
+          "heading": "2026-08-08 — 文档：对话中引入自己的 MCP（Skill 执行模型）",
+          "level": 2,
+          "line": 71
+        },
+        {
+          "heading": "2026-08-08 — 应用侧建议项文档化（audit 收尾）",
+          "level": 2,
+          "line": 87
+        },
+        {
+          "heading": "2026-08-08 — 边界澄清：BYOK 适用范围 + B 端 MCP 路径（文档）",
+          "level": 2,
+          "line": 98
+        },
+        {
+          "heading": "2026-08-08 — 文档修正：`createTask` 参数签名与字段（B 端反馈）",
+          "level": 2,
+          "line": 109
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.10.1（per-request endUserId + B 端能力澄清）",
+          "level": 2,
+          "line": 117
+        },
+        {
+          "heading": "2026-08-08 — B 端（partner）并行任务强制 BYOK（预算约束）",
+          "level": 2,
+          "line": 134
+        },
+        {
+          "heading": "2026-08-08 — B 端端用户订阅转发（B-end subscription proxying）",
+          "level": 2,
+          "line": 146
+        },
+        {
+          "heading": "2026-08-08 — B 端集成 key 的并行任务能力统一为 P9 能力位（R14 策略修订）",
+          "level": 2,
+          "line": 158
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.10.0（完整版）+ 用户钱包签名上链轨道",
+          "level": 2,
+          "line": 173
+        },
+        {
+          "heading": "@agentxv2/sdk@0.10.0 — 完整功能版（已发布 npm）",
+          "level": 3,
+          "line": 175
+        },
+        {
+          "heading": "用户钱包签名上链轨道（仓库级，2026-08-08）",
+          "level": 3,
+          "line": 181
+        },
+        {
+          "heading": "2026-08-08 — 发布 sdk@0.9.5（流式 tool_call 参数修复）",
+          "level": 2,
+          "line": 191
+        },
+        {
+          "heading": "@agentxv2/sdk@0.9.5 — 流式 tool_call 参数增量 chunk callId 丢失修复",
+          "level": 3,
+          "line": 193
+        },
+        {
+          "heading": "2026-08-07 — 多 Agent 编排分层（链下默认 / 链上可选）+ 发布 sdk@0.9.4、payments@0.2.2",
+          "level": 2,
+          "line": 203
+        },
+        {
+          "heading": "多 Agent 编排分层（Conversation Service + Gateway，仓库级）",
+          "level": 3,
+          "line": 205
+        },
+        {
+          "heading": "@agentxv2/sdk@0.9.4 — Agent 应用类别（category）字段（已发布 npm）",
+          "level": 3,
+          "line": 213
+        },
+        {
+          "heading": "@agentxv2/payments@0.2.2 — 归属元数据（已发布 npm）",
+          "level": 3,
+          "line": 222
+        },
+        {
+          "heading": "2026-08-07 — 生产升级 sdk@0.9.3 + payments@0.2.1",
+          "level": 2,
+          "line": 230
+        },
+        {
+          "heading": "@agentxv2/payments@0.2.1 — 浏览器/bundler 兼容修复",
+          "level": 3,
+          "line": 232
+        },
+        {
+          "heading": "2026-08-07",
+          "level": 2,
+          "line": 249
+        },
+        {
+          "heading": "SDK v0.8.11 — 三轨订阅支付（chain / fiat / x402）",
+          "level": 3,
+          "line": 251
+        },
+        {
+          "heading": "2026-08-06",
+          "level": 2,
+          "line": 276
+        },
+        {
+          "heading": "SDK v0.8.10 — 主密钥加解密 + subscription 状态映射修正",
+          "level": 3,
+          "line": 278
+        },
+        {
+          "heading": "2026-08-06",
+          "level": 2,
+          "line": 290
+        },
+        {
+          "heading": "Gateway — R13 外部项目方自助申请 API Key",
+          "level": 3,
+          "line": 292
+        },
+        {
+          "heading": "Gateway — MCP 新增对话与任务管理工具（33→38）",
+          "level": 3,
+          "line": 305
+        },
+        {
+          "heading": "SDK v0.9.0 — Browser Control Skill 扩展",
+          "level": 3,
+          "line": 315
+        },
+        {
+          "heading": "2026-08-05",
+          "level": 2,
+          "line": 326
+        },
+        {
+          "heading": "Gateway v0.2.1 — SDK-based ChainDataReader + 实时链上读取 API",
+          "level": 3,
+          "line": 328
+        },
+        {
+          "heading": "SDK v0.8.1 — 容错 tokenURI 解析",
+          "level": 3,
+          "line": 342
+        },
+        {
+          "heading": "2026-08-04",
+          "level": 2,
+          "line": 353
+        },
+        {
+          "heading": "SDK v0.8.0 — 链上数据能力",
+          "level": 3,
+          "line": 355
+        },
+        {
+          "heading": "SDK v0.7.5 — AgentLoop 模型覆盖修复",
+          "level": 3,
+          "line": 375
+        },
+        {
+          "heading": "SDK v0.7.4 — BYOK 模型透传（X-Llm-Model）",
+          "level": 3,
+          "line": 386
+        },
+        {
+          "heading": "SDK v0.7.3 — 无状态 BYOK（X-Llm-Endpoint）",
+          "level": 3,
+          "line": 395
+        },
+        {
+          "heading": "SDK v0.7.2 — 澄清打断（Clarification Interruption）",
+          "level": 3,
+          "line": 412
+        },
+        {
+          "heading": "Conversation Service — 记忆置信度过滤",
+          "level": 3,
+          "line": 420
+        },
+        {
+          "heading": "Conversation Service — 质量重构",
+          "level": 3,
+          "line": 424
+        },
+        {
+          "heading": "前端（agentx-frontend）— SDK 升级 + 生产配置恢复",
+          "level": 3,
+          "line": 432
+        },
+        {
+          "heading": "文档（2026-08-04）",
+          "level": 2,
+          "line": 439
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 47
+      }
+    }
+  ]
+}

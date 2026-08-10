@@ -1,0 +1,121 @@
+{
+  "nodes": [
+    {
+      "id": "document:docs/PROGRESS.md",
+      "type": "document",
+      "name": "PROGRESS.md",
+      "filePath": "docs/PROGRESS.md",
+      "summary": "AgentX 项目统一任务清单与进度文档（498 行），以状态图例（✅/⏸/🔧/⏳/🔵）跟踪 P0-P10 各阶段任务、R1-R17 开发任务清单及 R17 支付引擎迁移发布流程；最新内容为 2026-08-10 的 R17.5——支付引擎 @0xinfrax/payments 0.1.2 剥离 a2a/period rail 后由 gateway 业务侧重建自托管（迁移 021 + A2APeriodService + 本地 sdk A2AClient/PeriodClient，sdk@0.11.2 已发布），并记录生产环境、链上合约地址与关键验证结果。",
+      "tags": ["documentation", "progress", "roadmap", "release-notes", "status"],
+      "complexity": "complex",
+      "languageNotes": "Markdown 文档以任务表格 + 状态图例 + commit hash 引用组织进度，并内嵌 R17 发布流程 check-list 与 R17.5 决策记录（含 infraX 通知文案）。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:gateway/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:gateway/src/services/payments.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:gateway/src/services/payments-a2a-period.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:gateway/src/routes/payments.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:gateway/db/migrations/021_payments_a2a_period_selfhost.sql",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:sdk/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:sdk/src/payment/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:sdk/src/payment/a2a-client.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:sdk/src/payment/period-client.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:conversation-service/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:frontend/hooks/useAgentChat.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:payments/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "file:scripts/agentx-integration-test.mjs",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "document:docs/payment-architecture.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/PROGRESS.md",
+      "target": "document:docs/payments-infrax-migration.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

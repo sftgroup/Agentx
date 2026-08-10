@@ -1,0 +1,37 @@
+{
+  "nodes": [
+    {
+      "id": "document:CHANGELOG.md",
+      "type": "document",
+      "name": "CHANGELOG.md",
+      "filePath": "CHANGELOG.md",
+      "summary": "项目变更日志，按日期（2026-08-04 至 2026-08-10）记录各组件的关键发布与策略修订，覆盖 @agentxv2/sdk（0.7.2 → 0.11.2）的版本发布（BYOK、链上数据、三轨订阅支付、Browser Control Skill、支付引擎迁移等）、Gateway 能力演进（R13 自助申请 API Key、MCP 工具扩展、SDK-based ChainDataReader）、@0xinfrax/payments 支付引擎升级以及 agentx-frontend 前端升级与生产配置恢复等仓库级变更。",
+      "tags": ["documentation", "changelog", "release-notes", "version-history"],
+      "complexity": "complex",
+      "languageNotes": "Markdown 按日期倒序组织的变更日志，47 个标题层级（1 个 H1 + 多个 H2/H3），H3 用于细分同一日期的 SDK / Gateway / 前端子项发布说明。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "file:sdk/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "file:gateway/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "file:payments/src/index.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

@@ -1,0 +1,246 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 3,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 3,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 3,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "sdk/src/payment/a2a-client.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 54,
+      "nonEmptyLines": 49,
+      "functions": [
+        {
+          "name": "request",
+          "startLine": 13,
+          "endLine": 29,
+          "params": [
+            "baseUrl",
+            "path",
+            "init",
+            "accessToken"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "A2AClient",
+          "startLine": 32,
+          "endLine": 54,
+          "methods": [
+            "constructor",
+            "create",
+            "settle"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "request",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "A2AClient",
+          "line": 32,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "request",
+          "callee": "baseUrl.replace",
+          "lineNumber": 14
+        },
+        {
+          "caller": "request",
+          "callee": "fetch",
+          "lineNumber": 19
+        },
+        {
+          "caller": "request",
+          "callee": "resp.json",
+          "lineNumber": 23
+        },
+        {
+          "caller": "request",
+          "callee": "resp.json",
+          "lineNumber": 28
+        },
+        {
+          "caller": "create",
+          "callee": "request",
+          "lineNumber": 37
+        },
+        {
+          "caller": "create",
+          "callee": "JSON.stringify",
+          "lineNumber": 40
+        },
+        {
+          "caller": "settle",
+          "callee": "request",
+          "lineNumber": 47
+        },
+        {
+          "caller": "settle",
+          "callee": "JSON.stringify",
+          "lineNumber": 50
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 1,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "sdk/src/payment/index.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 26,
+      "nonEmptyLines": 24,
+      "exports": [
+        {
+          "name": "SubscriptionPayments",
+          "line": 2,
+          "isDefault": false
+        },
+        {
+          "name": "SubscriptionPaymentMethod",
+          "line": 3,
+          "isDefault": false
+        },
+        {
+          "name": "SubscriptionPaymentsConfig",
+          "line": 3,
+          "isDefault": false
+        },
+        {
+          "name": "PaySubscriptionInput",
+          "line": 3,
+          "isDefault": false
+        },
+        {
+          "name": "PaySubscriptionResult",
+          "line": 3,
+          "isDefault": false
+        },
+        {
+          "name": "X402Info",
+          "line": 3,
+          "isDefault": false
+        },
+        {
+          "name": "MPPClient",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "X402Client",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "PaymentsClient",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "A2AClient",
+          "line": 22,
+          "isDefault": false
+        },
+        {
+          "name": "PeriodClient",
+          "line": 23,
+          "isDefault": false
+        },
+        {
+          "name": "ClientOptions",
+          "line": 24,
+          "isDefault": false
+        },
+        {
+          "name": "PAYMENT_VERSION",
+          "line": 26,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 13,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "sdk/src/payment/period-client.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 29,
+      "nonEmptyLines": 25,
+      "classes": [
+        {
+          "name": "PeriodClient",
+          "startLine": 14,
+          "endLine": 29,
+          "methods": [
+            "constructor",
+            "charge",
+            "authorization"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "PeriodClient",
+          "line": 14,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "charge",
+          "callee": "request",
+          "lineNumber": 18
+        },
+        {
+          "caller": "charge",
+          "callee": "JSON.stringify",
+          "lineNumber": 21
+        },
+        {
+          "caller": "authorization",
+          "callee": "request",
+          "lineNumber": 27
+        },
+        {
+          "caller": "authorization",
+          "callee": "encodeURIComponent",
+          "lineNumber": 27
+        }
+      ],
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 1,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    }
+  ]
+}

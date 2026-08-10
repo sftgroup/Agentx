@@ -1,0 +1,11 @@
+{
+  "projectRoot": "/home/steven/Agentx",
+  "batchFiles": [
+    {"path": "gateway/src/services/payments-a2a-period.ts", "language": "typescript", "sizeLines": 204, "fileCategory": "code"},
+    {"path": "gateway/src/services/payments.ts", "language": "typescript", "sizeLines": 80, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "gateway/src/services/payments-a2a-period.ts": [],
+    "gateway/src/services/payments.ts": []
+  }
+}

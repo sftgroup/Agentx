@@ -1,0 +1,1586 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 7,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 7,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 7,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "sdk/src/agent-loop/types.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 144,
+      "nonEmptyLines": 119,
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "sdk/src/conversation/client.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 393,
+      "nonEmptyLines": 359,
+      "classes": [
+        {
+          "name": "ConversationTaskError",
+          "startLine": 165,
+          "endLine": 174,
+          "methods": [
+            "constructor"
+          ],
+          "properties": [
+            "status",
+            "code"
+          ]
+        },
+        {
+          "name": "ConversationClient",
+          "startLine": 176,
+          "endLine": 393,
+          "methods": [
+            "constructor",
+            "_headers",
+            "stream",
+            "chat",
+            "getCapabilities",
+            "createSession",
+            "createTask",
+            "getTask",
+            "listTasks",
+            "cancelTask"
+          ],
+          "properties": [
+            "baseUrl"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "ConversationTaskError",
+          "line": 165,
+          "isDefault": false
+        },
+        {
+          "name": "ConversationClient",
+          "line": 176,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "constructor",
+          "callee": "super",
+          "lineNumber": 169
+        },
+        {
+          "caller": "constructor",
+          "callee": "config.gatewayUrl.replace",
+          "lineNumber": 180
+        },
+        {
+          "caller": "stream",
+          "callee": "this._headers",
+          "lineNumber": 205
+        },
+        {
+          "caller": "stream",
+          "callee": "setTimeout",
+          "lineNumber": 209
+        },
+        {
+          "caller": "stream",
+          "callee": "controller.abort",
+          "lineNumber": 209
+        },
+        {
+          "caller": "onExternalAbort",
+          "callee": "controller.abort",
+          "lineNumber": 210
+        },
+        {
+          "caller": "stream",
+          "callee": "opts?.signal?.addEventListener",
+          "lineNumber": 211
+        },
+        {
+          "caller": "stream",
+          "callee": "fetch",
+          "lineNumber": 214
+        },
+        {
+          "caller": "stream",
+          "callee": "JSON.stringify",
+          "lineNumber": 217
+        },
+        {
+          "caller": "stream",
+          "callee": "res.json",
+          "lineNumber": 224
+        },
+        {
+          "caller": "stream",
+          "callee": "`Conversation request failed (HTTP ${res.status}) ${detail}`.trim",
+          "lineNumber": 227
+        },
+        {
+          "caller": "stream",
+          "callee": "res.body.getReader",
+          "lineNumber": 234
+        },
+        {
+          "caller": "stream",
+          "callee": "reader.read",
+          "lineNumber": 239
+        },
+        {
+          "caller": "stream",
+          "callee": "decoder.decode",
+          "lineNumber": 242
+        },
+        {
+          "caller": "stream",
+          "callee": "buffer.split",
+          "lineNumber": 243
+        },
+        {
+          "caller": "stream",
+          "callee": "chunks.pop",
+          "lineNumber": 244
+        },
+        {
+          "caller": "stream",
+          "callee": "chunk.split",
+          "lineNumber": 247
+        },
+        {
+          "caller": "stream",
+          "callee": "line.startsWith",
+          "lineNumber": 248
+        },
+        {
+          "caller": "stream",
+          "callee": "JSON.parse",
+          "lineNumber": 250
+        },
+        {
+          "caller": "stream",
+          "callee": "line.slice",
+          "lineNumber": 250
+        },
+        {
+          "caller": "stream",
+          "callee": "clearTimeout",
+          "lineNumber": 263
+        },
+        {
+          "caller": "stream",
+          "callee": "opts?.signal?.removeEventListener",
+          "lineNumber": 264
+        },
+        {
+          "caller": "chat",
+          "callee": "this.stream",
+          "lineNumber": 274
+        },
+        {
+          "caller": "chat",
+          "callee": "result.toolCalls.push",
+          "lineNumber": 280
+        },
+        {
+          "caller": "getCapabilities",
+          "callee": "fetch",
+          "lineNumber": 310
+        },
+        {
+          "caller": "getCapabilities",
+          "callee": "this._headers",
+          "lineNumber": 310
+        },
+        {
+          "caller": "getCapabilities",
+          "callee": "res.json().catch",
+          "lineNumber": 311
+        },
+        {
+          "caller": "getCapabilities",
+          "callee": "res.json",
+          "lineNumber": 311
+        },
+        {
+          "caller": "createSession",
+          "callee": "fetch",
+          "lineNumber": 325
+        },
+        {
+          "caller": "createSession",
+          "callee": "this._headers",
+          "lineNumber": 327
+        },
+        {
+          "caller": "createSession",
+          "callee": "JSON.stringify",
+          "lineNumber": 328
+        },
+        {
+          "caller": "createSession",
+          "callee": "res.json",
+          "lineNumber": 333
+        },
+        {
+          "caller": "createTask",
+          "callee": "this._headers",
+          "lineNumber": 343
+        },
+        {
+          "caller": "createTask",
+          "callee": "fetch",
+          "lineNumber": 345
+        },
+        {
+          "caller": "createTask",
+          "callee": "JSON.stringify",
+          "lineNumber": 348
+        },
+        {
+          "caller": "createTask",
+          "callee": "res.json().catch",
+          "lineNumber": 350
+        },
+        {
+          "caller": "createTask",
+          "callee": "res.json",
+          "lineNumber": 350
+        },
+        {
+          "caller": "getTask",
+          "callee": "fetch",
+          "lineNumber": 363
+        },
+        {
+          "caller": "getTask",
+          "callee": "this._headers",
+          "lineNumber": 363
+        },
+        {
+          "caller": "getTask",
+          "callee": "res.json().catch",
+          "lineNumber": 364
+        },
+        {
+          "caller": "getTask",
+          "callee": "res.json",
+          "lineNumber": 364
+        },
+        {
+          "caller": "listTasks",
+          "callee": "fetch",
+          "lineNumber": 373
+        },
+        {
+          "caller": "listTasks",
+          "callee": "this._headers",
+          "lineNumber": 373
+        },
+        {
+          "caller": "listTasks",
+          "callee": "res.json().catch",
+          "lineNumber": 374
+        },
+        {
+          "caller": "listTasks",
+          "callee": "res.json",
+          "lineNumber": 374
+        },
+        {
+          "caller": "cancelTask",
+          "callee": "fetch",
+          "lineNumber": 383
+        },
+        {
+          "caller": "cancelTask",
+          "callee": "this._headers",
+          "lineNumber": 385
+        },
+        {
+          "caller": "cancelTask",
+          "callee": "res.json().catch",
+          "lineNumber": 387
+        },
+        {
+          "caller": "cancelTask",
+          "callee": "res.json",
+          "lineNumber": 387
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "sdk/src/core/crypto.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 497,
+      "nonEmptyLines": 430,
+      "functions": [
+        {
+          "name": "randomBytes",
+          "startLine": 25,
+          "endLine": 36,
+          "params": [
+            "length"
+          ]
+        },
+        {
+          "name": "toBase64",
+          "startLine": 53,
+          "endLine": 59,
+          "params": [
+            "bytes"
+          ]
+        },
+        {
+          "name": "fromBase64",
+          "startLine": 61,
+          "endLine": 67,
+          "params": [
+            "b64"
+          ]
+        },
+        {
+          "name": "aesEncrypt",
+          "startLine": 75,
+          "endLine": 93,
+          "params": [
+            "plaintext",
+            "keyHex"
+          ]
+        },
+        {
+          "name": "aesDecrypt",
+          "startLine": 98,
+          "endLine": 114,
+          "params": [
+            "encryptedBase64",
+            "keyHex"
+          ]
+        },
+        {
+          "name": "encryptWithKey",
+          "startLine": 124,
+          "endLine": 140,
+          "params": [
+            "plaintext",
+            "keyHex"
+          ]
+        },
+        {
+          "name": "decryptWithKey",
+          "startLine": 146,
+          "endLine": 161,
+          "params": [
+            "encryptedBase64",
+            "keyHex"
+          ]
+        },
+        {
+          "name": "generateAesKey",
+          "startLine": 166,
+          "endLine": 168,
+          "params": []
+        },
+        {
+          "name": "eciesEncode",
+          "startLine": 179,
+          "endLine": 191,
+          "params": [
+            "ephemeralPub",
+            "iv",
+            "ciphertext",
+            "mac"
+          ]
+        },
+        {
+          "name": "eciesDecode",
+          "startLine": 193,
+          "endLine": 206,
+          "params": [
+            "dataHex"
+          ]
+        },
+        {
+          "name": "aesCtrEncrypt",
+          "startLine": 209,
+          "endLine": 232,
+          "params": [
+            "key",
+            "ctrBytes",
+            "data"
+          ]
+        },
+        {
+          "name": "eciesEncrypt",
+          "startLine": 240,
+          "endLine": 278,
+          "params": [
+            "dataHex",
+            "publicKey"
+          ]
+        },
+        {
+          "name": "eciesDecrypt",
+          "startLine": 283,
+          "endLine": 310,
+          "params": [
+            "dataHex",
+            "privateKey"
+          ]
+        },
+        {
+          "name": "constantTimeEqual",
+          "startLine": 312,
+          "endLine": 317,
+          "params": [
+            "a",
+            "b"
+          ]
+        },
+        {
+          "name": "encryptPayload",
+          "startLine": 324,
+          "endLine": 334,
+          "params": [
+            "payload",
+            "keyHex"
+          ]
+        },
+        {
+          "name": "decryptPayload",
+          "startLine": 339,
+          "endLine": 347,
+          "params": [
+            "encrypted",
+            "keyHex"
+          ]
+        },
+        {
+          "name": "packAgentForPublish",
+          "startLine": 355,
+          "endLine": 370,
+          "params": [
+            "agent",
+            "publicKey",
+            "aesKeyHex"
+          ]
+        },
+        {
+          "name": "publishAgent",
+          "startLine": 416,
+          "endLine": 465,
+          "params": [
+            "config"
+          ]
+        },
+        {
+          "name": "unpackAgent",
+          "startLine": 472,
+          "endLine": 479,
+          "params": [
+            "encryptedPayload",
+            "eciesEncryptedKey",
+            "privateKey"
+          ]
+        },
+        {
+          "name": "generateKeyPair",
+          "startLine": 486,
+          "endLine": 490,
+          "params": []
+        },
+        {
+          "name": "getPublicKey",
+          "startLine": 495,
+          "endLine": 497,
+          "params": [
+            "privateKey"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "randomBytes",
+          "line": 25,
+          "isDefault": false
+        },
+        {
+          "name": "bytesToHex",
+          "line": 43,
+          "isDefault": false
+        },
+        {
+          "name": "hexToBytes",
+          "line": 43,
+          "isDefault": false
+        },
+        {
+          "name": "aesEncrypt",
+          "line": 75,
+          "isDefault": false
+        },
+        {
+          "name": "aesDecrypt",
+          "line": 98,
+          "isDefault": false
+        },
+        {
+          "name": "encryptWithKey",
+          "line": 124,
+          "isDefault": false
+        },
+        {
+          "name": "decryptWithKey",
+          "line": 146,
+          "isDefault": false
+        },
+        {
+          "name": "generateAesKey",
+          "line": 166,
+          "isDefault": false
+        },
+        {
+          "name": "eciesEncrypt",
+          "line": 240,
+          "isDefault": false
+        },
+        {
+          "name": "eciesDecrypt",
+          "line": 283,
+          "isDefault": false
+        },
+        {
+          "name": "encryptPayload",
+          "line": 324,
+          "isDefault": false
+        },
+        {
+          "name": "decryptPayload",
+          "line": 339,
+          "isDefault": false
+        },
+        {
+          "name": "packAgentForPublish",
+          "line": 355,
+          "isDefault": false
+        },
+        {
+          "name": "publishAgent",
+          "line": 416,
+          "isDefault": false
+        },
+        {
+          "name": "unpackAgent",
+          "line": 472,
+          "isDefault": false
+        },
+        {
+          "name": "generateKeyPair",
+          "line": 486,
+          "isDefault": false
+        },
+        {
+          "name": "getPublicKey",
+          "line": 495,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "randomBytes",
+          "callee": "crypto.getRandomValues",
+          "lineNumber": 29
+        },
+        {
+          "caller": "randomBytes",
+          "callee": "require",
+          "lineNumber": 34
+        },
+        {
+          "caller": "randomBytes",
+          "callee": "nodeCrypto.randomBytes",
+          "lineNumber": 35
+        },
+        {
+          "caller": "toBase64",
+          "callee": "Buffer.from(bytes).toString",
+          "lineNumber": 55
+        },
+        {
+          "caller": "toBase64",
+          "callee": "Buffer.from",
+          "lineNumber": 55
+        },
+        {
+          "caller": "toBase64",
+          "callee": "String.fromCharCode",
+          "lineNumber": 57
+        },
+        {
+          "caller": "toBase64",
+          "callee": "btoa",
+          "lineNumber": 58
+        },
+        {
+          "caller": "fromBase64",
+          "callee": "Buffer.from",
+          "lineNumber": 62
+        },
+        {
+          "caller": "fromBase64",
+          "callee": "atob",
+          "lineNumber": 63
+        },
+        {
+          "caller": "fromBase64",
+          "callee": "binary.charCodeAt",
+          "lineNumber": 65
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "hexToBytes",
+          "lineNumber": 76
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "randomBytes",
+          "lineNumber": 77
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "new TextEncoder().encode",
+          "lineNumber": 78
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "gcm",
+          "lineNumber": 80
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "cipher.encrypt",
+          "lineNumber": 81
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "encrypted.subarray",
+          "lineNumber": 83
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "encrypted.subarray",
+          "lineNumber": 84
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "combined.set",
+          "lineNumber": 88
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "combined.set",
+          "lineNumber": 89
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "combined.set",
+          "lineNumber": 90
+        },
+        {
+          "caller": "aesEncrypt",
+          "callee": "toBase64",
+          "lineNumber": 92
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "hexToBytes",
+          "lineNumber": 99
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "fromBase64",
+          "lineNumber": 100
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "combined.subarray",
+          "lineNumber": 102
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "combined.subarray",
+          "lineNumber": 103
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "combined.subarray",
+          "lineNumber": 104
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "gcm",
+          "lineNumber": 106
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "ciphertextWithTag.set",
+          "lineNumber": 109
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "ciphertextWithTag.set",
+          "lineNumber": 110
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "cipher.decrypt",
+          "lineNumber": 112
+        },
+        {
+          "caller": "aesDecrypt",
+          "callee": "new TextDecoder().decode",
+          "lineNumber": 113
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "hexToBytes",
+          "lineNumber": 125
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "randomBytes",
+          "lineNumber": 126
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "new TextEncoder().encode",
+          "lineNumber": 127
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "gcm",
+          "lineNumber": 129
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "cipher.encrypt",
+          "lineNumber": 130
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "encrypted.subarray",
+          "lineNumber": 131
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "encrypted.subarray",
+          "lineNumber": 132
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "combined.set",
+          "lineNumber": 135
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "combined.set",
+          "lineNumber": 136
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "combined.set",
+          "lineNumber": 137
+        },
+        {
+          "caller": "encryptWithKey",
+          "callee": "toBase64",
+          "lineNumber": 139
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "hexToBytes",
+          "lineNumber": 147
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "fromBase64",
+          "lineNumber": 148
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "combined.subarray",
+          "lineNumber": 150
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "combined.subarray",
+          "lineNumber": 151
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "combined.subarray",
+          "lineNumber": 152
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "gcm",
+          "lineNumber": 154
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "ciphertextWithTag.set",
+          "lineNumber": 156
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "ciphertextWithTag.set",
+          "lineNumber": 157
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "cipher.decrypt",
+          "lineNumber": 159
+        },
+        {
+          "caller": "decryptWithKey",
+          "callee": "new TextDecoder().decode",
+          "lineNumber": 160
+        },
+        {
+          "caller": "generateAesKey",
+          "callee": "bytesToHex",
+          "lineNumber": 167
+        },
+        {
+          "caller": "generateAesKey",
+          "callee": "randomBytes",
+          "lineNumber": 167
+        },
+        {
+          "caller": "eciesEncode",
+          "callee": "out.set",
+          "lineNumber": 186
+        },
+        {
+          "caller": "eciesEncode",
+          "callee": "out.set",
+          "lineNumber": 187
+        },
+        {
+          "caller": "eciesEncode",
+          "callee": "out.set",
+          "lineNumber": 188
+        },
+        {
+          "caller": "eciesEncode",
+          "callee": "out.set",
+          "lineNumber": 189
+        },
+        {
+          "caller": "eciesEncode",
+          "callee": "bytesToHex",
+          "lineNumber": 190
+        },
+        {
+          "caller": "eciesDecode",
+          "callee": "hexToBytes",
+          "lineNumber": 199
+        },
+        {
+          "caller": "eciesDecode",
+          "callee": "d.subarray",
+          "lineNumber": 201
+        },
+        {
+          "caller": "eciesDecode",
+          "callee": "d.subarray",
+          "lineNumber": 202
+        },
+        {
+          "caller": "eciesDecode",
+          "callee": "d.subarray",
+          "lineNumber": 203
+        },
+        {
+          "caller": "eciesDecode",
+          "callee": "d.subarray",
+          "lineNumber": 204
+        },
+        {
+          "caller": "aesCtrEncrypt",
+          "callee": "gcm",
+          "lineNumber": 211
+        },
+        {
+          "caller": "aesCtrEncrypt",
+          "callee": "counter.set",
+          "lineNumber": 216
+        },
+        {
+          "caller": "aesCtrEncrypt",
+          "callee": "gcm(key, counter).encrypt",
+          "lineNumber": 218
+        },
+        {
+          "caller": "aesCtrEncrypt",
+          "callee": "gcm",
+          "lineNumber": 218
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "randomBytes",
+          "lineNumber": 242
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "secp256k1.getPublicKey",
+          "lineNumber": 243
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "publicKey.startsWith",
+          "lineNumber": 247
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "hexToBytes",
+          "lineNumber": 248
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "publicKey.startsWith",
+          "lineNumber": 249
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "publicKey.startsWith",
+          "lineNumber": 249
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "hexToBytes",
+          "lineNumber": 250
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "secp256k1.getSharedSecret",
+          "lineNumber": 256
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "shared.subarray",
+          "lineNumber": 257
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "sha256",
+          "lineNumber": 258
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "hkdf",
+          "lineNumber": 261
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "hkdfOut.subarray",
+          "lineNumber": 262
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "hkdfOut.subarray",
+          "lineNumber": 263
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "randomBytes",
+          "lineNumber": 266
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "hexToBytes",
+          "lineNumber": 267
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "aesCtrEncrypt",
+          "lineNumber": 268
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "macInput.set",
+          "lineNumber": 272
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "macInput.set",
+          "lineNumber": 273
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "macInput.set",
+          "lineNumber": 274
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "hmac",
+          "lineNumber": 275
+        },
+        {
+          "caller": "eciesEncrypt",
+          "callee": "eciesEncode",
+          "lineNumber": 277
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "eciesDecode",
+          "lineNumber": 284
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "hexToBytes",
+          "lineNumber": 287
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "secp256k1.getSharedSecret",
+          "lineNumber": 288
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "shared.subarray",
+          "lineNumber": 289
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "sha256",
+          "lineNumber": 290
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "hkdf",
+          "lineNumber": 293
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "hkdfOut.subarray",
+          "lineNumber": 294
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "hkdfOut.subarray",
+          "lineNumber": 295
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "macInput.set",
+          "lineNumber": 299
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "macInput.set",
+          "lineNumber": 300
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "macInput.set",
+          "lineNumber": 301
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "hmac",
+          "lineNumber": 302
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "constantTimeEqual",
+          "lineNumber": 303
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "aesCtrEncrypt",
+          "lineNumber": 308
+        },
+        {
+          "caller": "eciesDecrypt",
+          "callee": "bytesToHex",
+          "lineNumber": 309
+        },
+        {
+          "caller": "encryptPayload",
+          "callee": "generateAesKey",
+          "lineNumber": 328
+        },
+        {
+          "caller": "encryptPayload",
+          "callee": "aesEncrypt",
+          "lineNumber": 332
+        },
+        {
+          "caller": "encryptPayload",
+          "callee": "JSON.stringify",
+          "lineNumber": 332
+        },
+        {
+          "caller": "decryptPayload",
+          "callee": "JSON.parse",
+          "lineNumber": 346
+        },
+        {
+          "caller": "decryptPayload",
+          "callee": "aesDecrypt",
+          "lineNumber": 346
+        },
+        {
+          "caller": "packAgentForPublish",
+          "callee": "import",
+          "lineNumber": 356
+        },
+        {
+          "caller": "packAgentForPublish",
+          "callee": "generateAesKey",
+          "lineNumber": 360
+        },
+        {
+          "caller": "packAgentForPublish",
+          "callee": "eciesEncrypt",
+          "lineNumber": 362
+        },
+        {
+          "caller": "publishAgent",
+          "callee": "uploader.isConfigured",
+          "lineNumber": 419
+        },
+        {
+          "caller": "publishAgent",
+          "callee": "generateAesKey",
+          "lineNumber": 423
+        },
+        {
+          "caller": "publishAgent",
+          "callee": "eciesEncrypt",
+          "lineNumber": 424
+        },
+        {
+          "caller": "publishAgent",
+          "callee": "import",
+          "lineNumber": 427
+        },
+        {
+          "caller": "publishAgent",
+          "callee": "encryptPayload",
+          "lineNumber": 432
+        },
+        {
+          "caller": "publishAgent",
+          "callee": "Promise.all",
+          "lineNumber": 435
+        },
+        {
+          "caller": "publishAgent",
+          "callee": "uploader.uploadEncryptedPayload",
+          "lineNumber": 436
+        },
+        {
+          "caller": "publishAgent",
+          "callee": "uploader.uploadJSON",
+          "lineNumber": 437
+        },
+        {
+          "caller": "unpackAgent",
+          "callee": "eciesDecrypt",
+          "lineNumber": 477
+        },
+        {
+          "caller": "unpackAgent",
+          "callee": "decryptPayload",
+          "lineNumber": 478
+        },
+        {
+          "caller": "generateKeyPair",
+          "callee": "randomBytes",
+          "lineNumber": 487
+        },
+        {
+          "caller": "generateKeyPair",
+          "callee": "secp256k1.getPublicKey",
+          "lineNumber": 488
+        },
+        {
+          "caller": "generateKeyPair",
+          "callee": "bytesToHex",
+          "lineNumber": 489
+        },
+        {
+          "caller": "generateKeyPair",
+          "callee": "bytesToHex",
+          "lineNumber": 489
+        },
+        {
+          "caller": "getPublicKey",
+          "callee": "bytesToHex",
+          "lineNumber": 496
+        },
+        {
+          "caller": "getPublicKey",
+          "callee": "secp256k1.getPublicKey",
+          "lineNumber": 496
+        },
+        {
+          "caller": "getPublicKey",
+          "callee": "hexToBytes",
+          "lineNumber": 496
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 17,
+        "functionCount": 21,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "sdk/src/core/types.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 403,
+      "nonEmptyLines": 352,
+      "classes": [
+        {
+          "name": "AgentXError",
+          "startLine": 383,
+          "endLine": 392,
+          "methods": [
+            "constructor"
+          ],
+          "properties": [
+            "code",
+            "paymentInfo"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "AGENT_CATEGORIES",
+          "line": 130,
+          "isDefault": false
+        },
+        {
+          "name": "AgentXError",
+          "line": 383,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "constructor",
+          "callee": "super",
+          "lineNumber": 388
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "sdk/src/index.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 42,
+      "nonEmptyLines": 41,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "sdk/src/llm/gateway-provider.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 188,
+      "nonEmptyLines": 164,
+      "classes": [
+        {
+          "name": "GatewayProvider",
+          "startLine": 33,
+          "endLine": 188,
+          "methods": [
+            "model",
+            "constructor",
+            "chatStream"
+          ],
+          "properties": [
+            "config"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "GatewayProvider",
+          "line": 33,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "constructor",
+          "callee": "config.gatewayUrl.replace",
+          "lineNumber": 44
+        },
+        {
+          "caller": "chatStream",
+          "callee": "fetch",
+          "lineNumber": 71
+        },
+        {
+          "caller": "chatStream",
+          "callee": "JSON.stringify",
+          "lineNumber": 77
+        },
+        {
+          "caller": "chatStream",
+          "callee": "String",
+          "lineNumber": 84
+        },
+        {
+          "caller": "chatStream",
+          "callee": "response.json",
+          "lineNumber": 92
+        },
+        {
+          "caller": "chatStream",
+          "callee": "response.body?.getReader",
+          "lineNumber": 100
+        },
+        {
+          "caller": "chatStream",
+          "callee": "reader.read",
+          "lineNumber": 115
+        },
+        {
+          "caller": "chatStream",
+          "callee": "decoder.decode",
+          "lineNumber": 118
+        },
+        {
+          "caller": "chatStream",
+          "callee": "buffer.split",
+          "lineNumber": 119
+        },
+        {
+          "caller": "chatStream",
+          "callee": "lines.pop",
+          "lineNumber": 120
+        },
+        {
+          "caller": "chatStream",
+          "callee": "line.trim",
+          "lineNumber": 123
+        },
+        {
+          "caller": "chatStream",
+          "callee": "trimmed.startsWith",
+          "lineNumber": 124
+        },
+        {
+          "caller": "chatStream",
+          "callee": "trimmed.slice(5).trim",
+          "lineNumber": 126
+        },
+        {
+          "caller": "chatStream",
+          "callee": "trimmed.slice",
+          "lineNumber": 126
+        },
+        {
+          "caller": "chatStream",
+          "callee": "JSON.parse",
+          "lineNumber": 130
+        },
+        {
+          "caller": "chatStream",
+          "callee": "callIdsByIndex.set",
+          "lineNumber": 158
+        },
+        {
+          "caller": "chatStream",
+          "callee": "callIdsByIndex.get",
+          "lineNumber": 165
+        },
+        {
+          "caller": "chatStream",
+          "callee": "String",
+          "lineNumber": 182
+        },
+        {
+          "caller": "chatStream",
+          "callee": "reader.releaseLock",
+          "lineNumber": 185
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 1,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "sdk/src/llm/openai-provider.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 181,
+      "nonEmptyLines": 158,
+      "classes": [
+        {
+          "name": "OpenAIProvider",
+          "startLine": 33,
+          "endLine": 181,
+          "methods": [
+            "model",
+            "constructor",
+            "chatStream"
+          ],
+          "properties": [
+            "config"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "OpenAIProvider",
+          "line": 33,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "chatStream",
+          "callee": "JSON.stringify",
+          "lineNumber": 55
+        },
+        {
+          "caller": "chatStream",
+          "callee": "fetch",
+          "lineNumber": 67
+        },
+        {
+          "caller": "chatStream",
+          "callee": "String",
+          "lineNumber": 80
+        },
+        {
+          "caller": "chatStream",
+          "callee": "response.text",
+          "lineNumber": 87
+        },
+        {
+          "caller": "chatStream",
+          "callee": "response.body?.getReader",
+          "lineNumber": 92
+        },
+        {
+          "caller": "chatStream",
+          "callee": "reader.read",
+          "lineNumber": 107
+        },
+        {
+          "caller": "chatStream",
+          "callee": "decoder.decode",
+          "lineNumber": 110
+        },
+        {
+          "caller": "chatStream",
+          "callee": "buffer.split",
+          "lineNumber": 111
+        },
+        {
+          "caller": "chatStream",
+          "callee": "lines.pop",
+          "lineNumber": 112
+        },
+        {
+          "caller": "chatStream",
+          "callee": "line.trim",
+          "lineNumber": 115
+        },
+        {
+          "caller": "chatStream",
+          "callee": "trimmed.startsWith",
+          "lineNumber": 116
+        },
+        {
+          "caller": "chatStream",
+          "callee": "trimmed.slice(5).trim",
+          "lineNumber": 118
+        },
+        {
+          "caller": "chatStream",
+          "callee": "trimmed.slice",
+          "lineNumber": 118
+        },
+        {
+          "caller": "chatStream",
+          "callee": "JSON.parse",
+          "lineNumber": 125
+        },
+        {
+          "caller": "chatStream",
+          "callee": "callIdsByIndex.set",
+          "lineNumber": 151
+        },
+        {
+          "caller": "chatStream",
+          "callee": "callIdsByIndex.get",
+          "lineNumber": 158
+        },
+        {
+          "caller": "chatStream",
+          "callee": "String",
+          "lineNumber": 175
+        },
+        {
+          "caller": "chatStream",
+          "callee": "reader.releaseLock",
+          "lineNumber": 178
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 1,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    }
+  ]
+}

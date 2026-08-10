@@ -1,0 +1,14 @@
+{
+ "files": [
+  {
+   "path": "gateway/src/routes/payments.ts",
+   "language": "typescript",
+   "sizeLines": 604,
+   "fileCategory": "code"
+  }
+ ],
+ "batchImportData": {
+  "gateway/src/routes/payments.ts": []
+ },
+ "neighborMap": {}
+}

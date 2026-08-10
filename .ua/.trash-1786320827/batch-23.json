@@ -1,0 +1,275 @@
+{
+  "nodes": [
+    {
+      "id": "file:gateway/src/config.ts",
+      "type": "file",
+      "name": "config.ts",
+      "filePath": "gateway/src/config.ts",
+      "summary": "网关集中式运行配置模块，从环境变量加载端口、数据库/Redis 连接、JWT 与主加密密钥、双链（Sepolia/OxaChain）合约地址及 Stripe/x402/MPP 等支付参数，并在生产环境对占位密钥做 fail-fast 校验，拒绝用弱默认密钥启动。",
+      "tags": ["配置", "configuration", "环境变量", "安全", "网关"],
+      "complexity": "moderate",
+      "languageNotes": "使用 dotenv 加载环境变量，导出单一 config 常量对象；生产模式下对占位密钥做启动期硬校验（fail-fast）。"
+    },
+    {
+      "id": "file:gateway/src/index.ts",
+      "type": "file",
+      "name": "index.ts",
+      "filePath": "gateway/src/index.ts",
+      "summary": "Express 网关服务入口，装配 helmet/cors/rate-limit 等中间件，挂载 /api/v1 下全部业务路由（auth、agents、chain、fiat、x402、payments、admin 等），启动 A2A worker、schedule daemon 与 agent indexer 等后台任务，并注册 SIGTERM/SIGINT 优雅关闭与健康检查接口。",
+      "tags": ["入口点", "entry-point", "express", "服务器", "api-handler"],
+      "complexity": "complex",
+      "languageNotes": "后台任务（a2a-worker、schedule-daemon、agent-indexer）均通过动态 import() 按需加载，便于优雅关闭时顺序停止。"
+    },
+    {
+      "id": "file:gateway/src/lib/crypto.ts",
+      "type": "file",
+      "name": "crypto.ts",
+      "filePath": "gateway/src/lib/crypto.ts",
+      "summary": "提供 AES-256-GCM 加密/解密工具函数（encryptApiKey/decryptApiKey），用于 tenant API key 落库加密；规范实现位于 @agentxv2/sdk，本模块委托 encryptWithKey/decryptWithKey 并保留旧调用点命名兼容。",
+      "tags": ["工具函数", "utility", "加密", "security", "crypto"],
+      "complexity": "simple",
+      "languageNotes": "线上密文格式为 base64(IV || authTag || ciphertext)，与旧版网关线格式字节兼容。"
+    },
+    {
+      "id": "file:gateway/src/middleware/auth.ts",
+      "type": "file",
+      "name": "auth.ts",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "summary": "认证中间件模块：实现 EIP-191 钱包签名 challenge 登录（getChallenge/verifyChallenge）、JWT Bearer 认证（authMiddleware）与 X-Api-Key 认证（apiKeyAuth），验证后加载 tenant 上下文并签发 JWT，未注册钱包自动创建 tenant。",
+      "tags": ["中间件", "middleware", "认证", "jwt", "安全"],
+      "complexity": "complex",
+      "languageNotes": "queryTenant/rowToTenant 为三条认证路径共用的 tenant 加载逻辑；challenge 存 Redis 并回退内存 Map，兼容 PM2 cluster 多进程。"
+    },
+    {
+      "id": "file:gateway/src/routes/admin.ts",
+      "type": "file",
+      "name": "admin.ts",
+      "filePath": "gateway/src/routes/admin.ts",
+      "summary": "管理后台路由（整体受 adminAuth 保护）：平台 API key 的增删改查（加密存储）、套餐能力编辑、tenant 列表与状态管理、用量统计以及系统/数据库/双链健康探测，并挂载 finance/partners 子路由。",
+      "tags": ["api-handler", "admin", "管理", "express", "路由"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:gateway/src/routes/agent-runs.ts",
+      "type": "file",
+      "name": "agent-runs.ts",
+      "filePath": "gateway/src/routes/agent-runs.ts",
+      "summary": "Agent 对话运行路由：POST /api/v1/agent/runs 以 SSE 流式代理转发对话请求到 Conversation Service（含 x402 支付门槛、订阅访问校验与 BYOK tenant key 服务端解密，明文密钥不出网关），并提供 runId 详情占位接口。",
+      "tags": ["api-handler", "agent-runs", "sse", "代理", "express"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:gateway/src/routes/agents.ts",
+      "type": "file",
+      "name": "agents.ts",
+      "filePath": "gateway/src/routes/agents.ts",
+      "summary": "公开只读的 Agents API：支持过滤与分页的列表查询、总数/活跃统计、按 agent 聚合的订阅统计（含金额以十进制字符串返回避免精度丢失）以及附带 on-chain 订阅计划的单 agent 详情。",
+      "tags": ["api-handler", "agents", "express", "查询", "路由"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:gateway/src/lib/crypto.ts:encryptApiKey",
+      "type": "function",
+      "name": "encryptApiKey",
+      "filePath": "gateway/src/lib/crypto.ts",
+      "lineRange": [13, 15],
+      "summary": "使用主密钥对明文 API key 进行 AES-256-GCM 加密，委托 SDK 的 encryptWithKey 实现。",
+      "tags": ["工具函数", "加密", "crypto"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/lib/crypto.ts:decryptApiKey",
+      "type": "function",
+      "name": "decryptApiKey",
+      "filePath": "gateway/src/lib/crypto.ts",
+      "lineRange": [17, 19],
+      "summary": "使用主密钥对密文 API key 进行 AES-256-GCM 解密，委托 SDK 的 decryptWithKey 实现。",
+      "tags": ["工具函数", "解密", "crypto"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:queryTenant",
+      "type": "function",
+      "name": "queryTenant",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [59, 68],
+      "summary": "统一查询 tenants（LEFT JOIN plans）并返回首行或 null，供 verifyChallenge、authMiddleware 与 apiKeyAuth 三条认证路径复用。",
+      "tags": ["查询", "数据库", "认证"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:rowToTenant",
+      "type": "function",
+      "name": "rowToTenant",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [70, 85],
+      "summary": "将 tenants 查询行映射为 TenantContext 对象，包含 plan、配额、kind（user/partner）及 P9 并行任务能力位等字段。",
+      "tags": ["映射", "数据模型", "认证"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:getChallenge",
+      "type": "function",
+      "name": "getChallenge",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [125, 139],
+      "summary": "处理 GET /auth/challenge，按钱包地址生成随机 nonce 的 challenge 消息并存储（Redis 优先、内存 Map 回退）。",
+      "tags": ["api-handler", "认证", "challenge"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:verifyChallenge",
+      "type": "function",
+      "name": "verifyChallenge",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [141, 232],
+      "summary": "处理 POST /auth/verify，用 ethers 校验 EIP-191 签名与 nonce、加载或自动创建 tenant（补发/生成 api_key），并签发 JWT 会话令牌返回。",
+      "tags": ["api-handler", "认证", "jwt", "签名"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:authMiddleware",
+      "type": "function",
+      "name": "authMiddleware",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [234, 271],
+      "summary": "JWT Bearer 认证中间件：校验 Authorization 头与 token，加载 tenant 挂到 req.tenant 后放行，校验失败返回 401/403。",
+      "tags": ["middleware", "认证", "jwt"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:getApiKey",
+      "type": "function",
+      "name": "getApiKey",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [275, 293],
+      "summary": "处理 GET /auth/api-key，从数据库返回当前已认证 tenant 的 API key。",
+      "tags": ["api-handler", "认证", "api-key"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:gateway/src/middleware/auth.ts:apiKeyAuth",
+      "type": "function",
+      "name": "apiKeyAuth",
+      "filePath": "gateway/src/middleware/auth.ts",
+      "lineRange": [297, 321],
+      "summary": "X-Api-Key 认证中间件：按请求头 api key 查询 tenant 并挂载上下文；无该头时放行交由 JWT 认证处理，suspended 账户返回 403。",
+      "tags": ["middleware", "认证", "api-key"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:gateway/src/lib/crypto.ts",
+      "target": "function:gateway/src/lib/crypto.ts:encryptApiKey",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/lib/crypto.ts",
+      "target": "function:gateway/src/lib/crypto.ts:decryptApiKey",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/lib/crypto.ts",
+      "target": "function:gateway/src/lib/crypto.ts:encryptApiKey",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/lib/crypto.ts",
+      "target": "function:gateway/src/lib/crypto.ts:decryptApiKey",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:queryTenant",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:rowToTenant",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:getChallenge",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:verifyChallenge",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:authMiddleware",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:getApiKey",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:apiKeyAuth",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:getChallenge",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:verifyChallenge",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:authMiddleware",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:getApiKey",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:gateway/src/middleware/auth.ts",
+      "target": "function:gateway/src/middleware/auth.ts:apiKeyAuth",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ]
+}

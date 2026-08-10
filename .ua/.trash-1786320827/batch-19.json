@@ -1,0 +1,648 @@
+{
+  "nodes": [
+    {
+      "id": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "type": "file",
+      "name": "useAgentRegistry.ts",
+      "filePath": "frontend/hooks/aimarket/useAgentRegistry.ts",
+      "summary": "v3 版 Agent 注册表 hook，基于 Gateway API（不再直连合约），通过 useQuery 从 /api/v1/agents 拉取 Agent 列表与单个详情，并将后端行数据映射为统一的 AgentInfo 结构，供市场页面展示与分页使用。",
+      "tags": ["hook", "data-fetching", "api-client", "marketplace", "react-query"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/hooks/aimarket/useAgentRegistry.ts:mapAgent",
+      "type": "function",
+      "name": "mapAgent",
+      "filePath": "frontend/hooks/aimarket/useAgentRegistry.ts",
+      "lineRange": [42, 68],
+      "summary": "将 Gateway 返回的原始 agent 行数据转换为前端 AgentInfo 结构，补齐 metadata 兼容字段及 isLoaded/hasError/status 等状态标记。",
+      "tags": ["utility", "data-mapping", "serialization"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/hooks/aimarket/useAgentRegistry.ts:useAgentRegistry",
+      "type": "function",
+      "name": "useAgentRegistry",
+      "filePath": "frontend/hooks/aimarket/useAgentRegistry.ts",
+      "lineRange": [70, 104],
+      "summary": "核心注册表 hook，从 Gateway 获取全部 Agent 并维护本地副本，对外暴露 agents、加载/错误状态、refetch 与 fetchMore（当前 Gateway 一次性返回全部，无需分页）。",
+      "tags": ["hook", "data-fetching", "state-management"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/hooks/aimarket/useAgentRegistry.ts:useAgentDetail",
+      "type": "function",
+      "name": "useAgentDetail",
+      "filePath": "frontend/hooks/aimarket/useAgentRegistry.ts",
+      "lineRange": [108, 125],
+      "summary": "按 agentId 查询单个 Agent 详情的 hook，404 时返回 null，复用 mapAgent 进行数据映射，支持 60 秒 staleTime 缓存。",
+      "tags": ["hook", "data-fetching", "detail-view"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:frontend/hooks/aimarket/useAgentSearch.ts",
+      "type": "file",
+      "name": "useAgentSearch.ts",
+      "filePath": "frontend/hooks/aimarket/useAgentSearch.ts",
+      "summary": "Agent 市场的前端搜索与过滤 hook，基于 useMemo/useCallback 实现文本搜索、标签/类别/价格类型过滤、排序，并派生可用的标签、类别与价格类型候选列表及结果统计。",
+      "tags": ["hook", "search", "filtering", "marketplace", "frontend-logic"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:frontend/hooks/aimarket/useAgentSearch.ts:useAgentSearch",
+      "type": "function",
+      "name": "useAgentSearch",
+      "filePath": "frontend/hooks/aimarket/useAgentSearch.ts",
+      "lineRange": [35, 228],
+      "summary": "接收 AgentInfo 列表，维护 filters 状态并派生 filteredAgents（含无 metadata 时的 ID 搜索兼容逻辑）、可用标签/类别/价格类型集合，以及各过滤条件的 setter 回调与重置能力。",
+      "tags": ["hook", "search", "filtering", "memoization"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:frontend/hooks/useAgentChat.ts",
+      "type": "file",
+      "name": "useAgentChat.ts",
+      "filePath": "frontend/hooks/useAgentChat.ts",
+      "summary": "Agent 对话核心 hook，通过 @agentxv2/sdk 的 ConversationClient 与 Gateway 通信，支持并行任务模式（会话+任务轮询）与单轮 SSE 流式两种执行方式，覆盖会话创建/续接、任务轮询、流式增量、工具调用、思考文本与链上授权回调。",
+      "tags": ["hook", "chat", "streaming", "sse", "agent-sdk"],
+      "complexity": "complex",
+      "languageNotes": "以大量 useRef 管理轮询定时器、已浮现任务集合与 abort 控制器，SSE 流式与任务轮询双模式并存，并对平台/BYOK 两种 LLM key 模式做处理。"
+    },
+    {
+      "id": "function:frontend/hooks/useAgentChat.ts:useAgentChat",
+      "type": "function",
+      "name": "useAgentChat",
+      "filePath": "frontend/hooks/useAgentChat.ts",
+      "lineRange": [66, 410],
+      "summary": "对话主 hook：管理消息/流式/思考文本/会话状态，封装创建会话、启动任务轮询、发送消息（流式或建任务）、取消任务、清空对话等操作，并通过 options 回调把文本增量、工具调用、思考、完成/错误/链上授权等事件上报给调用方。",
+      "tags": ["hook", "chat", "state-management", "polling", "streaming"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:frontend/hooks/useGatewayAuth.ts",
+      "type": "file",
+      "name": "useGatewayAuth.ts",
+      "filePath": "frontend/hooks/useGatewayAuth.ts",
+      "summary": "Gateway 钱包认证 hook，实现 EIP-191 challenge→签名→JWT 的完整流程：自动请求 challenge、用 wagmi walletClient 签名、换取 access token，并拉取租户/套餐/自有 key 上下文信息，附带自动续期逻辑。",
+      "tags": ["hook", "authentication", "wallet", "eip-191", "jwt"],
+      "complexity": "moderate",
+      "languageNotes": "认证基于 EIP-191 个人消息签名（challenge 携带时间戳与过期校验），token 通过内存 ref 缓存并结合环境变量网关地址使用。"
+    },
+    {
+      "id": "function:frontend/hooks/useGatewayAuth.ts:useGatewayAuth",
+      "type": "function",
+      "name": "useGatewayAuth",
+      "filePath": "frontend/hooks/useGatewayAuth.ts",
+      "lineRange": [58, 163],
+      "summary": "根据 wallet 连接状态自动执行 authenticate（challenge→signMessage→verify 换取 JWT），并异步加载租户、套餐与自有 key 上下文，对外暴露 isAuthenticated、accessToken、context、logout 与手动 authenticate。",
+      "tags": ["hook", "authentication", "wallet", "challenge-response"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "type": "file",
+      "name": "useUserSubscriptions.ts",
+      "filePath": "frontend/hooks/user/useUserSubscriptions.ts",
+      "summary": "用户链上订阅管理 hook 集，通过 wagmi 与 SubscriptionManagerV1 合约交互：查询订阅列表/详情/套餐详情，将合约原始 BigInt 数据转换为前端 Subscription/SubscriptionPlan 结构，并提供续费付款、取消订阅、有效性检查等交易操作。",
+      "tags": ["hook", "web3", "subscription", "smart-contract", "wagmi"],
+      "complexity": "complex",
+      "languageNotes": "大量使用 BigInt 处理合约返回的链上数值，并通过 transformSubscriptionData 做统一的原始数据→领域模型转换与容错。"
+    },
+    {
+      "id": "function:frontend/hooks/user/useUserSubscriptions.ts:transformSubscriptionData",
+      "type": "function",
+      "name": "transformSubscriptionData",
+      "filePath": "frontend/hooks/user/useUserSubscriptions.ts",
+      "lineRange": [77, 147],
+      "summary": "将合约返回的原始订阅数据数组转换为 Subscription 领域对象：BigInt 字段归一、subscriber 地址校验、基于状态与宽限期（3 天）计算 isActive，失败时返回默认无效订阅兜底。",
+      "tags": ["utility", "data-transformation", "bigint", "validation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/hooks/user/useUserSubscriptions.ts:useUserSubscriptions",
+      "type": "function",
+      "name": "useUserSubscriptions",
+      "filePath": "frontend/hooks/user/useUserSubscriptions.ts",
+      "lineRange": [149, 361],
+      "summary": "主订阅 hook：通过 useQuery 读取用户全部订阅并转换，暴露 processPayment（写合约+延时 refetch）、cancelSubscription、getPlanDetails、checkSubscriptionActive 等操作及加载/错误状态。",
+      "tags": ["hook", "web3", "subscription", "contract-interaction"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:frontend/hooks/user/useUserSubscriptions.ts:useSubscriptionDetail",
+      "type": "function",
+      "name": "useSubscriptionDetail",
+      "filePath": "frontend/hooks/user/useUserSubscriptions.ts",
+      "lineRange": [364, 419],
+      "summary": "按 subscriptionId 查询单个订阅详情：先从合约获取用户订阅列表，再匹配指定 ID 返回对应订阅对象，未找到时返回 null。",
+      "tags": ["hook", "web3", "detail-view", "subscription"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:frontend/hooks/user/useUserSubscriptions.ts:useActiveSubscriptions",
+      "type": "function",
+      "name": "useActiveSubscriptions",
+      "filePath": "frontend/hooks/user/useUserSubscriptions.ts",
+      "lineRange": [422, 435],
+      "summary": "基于 useUserSubscriptions 派生活跃订阅列表（过滤 isActive 为 true 的订阅）的轻量 hook。",
+      "tags": ["hook", "derived-state", "subscription"],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:frontend/lib/i18n/en.json",
+      "type": "config",
+      "name": "en.json",
+      "filePath": "frontend/lib/i18n/en.json",
+      "summary": "英文翻译资源文件，按 common/header/home/marketplace/studio/dashboard/agentDashboard/a2a/agentDetail/sidebar/language 等 11 个区块组织前端 UI 文案，作为 i18next 的默认 fallback 语言资源。",
+      "tags": ["configuration", "i18n", "localization", "translations"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:frontend/lib/i18n/zh-Hant.json",
+      "type": "config",
+      "name": "zh-Hant.json",
+      "filePath": "frontend/lib/i18n/zh-Hant.json",
+      "summary": "繁体中文翻译资源文件，与 en.json 保持同构的 11 个文案区块（common/header/home/marketplace/studio/dashboard/agentDashboard/a2a/agentDetail/sidebar/language），由 i18next 按语言检测加载。",
+      "tags": ["configuration", "i18n", "localization", "translations"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:frontend/lib/ipfs.ts",
+      "type": "file",
+      "name": "ipfs.ts",
+      "filePath": "frontend/lib/ipfs.ts",
+      "summary": "IPFS 工具函数集，统一走服务端代理路由（/api/ipfs/upload、/api/ipfs/upload-json），浏览器端不接触 Pinata JWT：提供文件/JSON 上传、CID 获取、URL/协议 URL 构建、CID 校验、文件大小与类型校验等辅助能力。",
+      "tags": ["utility", "ipfs", "pinata", "file-upload", "frontend-lib"],
+      "complexity": "moderate",
+      "languageNotes": "安全设计上由服务端持有 PINATA_JWT，客户端仅调用代理路由；CID 校验同时支持 Qm 前缀 v0 与 bafy 前缀 v1 格式。"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:parseUpload",
+      "type": "function",
+      "name": "parseUpload",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [14, 26],
+      "summary": "解析上传接口响应：非 2xx 时抛出携带服务端错误信息的异常，成功时校验并返回 IpfsHash CID。",
+      "tags": ["utility", "error-handling", "response-parsing"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:checkPinataConfig",
+      "type": "function",
+      "name": "checkPinataConfig",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [33, 35],
+      "summary": "检查 IPFS 配置状态；因 JWT 由服务端管理，代理路由挂载即视为就绪，真实有效性由每次上传校验。",
+      "tags": ["utility", "configuration-check"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:uploadToIPFS",
+      "type": "function",
+      "name": "uploadToIPFS",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [41, 49],
+      "summary": "经服务端代理上传文件到 IPFS：先做大小/类型校验，再以 FormData POST 到 /api/ipfs/upload 并返回 CID。",
+      "tags": ["utility", "file-upload", "ipfs"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:uploadJSONToIPFS",
+      "type": "function",
+      "name": "uploadJSONToIPFS",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [55, 62],
+      "summary": "将任意 JSON 元数据经服务端代理上传到 IPFS（POST /api/ipfs/upload-json），返回 CID。",
+      "tags": ["utility", "ipfs", "metadata-upload"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:getFromIPFS",
+      "type": "function",
+      "name": "getFromIPFS",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [67, 71],
+      "summary": "通过公共 gateway（无需 JWT）按 CID 获取 IPFS 内容并解析为 JSON。",
+      "tags": ["utility", "ipfs", "data-fetching"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:testPinataConnection",
+      "type": "function",
+      "name": "testPinataConnection",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [76, 83],
+      "summary": "上传一个带时间戳的测试 JSON 验证服务端 IPFS 代理与 PINATA_JWT 是否可用，返回成功/失败及提示信息。",
+      "tags": ["utility", "ipfs", "connection-test"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:getIPFSUrl",
+      "type": "function",
+      "name": "getIPFSUrl",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [88, 91],
+      "summary": "根据环境变量（NEXT_PUBLIC_GATEWAY_URL 或 NEXT_PUBLIC_IPFS_GATEWAY，默认 gateway.pinata.cloud）构建 CID 的 HTTP 网关 URL。",
+      "tags": ["utility", "url-builder", "ipfs"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:getIPFSProtocolUrl",
+      "type": "function",
+      "name": "getIPFSProtocolUrl",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [96, 98],
+      "summary": "将 CID 包装为 ipfs:// 协议格式的 URL。",
+      "tags": ["utility", "url-builder", "ipfs"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:extractCIDFromUrl",
+      "type": "function",
+      "name": "extractCIDFromUrl",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [103, 110],
+      "summary": "从 ipfs:// 协议 URL 或含 /ipfs/ 路径的 HTTP URL 中提取 CID，无法匹配时返回 null。",
+      "tags": ["utility", "parsing", "ipfs"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:isValidCID",
+      "type": "function",
+      "name": "isValidCID",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [115, 118],
+      "summary": "基础 CID 格式校验，同时支持 Qm 前缀（CIDv0）与 bafy 前缀（CIDv1）。",
+      "tags": ["utility", "validation", "ipfs"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:getFileSizeLimit",
+      "type": "function",
+      "name": "getFileSizeLimit",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [123, 125],
+      "summary": "返回上传文件大小上限（100MB）。",
+      "tags": ["utility", "config", "limits"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:isValidFileType",
+      "type": "function",
+      "name": "isValidFileType",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [130, 132],
+      "summary": "校验文件 MIME 类型是否在允许列表内（默认图片类型 jpeg/png/gif/webp）。",
+      "tags": ["utility", "validation", "file-type"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:frontend/lib/ipfs.ts:isValidFileSize",
+      "type": "function",
+      "name": "isValidFileSize",
+      "filePath": "frontend/lib/ipfs.ts",
+      "lineRange": [137, 139],
+      "summary": "校验文件大小是否不超过上限（默认取 getFileSizeLimit 的 100MB）。",
+      "tags": ["utility", "validation", "file-size"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "target": "function:frontend/hooks/aimarket/useAgentRegistry.ts:mapAgent",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "target": "function:frontend/hooks/aimarket/useAgentRegistry.ts:useAgentRegistry",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "target": "function:frontend/hooks/aimarket/useAgentRegistry.ts:useAgentDetail",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "target": "function:frontend/hooks/aimarket/useAgentRegistry.ts:useAgentRegistry",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "target": "function:frontend/hooks/aimarket/useAgentRegistry.ts:useAgentDetail",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/hooks/aimarket/useAgentSearch.ts",
+      "target": "function:frontend/hooks/aimarket/useAgentSearch.ts:useAgentSearch",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/aimarket/useAgentSearch.ts",
+      "target": "function:frontend/hooks/aimarket/useAgentSearch.ts:useAgentSearch",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/hooks/aimarket/useAgentSearch.ts",
+      "target": "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:frontend/hooks/useAgentChat.ts",
+      "target": "function:frontend/hooks/useAgentChat.ts:useAgentChat",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/useAgentChat.ts",
+      "target": "function:frontend/hooks/useAgentChat.ts:useAgentChat",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/hooks/useGatewayAuth.ts",
+      "target": "function:frontend/hooks/useGatewayAuth.ts:useGatewayAuth",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/useGatewayAuth.ts",
+      "target": "function:frontend/hooks/useGatewayAuth.ts:useGatewayAuth",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "target": "function:frontend/hooks/user/useUserSubscriptions.ts:transformSubscriptionData",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "target": "function:frontend/hooks/user/useUserSubscriptions.ts:useUserSubscriptions",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "target": "function:frontend/hooks/user/useUserSubscriptions.ts:useSubscriptionDetail",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "target": "function:frontend/hooks/user/useUserSubscriptions.ts:useActiveSubscriptions",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "target": "function:frontend/hooks/user/useUserSubscriptions.ts:useUserSubscriptions",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "target": "function:frontend/hooks/user/useUserSubscriptions.ts:useSubscriptionDetail",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/hooks/user/useUserSubscriptions.ts",
+      "target": "function:frontend/hooks/user/useUserSubscriptions.ts:useActiveSubscriptions",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:parseUpload",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:checkPinataConfig",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:uploadToIPFS",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:uploadJSONToIPFS",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:getFromIPFS",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:testPinataConnection",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:getIPFSUrl",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:getIPFSProtocolUrl",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:extractCIDFromUrl",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:isValidCID",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:getFileSizeLimit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:isValidFileType",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:isValidFileSize",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:checkPinataConfig",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:uploadToIPFS",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:uploadJSONToIPFS",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:getFromIPFS",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:testPinataConnection",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:getIPFSUrl",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:getIPFSProtocolUrl",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:extractCIDFromUrl",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:isValidCID",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:getFileSizeLimit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:isValidFileType",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/ipfs.ts",
+      "target": "function:frontend/lib/ipfs.ts:isValidFileSize",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "config:frontend/lib/i18n/en.json",
+      "target": "file:frontend/lib/i18n/index.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:frontend/lib/i18n/en.json",
+      "target": "file:frontend/components/providers/I18nProvider.tsx",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:frontend/lib/i18n/zh-Hant.json",
+      "target": "file:frontend/lib/i18n/index.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:frontend/lib/i18n/zh-Hant.json",
+      "target": "file:frontend/components/providers/I18nProvider.tsx",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

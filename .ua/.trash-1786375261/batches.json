@@ -1,0 +1,1382 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "louvain",
+  "totalFiles": 546,
+  "totalBatches": 1,
+  "exportsByPath": {
+    ".gitmodules": [],
+    ".ua/.understandignore": [],
+    "contracts/script/Deploy.s.sol": [],
+    "contracts/script/DeployA2A.s.sol": [],
+    "contracts/script/DeployLocal.s.sol": [],
+    "contracts/script/DeployOxaChain.s.sol": [],
+    "contracts/script/DeployOxaChainFull.s.sol": [],
+    "contracts/src/IdentityRegistry.sol": [],
+    "contracts/src/SubscriptionManager.sol": [],
+    "contracts/src/erc8004-core/BaseReputationRegistry.sol": [],
+    "contracts/src/erc8004-core/IdentityRegistry.sol": [],
+    "contracts/src/erc8004-core/ReputationRegistry.sol": [],
+    "contracts/src/erc8004-core/ValidationRegistry.sol": [],
+    "contracts/src/erc8004-extensions/A2AProtocolRegistry.sol": [],
+    "contracts/src/erc8004-extensions/AgentFactory.sol": [],
+    "contracts/src/erc8004-extensions/AgentWallet.sol": [],
+    "contracts/src/erc8004-extensions/ConfigurationRegistry.sol": [],
+    "contracts/src/erc8004-extensions/MultiEndpointRegistry.sol": [],
+    "contracts/src/erc8004-extensions/PaymentGateway.sol": [],
+    "contracts/src/erc8004-extensions/SubscriptionManager.sol": [],
+    "contracts/src/erc8004-extensions/TokenPriceOracle.sol": [],
+    "contracts/src/erc8004-interfaces/ERC8004Types.sol": [],
+    "contracts/src/erc8004-interfaces/IERC8004Identity.sol": [],
+    "contracts/src/erc8004-interfaces/IERC8004Reputation.sol": [],
+    "contracts/src/erc8004-interfaces/IERC8004Validation.sol": [],
+    "contracts/src/mock/MockUSDC.sol": [],
+    "contracts/test/AgentX.t.sol": [],
+    "conversation-service/src/config.ts": [
+      "config"
+    ],
+    "conversation-service/src/index.ts": [],
+    "conversation-service/src/lib/crypto.ts": [
+      "encryptSecret",
+      "decryptSecret"
+    ],
+    "conversation-service/src/lib/db.ts": [
+      "getPool",
+      "closePool"
+    ],
+    "conversation-service/src/routes/runs.ts": [
+      "createRunsRouter"
+    ],
+    "conversation-service/src/routes/sessions.ts": [
+      "createSessionsRouter"
+    ],
+    "conversation-service/src/routes/tasks.ts": [
+      "createTasksRouter"
+    ],
+    "conversation-service/src/routes/tenants.ts": [
+      "createTenantsRouter"
+    ],
+    "conversation-service/src/services/agent-context-loader.ts": [
+      "AgentSkillDef",
+      "AgentContextLoader"
+    ],
+    "conversation-service/src/services/agent-runner.ts": [
+      "AgentRunnerService"
+    ],
+    "conversation-service/src/services/memory-engine.ts": [
+      "MemoryEngine"
+    ],
+    "conversation-service/src/services/orchestrator.ts": [
+      "OrchestratorService"
+    ],
+    "conversation-service/src/services/task-manager.ts": [
+      "TaskManager"
+    ],
+    "conversation-service/src/services/tenant-llm-resolver.ts": [
+      "TenantLLMResolver"
+    ],
+    "conversation-service/src/services/tool-executor.ts": [
+      "ToolExecutor"
+    ],
+    "conversation-service/test/task-manager.test.ts": [],
+    "examples/sdk-chain-read.ts": [],
+    "examples/sdk-chat-byok.ts": [],
+    "examples/sdk-create-plan.ts": [],
+    "examples/sdk-mcp-dapp.ts": [
+      "initDApp"
+    ],
+    "frontend/abis/A2AProtocol.ts": [
+      "A2A_CREATE_TASK_ABI",
+      "A2A_COMPLETE_TASK_ABI",
+      "A2A_TASK_ABI",
+      "A2A_USER_TASKS_ABI"
+    ],
+    "frontend/abis/AgentFactory.ts": [
+      "AGENT_FACTORY_ABI"
+    ],
+    "frontend/abis/ConfigurationRegistry.ts": [
+      "CONFIGURATION_REGISTRY_ABI"
+    ],
+    "frontend/abis/IdentityRegistry.ts": [
+      "IDENTITY_REGISTRY_ABI"
+    ],
+    "frontend/abis/MultiEndpoint.ts": [
+      "MULTI_ENDPOINT_ABI"
+    ],
+    "frontend/abis/PaymentGateway.ts": [
+      "PAYMENT_GATEWAY_ABI"
+    ],
+    "frontend/abis/ReputationRegistry.ts": [
+      "REPUTATION_REGISTRY_ABI"
+    ],
+    "frontend/abis/SubscriptionManager.ts": [
+      "SUBSCRIPTION_MANAGER_ABI"
+    ],
+    "frontend/abis/SubscriptionManagerV1.ts": [
+      "SUBSCRIPTION_MANAGER_V1_ABI"
+    ],
+    "frontend/app/a2a/a2a-utils.ts": [
+      "GATEWAY_URL",
+      "oxaChain",
+      "A2A_REGISTRY",
+      "publicClient",
+      "TASK_TYPE_PRESETS",
+      "friendlyError"
+    ],
+    "frontend/app/a2a/page.tsx": [
+      "A2ATasksPage"
+    ],
+    "frontend/app/admin/page.tsx": [
+      "AdminPage"
+    ],
+    "frontend/app/admin/tabs/applications.tsx": [
+      "ApplicationsTab"
+    ],
+    "frontend/app/admin/tabs/integrations.tsx": [
+      "IntegrationsTab"
+    ],
+    "frontend/app/admin/tabs/payments.tsx": [
+      "PaymentsTab"
+    ],
+    "frontend/app/admin/tabs/plans.tsx": [
+      "PlansTab"
+    ],
+    "frontend/app/admin/tabs/platform-keys.tsx": [
+      "PlatformKeysTab"
+    ],
+    "frontend/app/admin/tabs/revenue.tsx": [
+      "RevenueTab"
+    ],
+    "frontend/app/admin/tabs/shared.tsx": [
+      "GATEWAY",
+      "fmtWei",
+      "fmtCents",
+      "StatusDot"
+    ],
+    "frontend/app/admin/tabs/system.tsx": [
+      "SystemTab"
+    ],
+    "frontend/app/admin/tabs/tenants.tsx": [
+      "TenantsTab"
+    ],
+    "frontend/app/admin/tabs/usage.tsx": [
+      "UsageTab"
+    ],
+    "frontend/app/api/ipfs/upload-json/route.ts": [
+      "POST"
+    ],
+    "frontend/app/api/ipfs/upload/route.ts": [
+      "POST"
+    ],
+    "frontend/app/apply/page.tsx": [
+      "ApplyPage"
+    ],
+    "frontend/app/dashboard/agent/page.tsx": [
+      "DeveloperDashboard"
+    ],
+    "frontend/app/docs/sdk/page.tsx": [
+      "dynamic",
+      "SdkDocsPage"
+    ],
+    "frontend/app/layout.tsx": [
+      "metadata",
+      "viewport",
+      "RootLayout"
+    ],
+    "frontend/app/marketplace/agent/[id]/page.tsx": [
+      "AgentDetailPage"
+    ],
+    "frontend/app/marketplace/page.tsx": [
+      "MarketplacePage"
+    ],
+    "frontend/app/marketplace/skills/page.tsx": [
+      "SkillsPage"
+    ],
+    "frontend/app/page.tsx": [
+      "HomePage"
+    ],
+    "frontend/app/studio/basics/page.tsx": [
+      "BasicsPage"
+    ],
+    "frontend/app/studio/encrypt/page.tsx": [
+      "EncryptPage"
+    ],
+    "frontend/app/studio/layout.tsx": [
+      "StudioLayout"
+    ],
+    "frontend/app/studio/page.tsx": [
+      "StudioPage"
+    ],
+    "frontend/app/studio/publish/page.tsx": [
+      "PublishPage"
+    ],
+    "frontend/app/studio/skills/page.tsx": [
+      "SkillsPage"
+    ],
+    "frontend/app/user/agents/page.tsx": [
+      "MyAgentsPage"
+    ],
+    "frontend/app/user/chat/[agentId]/chat-utils.ts": [
+      "HISTORY_KEY_PREFIX",
+      "llmApiKeyFromLocalStorage"
+    ],
+    "frontend/app/user/chat/[agentId]/page.tsx": [
+      "ChatPage"
+    ],
+    "frontend/app/user/chat/page.tsx": [
+      "MyChatsPage"
+    ],
+    "frontend/app/user/dashboard/page.tsx": [
+      "UserDashboard"
+    ],
+    "frontend/app/user/plans/page.tsx": [
+      "PlansPage"
+    ],
+    "frontend/app/user/schedules/page.tsx": [
+      "SchedulesPage"
+    ],
+    "frontend/app/user/settings/page.tsx": [
+      "SettingsPage"
+    ],
+    "frontend/app/user/subscriptions/[subscriptionId]/page.tsx": [
+      "SubscriptionDetailPage"
+    ],
+    "frontend/app/user/subscriptions/[subscriptionId]/renew/page.tsx": [
+      "RenewPage"
+    ],
+    "frontend/app/user/subscriptions/page.tsx": [
+      "SubscriptionsPage"
+    ],
+    "frontend/components/ErrorBoundary.tsx": [
+      "ErrorBoundary"
+    ],
+    "frontend/components/a2a/CompleteTaskModal.tsx": [
+      "CompleteTaskModal"
+    ],
+    "frontend/components/a2a/CreateTaskPanel.tsx": [
+      "CreateTaskPanel"
+    ],
+    "frontend/components/a2a/OnchainApprovalModal.tsx": [
+      "OnchainApprovalModal"
+    ],
+    "frontend/components/a2a/TaskItem.tsx": [
+      "TaskItem"
+    ],
+    "frontend/components/agent/dashboard/AgentCardForm.tsx": [
+      "AgentCardForm"
+    ],
+    "frontend/components/agent/dashboard/AgentCardList.tsx": [
+      "AgentCardList"
+    ],
+    "frontend/components/agent/dashboard/AgentCardManager.tsx": [
+      "AgentCardManager"
+    ],
+    "frontend/components/agent/dashboard/AgentDashboard.tsx": [
+      "AgentDashboard"
+    ],
+    "frontend/components/agent/dashboard/AgentRegistration.tsx": [
+      "AgentRegistration"
+    ],
+    "frontend/components/agent/dashboard/AgentRegistrationForm.tsx": [
+      "AgentRegistrationForm"
+    ],
+    "frontend/components/agent/dashboard/ConfigEntryCard.tsx": [
+      "ConfigEntryCard"
+    ],
+    "frontend/components/agent/dashboard/ConfigFormModal.tsx": [
+      "ConfigFormModal"
+    ],
+    "frontend/components/agent/dashboard/ConfigurationManager.tsx": [
+      "ConfigurationManager"
+    ],
+    "frontend/components/agent/dashboard/EndpointCard.tsx": [
+      "EndpointCard"
+    ],
+    "frontend/components/agent/dashboard/EndpointFormModal.tsx": [
+      "EndpointFormModal"
+    ],
+    "frontend/components/agent/dashboard/EndpointManager.tsx": [
+      "EndpointManager"
+    ],
+    "frontend/components/agent/dashboard/MetadataEditForm.tsx": [
+      "MetadataEditForm"
+    ],
+    "frontend/components/agent/dashboard/RevenueChartSection.tsx": [
+      "RevenueChartSection"
+    ],
+    "frontend/components/agent/dashboard/RevenueDisplay.tsx": [
+      "RevenueDisplay"
+    ],
+    "frontend/components/agent/dashboard/RevenuePaymentTable.tsx": [
+      "RevenuePaymentTable"
+    ],
+    "frontend/components/agent/dashboard/RevenueStatsSection.tsx": [
+      "RevenueStatsSection"
+    ],
+    "frontend/components/agent/dashboard/SkillConfigForm.tsx": [
+      "SkillConfigForm"
+    ],
+    "frontend/components/agent/dashboard/SubscriptionManager.tsx": [
+      "SubscriptionManager"
+    ],
+    "frontend/components/agent/dashboard/SubscriptionPlanCard.tsx": [
+      "SubscriptionPlanCard"
+    ],
+    "frontend/components/agent/dashboard/SubscriptionPlanModal.tsx": [
+      "SubscriptionPlanModal"
+    ],
+    "frontend/components/agent/dashboard/configuration-utils.ts": [
+      "CONFIG_EXAMPLES",
+      "DATA_TYPES",
+      "validateForm",
+      "isSensitiveConfigKey",
+      "getDataTypeLabel",
+      "formatConfigValue",
+      "getConfigValuePreview"
+    ],
+    "frontend/components/agent/dashboard/endpoint-status.ts": [
+      "checkEndpointStatus",
+      "checkHttpEndpoint",
+      "checkWebSocketEndpoint",
+      "checkGrpcEndpoint",
+      "checkIpfsEndpoint"
+    ],
+    "frontend/components/agent/dashboard/endpoint-utils.ts": [
+      "ENDPOINT_TYPES",
+      "PROTOCOLS",
+      "validateForm",
+      "formatTimestamp",
+      "getEndpointTypeIcon"
+    ],
+    "frontend/components/agent/dashboard/hooks/useAgentCards.ts": [
+      "useAgentCards"
+    ],
+    "frontend/components/agent/dashboard/hooks/useAgentRegistration.ts": [
+      "useAgentRegistration"
+    ],
+    "frontend/components/agent/dashboard/hooks/useRevenueDisplay.ts": [
+      "Payment",
+      "Subscription",
+      "formatCurrency",
+      "useRevenueDisplay"
+    ],
+    "frontend/components/agent/dashboard/subscription-utils.ts": [
+      "BILLING_PERIODS",
+      "TOKENS",
+      "validateForm",
+      "formatPrice",
+      "getBillingPeriodLabel",
+      "getPeriodLabel",
+      "getTokenSymbol",
+      "formatTimestamp",
+      "isPlanDeactivated"
+    ],
+    "frontend/components/agent/hooks/agent-factory-types.ts": [
+      "AGENT_FACTORY_ADDRESS"
+    ],
+    "frontend/components/agent/hooks/contract-address.ts": [
+      "ZERO_ADDRESS",
+      "validateAddress"
+    ],
+    "frontend/components/agent/hooks/multi-endpoint-types.ts": [
+      "MULTI_ENDPOINT_ADDRESS",
+      "isEndpointStats",
+      "tupleToEndpointStats"
+    ],
+    "frontend/components/agent/hooks/payment-gateway-types.ts": [
+      "PAYMENT_GATEWAY_ADDRESS"
+    ],
+    "frontend/components/agent/hooks/subscription-types.ts": [
+      "BILLING_PERIOD_TO_ONCHAIN"
+    ],
+    "frontend/components/agent/hooks/useA2AProtocol.ts": [
+      "useA2AProtocol"
+    ],
+    "frontend/components/agent/hooks/useAgentFactory.ts": [
+      "AgentTemplate",
+      "TemplateCreationData",
+      "BatchCreationResult",
+      "UseAgentFactoryReturn",
+      "useAgentFactory"
+    ],
+    "frontend/components/agent/hooks/useAgentRegistry.ts": [
+      "useOnChainAgentRegistry"
+    ],
+    "frontend/components/agent/hooks/useConfiguration.ts": [
+      "useConfiguration"
+    ],
+    "frontend/components/agent/hooks/useMultiEndpoint.ts": [
+      "Endpoint",
+      "ProtocolConfig",
+      "EndpointStats",
+      "UseMultiEndpointReturn",
+      "useMultiEndpoint"
+    ],
+    "frontend/components/agent/hooks/usePaymentGateway.ts": [
+      "PaymentStatus",
+      "Payment",
+      "Dispute",
+      "UsePaymentGatewayReturn",
+      "usePaymentGateway"
+    ],
+    "frontend/components/agent/hooks/useReputation.ts": [
+      "useReputation",
+      "useAgentReputation"
+    ],
+    "frontend/components/agent/hooks/useSubscription.ts": [
+      "BILLING_PERIOD_TO_ONCHAIN",
+      "useSubscription"
+    ],
+    "frontend/components/agent/types/agent.ts": [],
+    "frontend/components/aimarket/SearchFilters.tsx": [
+      "SearchFilters"
+    ],
+    "frontend/components/aimarket/index.ts": [
+      "SearchFilters"
+    ],
+    "frontend/components/chat/MessageBubble.tsx": [
+      "MessageBubble"
+    ],
+    "frontend/components/chat/ModelSelector.tsx": [
+      "ModelSelector"
+    ],
+    "frontend/components/chat/TaskCard.tsx": [
+      "TASK_STATUS_STYLE",
+      "TaskCard"
+    ],
+    "frontend/components/chat/ToolCallBubble.tsx": [
+      "ToolCallBubble"
+    ],
+    "frontend/components/chat/index.ts": [
+      "ToolCallBubble",
+      "TaskCard",
+      "MessageBubble",
+      "ModelSelector"
+    ],
+    "frontend/components/guard/SubscriptionGuard.tsx": [
+      "useSubscriptionGuard",
+      "SubscriptionGuard",
+      "useHasActiveSubscription"
+    ],
+    "frontend/components/guard/index.ts": [
+      "SubscriptionGuard"
+    ],
+    "frontend/components/layout/AppLayout.tsx": [
+      "AppLayout"
+    ],
+    "frontend/components/layout/Header.tsx": [
+      "Header"
+    ],
+    "frontend/components/layout/LanguageSwitcher.tsx": [
+      "LanguageSwitcher"
+    ],
+    "frontend/components/layout/MobileNav.tsx": [
+      "MobileNav"
+    ],
+    "frontend/components/layout/Sidebar.tsx": [
+      "Sidebar"
+    ],
+    "frontend/components/layout/index.ts": [
+      "AppLayout",
+      "Header",
+      "Sidebar",
+      "MobileNav",
+      "LanguageSwitcher"
+    ],
+    "frontend/components/providers/I18nProvider.tsx": [
+      "I18nProvider"
+    ],
+    "frontend/components/providers/WagmiProvider.tsx": [
+      "CustomWagmiProvider"
+    ],
+    "frontend/components/providers/index.ts": [
+      "CustomWagmiProvider",
+      "I18nProvider"
+    ],
+    "frontend/components/studio/EncryptProgress.tsx": [
+      "EncryptProgress"
+    ],
+    "frontend/components/studio/StepIndicator.tsx": [
+      "StepIndicator"
+    ],
+    "frontend/components/studio/StepNav.tsx": [
+      "StepNav"
+    ],
+    "frontend/components/studio/StudioContext.tsx": [
+      "StudioProvider",
+      "useStudio"
+    ],
+    "frontend/components/studio/StudioHeader.tsx": [
+      "StudioHeader"
+    ],
+    "frontend/components/studio/index.ts": [
+      "StudioHeader",
+      "StudioProvider",
+      "useStudio",
+      "StepNav",
+      "StepIndicator",
+      "EncryptProgress",
+      "useCurrentStep"
+    ],
+    "frontend/components/studio/stepFromPath.ts": [
+      "useCurrentStep"
+    ],
+    "frontend/components/studio/types.ts": [
+      "AGENT_CATEGORY_OPTIONS",
+      "makeEmptyForm",
+      "validateBasics",
+      "validateSkills",
+      "validatePublish"
+    ],
+    "frontend/components/wallet/NetworkSwitcher.tsx": [
+      "NetworkSwitcher"
+    ],
+    "frontend/components/wallet/WalletConnect.tsx": [
+      "WalletConnect"
+    ],
+    "frontend/components/wallet/WalletStatus.tsx": [
+      "WalletStatus"
+    ],
+    "frontend/components/wallet/index.ts": [
+      "WalletConnect",
+      "WalletStatus",
+      "NetworkSwitcher"
+    ],
+    "frontend/ecosystem.config.js": [],
+    "frontend/examples/verify-create-plan.mjs": [],
+    "frontend/hooks/aimarket/index.ts": [
+      "useAgentRegistry",
+      "useAgentDetail",
+      "AgentInfo",
+      "UseAgentRegistryReturn",
+      "useAgentSearch",
+      "SearchFilters"
+    ],
+    "frontend/hooks/aimarket/useAgentRegistry.ts": [
+      "useAgentRegistry",
+      "useAgentDetail"
+    ],
+    "frontend/hooks/aimarket/useAgentSearch.ts": [
+      "useAgentSearch"
+    ],
+    "frontend/hooks/index.ts": [
+      "useGatewayAuth"
+    ],
+    "frontend/hooks/useAgentChat.ts": [
+      "useAgentChat"
+    ],
+    "frontend/hooks/useGatewayAuth.ts": [
+      "useGatewayAuth"
+    ],
+    "frontend/hooks/user/index.ts": [
+      "useMyAgentIds",
+      "useUserSubscriptions"
+    ],
+    "frontend/hooks/user/useMyAgentIds.ts": [
+      "useMyAgentIds"
+    ],
+    "frontend/hooks/user/useUserSubscriptions.ts": [
+      "useUserSubscriptions",
+      "useSubscriptionDetail",
+      "useActiveSubscriptions"
+    ],
+    "frontend/lib/aimarket/ipfsDataFetcher.ts": [
+      "IPFSDataFetcher",
+      "ipfsDataFetcher",
+      "testConnection",
+      "testCIDResolution",
+      "getRawContent",
+      "convertToURL"
+    ],
+    "frontend/lib/gateway.ts": [
+      "GATEWAY_URL",
+      "GATEWAY_URL_OPTIONAL",
+      "gatewayFetch"
+    ],
+    "frontend/lib/i18n/index.ts": [],
+    "frontend/lib/index.ts": [
+      "uploadToIPFS",
+      "uploadJSONToIPFS",
+      "getIPFSUrl",
+      "testPinataConnection"
+    ],
+    "frontend/lib/ipfs.ts": [
+      "checkPinataConfig",
+      "uploadToIPFS",
+      "uploadJSONToIPFS",
+      "getFromIPFS",
+      "testPinataConnection",
+      "getIPFSUrl",
+      "getIPFSProtocolUrl",
+      "extractCIDFromUrl",
+      "isValidCID",
+      "getFileSizeLimit",
+      "isValidFileType",
+      "isValidFileSize"
+    ],
+    "frontend/lib/wagmi/config.ts": [
+      "oxaChain",
+      "supportedChains",
+      "config"
+    ],
+    "frontend/next-env.d.ts": [],
+    "frontend/next.config.js": [],
+    "frontend/postcss.config.js": [],
+    "frontend/tailwind.config.js": [],
+    "gateway/deploy/add_swap_build.py": [
+      "run"
+    ],
+    "gateway/deploy/build_and_deploy.py": [
+      "run"
+    ],
+    "gateway/deploy/build_deploy_a2a.py": [
+      "ssh",
+      "run"
+    ],
+    "gateway/deploy/build_no_lint.py": [],
+    "gateway/deploy/build_on_fe.py": [
+      "run"
+    ],
+    "gateway/deploy/build_on_gw.py": [
+      "run"
+    ],
+    "gateway/deploy/build_prod.py": [],
+    "gateway/deploy/check_bal.py": [],
+    "gateway/deploy/check_code.py": [],
+    "gateway/deploy/check_docs.py": [],
+    "gateway/deploy/check_frontend.py": [
+      "run"
+    ],
+    "gateway/deploy/check_frontend2.py": [],
+    "gateway/deploy/check_pks.py": [],
+    "gateway/deploy/check_status.py": [
+      "run"
+    ],
+    "gateway/deploy/check_v2.py": [],
+    "gateway/deploy/clean_install.py": [],
+    "gateway/deploy/deploy_a2a.py": [
+      "run"
+    ],
+    "gateway/deploy/deploy_a2a_v2.py": [
+      "run"
+    ],
+    "gateway/deploy/deploy_bin.py": [
+      "run"
+    ],
+    "gateway/deploy/deploy_config.py": [],
+    "gateway/deploy/deploy_final.py": [
+      "run"
+    ],
+    "gateway/deploy/deploy_frontend.py": [
+      "run",
+      "upload"
+    ],
+    "gateway/deploy/deploy_mcp.py": [],
+    "gateway/deploy/deploy_now.py": [
+      "run"
+    ],
+    "gateway/deploy/deploy_push_all.py": [],
+    "gateway/deploy/deploy_script.py": [
+      "run"
+    ],
+    "gateway/deploy/dev_mode.py": [
+      "run"
+    ],
+    "gateway/deploy/diag.py": [],
+    "gateway/deploy/diff_test.py": [],
+    "gateway/deploy/final_check.py": [
+      "run"
+    ],
+    "gateway/deploy/final_deploy.py": [],
+    "gateway/deploy/final_fix.py": [
+      "run"
+    ],
+    "gateway/deploy/final_push.py": [],
+    "gateway/deploy/find_frontend.py": [
+      "run"
+    ],
+    "gateway/deploy/fix_a2a.py": [
+      "run"
+    ],
+    "gateway/deploy/fix_and_build.py": [],
+    "gateway/deploy/fix_and_verify.py": [
+      "run"
+    ],
+    "gateway/deploy/fix_build.py": [
+      "run"
+    ],
+    "gateway/deploy/forge_deploy.py": [
+      "run"
+    ],
+    "gateway/deploy/full_push.py": [],
+    "gateway/deploy/full_push2.py": [],
+    "gateway/deploy/go_prod.py": [],
+    "gateway/deploy/gw_deploy.py": [],
+    "gateway/deploy/gw_final.py": [],
+    "gateway/deploy/gw_restart.py": [],
+    "gateway/deploy/gw_status.py": [],
+    "gateway/deploy/inline_build.py": [
+      "run",
+      "upload_content"
+    ],
+    "gateway/deploy/one_shot.py": [
+      "run"
+    ],
+    "gateway/deploy/ox_deploy.py": [],
+    "gateway/deploy/pg_setup.py": [],
+    "gateway/deploy/prod_deploy.py": [
+      "run"
+    ],
+    "gateway/deploy/prod_final.py": [],
+    "gateway/deploy/prod_go.py": [],
+    "gateway/deploy/prod_one_shot.py": [],
+    "gateway/deploy/prod_v2.py": [],
+    "gateway/deploy/prod_v3.py": [],
+    "gateway/deploy/push_docs.py": [],
+    "gateway/deploy/push_mcp.py": [],
+    "gateway/deploy/push_mcp_doc.py": [],
+    "gateway/deploy/push_v063.py": [],
+    "gateway/deploy/push_v2.py": [],
+    "gateway/deploy/qcheck.py": [],
+    "gateway/deploy/qcheck2.py": [],
+    "gateway/deploy/quick_check.py": [],
+    "gateway/deploy/rebuild.py": [],
+    "gateway/deploy/rebuild_frontend.py": [
+      "run"
+    ],
+    "gateway/deploy/restart.py": [],
+    "gateway/deploy/restore_frontend.py": [
+      "run"
+    ],
+    "gateway/deploy/restore_frontend2.py": [
+      "run"
+    ],
+    "gateway/deploy/restore_gateway.py": [
+      "run"
+    ],
+    "gateway/deploy/restore_quick.py": [
+      "run"
+    ],
+    "gateway/deploy/run_bash.py": [],
+    "gateway/deploy/run_sep.py": [],
+    "gateway/deploy/sdk_upgrade.py": [
+      "run"
+    ],
+    "gateway/deploy/server_prepare.py": [
+      "run"
+    ],
+    "gateway/deploy/server_setup.py": [],
+    "gateway/deploy/ssh_check.py": [],
+    "gateway/deploy/ssh_push.py": [],
+    "gateway/deploy/start_deploy.py": [],
+    "gateway/deploy/start_frontend.py": [],
+    "gateway/deploy/start_v2.py": [],
+    "gateway/deploy/stat.py": [],
+    "gateway/deploy/tail_log.py": [],
+    "gateway/deploy/update_env.py": [],
+    "gateway/deploy/upload_and_start.py": [
+      "upload_dir",
+      "run"
+    ],
+    "gateway/deploy/verify_a2a.py": [],
+    "gateway/deploy/verify_mcp.py": [],
+    "gateway/deploy/verify_sdk.py": [],
+    "gateway/e2e_wallet.js": [],
+    "gateway/ecosystem.config.js": [],
+    "gateway/src/config.ts": [
+      "config"
+    ],
+    "gateway/src/index.ts": [],
+    "gateway/src/lib/crypto.ts": [
+      "encryptApiKey",
+      "decryptApiKey"
+    ],
+    "gateway/src/lib/db.ts": [
+      "getPool",
+      "closePool"
+    ],
+    "gateway/src/lib/ethers-utils.ts": [
+      "encodeRegisterWithMetadata",
+      "encodeHasActiveSubscription",
+      "safeGetPlan",
+      "encodeGiveFeedback",
+      "safeGetSubscriptionDetail",
+      "safeGetTask"
+    ],
+    "gateway/src/middleware/adminAuth.ts": [
+      "adminAuth"
+    ],
+    "gateway/src/middleware/auth.ts": [
+      "getChallenge",
+      "verifyChallenge",
+      "authMiddleware",
+      "getApiKey",
+      "apiKeyAuth"
+    ],
+    "gateway/src/middleware/error-handler.ts": [
+      "AppError",
+      "BadRequestError",
+      "UnauthorizedError",
+      "ForbiddenError",
+      "NotFoundError",
+      "ConflictError",
+      "TooManyRequestsError",
+      "globalErrorHandler",
+      "asyncHandler"
+    ],
+    "gateway/src/middleware/rate-limiter.ts": [
+      "getRedis",
+      "tenantRateLimiter",
+      "updateQuota"
+    ],
+    "gateway/src/routes/a2a.ts": [],
+    "gateway/src/routes/admin-finance.ts": [],
+    "gateway/src/routes/admin-partners.ts": [],
+    "gateway/src/routes/admin.ts": [],
+    "gateway/src/routes/agent-mcp.ts": [],
+    "gateway/src/routes/agent-runs.ts": [],
+    "gateway/src/routes/agents.ts": [],
+    "gateway/src/routes/chain.ts": [],
+    "gateway/src/routes/channel.ts": [],
+    "gateway/src/routes/chat-tasks.ts": [],
+    "gateway/src/routes/chat.ts": [],
+    "gateway/src/routes/developer.ts": [],
+    "gateway/src/routes/fiat.ts": [],
+    "gateway/src/routes/internal-orchestrate.ts": [],
+    "gateway/src/routes/mcp-executor.ts": [
+      "executeToolCall"
+    ],
+    "gateway/src/routes/mcp-tools.ts": [
+      "MCP_TOOLS",
+      "MCPTool"
+    ],
+    "gateway/src/routes/mcp.ts": [
+      "MCP_TOOLS"
+    ],
+    "gateway/src/routes/payments.ts": [],
+    "gateway/src/routes/schedules.ts": [],
+    "gateway/src/routes/skills.ts": [],
+    "gateway/src/routes/tenant.ts": [],
+    "gateway/src/routes/traces.ts": [],
+    "gateway/src/routes/x402.ts": [],
+    "gateway/src/services/a2a-worker.ts": [
+      "startA2AWorker",
+      "stopA2AWorker",
+      "getWorkerStatus"
+    ],
+    "gateway/src/services/agent-access.ts": [
+      "canAccessAgent",
+      "resolveAccessSubject",
+      "filterAccessibleAgents"
+    ],
+    "gateway/src/services/agent-indexer.ts": [
+      "extractMetadata",
+      "syncAgents",
+      "syncAgentId",
+      "removeAgent",
+      "startAgentSyncWatcher",
+      "syncPlanHistory",
+      "startPlanSyncWatcher",
+      "syncSubscriptionHistory",
+      "startSubscriptionSyncWatcher"
+    ],
+    "gateway/src/services/chain-config.ts": [
+      "CHAINS"
+    ],
+    "gateway/src/services/chain-data-reader.ts": [
+      "ChainKey",
+      "log",
+      "ChainDataReader",
+      "chainDataReader"
+    ],
+    "gateway/src/services/conversation-proxy.ts": [
+      "ConversationProxy",
+      "getConversationProxy"
+    ],
+    "gateway/src/services/payments-a2a-period.ts": [
+      "A2APeriodService",
+      "a2aPeriodService"
+    ],
+    "gateway/src/services/payments-bridge.ts": [
+      "AgentxPaymentStore",
+      "agentxPaymentStore",
+      "PaymentsBridge",
+      "paymentsBridge"
+    ],
+    "gateway/src/services/payments.ts": [
+      "paymentsService"
+    ],
+    "gateway/src/services/schedule-daemon.ts": [
+      "startScheduleDaemon",
+      "stopScheduleDaemon"
+    ],
+    "gateway/src/services/skill-service.ts": [
+      "SkillService",
+      "getSkillService"
+    ],
+    "gateway/src/services/subscription-access.ts": [
+      "hasSubscriptionAccess"
+    ],
+    "gateway/src/services/x402.ts": [
+      "priceWei",
+      "paymentRequired",
+      "verifyAndCredit",
+      "balanceOf",
+      "deduct",
+      "x402Guard",
+      "x402Available"
+    ],
+    "gateway/test/chat-tasks.test.ts": [],
+    "gateway/test/developer.test.ts": [],
+    "gateway/test/mcp.test.ts": [],
+    "integration-callers.env.example": [],
+    "mcp/src/client.ts": [
+      "McpClient"
+    ],
+    "mcp/src/index.ts": [
+      "McpClient",
+      "McpClientConfig"
+    ],
+    "mcp/src/types.ts": [],
+    "payments/src/adapters/chain.ts": [
+      "ChainAdapter"
+    ],
+    "payments/src/adapters/mpp.ts": [
+      "MPPAdapter"
+    ],
+    "payments/src/adapters/stablecoin.ts": [
+      "TRANSFER_EVENT_ABI",
+      "StablecoinAdapter",
+      "parseTransfer"
+    ],
+    "payments/src/adapters/stripe.ts": [
+      "StripeAdapter"
+    ],
+    "payments/src/adapters/x402.ts": [
+      "X402Adapter"
+    ],
+    "payments/src/client.ts": [
+      "X402Client",
+      "PaymentsClient",
+      "MPPClient",
+      "A2AClient",
+      "PeriodClient"
+    ],
+    "payments/src/crypto.ts": [
+      "randomUUID",
+      "randomHex",
+      "toBase64",
+      "fromBase64",
+      "hmacSha256Hex",
+      "timingSafeEqualStr"
+    ],
+    "payments/src/errors.ts": [
+      "PaymentError",
+      "isPaymentError"
+    ],
+    "payments/src/index.ts": [
+      "PaymentError",
+      "isPaymentError",
+      "PaymentErrorCode",
+      "ChainAdapter",
+      "ChainInfo",
+      "ChainConfig",
+      "StripeAdapter",
+      "StripeConfig",
+      "CheckoutSessionInput",
+      "X402Adapter",
+      "X402Config",
+      "X402Deps",
+      "MPPAdapter",
+      "MPPConfig",
+      "MPPDeps",
+      "MPPSessionInput",
+      "MPPVoucherInput",
+      "MPPSettleResult",
+      "StablecoinAdapter",
+      "StablecoinConfig",
+      "StablecoinDeps"
+    ],
+    "payments/src/protocol/mpp-voucher.ts": [
+      "MPP_DOMAIN_NAME",
+      "MPP_DOMAIN_VERSION",
+      "MPP_TYPES",
+      "buildVoucherMessage",
+      "recoverVoucherSigner"
+    ],
+    "payments/src/protocol/stablecoin.ts": [
+      "EIP3009_DOMAIN_VERSION",
+      "EIP3009_TYPES",
+      "buildEIP3009Message",
+      "recoverEIP3009Signer",
+      "PERMIT2_DOMAIN_NAME",
+      "PERMIT2_DOMAIN_VERSION",
+      "PERMIT2_TYPES",
+      "recoverPermit2Signer"
+    ],
+    "payments/src/protocol/x402-v2.ts": [
+      "encodeHeader",
+      "decodeHeader",
+      "X402_DOMAIN_NAME",
+      "X402_DOMAIN_VERSION",
+      "X402_TYPES",
+      "buildPaymentMessage",
+      "recoverPaymentSigner",
+      "buildPaymentResponse"
+    ],
+    "payments/src/router.ts": [
+      "createPaymentsRouter"
+    ],
+    "payments/src/service.ts": [
+      "PaymentsService"
+    ],
+    "payments/src/store.ts": [
+      "PAYMENT_INTENT_STATUSES",
+      "PgPaymentStore",
+      "PgMPPSessionStore",
+      "PgAuthorizationStore"
+    ],
+    "payments/src/types.ts": [
+      "NATIVE_ASSET"
+    ],
+    "payments/tests/client.test.ts": [],
+    "payments/tests/errors.test.ts": [],
+    "payments/tests/helpers.ts": [
+      "makeStore",
+      "makeService",
+      "stubFetch",
+      "fakeStripeSession"
+    ],
+    "payments/tests/mpp.test.ts": [],
+    "payments/tests/p2p4.test.ts": [],
+    "payments/tests/router.test.ts": [],
+    "payments/tests/service.test.ts": [],
+    "payments/tests/stablecoin.test.ts": [],
+    "payments/tests/stripe.test.ts": [],
+    "payments/tests/x402-v2.test.ts": [],
+    "scripts/agentx-integration-test.mjs": [],
+    "scripts/local-payments/decouple-test.mjs": [],
+    "scripts/local-payments/mock-stripe.mjs": [],
+    "scripts/local-payments/run-flows-f10.mjs": [],
+    "scripts/local-payments/run-flows-f4.mjs": [],
+    "scripts/local-payments/run-flows-f5.mjs": [],
+    "scripts/local-payments/run-flows-f6.mjs": [],
+    "scripts/local-payments/run-flows-f7.mjs": [],
+    "scripts/local-payments/run-flows-f8.mjs": [],
+    "scripts/local-payments/run-flows.mjs": [],
+    "scripts/mcp-list-all-test.mjs": [],
+    "scripts/mcp-tools-test.mjs": [],
+    "sdk/src/a2a/a2a.ts": [
+      "A2AProtocol"
+    ],
+    "sdk/src/a2a/index.ts": [
+      "A2AProtocol",
+      "A2AConfig",
+      "A2A_VERSION"
+    ],
+    "sdk/src/agent-loop/a2a-daemon.ts": [
+      "A2ADaemon"
+    ],
+    "sdk/src/agent-loop/context-compactor.ts": [
+      "ContextCompactor"
+    ],
+    "sdk/src/agent-loop/executor.ts": [
+      "ToolExecutor"
+    ],
+    "sdk/src/agent-loop/fact-extractor.ts": [
+      "FactExtractor"
+    ],
+    "sdk/src/agent-loop/index.ts": [
+      "AgentLoop",
+      "ToolExecutor",
+      "ContextCompactor",
+      "FactExtractor",
+      "LoopTraceEmitter",
+      "buildTools",
+      "buildSystemPrompt",
+      "buildPlatformTools",
+      "executePlatformTool",
+      "wrapPlatformToolsAsSkills",
+      "getAllPlatformToolNames",
+      "PlatformToolDef",
+      "PlatformToolContext",
+      "A2ADaemon",
+      "A2ADaemonConfig",
+      "A2ATaskResult",
+      "LLMMessage",
+      "LLMToolCall",
+      "OpenAIToolDef",
+      "ChatRequest",
+      "ChatStreamEvent",
+      "LLMProvider",
+      "AgentLoopConfig",
+      "LoopRunContext",
+      "ToolCallStart",
+      "ToolCallResult",
+      "ToolCallRecord",
+      "AgentLoopResult"
+    ],
+    "sdk/src/agent-loop/loop.ts": [
+      "AgentLoop"
+    ],
+    "sdk/src/agent-loop/platform-tools.ts": [],
+    "sdk/src/agent-loop/platform-tools/definitions.ts": [
+      "buildPlatformTools",
+      "getAllPlatformToolNames"
+    ],
+    "sdk/src/agent-loop/platform-tools/executor.ts": [
+      "executePlatformTool",
+      "wrapPlatformToolsAsSkills"
+    ],
+    "sdk/src/agent-loop/platform-tools/index.ts": [],
+    "sdk/src/agent-loop/tool-builder.ts": [
+      "buildTools",
+      "buildSystemPrompt"
+    ],
+    "sdk/src/agent-loop/trace-emitter.ts": [
+      "LoopTraceEmitter"
+    ],
+    "sdk/src/agent-loop/types.ts": [],
+    "sdk/src/agent/agent-runner.ts": [
+      "AgentRunner"
+    ],
+    "sdk/src/agent/index.ts": [
+      "AgentRunner",
+      "AgentRunnerConfig",
+      "AgentRunContext",
+      "RunnableSkill",
+      "A2ASkillResult",
+      "OnChainReader",
+      "WalletSigner"
+    ],
+    "sdk/src/config/config.ts": [
+      "KNOWN_CHAINS",
+      "ConfigurationRegistry"
+    ],
+    "sdk/src/config/index.ts": [
+      "ConfigurationRegistry",
+      "KNOWN_CHAINS",
+      "ConfigRegistryOpts",
+      "ChainConfig",
+      "CONFIG_VERSION"
+    ],
+    "sdk/src/configuration/configuration.ts": [
+      "ConfigurationClient"
+    ],
+    "sdk/src/configuration/index.ts": [],
+    "sdk/src/conversation/client.ts": [
+      "ConversationTaskError",
+      "ConversationClient"
+    ],
+    "sdk/src/conversation/index.ts": [],
+    "sdk/src/core/crypto.ts": [
+      "randomBytes",
+      "bytesToHex",
+      "hexToBytes",
+      "aesEncrypt",
+      "aesDecrypt",
+      "encryptWithKey",
+      "decryptWithKey",
+      "generateAesKey",
+      "eciesEncrypt",
+      "eciesDecrypt",
+      "encryptPayload",
+      "decryptPayload",
+      "packAgentForPublish",
+      "publishAgent",
+      "unpackAgent",
+      "generateKeyPair",
+      "getPublicKey"
+    ],
+    "sdk/src/core/index.ts": [],
+    "sdk/src/core/types.ts": [
+      "AGENT_CATEGORIES",
+      "AgentXError"
+    ],
+    "sdk/src/endpoint/index.ts": [],
+    "sdk/src/endpoint/multi-endpoint.ts": [
+      "MultiEndpointClient"
+    ],
+    "sdk/src/events/events.ts": [
+      "subscribeToEvents"
+    ],
+    "sdk/src/events/index.ts": [
+      "subscribeToEvents",
+      "AgentXChainEvent",
+      "AgentXEventType",
+      "EventListenerOptions"
+    ],
+    "sdk/src/index.ts": [],
+    "sdk/src/ipfs/index.ts": [
+      "IPFSUploader",
+      "defaultIPFSUploader",
+      "IPFSUploaderConfig",
+      "IPFSUploadResult"
+    ],
+    "sdk/src/ipfs/ipfs-uploader.ts": [
+      "IPFSUploader",
+      "defaultIPFSUploader"
+    ],
+    "sdk/src/llm/factory.ts": [
+      "createLLMProvider"
+    ],
+    "sdk/src/llm/gateway-provider.ts": [
+      "GatewayProvider"
+    ],
+    "sdk/src/llm/index.ts": [
+      "OpenAIProvider",
+      "GatewayProvider",
+      "createLLMProvider",
+      "OpenAIProviderConfig",
+      "GatewayProviderConfig",
+      "ProviderFactoryConfig"
+    ],
+    "sdk/src/llm/openai-provider.ts": [
+      "OpenAIProvider"
+    ],
+    "sdk/src/llm/types.ts": [
+      "ChatRequest",
+      "ChatStreamEvent",
+      "LLMProvider"
+    ],
+    "sdk/src/mcp/connector.ts": [
+      "MCPConnector"
+    ],
+    "sdk/src/mcp/index.ts": [
+      "MCPConnector",
+      "MCPConnectorConfig",
+      "MCPTool",
+      "MCPCallResult",
+      "MCP_VERSION"
+    ],
+    "sdk/src/memory/index.ts": [],
+    "sdk/src/memory/types.ts": [],
+    "sdk/src/payment/a2a-client.ts": [
+      "request",
+      "A2AClient"
+    ],
+    "sdk/src/payment/index.ts": [
+      "SubscriptionPayments",
+      "SubscriptionPaymentMethod",
+      "SubscriptionPaymentsConfig",
+      "PaySubscriptionInput",
+      "PaySubscriptionResult",
+      "X402Info",
+      "MPPClient",
+      "X402Client",
+      "PaymentsClient",
+      "A2AClient",
+      "PeriodClient",
+      "ClientOptions",
+      "PAYMENT_VERSION"
+    ],
+    "sdk/src/payment/payments.ts": [
+      "SubscriptionPayments"
+    ],
+    "sdk/src/payment/period-client.ts": [
+      "PeriodClient"
+    ],
+    "sdk/src/react/index.ts": [
+      "useAgentRunner",
+      "UseAgentRunnerConfig",
+      "UseAgentRunnerResult",
+      "AgentRunContext",
+      "RunnableSkill",
+      "OnChainReader",
+      "WalletSigner"
+    ],
+    "sdk/src/react/useAgentRunner.ts": [
+      "useAgentRunner"
+    ],
+    "sdk/src/registry/agent-registry.ts": [
+      "parseTokenURIJSON",
+      "AgentRegistry",
+      "cidFromURI"
+    ],
+    "sdk/src/registry/index.ts": [
+      "AgentRegistry",
+      "cidFromURI",
+      "parseTokenURIJSON",
+      "AgentRegistryConfig",
+      "AgentSummary",
+      "AgentSummaryMetadata",
+      "GetAllAgentsOptions",
+      "StructuredAgentMetadata",
+      "IPFSFetcher",
+      "defaultIPFSFetcher",
+      "IPFSFetcherConfig",
+      "RegisteredAgent",
+      "AgentSearchQuery",
+      "AgentSearchResult",
+      "OnChainAgentMetadata",
+      "REGISTRY_VERSION"
+    ],
+    "sdk/src/registry/ipfs-fetcher.ts": [
+      "IPFSFetcher",
+      "defaultIPFSFetcher"
+    ],
+    "sdk/src/reputation/index.ts": [
+      "ReputationRegistry",
+      "ReputationConfig",
+      "REPUTATION_VERSION"
+    ],
+    "sdk/src/reputation/reputation.ts": [
+      "ReputationRegistry"
+    ],
+    "sdk/src/skills/browser.ts": [
+      "sleep",
+      "extractAccessibleDOM",
+      "executeBrowserAction"
+    ],
+    "sdk/src/skills/index.ts": [],
+    "sdk/src/subscription/agent-x402.ts": [
+      "AgentX402"
+    ],
+    "sdk/src/subscription/index.ts": [
+      "SubscriptionManager",
+      "guardSubscription",
+      "ZERO_ADDRESS",
+      "SUBSCRIPTION_PERIODS",
+      "SubscriptionConfig",
+      "PlanDetail",
+      "SubscriptionDetail",
+      "SubscriptionPeriod",
+      "CreatePlanParams",
+      "CreatePlanResult",
+      "SubscribeResult",
+      "AgentX402",
+      "AgentX402Config",
+      "SUBSCRIPTION_VERSION"
+    ],
+    "sdk/src/subscription/subscription.ts": [
+      "ZERO_ADDRESS",
+      "SUBSCRIPTION_PERIODS",
+      "SubscriptionManager",
+      "guardSubscription"
+    ],
+    "sdk/src/traces/index.ts": [],
+    "sdk/src/traces/types.ts": [
+      "NoopTraceEmitter",
+      "HttpTraceEmitter"
+    ],
+    "sdk/test/conversation-client.test.ts": [],
+    "sdk/test/payment.test.ts": [],
+    "sdk/test_ct5.mjs": []
+  },
+  "batches": [
+    {
+      "batchIndex": 11,
+      "files": [
+        {
+          "path": "docs/PROGRESS.md",
+          "language": "markdown",
+          "sizeLines": 498,
+          "fileCategory": "docs"
+        }
+      ],
+      "batchImportData": {
+        "docs/PROGRESS.md": []
+      },
+      "neighborMap": {}
+    }
+  ]
+}
