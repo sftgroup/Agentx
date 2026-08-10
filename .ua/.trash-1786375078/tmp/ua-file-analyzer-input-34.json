@@ -1,9 +1,0 @@
-{
-  "projectRoot": "/home/steven/Agentx",
-  "batchFiles": [
-    {"path": "scripts/local-payments/run-flows-f7.mjs", "language": "javascript", "sizeLines": 144, "fileCategory": "code"}
-  ],
-  "batchImportData": {
-    "scripts/local-payments/run-flows-f7.mjs": []
-  }
-}
