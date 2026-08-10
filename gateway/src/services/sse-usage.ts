@@ -49,9 +49,17 @@ export async function pipeSSEWithUsage(
         if (!dataLine) continue
         try {
           const ev = JSON.parse(dataLine.slice(6)) as Record<string, unknown> | null
-          if (ev && ev.type === 'done') {
-            const usage = ev.usage as { totalTokens?: number } | undefined
-            onUsage({ totalTokens: usage?.totalTokens ?? 0, llmSource: ev.llmSource as 'byok' | 'platform' | undefined })
+          if (!ev) continue
+          // Task streams wrap the agent event as { seq, type, payload } — the
+          // done event lives at payload; agent-run streams are flat. Unwrap so
+          // usage + llmSource are read from the same shape either way.
+          const inner =
+            ev.payload && typeof ev.payload === 'object' && 'type' in (ev.payload as Record<string, unknown>)
+              ? (ev.payload as Record<string, unknown>)
+              : ev
+          if (inner.type === 'done') {
+            const usage = inner.usage as { totalTokens?: number } | undefined
+            onUsage({ totalTokens: usage?.totalTokens ?? 0, llmSource: inner.llmSource as 'byok' | 'platform' | undefined })
           }
         } catch {
           // ignore malformed SSE lines

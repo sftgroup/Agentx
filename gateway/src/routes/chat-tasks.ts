@@ -15,14 +15,9 @@ import { decryptApiKey } from '../lib/crypto'
 import { config } from '../config'
 import { pipeSSEWithUsage } from '../services/sse-usage'
 import { updateQuota } from '../middleware/rate-limiter'
+import { markTaskBilled } from '../services/task-billing'
 
 const router = Router()
-
-/**
- * Quota metering for background tasks — idempotent per task across repeated
- * SSE subscriptions (replay + live) so tokens are counted exactly once.
- */
-const billedTaskIds = new Set<string>()
 
 /**
  * P9 capability gate (2026-08-08): sessions / tasks are gated uniformly by
@@ -69,9 +64,10 @@ async function resolveStoredKey(
 /**
  * Pipe a task's SSE stream to the client, metering platform-LLM tokens exactly
  * once per task. The `done` event carries usage + llmSource from the
- * conversation service (exact billing source). If llmSource is absent (older
- * conversation-service versions), no metering happens for tasks — the caller's
- * BYOK headers at creation time gate platform-key usage anyway.
+ * conversation service (exact billing source). Tasks that complete without any
+ * subscriber are metered separately via the completion callback
+ * (POST /api/v1/internal/task-billing) — both channels share the idempotent
+ * billed-task set so tokens are never double-counted.
  */
 async function pipeTaskSSE(
   upstream: globalThis.Response,
@@ -97,8 +93,7 @@ async function pipeTaskSSE(
     }
   })
 
-  if (platformTokens > 0 && tenantId && !billedTaskIds.has(taskId)) {
-    billedTaskIds.add(taskId)
+  if (platformTokens > 0 && tenantId && markTaskBilled(taskId)) {
     updateQuota(tenantId, platformTokens).catch(() => {})
   }
 }
@@ -162,17 +157,10 @@ router.post('/sessions/:sessionId/tasks', async (req: Request, res: ExpressRespo
 
     // P9 capability gate is enforced once at router.use(parallelTaskGate).
 
-    // B-end budget guard: partner tasks must carry their own LLM key (BYOK) so
-    // background/parallel work never consumes the platform fallback key budget.
-    const hasByok = !!req.headers['x-llm-api-key'] || !!tenantKeyId || !!req.body?.llmApiKey
-    if (req.tenant?.kind === 'partner' && !hasByok) {
-      return res.status(400).json({
-        error: 'Partner tasks require a BYOK LLM key (X-Llm-Api-Key header or tenantKeyId)',
-        code: 'LLM_KEY_REQUIRED',
-      })
-    }
-
-    // Stored BYOK: resolve the tenant's own key server-side (never leaves the gateway)
+    // Platform-key mode: a partner task without BYOK uses the platform LLM key
+    // and is metered against the tenant's plan quota — via SSE for streamed
+    // tasks and via the completion callback for background tasks (exact token
+    // counts from the done event's usage + llmSource).
     const { key: headerApiKey, endpoint, model } = await resolveStoredKey(req, tenantKeyId)
     const upstream = await getConversationProxy().createTask({
       sessionId,

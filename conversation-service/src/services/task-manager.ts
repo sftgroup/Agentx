@@ -287,6 +287,7 @@ export class TaskManager {
     let errorMsg: string | null = null
     let usage: unknown = null
     let iterations: number | null = null
+    let llmSource: 'byok' | 'platform' | null = null
 
     try {
       for await (const event of this.runner.streamRun(request, { signal: controller.signal })) {
@@ -296,6 +297,7 @@ export class TaskManager {
         if (event.type === 'done') {
           usage = event.usage ?? null
           iterations = event.iterations ?? null
+          llmSource = event.llmSource ?? null
         }
         seq += 1
         const record: TaskEvent = { seq, type: event.type, payload: event }
@@ -339,5 +341,41 @@ export class TaskManager {
       type: 'task_status',
       payload: { taskId, status, error: finalError },
     })
+
+    // Report platform-mode usage to the Gateway for quota metering (idempotent
+    // on the gateway side) — covers tasks that complete with no SSE subscriber.
+    this.reportBilling(taskId, task.tenant, usage, llmSource)
+  }
+
+  /**
+   * Fire-and-forget callback to the Gateway's internal task-billing endpoint.
+   * Only platform-mode usage is metered (BYOK bills on the caller's own key);
+   * failures are logged, never block task completion.
+   */
+  private async reportBilling(
+    taskId: string,
+    tenantAddress: string,
+    usage: unknown,
+    llmSource: 'byok' | 'platform' | null,
+  ): Promise<void> {
+    if (llmSource !== 'platform' || !config.gatewayUrl || !config.orchestrateToken) return
+    const totalTokens =
+      usage && typeof usage === 'object'
+        ? Number((usage as { totalTokens?: unknown }).totalTokens ?? 0)
+        : 0
+    if (!Number.isFinite(totalTokens) || totalTokens <= 0) return
+    try {
+      await fetch(`${config.gatewayUrl}/api/v1/internal/task-billing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Orchestrate-Token': config.orchestrateToken,
+        },
+        body: JSON.stringify({ taskId, tenantAddress, totalTokens, llmSource }),
+        signal: AbortSignal.timeout(10_000),
+      })
+    } catch (err) {
+      console.warn(`[TaskBilling] callback failed for task ${taskId}:`, (err as Error).message)
+    }
   }
 }

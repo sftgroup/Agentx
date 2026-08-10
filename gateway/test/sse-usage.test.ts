@@ -68,6 +68,24 @@ describe('pipeSSEWithUsage', () => {
     expect(onUsage).toHaveBeenCalledWith({ totalTokens: 0, llmSource: 'platform' })
   })
 
+  it('extracts usage from the wrapped task format { seq, type, payload }', async () => {
+    const onUsage = vi.fn()
+    const app = express()
+    app.get('/sse', (_req, res) => {
+      const upstream = stubUpstream([
+        'data: {"seq":1,"type":"text","payload":{"type":"text","content":"working"}}\n\n',
+        'data: {"seq":2,"type":"done","payload":{"type":"done","usage":{"promptTokens":80,"completionTokens":20,"totalTokens":100},"iterations":3,"llmSource":"platform"}}\n\n',
+      ])
+      return pipeSSEWithUsage(upstream, res, onUsage)
+    })
+
+    const res = await request(app).get('/sse')
+    expect(res.status).toBe(200)
+    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 100, llmSource: 'platform' })
+    // Bytes forwarded unchanged
+    expect(res.text).toContain('"totalTokens":100')
+  })
+
   it('ignores malformed SSE lines without breaking the stream', async () => {
     const onUsage = vi.fn()
     const app = express()

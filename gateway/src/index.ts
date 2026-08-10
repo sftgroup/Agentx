@@ -23,6 +23,7 @@ import developerRouter from './routes/developer'
 import fiatRouter from './routes/fiat'
 import x402Router from './routes/x402'
 import internalOrchestrateRouter from './routes/internal-orchestrate'
+import internalTaskBillingRouter from './routes/internal-task-billing'
 import paymentsRouter from './routes/payments'
 import a2aRouter from './routes/a2a'
 import adminRouter from './routes/admin'
@@ -139,6 +140,11 @@ app.use('/api/v1/payments', paymentsRouter)
 // Protected by X-Orchestrate-Token — only the Conversation Service calls this.
 
 app.use('/api/v1/internal/orchestrate', internalOrchestrateRouter)
+
+// ── Internal task billing (Conversation Service reports completed tasks) ────
+// Protected by X-Orchestrate-Token — same trust boundary as orchestration.
+
+app.use('/api/v1/internal/task-billing', internalTaskBillingRouter)
 
 // ── Skills Marketplace (mixed: GET public, POST/PUT/DELETE protected) ──────
 

@@ -134,7 +134,7 @@ describe('B-end partner keys follow the P9 capability gate (not a kind block)', 
     proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
     const res = await request(app)
       .post('/api/v1/sessions/s1/tasks')
-      .set('X-Llm-Api-Key', 'sk-test') // partner tasks require BYOK
+      .set('X-Llm-Api-Key', 'sk-test') // BYOK header — task runs on partner's own key
       .send({ agentId: 1, message: 'hi' })
     expect(res.status).toBe(201)
     expect(proxyMock.createTask).toHaveBeenCalledTimes(1)
@@ -200,7 +200,7 @@ describe('B-end end-user subscription proxy (X-End-User-Id: 0x wallet)', () => {
     proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
     const res = await request(app)
       .post('/api/v1/sessions/s1/tasks')
-      .set('X-Llm-Api-Key', 'sk-test') // partner tasks require BYOK
+      .set('X-Llm-Api-Key', 'sk-test') // BYOK header — task runs on partner's own key
       .send({ agentId: 2, message: 'hi', endUserId: endUserWallet })
     expect(res.status).toBe(201)
     expect(accessMock.canAccessAgent).toHaveBeenCalledWith(endUserWallet, 2)
@@ -239,35 +239,37 @@ describe('B-end end-user subscription proxy (X-End-User-Id: 0x wallet)', () => {
   })
 })
 
-// ── B-end BYOK budget guard (2026-08-08) ──────────────────────────────────
-// Partner tasks must carry their own LLM key (X-Llm-Api-Key / tenantKeyId /
-// llmApiKey) so background/parallel work never consumes the platform key budget.
+// ── B-end platform-key mode (2026-08-11) ──────────────────────────────────
+// Partner tasks NO LONGER require BYOK. Without an own LLM key the task runs
+// on the platform key and is metered against the tenant's plan quota (via SSE
+// + the completion callback), so billing is exact and no budget can silently
+// be consumed.
 
-describe('B-end BYOK budget guard — partner tasks require own LLM key', () => {
+describe('B-end platform-key mode — partner tasks without BYOK are metered', () => {
   const inlineBody = { message: 'hi', prompt: 'inline ok' }
 
   beforeEach(() => {
     currentTenant = { id: 't-p', walletAddress: 'partner-smoke-1', kind: 'partner', allowParallelTasks: undefined, planFeatures: { parallel_tasks: true } }
   })
 
-  it('rejects partner task creation without BYOK → 400 LLM_KEY_REQUIRED', async () => {
+  it('allows partner task creation WITHOUT BYOK (platform key, metered)', async () => {
+    proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
     const res = await request(app)
       .post('/api/v1/sessions/s1/tasks')
       .send(inlineBody)
-    expect(res.status).toBe(400)
-    expect(res.body.code).toBe('LLM_KEY_REQUIRED')
-    expect(res.body.error).toContain('BYOK')
-    expect(proxyMock.createTask).not.toHaveBeenCalled()
+    expect(res.status).toBe(201)
+    expect(proxyMock.createTask).toHaveBeenCalledTimes(1)
+    expect(proxyMock.createTask.mock.calls[0][0].headerApiKey).toBeUndefined()
   })
 
-  it('allows partner task creation with X-Llm-Api-Key header', async () => {
+  it('allows partner task creation with X-Llm-Api-Key header (BYOK)', async () => {
     proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
     const res = await request(app)
       .post('/api/v1/sessions/s1/tasks')
       .set('X-Llm-Api-Key', 'sk-test')
       .send(inlineBody)
     expect(res.status).toBe(201)
-    expect(proxyMock.createTask).toHaveBeenCalledTimes(1)
+    expect(proxyMock.createTask.mock.calls[0][0].headerApiKey).toBe('sk-test')
   })
 
   it('allows partner task creation with tenantKeyId (stored BYOK)', async () => {
@@ -279,7 +281,7 @@ describe('B-end BYOK budget guard — partner tasks require own LLM key', () => 
     expect(proxyMock.createTask).toHaveBeenCalledTimes(1)
   })
 
-  it('does NOT require BYOK for non-partner (user) tenants', async () => {
+  it('allows non-partner (user) tenants without BYOK', async () => {
     currentTenant = { id: 't-user', walletAddress: '0xUserWallet12345678901234567890123456789012', kind: 'user', allowParallelTasks: undefined, planFeatures: {} }
     proxyMock.createTask.mockResolvedValue(ok({ id: 't1', status: 'queued' }, 201))
     const res = await request(app)
