@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-08-10 — 发布 sdk@0.11.2（R17.5：本地化 A2AClient/PeriodClient，引擎升级 @0xinfrax/payments@0.1.2）
+
+- **事件**：infraX 发布 @0xinfrax/payments@0.1.2，按「通用引擎只提供通用通道」定位**移除 a2a rail 与 period 授权 rail**（行为变更，issue #1 留痕）。AgentX 定制层按已确认方案**业务侧重建**（R17.5）：
+- **@agentxv2/sdk@0.11.2 已发布 npm**（patch）：
+  - A2AClient / PeriodClient 由「引擎 re-export」改为 **AgentX 本地客户端**（sdk/src/payment/a2a-client.ts / period-client.ts），**签名逐字一致、HTTP 契约不变——业务方零改动**
+  - sdk/gateway 依赖 @0xinfrax/payments 0.1.1 → **0.1.2**（exact）；PAYMENT_VERSION 对齐 0.1.2
+  - gateway 自持 payment_intents / payment_authorizations 表（迁移 021）与 a2a/period 端点（/payments/a2a、/a2a/settle、/period/charge、/period/authorization 契约不变）；**新增 POST /payments/period/authorize**——0.1.2 移除 x402 period accept 后，授权改由该端点显式创建（链上验证 + 幂等落表）
+- **验证**：sdk typecheck / vitest 32/32 / build；gateway tsc；0.1.2 引擎解耦回归全 PASS；本地完整环境 F7（改造为 authorize 流程）/ F8 全 PASS；authorize 幂等验证通过
+- **升级提示**：应用方升级 @agentxv2/sdk 至 **0.11.2** 即可，业务代码 / API / 配置均无需修改；仅需知悉 period 授权**创建路径**由 x402 period accept 改为 POST /api/v1/payments/period/authorize（sdk PeriodClient.charge / authorization 不变）
+
+---
+
+
 ## 2026-08-10 — 发布 sdk@0.11.1（F2 跟随演练：@0xinfrax/payments@0.1.1）
 
 - **`@agentxv2/sdk@0.11.1` 已发布 npm**（patch，R17-F2 首次跟随演练）：

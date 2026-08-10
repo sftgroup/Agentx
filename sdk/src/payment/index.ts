@@ -23,4 +23,4 @@ export { A2AClient } from './a2a-client'
 export { PeriodClient } from './period-client'
 export type { ClientOptions } from '@0xinfrax/payments'
 
-export const PAYMENT_VERSION = '0.1.1'
+export const PAYMENT_VERSION = '0.1.2'
