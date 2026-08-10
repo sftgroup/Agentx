@@ -2,7 +2,12 @@ const { ethers } = require('ethers');
 
 // e2e 脚本：RPC 从环境变量读取，未设置时回退本机 anvil
 const RPC_URL = process.env.RPC_URL || 'http://127.0.0.1:18545';
-const PK = '0x5a74fd11c022e5e1fdc099e9971ebcdbad8b813f91fa99e6861bc0bcac99e094';
+// 测试网私钥从环境变量读取，禁止硬编码入库
+const PK = process.env.PK;
+if (!PK) {
+  console.error('FATAL: 请设置环境变量 PK（测试网私钥），例如：PK=0x... node e2e_wallet.js');
+  process.exit(1);
+}
 const GW = 'http://localhost:3090';
 
 const contracts = {
