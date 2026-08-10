@@ -10,14 +10,14 @@ Agent = Prompt + Skills[] + MCP
 
 ## Installation
 
-The current release **0.11.0** is built on the **0.10.0 complete feature release** (agent application categories, sessions & parallel tasks, streaming tool_call fix, typed `onchain_approval_required` SSE event, unified `/api/v1/payments` endpoint) — with the payment engine migrated to the InfraX-maintained `@0xinfrax/payments` (capabilities identical, dependency-source only). Install and use:
+The current release **0.11.3** is built on the **0.10.0 complete feature release** (agent application categories, sessions & parallel tasks, streaming tool_call fix, typed `onchain_approval_required` SSE event, unified `/api/v1/payments` endpoint) — with the payment engine on the InfraX-maintained `@0xinfrax/payments` `^0.1.3`. R17.6: `0.1.3` restores the a2a / period rails inside the engine; the AgentX Gateway now delegates to the module rails while keeping the HTTP contract identical, so **B-side callers see zero change**. Install and use:
 
 ```bash
-# latest (recommended) — 0.11.0
+# latest (recommended) — 0.11.3
 npm install @agentxv2/sdk
 
 # or pin the exact release
-npm install @agentxv2/sdk@0.11.0
+npm install @agentxv2/sdk@0.11.3
 ```
 
 ### Peer Dependencies
@@ -684,7 +684,7 @@ const uni    = new PaymentsClient(base) // unified create / verify / access / in
 | `X402Client` | `/api/v1/x402/{info,verify,balance}`, `quote`/`pay` (v2 headers) | `quote(url)` fetches the `PAYMENT-REQUIRED` challenge; `pay({ url, walletClient, account })` funds + signs + replays in one call |
 | `PaymentsClient` | `/api/v1/payments` + `/verify` `/access` `/info` `/quote` | `create({ method: 'fiat'|'x402'|... })`, `verify(txHash)`, `access(subscriber, agentId)`, `info()` rails discovery |
 
-> **Dependency note**: the clients come from [`@0xinfrax/payments`](https://www.npmjs.com/package/@0xinfrax/payments) `^0.1.0` (currently **0.1.0**, InfraX-maintained — the former AgentX-maintained `@agentxv2/payments` is deprecated), auto-installed as a dependency of `@agentxv2/sdk`. `PAYMENT_VERSION` (`'0.1.0'` — the aligned engine API version) is also exported from the SDK root. **Browser/bundler safe**: the engine uses only the Web Crypto API — no Node built-ins (`node:crypto` / `Buffer`) — so webpack/Next.js builds no longer fail on `UnhandledSchemeError`. Endpoints must be exposed by the Gateway the client points at (MPP/period/a2a routes exist on AgentX Gateway `/api/v1/payments/*`).
+> **Dependency note**: the clients come from [`@0xinfrax/payments`](https://www.npmjs.com/package/@0xinfrax/payments) `^0.1.3` (currently **0.1.3**, InfraX-maintained — the former AgentX-maintained `@agentxv2/payments` is deprecated), auto-installed as a dependency of `@agentxv2/sdk`. `PAYMENT_VERSION` (`'0.1.3'` — the aligned engine API version) is also exported from the SDK root. **Browser/bundler safe**: the engine uses only the Web Crypto API — no Node built-ins (`node:crypto` / `Buffer`) — so webpack/Next.js builds no longer fail on `UnhandledSchemeError`. Endpoints must be exposed by the Gateway the client points at (MPP/period/a2a routes exist on AgentX Gateway `/api/v1/payments/*`).
 
 ---
 
@@ -720,6 +720,8 @@ ORCHESTRATE_MAX_DEPTH=4               # max nested delegation depth
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.11.3** | 2026-08-10 | **R17.6 a2a/period 回归模块 rails** — 跟随 infraX `@0xinfrax/payments` `^0.1.3`（0.1.3 在模块内置恢复 a2a/period rails，并新增 batch/invite/transfer）；AgentX Gateway 自托管 a2a/period 迁移为模块委托，**HTTP 契约与客户端签名完全不变**，`PAYMENT_VERSION` 对齐 `0.1.3`。`A2AClient` 继续由 SDK 本地实现（修复 0.11.1 ESM 导入崩溃）。**No breaking changes** |
+| **0.11.2** | 2026-08-10 | **A2AClient ESM 修复** — `A2AClient` 从 `@0xinfrax/payments` 导入（0.1.2 已移除该导出 → ESM 构建 `Named export not found` 崩溃）改为 SDK 本地实现，签名不变；`PAYMENT_VERSION` 对齐 `0.1.2`。CJS 调用方不受影响。**No breaking changes** |
 | **0.11.1** | 2026-08-10 | **首次跟随演练（F2）** — 跟随 infraX `@0xinfrax/payments` `^0.1.1`（补丁版：新增 `createWebhookForwarder` 事件出站转发 + `ChainAdapter` `rpcHeaders`）；解耦回归 19 项断言通过（消费已安装 npm 包）、sdk 32/32 全绿；`PAYMENT_VERSION` 对齐 `0.1.1`。`SubscriptionPayments` + 协议客户端 API 不变。**No breaking changes** |
 | **0.11.0** | 2026-08-10 | **Payment engine migrated** — the underlying engine moved from the AgentX-maintained `@agentxv2/payments` (now **deprecated**) to the InfraX-maintained [`@0xinfrax/payments`](https://www.npmjs.com/package/@0xinfrax/payments) `^0.1.0`; capabilities identical (chain / Stripe fiat / x402 v1+v2 / MPP channels / stablecoin EIP-3009+Permit2 / period authorizations / a2a-pay), dependency-source only; `PAYMENT_VERSION` aligned to `0.1.0`. `SubscriptionPayments` + protocol clients (MPP/A2A/Period/X402/Payments) API unchanged. **No breaking changes** (see UPGRADE.md) |
 | **0.10.1** | 2026-08-08 | **Released** — per-request `endUserId` on `createTask` (body) / `stream` (header) for B-end subscription proxying; B-end key vs user JWT behavior documented (identical P9 capability bits; partner tasks **require BYOK** → `400 LLM_KEY_REQUIRED`; platform MCP & on-chain are JWT-only); MCP boundary note (platform `/mcp` vs self-hosted MCP). Non-breaking additive change (see UPGRADE.md) |

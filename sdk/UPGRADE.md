@@ -1,5 +1,24 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.11.1 → v0.11.3（2026-08-10，建议升级）
+
+> 跟随 `@0xinfrax/payments` `^0.1.3`（R17.6）。`SubscriptionPayments` + 协议客户端（MPP/A2A/Period/X402/Payments）**API 签名不变**，HTTP 契约不变，**无需改代码**，仅建议升级依赖。
+
+### 为什么建议升级（尤其 ESM 调用方）
+
+- **0.11.1 的 ESM 构建存在崩溃**：其 `dist/index.mjs` 从 `@0xinfrax/payments` 导入 `A2AClient`，而该导出在引擎 0.1.2 起已移除 → 使用 ESM 构建的调用方启动即报 `Named export 'A2AClient' not found`。
+- **0.11.2 修复**：`A2AClient` 改为 SDK 本地实现（签名一致），ESM/CJS 均不再依赖该导出。
+- **0.11.3（本次发布）**：引擎升至 `0.1.3`（模块内置恢复 a2a/period rails，AgentX Gateway 已迁移为模块委托），`PAYMENT_VERSION` 对齐 `0.1.3`；`A2AClient` 继续本地实现。
+
+### 迁移动作
+
+- 锁精确版本者：`npm install @agentxv2/sdk@0.11.3`。
+- 使用 `^0.10.1` / `^0.11.x` 范围者：`npm install` 即可自动吸收。
+- 若曾以 ESM 方式使用 0.11.1，请务必升到 ≥0.11.2（0.11.3 含修复）。
+- `PAYMENT_VERSION` 常量由 `0.1.1` → `0.1.3`，仅当调用方断言该版本号时需要同步。
+
+---
+
 ## 2026-08-08 — B 端集成 key 能力澄清（文档，无代码变更）
 
 > 无需升级 SDK（npm 未发布新版本）。本说明只澄清**服务端行为**与**调用方最佳实践**，SDK API 完全不变。
