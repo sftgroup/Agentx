@@ -388,7 +388,7 @@
   - [x] 业务侧方案评估：a2a-pay / period 授权端点是否有业务在用——A) 业务侧重建（gateway 自持表+逻辑）B) 移除（若无业务）C) 请 infraX 以插件/可选模块保留（**已决策 A：业务侧重建，保持 sdk API 兼容，B 端零改动**）
   - [x] GitHub issue 留痕（✅ 2026-08-10 issue #1 https://github.com/sftgroup/Agentx/issues/1，label dependency+payments）
   - [ ] 回复 infraX：确认引用点 + 请求协助评估
-  - [x] 解除锁定 → 升级验证（✅ 2026-08-10：sdk/gateway 升 0.1.2，typecheck/test/build 全绿、引擎解耦回归全 PASS、0.1.2 下 F7/F8 全 PASS；commit 78f6ae0）→ 发 sdk 新版本（待发布）
+  - [x] 解除锁定 → 升级验证（✅ 2026-08-10：sdk/gateway 升 0.1.2，typecheck/test/build 全绿、引擎解耦回归全 PASS、0.1.2 下 F7/F8 全 PASS；commit 78f6ae0）→ ✅ 发 sdk@0.11.2（2026-08-10 已发布 npm + tag v0.11.2）
 - **业务侧重建实施（R17.5，代码已落地，本地回归全绿）**：
   - 迁移 `gateway/db/migrations/021_payments_a2a_period_selfhost.sql`：`payment_intents`（含 payee 列）+ `payment_authorizations`，幂等建表（019 已有同构表，语句 IF NOT EXISTS）
   - 新服务 `gateway/src/services/payments-a2a-period.ts`：`A2APeriodService`（createA2AIntent / a2aSettle（复用引擎 verifyPayment 链上验收入账）/ createPeriodAuthorization（新，verifyPayment + 幂等写授权）/ chargePeriod / getAuthorization）
