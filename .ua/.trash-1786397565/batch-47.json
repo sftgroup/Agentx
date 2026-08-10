@@ -1,0 +1,239 @@
+{
+  "nodes": [
+    {
+      "id": "file:gateway/src/lib/constants.ts",
+      "type": "file",
+      "name": "constants.ts",
+      "filePath": "gateway/src/lib/constants.ts",
+      "summary": "共享常量模块（B1/A2 修复产物）：导出 ZERO_ADDRESS（address(0)，原生代币/ETH 哨兵）与 KNOWN_ERC20_SYMBOLS（token 地址 → symbol 映射，当前含 Sepolia USDC）。供 gateway 路由与服务复用，消除 5 处重复定义与路由内联映射。",
+      "tags": ["constants", "ethereum", "erc20", "shared", "dedup", "address"],
+      "complexity": "simple",
+      "languageNotes": "纯常量导出（无运行逻辑、无依赖）。ZERO_ADDRESS 用于 payToken/asset 的原生 ETH 判断；KNOWN_ERC20_SYMBOLS 用于平台费 token 展示标签，按链维护。"
+    },
+    {
+      "id": "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "type": "file",
+      "name": "usePaymentGatewayWrites.ts",
+      "filePath": "frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "summary": "usePaymentGateway C2 拆分出的交易类子 hook：8 个合约写操作（createPayment/completePayment/releaseEscrow/raiseDispute/resolveDispute/setPlatformFee/setFeeCollector/setEscrowPeriod）经 wagmi useWriteContract 提交，useWaitForTransactionReceipt 统一确认状态；onError 回调向宿主注入错误，guard() 校验钱包连接，返回 writes/status/pending/errors/resetAll 聚合对象。",
+      "tags": ["hook", "payment-gateway", "transaction", "wagmi", "contract-writes", "split-refactor"],
+      "complexity": "complex",
+      "languageNotes": "'use client' 客户端 hook；8 个独立 useWriteContract 实例 + 1 个 useWaitForTransactionReceipt({hash})；每个写方法含 guard() 前置校验与中文错误消息；错误统一经 onError 回调上报宿主。"
+    },
+    {
+      "id": "function:frontend/components/agent/hooks/usePaymentGatewayWrites.ts:usePaymentGatewayWrites",
+      "type": "function",
+      "name": "usePaymentGatewayWrites",
+      "filePath": "frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "summary": "交易类子 hook 工厂：接收 onError 回调，封装 8 个合约写方法、统一交易哈希/确认状态（status）、逐操作 pending 与 error 标志，并提供 resetAll 重置全部写操作状态。",
+      "tags": ["hook", "payment-gateway", "contract-writes", "wagmi"],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:frontend/components/agent/hooks/usePaymentGatewayWrites.ts:PaymentGatewayWrites",
+      "type": "class",
+      "name": "PaymentGatewayWrites",
+      "filePath": "frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "summary": "usePaymentGatewayWrites 返回结构接口：writes（8 个写方法签名）、status（transactionHash/isConfirming/isConfirmed）、pending（8 个 pending 标志）、errors（8 个 error 标志）与 resetAll。",
+      "tags": ["interface", "types", "payment-gateway"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "type": "file",
+      "name": "usePaymentGatewayReads.ts",
+      "filePath": "frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "summary": "usePaymentGateway C2 拆分出的查询类子 hook：useReadContract 实时数据（clientPayments/agentEarnings/totalPaymentCount）+ 手动读方法（getPayment/getAgentPayments/getClientPayments/getAgentEarnings/getTotalPaymentCount/getDispute/fetchAllAgentPayments/refetchData）；useBlockNumber watch 区块刷新 + 交易确认信号（isConfirmed）触发强制刷新；args/address 与 enabled 连接守卫。",
+      "tags": ["hook", "payment-gateway", "read", "wagmi", "contract-reads", "split-refactor"],
+      "complexity": "complex",
+      "languageNotes": "'use client' 客户端 hook；3 个 useReadContract 实时查询（staleTime:0）+ publicClient.readContract 手动调用；useMemo 派生 data + forceRefresh 计数触发刷新。"
+    },
+    {
+      "id": "function:frontend/components/agent/hooks/usePaymentGatewayReads.ts:usePaymentGatewayReads",
+      "type": "function",
+      "name": "usePaymentGatewayReads",
+      "filePath": "frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "summary": "查询类子 hook 工厂：接收 { isConfirmed } 交易确认信号，返回 reads（8 个读方法）/data（clientPayments/agentEarnings/totalPaymentCount/agentPayments）/errors 三组聚合对象；isConfirmed 与区块高度变化均触发数据刷新。",
+      "tags": ["hook", "payment-gateway", "contract-reads", "wagmi"],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:frontend/components/agent/hooks/usePaymentGatewayReads.ts:PaymentGatewayReads",
+      "type": "class",
+      "name": "PaymentGatewayReads",
+      "filePath": "frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "summary": "usePaymentGatewayReads 返回结构接口：reads（8 个读方法签名）、data（clientPayments/agentEarnings/totalPaymentCount/agentPayments）、errors（3 个 read 错误）。",
+      "tags": ["interface", "types", "payment-gateway"],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:docs/code-review-2026-08-11.md",
+      "type": "document",
+      "name": "code-review-2026-08-11.md",
+      "filePath": "docs/code-review-2026-08-11.md",
+      "summary": "2026-08-11 代码审查报告（修复提交 a33dafc）：6 项问题——D1 前端构建豁免（关闭类型检查+eslint）、A1 注释硬编码旧生产 IP、A2 Sepolia USDC 地址映射内联路由、B1 ZERO_ADDRESS 5 处重复定义、C2 usePaymentGateway 743 行单体 hook 拆分、C1 大 Solidity 合约拆分暂缓（已部署合约冻结）；含验证记录、遗留风险复扫（前端 ZERO_ADDRESS 统一替换、e2e_wallet RPC/PK 环境变量化、deploy 脚本私钥清理）与 git filter-repo 历史重写/私钥轮换提醒。",
+      "tags": ["documentation", "code-review", "refactor", "security", "hardcoded", "dedup"],
+      "complexity": "moderate",
+      "languageNotes": "Markdown 审查报告；按问题编号（D1/A1/A2/B1/C1/C2）组织，含 Before→After diff、复扫确认（旧 IP/密钥 0 命中）、验证记录（tsc/build/46 测试）与后续修复清单。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:gateway/src/routes/admin-finance.ts",
+      "target": "file:gateway/src/lib/constants.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "summary": "A2 修复：KNOWN_ERC20_SYMBOLS 移入共享常量模块"
+    },
+    {
+      "source": "file:gateway/src/routes/mcp-executor.ts",
+      "target": "file:gateway/src/lib/constants.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "summary": "B1 修复：ZERO_ADDRESS 引用共享常量"
+    },
+    {
+      "source": "file:gateway/src/services/agent-indexer.ts",
+      "target": "file:gateway/src/lib/constants.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "summary": "B1 修复：ZERO_ADDRESS 引用共享常量"
+    },
+    {
+      "source": "file:gateway/src/services/chain-data-reader.ts",
+      "target": "file:gateway/src/lib/constants.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "summary": "B1 修复：ZERO_ADDRESS 引用共享常量"
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGateway.ts",
+      "target": "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "summary": "C2 拆分：组合层导入交易类子 hook（传入 setError 回调）"
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGateway.ts",
+      "target": "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "summary": "C2 拆分：组合层导入查询类子 hook（传入 isConfirmed 信号）"
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "target": "file:frontend/components/agent/hooks/payment-gateway-types.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "summary": "导入 PAYMENT_GATEWAY_ADDRESS 常量"
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "target": "file:frontend/components/agent/hooks/payment-gateway-types.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "summary": "导入 PAYMENT_GATEWAY_ADDRESS 与 Payment/Dispute 类型"
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "target": "file:frontend/components/agent/hooks/contract-address.ts",
+      "type": "depends_on",
+      "weight": 0.4,
+      "summary": "间接依赖：经 payment-gateway-types.ts（validateAddress）引用 ZERO_ADDRESS 地址常量，无直接 import"
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "target": "file:frontend/components/agent/hooks/contract-address.ts",
+      "type": "depends_on",
+      "weight": 0.4,
+      "summary": "间接依赖：经 payment-gateway-types.ts（validateAddress）引用 ZERO_ADDRESS 地址常量，无直接 import"
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "target": "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "type": "related",
+      "weight": 0.5,
+      "summary": "C2 同源拆分：交易类与查询类子 hook，由 usePaymentGateway.ts 组合"
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "target": "function:frontend/components/agent/hooks/usePaymentGatewayWrites.ts:usePaymentGatewayWrites",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "target": "class:frontend/components/agent/hooks/usePaymentGatewayWrites.ts:PaymentGatewayWrites",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "target": "function:frontend/components/agent/hooks/usePaymentGatewayReads.ts:usePaymentGatewayReads",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "target": "class:frontend/components/agent/hooks/usePaymentGatewayReads.ts:PaymentGatewayReads",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "document:docs/code-review-2026-08-11.md",
+      "target": "document:CHANGELOG.md",
+      "type": "related",
+      "weight": 0.5,
+      "summary": "同期变更记录：a33dafc 修复提交（12 文件 +901/-727）"
+    },
+    {
+      "source": "document:docs/code-review-2026-08-11.md",
+      "target": "file:gateway/e2e_wallet.js",
+      "type": "related",
+      "weight": 0.4,
+      "summary": "§6.2 修复：硬编码 RPC（43.156.99.215:18545）改为 process.env.RPC_URL 回退本地 anvil；硬编码 PK 改为 process.env.PK"
+    },
+    {
+      "source": "document:docs/code-review-2026-08-11.md",
+      "target": "file:gateway/deploy/deploy_script.py",
+      "type": "related",
+      "weight": 0.3,
+      "summary": "§7 修复：部署脚本硬编码私钥（0x872c3190...）改为 deploy_config 的 PK 环境变量"
+    },
+    {
+      "source": "document:docs/code-review-2026-08-11.md",
+      "target": "file:gateway/deploy/deploy_a2a.sh",
+      "type": "related",
+      "weight": 0.3,
+      "summary": "§7 修复：shell 部署脚本硬编码私钥（0x9ff7f551...）改为 ${AGENTX_DEPLOY_PRIVATE_KEY:?} fail-fast"
+    },
+    {
+      "source": "document:docs/code-review-2026-08-11.md",
+      "target": "file:gateway/deploy/check_pks.py",
+      "type": "related",
+      "weight": 0.3,
+      "summary": "§7 修复：余额查询第二密钥（0x23632a15...）改为 AGENTX_DEPLOY_PRIVATE_KEY_2 环境变量"
+    },
+    {
+      "source": "document:docs/code-review-2026-08-11.md",
+      "target": "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+      "type": "related",
+      "weight": 0.4,
+      "summary": "C2 拆分产物：交易类子 hook（8 个写操作）"
+    },
+    {
+      "source": "document:docs/code-review-2026-08-11.md",
+      "target": "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+      "type": "related",
+      "weight": 0.4,
+      "summary": "C2 拆分产物：查询类子 hook（读操作 + 实时数据）"
+    },
+    {
+      "source": "document:docs/code-review-2026-08-11.md",
+      "target": "file:gateway/src/lib/constants.ts",
+      "type": "related",
+      "weight": 0.4,
+      "summary": "B1/A2 修复新建的共享常量模块（ZERO_ADDRESS + KNOWN_ERC20_SYMBOLS）"
+    }
+  ]
+}

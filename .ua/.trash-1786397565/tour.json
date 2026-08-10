@@ -1,0 +1,80 @@
+[
+  {
+    "order": 1,
+    "title": "项目概览与接入方式",
+    "description": "先读 README 建立对 AgentX 的整体认知：去中心化 AI Agent 平台，核心是 Agent 的发布/订阅/运行，支持 SDK 直连链上与 MCP 客户端经 Gateway 两种接入方式。INTEGRATION 与 CONVERSATION_SERVICE 文档梳理集成路径与各服务职责，DEPLOYMENT 与进度文档给出部署拓扑和演进脉络，为后续按层深入打下全局框架。",
+    "nodeIds": ["document:README.md", "document:INTEGRATION.md", "document:CONVERSATION_SERVICE.md", "document:DEPLOYMENT.md", "document:memory/AGENTX_PROGRESS.md"]
+  },
+  {
+    "order": 2,
+    "title": "智能合约层：链上身份与订阅基础",
+    "description": "AgentX 的链上基石是 ERC-8004 身份注册。IdentityRegistry.sol 是身份注册核心合约，IERC8004Identity 定义标准接口，二者构成接口/实现分离的合约模式；CONTRACTS.md 说明合约架构，foundry.toml 展示 Foundry 开发与测试配置。理解这一层才能看懂链上订阅门控与支付的前提。",
+    "nodeIds": ["file:contracts/src/erc8004-core/IdentityRegistry.sol", "file:contracts/src/erc8004-interfaces/IERC8004Identity.sol", "config:contracts/foundry.toml", "document:contracts/CONTRACTS.md"],
+    "languageLesson": "Solidity 接口/实现分离模式：接口合约（IERC8004Identity）声明标准，实现合约（IdentityRegistry）落地逻辑，客户端只依赖接口，便于合约升级与多实现共存。"
+  },
+  {
+    "order": 3,
+    "title": "SDK 层：Agent 执行与 LLM 主线",
+    "description": "SDK 是第一种接入方式（直连链上运行 Agent）。入口 index.ts 是 barrel 统一导出全部子模块，agent-runner → agent-loop 构成执行主线，core/crypto.ts 是全图 fan-out 最高（15）的 E2E 加密工具，llm/factory.ts 按需解析 OpenAI/Gateway 等 LLM 提供方。从入口沿执行主线即可掌握 Agent 生命周期。",
+    "nodeIds": ["file:sdk/src/index.ts", "file:sdk/src/agent/agent-runner.ts", "file:sdk/src/agent-loop/loop.ts", "file:sdk/src/core/crypto.ts", "file:sdk/src/llm/factory.ts"],
+    "languageLesson": "TypeScript barrel 文件模式：index.ts 仅用 export * 聚合各子模块公共 API，调用方一行 import 即获得完整 SDK 面，各子模块仍可独立演进。"
+  },
+  {
+    "order": 4,
+    "title": "SDK 层：订阅、注册与支付客户端",
+    "description": "SDK 另一面是与链上状态交互：subscription 实现 x402 周期订阅门控，agent-registry 封装链上 Agent 注册表，payment 目录的 a2a-client 与 period-client 分别封装 A2A 结算与周期支付（period-client 为高阶封装，a2a-client 为底层接口）。这些模块与网关支付引擎共用同一套契约，构成订阅/支付闭环的客户端侧。",
+    "nodeIds": ["file:sdk/src/subscription/subscription.ts", "file:sdk/src/registry/agent-registry.ts", "file:sdk/src/payment/index.ts", "file:sdk/src/payment/a2a-client.ts", "file:sdk/src/payment/period-client.ts"]
+  },
+  {
+    "order": 5,
+    "title": "网关后端层：多租户 API 与链上同步",
+    "description": "Gateway 是 MCP 客户端经 HTTP 接入的后端入口，也是多租户 API 的统一出口。index.ts 完成路由/中间件/后台任务装配，auth 中间件是租户鉴权关键（fan-out 5），agents 路由承接 Agent 列表与详情，agent-indexer 把链上数据同步入库，conversation-proxy 把对话请求转发到对话服务。整层围绕“租户 → 链上数据 → 对话服务”三条线组织。",
+    "nodeIds": ["file:gateway/src/index.ts", "file:gateway/src/routes/agents.ts", "file:gateway/src/middleware/auth.ts", "file:gateway/src/services/agent-indexer.ts", "file:gateway/src/services/conversation-proxy.ts"],
+    "languageLesson": "Express 中间件链模式：auth / rate-limiter / error-handler 通过 next() 串联在路由之前，把鉴权、限流、错误处理等横切关注点与业务路由解耦。"
+  },
+  {
+    "order": 6,
+    "title": "对话服务层：多租户 Agent 执行引擎",
+    "description": "对话服务是实际执行 Agent 的多租户后端。runs 路由接收运行请求，agent-runner 编排执行流程，memory-engine 负责记忆存取，tool-executor 执行技能工具，另有 tenant-llm-resolver 按租户解析 LLM 提供方。结合第 3 站的 SDK agent-loop，可完整对照“服务端编排”与“客户端直跑”两种执行形态。",
+    "nodeIds": ["file:conversation-service/src/index.ts", "file:conversation-service/src/routes/runs.ts", "file:conversation-service/src/services/agent-runner.ts", "file:conversation-service/src/services/memory-engine.ts", "file:conversation-service/src/services/tool-executor.ts"]
+  },
+  {
+    "order": 7,
+    "title": "前端层：市场→创作→使用的产品闭环",
+    "description": "Next.js 前端把发布/订阅/运行闭环可视化：首页是产品入口，marketplace 是 Agent 市场，studio 是创作工作台，user dashboard 查看订阅与运行情况，WalletConnect 连接钱包作为链上操作的凭据。整层按 App Router 的页面组织，每个页面组合对应的 hooks/组件消费 SDK 与链上数据。",
+    "nodeIds": ["file:frontend/app/page.tsx", "file:frontend/app/marketplace/page.tsx", "file:frontend/app/studio/page.tsx", "file:frontend/app/user/dashboard/page.tsx", "file:frontend/components/wallet/WalletConnect.tsx"]
+  },
+  {
+    "order": 8,
+    "title": "前端链上交互：守卫、合约地址与 IPFS",
+    "description": "前端与链上/存储交互的支撑层：contract-address.ts 是全图 fan-in 最高（14）的合约地址统一来源，SubscriptionGuard 做订阅门控，abis/PaymentGateway.ts 是支付网关 ABI 的 TS 封装，usePaymentGateway 提供读写 hooks，lib/ipfs.ts 是 fan-out 12 的 IPFS 上传工具。这些模块共同支撑页面组件对链上状态的读写。",
+    "nodeIds": ["file:frontend/components/guard/SubscriptionGuard.tsx", "file:frontend/components/agent/hooks/contract-address.ts", "file:frontend/abis/PaymentGateway.ts", "file:frontend/components/agent/hooks/usePaymentGateway.ts", "file:frontend/lib/ipfs.ts"],
+    "languageLesson": "前端类型安全链上交互：把合约 ABI 封装为 TS 常量/类型，再经 wagmi 的 useContractRead/Write hooks 调用，避免页面中散落魔法地址与裸 ABI 字符串。"
+  },
+  {
+    "order": 9,
+    "title": "MCP 协议层：把链上 Agent 暴露为 MCP tools",
+    "description": "MCP 是第二种接入方式的协议层。网关的 mcp.ts 与 agent-mcp.ts 把链上 Agent 的 skills 以 JSON-RPC tools 暴露给 MCP 客户端，SDK 的 mcp/connector.ts 则让 Agent 反向调用外部 MCP 服务器，MCP_SETUP.md 说明接入配置。由此“双向”打通 Agent 与外部工具生态。",
+    "nodeIds": ["file:gateway/src/routes/mcp.ts", "file:gateway/src/routes/agent-mcp.ts", "file:sdk/src/mcp/connector.ts", "document:MCP_SETUP.md"],
+    "languageLesson": "MCP（Model Context Protocol）采用 JSON-RPC 2.0 的 tool/list 与 tool/call 语义：服务端声明工具、客户端发起调用，与 LLM function calling 天然对齐。"
+  },
+  {
+    "order": 10,
+    "title": "支付引擎：x402 门控与 a2a/period 结算",
+    "description": "支付链路贯通网关与 SDK：agent-runs 路由内置 x402 支付门槛，payments 路由与 paymentsService（fan-in 6）统一处理支付请求，payments-a2a-period 委托 A2A 结算与周期扣费，payments-bridge 记录 payment intent/authorization 审计写入。与第 4 站的 SDK a2a/period 客户端对应，构成支付闭环的完整服务端。",
+    "nodeIds": ["file:gateway/src/routes/agent-runs.ts", "file:gateway/src/routes/payments.ts", "file:gateway/src/services/payments.ts", "file:gateway/src/services/payments-a2a-period.ts", "file:gateway/src/services/payments-bridge.ts"],
+    "languageLesson": "x402 支付流：HTTP 请求先经 402 Payment Required 质询换取授权票据，再放行资源，实现“先付费后使用”的 API 经济模型。"
+  },
+  {
+    "order": 11,
+    "title": "数据库层：多租户数据模型",
+    "description": "数据模型支撑多租户与计费：001_init.sql 定义基础表，tenants 与 usage_logs 是计费与隔离的核心，对话服务的端用户隔离迁移保障租户数据边界，021 迁移为支付自托管补上 a2a/period 所需的 intents/authorizations 表。迁移按编号顺序演进，是理解平台数据形态的最佳入口。",
+    "nodeIds": ["schema:gateway/db/migrations/001_init.sql", "table:tenants", "table:usage_logs", "file:conversation-service/migrations/004_end_user_isolation.sql", "file:gateway/db/migrations/021_payments_a2a_period_selfhost.sql"]
+  },
+  {
+    "order": 12,
+    "title": "部署与运维：生产发布链路",
+    "description": "部署脚本展示生产发布方式：deploy_a2a_v2.sh 是网关 A2A 后端部署主脚本，frontend/deploy.sh 发布前端，prod_setup.sh 做生产环境初始化，publish-sdk.yml 是 SDK 的 CI/CD 发布工作流，.env.deploy.example 给出部署所需环境变量模板。运维侧可据此复现一次完整发布。",
+    "nodeIds": ["file:gateway/deploy/deploy_a2a_v2.sh", "file:frontend/deploy.sh", "file:gateway/deploy/prod_setup.sh", "file:.github/workflows/publish-sdk.yml", "config:gateway/deploy/.env.deploy.example"]
+  }
+]

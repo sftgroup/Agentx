@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "a461c0bebc26ac7f82796876e244a052fd0f6430",
-  "generatedAt": "2026-08-10T17:33:17.007Z",
+  "gitCommitHash": "69f96f1f1093d6d49046420a18bbc5c0a05c0b1f",
+  "generatedAt": "2026-08-10T21:32:39.783Z",
   "files": {
     ".github/workflows/ci.yml": {
       "filePath": ".github/workflows/ci.yml",
@@ -165,27 +165,27 @@
     },
     ".ua/fingerprints.json": {
       "filePath": ".ua/fingerprints.json",
-      "contentHash": "4ad31d004b05a1c94065278a8f702f46d5dba2ce30862101c4764ef5f9c85629",
+      "contentHash": "a06edf5fdb9f762bc39852c4a8b27679b5a4728957b71029b39fa985f22bead6",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 21925,
+      "totalLines": 20721,
       "hasStructuralAnalysis": true
     },
     ".ua/knowledge-graph.json": {
       "filePath": ".ua/knowledge-graph.json",
-      "contentHash": "c0685e2ef729c13a0bbdb4fed6c7d02979da33c2c9bc61178174775eb56dc5cf",
+      "contentHash": "3f7418f0e9324d7a5cd140af2f67e2924ff51dc1c614a6f9a7490c9c454984d3",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 25066,
+      "totalLines": 1,
       "hasStructuralAnalysis": true
     },
     ".ua/meta.json": {
       "filePath": ".ua/meta.json",
-      "contentHash": "b5914b2fd8c393d8b0670611dfffdeb9d53614a5b2c23e3a361b20b9b82aab8b",
+      "contentHash": "898ed323c46d68a9229bafbc07f92640f62cff910499dcc6dc0f569d0acc8bb8",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -205,12 +205,12 @@
     },
     ".ua/tmp/changed-files.txt": {
       "filePath": ".ua/tmp/changed-files.txt",
-      "contentHash": "e7155bb581827ba988895ecaf1d484b032951632ed0b8189fde348c32fea9796",
+      "contentHash": "816d67125f4b579c0af1079ba8a7ec2f90e6b769f1b19173b3ff2a9a627525f6",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 20,
+      "totalLines": 44,
       "hasStructuralAnalysis": false
     },
     "AISERVICER_INTEGRATION.md": {
@@ -225,7 +225,7 @@
     },
     "CHANGELOG.md": {
       "filePath": "CHANGELOG.md",
-      "contentHash": "565f163b28f7a9f55748bc60ba32b747b923617946a252d9a43c7aad01b382b2",
+      "contentHash": "f5f14d5377674d507082d8be2864fd7648623add45c86533def74d9e42e55513",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -235,7 +235,7 @@
     },
     "CODE_REVIEW_REPORT.md": {
       "filePath": "CODE_REVIEW_REPORT.md",
-      "contentHash": "ca2b33335be0ca51a27d3c542f91b894794910103da929a281d5bf8dfb305d79",
+      "contentHash": "23e57453c2841a26bb5575c2c8cf861a2d11535a1da596f4ee4c0c99a37ff87a",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -1605,12 +1605,12 @@
     },
     "docs/PROGRESS.md": {
       "filePath": "docs/PROGRESS.md",
-      "contentHash": "13f77cdb4b1806e08470b49603e51debb3ab8e1c8d9546fd5252b970450e4393",
+      "contentHash": "3f4383047f425e9f003ef0ce56986569d3b50d20fe73d76adbb61ab46c133149",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 499,
+      "totalLines": 518,
       "hasStructuralAnalysis": true
     },
     "docs/R13-change-notes.md": {
@@ -1675,12 +1675,12 @@
     },
     "docs/payments-infrax-migration.md": {
       "filePath": "docs/payments-infrax-migration.md",
-      "contentHash": "ed9a64dc8839a0d08ec44970d0fa94e1e2ddca9c584f5d4808083b896b727fdd",
+      "contentHash": "22f53ba800e15b1f195119ab178ddb8467999c1f4c9c3a9c755c68fe84b3477e",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 107,
+      "totalLines": 115,
       "hasStructuralAnalysis": true
     },
     "docs/publish-subscribe-pay.md": {
@@ -4245,7 +4245,7 @@
     },
     "frontend/app/user/subscriptions/[subscriptionId]/page.tsx": {
       "filePath": "frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
-      "contentHash": "e87fe307e112171c528317a5d0425d1bfb4049132535eb82b5f52656f81427b8",
+      "contentHash": "67577f913d4770c0c61f0e6490da8d41e7d0fd2c2a85d0f343ba7a2907a4abd7",
       "functions": [
         {
           "name": "resolvePeriod",
@@ -4332,12 +4332,18 @@
           "specifiers": [
             "GATEWAY_URL"
           ]
+        },
+        {
+          "source": "@/components/agent/hooks/contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
         "SubscriptionDetailPage"
       ],
-      "totalLines": 185,
+      "totalLines": 186,
       "hasStructuralAnalysis": true
     },
     "frontend/app/user/subscriptions/[subscriptionId]/renew/page.tsx": {
@@ -4785,7 +4791,7 @@
     },
     "frontend/components/agent/dashboard/AgentCardList.tsx": {
       "filePath": "frontend/components/agent/dashboard/AgentCardList.tsx",
-      "contentHash": "db24ed16361a5755af533dc49f6ef96acf7f8b5eb2786fe3a9515eac25277533",
+      "contentHash": "481fb9e69b06fd766eb20cf7567c350c7e3d45a8a0dce967f759f702f9b9282b",
       "functions": [
         {
           "name": "AgentCardList",
@@ -4818,12 +4824,18 @@
             "AgentSkill",
             "A2ASkill"
           ]
+        },
+        {
+          "source": "../hooks/contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
         "AgentCardList"
       ],
-      "totalLines": 417,
+      "totalLines": 418,
       "hasStructuralAnalysis": true
     },
     "frontend/components/agent/dashboard/AgentCardManager.tsx": {
@@ -5770,7 +5782,7 @@
     },
     "frontend/components/agent/dashboard/SubscriptionManager.tsx": {
       "filePath": "frontend/components/agent/dashboard/SubscriptionManager.tsx",
-      "contentHash": "0121cae12aa2e50ace7b29529beee6f2a6554b5b01066fb0b1fdf9495520f5b3",
+      "contentHash": "c4265ae308e56bad5f820ee417c0fa4d094c68c8f0ed0ee83f58b01ef5e7a7f2",
       "functions": [
         {
           "name": "SubscriptionManager",
@@ -5840,17 +5852,23 @@
           "specifiers": [
             "SubscriptionPlanModal"
           ]
+        },
+        {
+          "source": "../hooks/contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
         "SubscriptionManager"
       ],
-      "totalLines": 344,
+      "totalLines": 345,
       "hasStructuralAnalysis": true
     },
     "frontend/components/agent/dashboard/SubscriptionPlanCard.tsx": {
       "filePath": "frontend/components/agent/dashboard/SubscriptionPlanCard.tsx",
-      "contentHash": "e6e20da89bd85bdf1be2db56b989b4d7034e87ac5240d7857f48d0657003641d",
+      "contentHash": "b59cd355d9dd8e5c0d63f2d2c290ad4d7a9b6c5567999dd4a2b5cf23bf161921",
       "functions": [
         {
           "name": "SubscriptionPlanCard",
@@ -5879,12 +5897,18 @@
             "formatTimestamp",
             "isPlanDeactivated"
           ]
+        },
+        {
+          "source": "../hooks/contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
         "SubscriptionPlanCard"
       ],
-      "totalLines": 86,
+      "totalLines": 87,
       "hasStructuralAnalysis": true
     },
     "frontend/components/agent/dashboard/SubscriptionPlanModal.tsx": {
@@ -6133,7 +6157,7 @@
     },
     "frontend/components/agent/dashboard/hooks/useAgentCards.ts": {
       "filePath": "frontend/components/agent/dashboard/hooks/useAgentCards.ts",
-      "contentHash": "9815e4464ef93d176a161ed3744cfb796436e971b0becb5b6684d4b8fbfc35f6",
+      "contentHash": "c46baff0999863c5e8f4d1a62dcdfd28348fe21b16fcd6f6b977e48960783b54",
       "functions": [
         {
           "name": "uploadJSONToIPFS",
@@ -6181,12 +6205,18 @@
           "specifiers": [
             "useAgentRegistry"
           ]
+        },
+        {
+          "source": "../../hooks/contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
         "useAgentCards"
       ],
-      "totalLines": 362,
+      "totalLines": 363,
       "hasStructuralAnalysis": true
     },
     "frontend/components/agent/dashboard/hooks/useAgentRegistration.ts": {
@@ -6241,7 +6271,7 @@
     },
     "frontend/components/agent/dashboard/hooks/useRevenueDisplay.ts": {
       "filePath": "frontend/components/agent/dashboard/hooks/useRevenueDisplay.ts",
-      "contentHash": "acf473a30d8b094fdf01b9da6f53c2de3fec90ffb1f79c4a74bcefde740f0fd6",
+      "contentHash": "ae899a12c2b1f177a7f5f8c1aa818425490f526611ce570f9714e1e2333e0188",
       "functions": [
         {
           "name": "formatCurrency",
@@ -6298,6 +6328,12 @@
           "specifiers": [
             "useAgentRegistry"
           ]
+        },
+        {
+          "source": "../../hooks/contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
@@ -6306,12 +6342,12 @@
         "formatCurrency",
         "useRevenueDisplay"
       ],
-      "totalLines": 399,
+      "totalLines": 400,
       "hasStructuralAnalysis": true
     },
     "frontend/components/agent/dashboard/subscription-utils.ts": {
       "filePath": "frontend/components/agent/dashboard/subscription-utils.ts",
-      "contentHash": "8577d07eda8752d83f52db0f03ea90fca5219b7bbf8b19c0187cd9afcf3e02e3",
+      "contentHash": "d938995492cd285976792505a7ae946a2fefa517a89c518eeba0537a80ba6acb",
       "functions": [
         {
           "name": "validateForm",
@@ -6387,6 +6423,12 @@
             "SubscriptionPlan",
             "BillingPeriod"
           ]
+        },
+        {
+          "source": "../hooks/contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
@@ -6400,7 +6442,7 @@
         "formatTimestamp",
         "isPlanDeactivated"
       ],
-      "totalLines": 88,
+      "totalLines": 89,
       "hasStructuralAnalysis": true
     },
     "frontend/components/agent/hooks/agent-factory-types.ts": {
@@ -6517,7 +6559,7 @@
     },
     "frontend/components/agent/hooks/useA2AProtocol.ts": {
       "filePath": "frontend/components/agent/hooks/useA2AProtocol.ts",
-      "contentHash": "d122602213abec94c4c99d9c07a338cbc6ec7013618a862e24f4e2c98c6d054d",
+      "contentHash": "6da13b57ddcc0e8c3f8f35d5f9c794366f273f2fde71f568146e82ec1e977597",
       "functions": [
         {
           "name": "useA2AProtocol",
@@ -6542,17 +6584,23 @@
             "useState",
             "useEffect"
           ]
+        },
+        {
+          "source": "./contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
         "useA2AProtocol"
       ],
-      "totalLines": 488,
+      "totalLines": 489,
       "hasStructuralAnalysis": true
     },
     "frontend/components/agent/hooks/useAgentFactory.ts": {
       "filePath": "frontend/components/agent/hooks/useAgentFactory.ts",
-      "contentHash": "f6158dfb404a390e7339fe776e26b429bb5f10a1000bb133c629044997ec3501",
+      "contentHash": "5877812f72f83765227403dab131a9c254b53c1546ab2ee8cee6d8948395d58e",
       "functions": [
         {
           "name": "useAgentFactory",
@@ -6599,6 +6647,12 @@
           ]
         },
         {
+          "source": "./contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
+        },
+        {
           "source": "@/abis/AgentFactory",
           "specifiers": [
             "AGENT_FACTORY_ABI"
@@ -6612,7 +6666,7 @@
         "UseAgentFactoryReturn",
         "useAgentFactory"
       ],
-      "totalLines": 691,
+      "totalLines": 692,
       "hasStructuralAnalysis": true
     },
     "frontend/components/agent/hooks/useAgentRegistry.ts": {
@@ -6788,42 +6842,37 @@
     },
     "frontend/components/agent/hooks/usePaymentGateway.ts": {
       "filePath": "frontend/components/agent/hooks/usePaymentGateway.ts",
-      "contentHash": "84f2c0e74aa445a902636204d3ad9915b86c083b0a61c371d004b66a61ea36ed",
+      "contentHash": "28c3846415849986cebc83502bacb6227e2b36cbd08f73dc771b80fd9a559e15",
       "functions": [
         {
           "name": "usePaymentGateway",
           "params": [],
           "returnType": "UsePaymentGatewayReturn",
           "exported": true,
-          "lineCount": 718
+          "lineCount": 95
         }
       ],
       "classes": [],
       "imports": [
         {
-          "source": "wagmi",
-          "specifiers": [
-            "useWriteContract",
-            "useReadContract",
-            "useAccount",
-            "useWaitForTransactionReceipt",
-            "useBlockNumber",
-            "usePublicClient"
-          ]
-        },
-        {
           "source": "react",
           "specifiers": [
-            "useState",
             "useEffect",
+            "useMemo",
             "useCallback",
-            "useMemo"
+            "useState"
           ]
         },
         {
-          "source": "./payment-gateway-types",
+          "source": "./usePaymentGatewayWrites",
           "specifiers": [
-            "PAYMENT_GATEWAY_ADDRESS"
+            "usePaymentGatewayWrites"
+          ]
+        },
+        {
+          "source": "./usePaymentGatewayReads",
+          "specifiers": [
+            "usePaymentGatewayReads"
           ]
         },
         {
@@ -6832,12 +6881,6 @@
             "Payment",
             "Dispute",
             "UsePaymentGatewayReturn"
-          ]
-        },
-        {
-          "source": "@/abis/PaymentGateway",
-          "specifiers": [
-            "PAYMENT_GATEWAY_ABI"
           ]
         }
       ],
@@ -6848,7 +6891,7 @@
         "UsePaymentGatewayReturn",
         "usePaymentGateway"
       ],
-      "totalLines": 744,
+      "totalLines": 114,
       "hasStructuralAnalysis": true
     },
     "frontend/components/agent/hooks/useReputation.ts": {
@@ -6938,7 +6981,7 @@
     },
     "frontend/components/agent/hooks/useSubscription.ts": {
       "filePath": "frontend/components/agent/hooks/useSubscription.ts",
-      "contentHash": "e9524092895eb90fb38212b03802a8c7c5cc69563c998c41f78735b869561a29",
+      "contentHash": "e987142f79ca540ccf1716f3705ee4d47d2b13c7811d15c0e58547bd3eadd56d",
       "functions": [
         {
           "name": "resolveChannelRef",
@@ -7000,7 +7043,8 @@
         {
           "source": "./contract-address",
           "specifiers": [
-            "validateAddr"
+            "validateAddr",
+            "ZERO_ADDRESS"
           ]
         },
         {
@@ -8541,7 +8585,7 @@
     },
     "frontend/hooks/user/useUserSubscriptions.ts": {
       "filePath": "frontend/hooks/user/useUserSubscriptions.ts",
-      "contentHash": "61f6dcfe758e55ce82507897093c550831322991b193cf8851ed6fbb71fb97d0",
+      "contentHash": "d8bb6c248f96d7de56b3f368af123968550c80e6ccb27d83d810897dc7fe113b",
       "functions": [
         {
           "name": "getSubscriptionManagerAddress",
@@ -8612,6 +8656,12 @@
           "specifiers": [
             "SUBSCRIPTION_MANAGER_V1_ABI"
           ]
+        },
+        {
+          "source": "@/components/agent/hooks/contract-address",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
@@ -8619,7 +8669,7 @@
         "useSubscriptionDetail",
         "useActiveSubscriptions"
       ],
-      "totalLines": 436,
+      "totalLines": 437,
       "hasStructuralAnalysis": true
     },
     "frontend/lib/aimarket/ipfsDataFetcher.ts": {
@@ -8982,12 +9032,12 @@
     },
     "frontend/next.config.js": {
       "filePath": "frontend/next.config.js",
-      "contentHash": "6bfd008f7c665ec6ae48fd60fad74899af888750b08954b5cc6419a5e0907dec",
+      "contentHash": "19addefe8749ec95f2be3eb3e0177b5d39179fb604f7b656f2921af4b8ab1d5d",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 39,
+      "totalLines": 33,
       "hasStructuralAnalysis": true
     },
     "frontend/package.json": {
@@ -9242,17 +9292,17 @@
     },
     "gateway/deploy/.env.deploy.example": {
       "filePath": "gateway/deploy/.env.deploy.example",
-      "contentHash": "e4dfa252be1ae78d329e00d71dfe12371e3df55e4efb0d4f64121f84ef53c95c",
+      "contentHash": "2db7ae614931cacd13ebbb624ae908d5cb38a3e152d093af220b8da024c05482",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 24,
+      "totalLines": 26,
       "hasStructuralAnalysis": false
     },
     "gateway/deploy/add_swap_build.py": {
       "filePath": "gateway/deploy/add_swap_build.py",
-      "contentHash": "20b2ed0498bfb45a94604660812766fbfc66488850b897a9ff02ca2dc4dccba5",
+      "contentHash": "b5e5d7d3016cae5657dfa0dcf457af82556c94b49da2e0a9792e3b1e4474788d",
       "functions": [
         {
           "name": "run",
@@ -9286,7 +9336,7 @@
     },
     "gateway/deploy/build_and_deploy.py": {
       "filePath": "gateway/deploy/build_and_deploy.py",
-      "contentHash": "a4110aa822d398d9dd7e3983dce4c1b749e85fe1cc5d9d2345e8eacdce8f8f11",
+      "contentHash": "ba53f12888c24556385e5d6a8b761ce350bb24c92fd7850ff18478d56cfb7875",
       "functions": [
         {
           "name": "run",
@@ -9334,7 +9384,7 @@
     },
     "gateway/deploy/build_deploy_a2a.py": {
       "filePath": "gateway/deploy/build_deploy_a2a.py",
-      "contentHash": "a0c55cad908bef67a9c0d89e24e9282371407a260a2fd6c052aa67040d6f1b3e",
+      "contentHash": "7c477593462516c8c643bb9f655099149668c7c6a575b34150d9e3f093fd5a43",
       "functions": [
         {
           "name": "ssh",
@@ -9380,6 +9430,15 @@
           ]
         },
         {
+          "source": "deploy_config",
+          "specifiers": [
+            "HOST",
+            "USER",
+            "PASSWORD",
+            "PK"
+          ]
+        },
+        {
           "source": "base64",
           "specifiers": [
             "base64"
@@ -9390,12 +9449,12 @@
         "ssh",
         "run"
       ],
-      "totalLines": 191,
+      "totalLines": 192,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/build_no_lint.py": {
       "filePath": "gateway/deploy/build_no_lint.py",
-      "contentHash": "36f6e23ae02ac23b93f069c65d6e5112a3d07939dab332184203d9278a4bc76b",
+      "contentHash": "9b91a17d2a38d3ac9d158c88078d0980a8f70c8d68078d917b8be5f7f56b759f",
       "functions": [],
       "classes": [],
       "imports": [
@@ -9418,7 +9477,7 @@
     },
     "gateway/deploy/build_on_fe.py": {
       "filePath": "gateway/deploy/build_on_fe.py",
-      "contentHash": "21ee686952b85dfec738c416c9f70127998a75aabf471aafe2bda94bcb43e1aa",
+      "contentHash": "8c49696e2755a6db8bfe83776fa967e8d8164cacc8b0346894c1e7a51ef16ade",
       "functions": [
         {
           "name": "run",
@@ -9464,7 +9523,7 @@
     },
     "gateway/deploy/build_on_gw.py": {
       "filePath": "gateway/deploy/build_on_gw.py",
-      "contentHash": "b911f8f637ad3745ec842d90eb1eb5b37f79f423f8cd7d45736d4eb964787f09",
+      "contentHash": "c09609845016c38ae96d5542ff62aec68bcfa25fc9321e41cf813dc59138e815",
       "functions": [
         {
           "name": "run",
@@ -9512,7 +9571,7 @@
     },
     "gateway/deploy/build_prod.py": {
       "filePath": "gateway/deploy/build_prod.py",
-      "contentHash": "3572e23ae66ae0499a812db998e122bd3c2622a50e16cf5f256d584238603bac",
+      "contentHash": "471cdc9d82b9bf6b09e2bb3f2ab8a53c4b1cbc4115521f3ce6d521695b6ef2be",
       "functions": [],
       "classes": [],
       "imports": [
@@ -9535,7 +9594,7 @@
     },
     "gateway/deploy/check_bal.py": {
       "filePath": "gateway/deploy/check_bal.py",
-      "contentHash": "54b53af7c7724951306fb5deb295ace9f221ecaa43c09f9b964735fcb3784ae8",
+      "contentHash": "ff7f34365ac8b333a915fddec4723be0965abe95242cafce66cdf6a23e2a342d",
       "functions": [],
       "classes": [],
       "imports": [
@@ -9602,7 +9661,7 @@
     },
     "gateway/deploy/check_frontend.py": {
       "filePath": "gateway/deploy/check_frontend.py",
-      "contentHash": "4dea9cd4657e78c8264d0cdbc2438aee0e9e4ab65a84067d8bb77abeea576251",
+      "contentHash": "2128dcbd1884903ba9dd07dd49a80b7e69fedd987ad6d81a7bcf6d33c4127c96",
       "functions": [
         {
           "name": "run",
@@ -9630,7 +9689,7 @@
     },
     "gateway/deploy/check_frontend2.py": {
       "filePath": "gateway/deploy/check_frontend2.py",
-      "contentHash": "2192367aecad81db3f6250b55063afd5db7bb4119f76afef07629c56cc065c37",
+      "contentHash": "be35a651bd69364d62227e6921668992eda21280f58472021ce4b85374bc73c5",
       "functions": [],
       "classes": [],
       "imports": [
@@ -9647,7 +9706,7 @@
     },
     "gateway/deploy/check_pks.py": {
       "filePath": "gateway/deploy/check_pks.py",
-      "contentHash": "149ca4127f87c672cb087c9ac5a429e44d5eb11df828dbc87b85c3e6627cee3d",
+      "contentHash": "b05c0ac8c90b45594a169e74f9dd1d56361c9d398b6eea90c32dcfb7770b8bab",
       "functions": [],
       "classes": [],
       "imports": [
@@ -9656,15 +9715,29 @@
           "specifiers": [
             "paramiko"
           ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "deploy_config",
+          "specifiers": [
+            "HOST",
+            "USER",
+            "PASSWORD"
+          ]
         }
       ],
       "exports": [],
-      "totalLines": 35,
+      "totalLines": 41,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/check_status.py": {
       "filePath": "gateway/deploy/check_status.py",
-      "contentHash": "bb72aa6b5abdbcb6d2db5dae24db4bb5df8fb1d4a7dbf675647521e7013f3a0d",
+      "contentHash": "51a6dd96662eff8741de4a8251e14dbec54d76323db36396d14b7c0b56ad40a2",
       "functions": [
         {
           "name": "run",
@@ -9698,7 +9771,7 @@
     },
     "gateway/deploy/check_v2.py": {
       "filePath": "gateway/deploy/check_v2.py",
-      "contentHash": "65b22c13f7df0aec79728815516446edd356478d092d27258c8f6acfaf2f7adf",
+      "contentHash": "3e4581a438c0c6c6c9fce0600e3d82a9794189b89db5c68379cb64d65dd7561f",
       "functions": [],
       "classes": [],
       "imports": [
@@ -9715,7 +9788,7 @@
     },
     "gateway/deploy/clean_install.py": {
       "filePath": "gateway/deploy/clean_install.py",
-      "contentHash": "dbcf5c3d1a1e8e8ab8e635a87f0da83d76ca56d2cdee4115c7848044d58ca560",
+      "contentHash": "f04a4d63246cccfe9634174afbafec7c49c7d3a3b0bc058b8c72df1f60515494",
       "functions": [],
       "classes": [],
       "imports": [
@@ -9732,7 +9805,7 @@
     },
     "gateway/deploy/deploy_a2a.py": {
       "filePath": "gateway/deploy/deploy_a2a.py",
-      "contentHash": "ec0d9bd937b97aaaf568d0a33d90ff4f9e80da34b03b312c0cfa2a94cc4297e0",
+      "contentHash": "d6adb0fdec0d9ad77c43c59a65a0372bab6c72b27a0cbb10131fd5603310d531",
       "functions": [
         {
           "name": "run",
@@ -9779,27 +9852,27 @@
     },
     "gateway/deploy/deploy_a2a.sh": {
       "filePath": "gateway/deploy/deploy_a2a.sh",
-      "contentHash": "5f5c78805f76849b75cf053ff1c98d7c275d50381bc7e603cd3a2539537e131f",
+      "contentHash": "59f5fb4aa708945e2da27e8e8a1a2370ec1b30983fc6dc605bf47cdd8f01b19c",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 34,
+      "totalLines": 35,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/deploy_a2a_bg.sh": {
       "filePath": "gateway/deploy/deploy_a2a_bg.sh",
-      "contentHash": "1340efc87e1ba772a969ada5b778b00dc9f40a978e2acb7b8873f12eea5f73f1",
+      "contentHash": "6cffe9c97e9cb03f42cc9460809f1bcf03ce4079a647b3c209b22bf2416e87ce",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 41,
+      "totalLines": 42,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/deploy_a2a_v2.py": {
       "filePath": "gateway/deploy/deploy_a2a_v2.py",
-      "contentHash": "5350ed7aafd066cc0bd46698a5347762084eb89467b0945445e708c2199bdd05",
+      "contentHash": "aa52fbc76547894588ca0b80ad7959126e34a10de98fbcedbc03a99b40671d5d",
       "functions": [
         {
           "name": "run",
@@ -9843,27 +9916,36 @@
           "specifiers": [
             "base64"
           ]
+        },
+        {
+          "source": "deploy_config",
+          "specifiers": [
+            "HOST",
+            "USER",
+            "PASSWORD",
+            "PK"
+          ]
         }
       ],
       "exports": [
         "run"
       ],
-      "totalLines": 152,
+      "totalLines": 154,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/deploy_a2a_v2.sh": {
       "filePath": "gateway/deploy/deploy_a2a_v2.sh",
-      "contentHash": "2e16e12b20a2741b133f3e77d8f9d4a7fa77c472174d1eb25e29297143a23b73",
+      "contentHash": "d2e978659548136e036ba94ae9eda05355b83f37f1f53148655758bb2a0b1873",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 37,
+      "totalLines": 38,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/deploy_bin.py": {
       "filePath": "gateway/deploy/deploy_bin.py",
-      "contentHash": "a254bd51273282eed8fce313b0a084ec674c9280178dedfa631ea6e15f6e257e",
+      "contentHash": "fec7a78a9b89e3d76d357873e76a8d48240e442eff7def5dc432e2f8b93e29e5",
       "functions": [
         {
           "name": "run",
@@ -9889,6 +9971,15 @@
           ]
         },
         {
+          "source": "deploy_config",
+          "specifiers": [
+            "HOST",
+            "USER",
+            "PASSWORD",
+            "PK"
+          ]
+        },
+        {
           "source": "base64",
           "specifiers": [
             "base64"
@@ -9898,7 +9989,7 @@
       "exports": [
         "run"
       ],
-      "totalLines": 65,
+      "totalLines": 68,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/deploy_config.py": {
@@ -9926,7 +10017,7 @@
     },
     "gateway/deploy/deploy_final.py": {
       "filePath": "gateway/deploy/deploy_final.py",
-      "contentHash": "4e298e1b3dd74d7b255d9d618e314210be5a862eb903caf5ec919adbcf9b2508",
+      "contentHash": "649e2c08ca14a049361aa47d95ec6d35a5fce21bb0abc9a12974caf660e0458a",
       "functions": [
         {
           "name": "run",
@@ -9944,17 +10035,26 @@
           "specifiers": [
             "paramiko"
           ]
+        },
+        {
+          "source": "deploy_config",
+          "specifiers": [
+            "HOST",
+            "USER",
+            "PASSWORD",
+            "PK"
+          ]
         }
       ],
       "exports": [
         "run"
       ],
-      "totalLines": 43,
+      "totalLines": 47,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/deploy_frontend.py": {
       "filePath": "gateway/deploy/deploy_frontend.py",
-      "contentHash": "bbb1f0d7ee0cfe1e87bc30cf8b29926489e76a01e5dda81c5140a76d129d27bc",
+      "contentHash": "466796a4b808cd70d0df1c535351d5ada177d9359c089c10c5575244dfad6f02",
       "functions": [
         {
           "name": "run",
@@ -9998,7 +10098,7 @@
     },
     "gateway/deploy/deploy_mcp.py": {
       "filePath": "gateway/deploy/deploy_mcp.py",
-      "contentHash": "e12f78e0a226b1018cd64033486cfe910fb119a6f549200691b764b35b59a8e9",
+      "contentHash": "d5c6de6c4aee54bcaecd35a2132456e0a8fea37824f8e9e484e0012909dedcd4",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10039,7 +10139,7 @@
     },
     "gateway/deploy/deploy_now.py": {
       "filePath": "gateway/deploy/deploy_now.py",
-      "contentHash": "3f37746f9484b4f21e457e0213122d215d3d3084400a0b06b7d56051f1291813",
+      "contentHash": "b2cc5eeb83a30b2a3e3bcc26d815a313f727ec0b4051c276c07a36b9b14765e2",
       "functions": [
         {
           "name": "run",
@@ -10057,17 +10157,26 @@
           "specifiers": [
             "paramiko"
           ]
+        },
+        {
+          "source": "deploy_config",
+          "specifiers": [
+            "HOST",
+            "USER",
+            "PASSWORD",
+            "PK"
+          ]
         }
       ],
       "exports": [
         "run"
       ],
-      "totalLines": 50,
+      "totalLines": 53,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/deploy_push_all.py": {
       "filePath": "gateway/deploy/deploy_push_all.py",
-      "contentHash": "70f0405a2aaa84c3378e395a0f037280aefbb70a1971a26086ab13716f93cc6d",
+      "contentHash": "ac899ccaa7631c3272c314328e07c9e0753f1e544b5327ed9ca08d1165603970",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10114,7 +10223,7 @@
     },
     "gateway/deploy/deploy_script.py": {
       "filePath": "gateway/deploy/deploy_script.py",
-      "contentHash": "edda9d2977fe5c7cc592cb19bac49388fb4e7b440600f6b2e31eb4b4e0304d3e",
+      "contentHash": "e3f0099675319c3529f5f1a8fa84d31b171aef5380e3f031f8aa3c697f9b6055",
       "functions": [
         {
           "name": "run",
@@ -10140,6 +10249,15 @@
           ]
         },
         {
+          "source": "deploy_config",
+          "specifiers": [
+            "HOST",
+            "USER",
+            "PASSWORD",
+            "PK"
+          ]
+        },
+        {
           "source": "base64",
           "specifiers": [
             "base64"
@@ -10149,22 +10267,22 @@
       "exports": [
         "run"
       ],
-      "totalLines": 65,
+      "totalLines": 69,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/deploy_sep_a2a.sh": {
       "filePath": "gateway/deploy/deploy_sep_a2a.sh",
-      "contentHash": "963103cca972282bb1660224c8aa1ad0efd7ebf4f08426cf580e29f71e96c5d3",
+      "contentHash": "e565fcd5f8a69f5ed3664c5f670c92b866fa0225fafc5ab1535b4c39f2bd2878",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 19,
+      "totalLines": 20,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/dev_mode.py": {
       "filePath": "gateway/deploy/dev_mode.py",
-      "contentHash": "cd3caa34e9b872aeef45d48b702873e6ddc2df917312af79bf66c8c6488d0ea3",
+      "contentHash": "04a528390d23ce6a87f05166fcc9db6fa750fe3ca6a4c3f8db9b80da0f7a10cf",
       "functions": [
         {
           "name": "run",
@@ -10198,7 +10316,7 @@
     },
     "gateway/deploy/diag.py": {
       "filePath": "gateway/deploy/diag.py",
-      "contentHash": "ced284e0acff355b4a4eebb4e84c60fe263c57902e6833d084a96d0f441e5a37",
+      "contentHash": "2cce8624ff5c9d55bbb2c1118e060e980b6f1ca9b1c929288326660db016cea9",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10215,7 +10333,7 @@
     },
     "gateway/deploy/diff_test.py": {
       "filePath": "gateway/deploy/diff_test.py",
-      "contentHash": "1200c73f1a79228e4876e86ecf167dd02420522e460ebce683cb07bceb6bf091",
+      "contentHash": "6a9ce7251d99b46b736ced9161984d26b077824ead49139784b7715f8dda0a04",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10232,7 +10350,7 @@
     },
     "gateway/deploy/final_check.py": {
       "filePath": "gateway/deploy/final_check.py",
-      "contentHash": "8b1351381c134473693fc9f554fd2559be28a7756cd776f69bb61c1a1a3488b0",
+      "contentHash": "7c028e3e8afdad7c6ad19ccbacee639395892b0d0652e44b0e7d5c1304f0d493",
       "functions": [
         {
           "name": "run",
@@ -10260,7 +10378,7 @@
     },
     "gateway/deploy/final_deploy.py": {
       "filePath": "gateway/deploy/final_deploy.py",
-      "contentHash": "f8ecdb54405d21c20b87b9d0df89eb9fb54c844dd62416e6145ac845de5ee556",
+      "contentHash": "bc645ebb8fdca5f223a644443267c84fd5e3456ee074371bd02ee60f3d300b14",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10289,7 +10407,7 @@
     },
     "gateway/deploy/final_fix.py": {
       "filePath": "gateway/deploy/final_fix.py",
-      "contentHash": "7780fec3e2a24dae976594e9cafcea1bb9a02730cc5d8e25171c60d762a33206",
+      "contentHash": "4eed69448f9dbce5bf4d6ce95283f405f4fab74058222abded4f272eb2c176db",
       "functions": [
         {
           "name": "run",
@@ -10325,7 +10443,7 @@
     },
     "gateway/deploy/final_push.py": {
       "filePath": "gateway/deploy/final_push.py",
-      "contentHash": "03ffda5b69d0e84ec0ba24823441dac0d6097ce695107975fef0c3fc97c944dd",
+      "contentHash": "67997756953a9c15f3f3a33281718f656a0735810a1fd23b15406e3a6ef4606a",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10360,7 +10478,7 @@
     },
     "gateway/deploy/find_frontend.py": {
       "filePath": "gateway/deploy/find_frontend.py",
-      "contentHash": "370e9d5a1d843fe258d9fdc9fe62f41a07ebf6cbe6a37e403cfe171161b4f33e",
+      "contentHash": "802047d3770c0f2671c553e7cb6d068271106f3c0dc2c74c9aba3771c2470a83",
       "functions": [
         {
           "name": "run",
@@ -10394,7 +10512,7 @@
     },
     "gateway/deploy/fix_a2a.py": {
       "filePath": "gateway/deploy/fix_a2a.py",
-      "contentHash": "9a37d2c8a6f2544b8cc76aead16970864d3e2193cb74a72c6a8b7ce9f3210c3b",
+      "contentHash": "6d017c1570b237a2a7a660413bbddcca0ca1f4893df73e93aeec749a42d6858f",
       "functions": [
         {
           "name": "run",
@@ -10435,7 +10553,7 @@
     },
     "gateway/deploy/fix_and_build.py": {
       "filePath": "gateway/deploy/fix_and_build.py",
-      "contentHash": "9f34649d39911344163f135135fdfa49c720f6d070f75813ff2273af895546a1",
+      "contentHash": "bc96cb00d2214140950d8387a02adc666d390250a6505cbe5599b2a77b0a7290",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10464,7 +10582,7 @@
     },
     "gateway/deploy/fix_and_verify.py": {
       "filePath": "gateway/deploy/fix_and_verify.py",
-      "contentHash": "583956c3be6679f6d4f6646a9a6f3cb8bdb1a9e880f876449f35df6971195976",
+      "contentHash": "c380736b6d239e75844b3b212b85cd36e153d00c46871747f6fe81715b8e8832",
       "functions": [
         {
           "name": "run",
@@ -10498,7 +10616,7 @@
     },
     "gateway/deploy/fix_build.py": {
       "filePath": "gateway/deploy/fix_build.py",
-      "contentHash": "074374b3f4dd23a684253f18d4f9621d04d68e294d3bfa9f9d71d069f133df20",
+      "contentHash": "05fe47e5cc09a0f6fbd7e9b58ddd712a5abdec667f3d49ed44175d9fed9cfa4c",
       "functions": [
         {
           "name": "run",
@@ -10532,7 +10650,7 @@
     },
     "gateway/deploy/forge_deploy.py": {
       "filePath": "gateway/deploy/forge_deploy.py",
-      "contentHash": "f6afda719e9f3c6cd4e5b462d6560dccb5cdc8078b8b6e0edb2a074691eafca3",
+      "contentHash": "bbf04447830e14cde356965b1defa351d6f992161f67156b4c126c90dfb6d251",
       "functions": [
         {
           "name": "run",
@@ -10562,17 +10680,26 @@
           "specifiers": [
             "sys"
           ]
+        },
+        {
+          "source": "deploy_config",
+          "specifiers": [
+            "HOST",
+            "USER",
+            "PASSWORD",
+            "PK"
+          ]
         }
       ],
       "exports": [
         "run"
       ],
-      "totalLines": 68,
+      "totalLines": 71,
       "hasStructuralAnalysis": true
     },
     "gateway/deploy/full_push.py": {
       "filePath": "gateway/deploy/full_push.py",
-      "contentHash": "df35ed5f504b853ee86176f524178d9ee786c91522c279ebc1017443d1ee9d02",
+      "contentHash": "3431d0f5bf0cc81e87ac3bfd642d0d5f8c3c121d7f928fef20a7bb2c782893e8",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10607,7 +10734,7 @@
     },
     "gateway/deploy/full_push2.py": {
       "filePath": "gateway/deploy/full_push2.py",
-      "contentHash": "cece4f5aa2a942fee82c1a9fb86f1cb88fd7a6220b6d4f2c2db7375688b5de79",
+      "contentHash": "0e7c3f5d9fe9a2d36bdd5320db98f76ffce3f192c6eb71a50181f24f932d73fd",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10642,7 +10769,7 @@
     },
     "gateway/deploy/go_prod.py": {
       "filePath": "gateway/deploy/go_prod.py",
-      "contentHash": "498c993a7cf2906189ed2bfb786e8036143e7417a8c9975e93ba6c76eab39ed7",
+      "contentHash": "02f12073002fb1817ebf9f5d6ac6643461401702d0d9db1087a30c6026d0ec7e",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10671,7 +10798,7 @@
     },
     "gateway/deploy/gw_deploy.py": {
       "filePath": "gateway/deploy/gw_deploy.py",
-      "contentHash": "9f1ec5caba9f45483a8fc4448ac5da84e8fb7c126be1e640abf1846b2f181fa2",
+      "contentHash": "d0f7f80af8d0b5ea3b92b251b5cfe36382eeb37253754a89e2e7bb4233eaea13",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10712,7 +10839,7 @@
     },
     "gateway/deploy/gw_final.py": {
       "filePath": "gateway/deploy/gw_final.py",
-      "contentHash": "b4c07f3147041197124c2e667e93addea7fe6a0d3b351924ead0d4fe93310282",
+      "contentHash": "ddd7c82fb5490eb6b603d6acbae831ecca8da53b33b5164c797a60bed003eb4a",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10753,7 +10880,7 @@
     },
     "gateway/deploy/gw_restart.py": {
       "filePath": "gateway/deploy/gw_restart.py",
-      "contentHash": "0dd907bce61604661a9964b60f94be2a29d52799fa187115e117594fcb373e9b",
+      "contentHash": "9eb8529d81db9626124e84cab00294b8e5315bd2d49d702efc0ca7ef7bf07e9d",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10776,7 +10903,7 @@
     },
     "gateway/deploy/gw_status.py": {
       "filePath": "gateway/deploy/gw_status.py",
-      "contentHash": "b4520877d5884633de4829c3f1670b7bf0bf04b74b741856fb7d5c5f31b79945",
+      "contentHash": "25321de93fd7ecc279f2b58bbb82b180954751cb8605576c6c1411c52d672cd6",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10793,7 +10920,7 @@
     },
     "gateway/deploy/inline_build.py": {
       "filePath": "gateway/deploy/inline_build.py",
-      "contentHash": "9316acca198985cb1e68122ac122af262e26c2db80d265975f1b0c5fa616a20c",
+      "contentHash": "acc807c9ea1a1855c873d6224c374efe7f651be4da756461d7aebb67d44c79e5",
       "functions": [
         {
           "name": "run",
@@ -10844,7 +10971,7 @@
     },
     "gateway/deploy/one_shot.py": {
       "filePath": "gateway/deploy/one_shot.py",
-      "contentHash": "276f299f569f68e6e99f8f40ea75bf8731803c47840337e980f123a3317e4767",
+      "contentHash": "7c5be3bc968a2708087323050b01176989745a3f5c16844135e6dcb5e32bb6e3",
       "functions": [
         {
           "name": "run",
@@ -10885,7 +11012,7 @@
     },
     "gateway/deploy/ox_deploy.py": {
       "filePath": "gateway/deploy/ox_deploy.py",
-      "contentHash": "a7c841d5dff7739fa7ea104d76149a4a2d904701a8d6e67b29bd33274dc94c5f",
+      "contentHash": "8716ab3e972a10706d83c914e00fb12a19ab2648f00c967e10062903fd50c204",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10902,7 +11029,7 @@
     },
     "gateway/deploy/pg_setup.py": {
       "filePath": "gateway/deploy/pg_setup.py",
-      "contentHash": "d46ec087bcc1d40c6fc8cdbbf3bf98207379547d01fa426e00ba16da586173b1",
+      "contentHash": "226d140bd076c1705ed3f428cdc60f16ebff11b93b1417f018e1e6240503127c",
       "functions": [],
       "classes": [],
       "imports": [
@@ -10925,7 +11052,7 @@
     },
     "gateway/deploy/prod_deploy.py": {
       "filePath": "gateway/deploy/prod_deploy.py",
-      "contentHash": "2ed5c61073598aefdfadd7270f5067b99b4e8f4846a51d3d6b825e8fd5094774",
+      "contentHash": "ed7b42fd5d593feecec9aecee2894c5bfe63776fdd83c2f995b2e7539f2b6eb1",
       "functions": [
         {
           "name": "run",
@@ -10979,7 +11106,7 @@
     },
     "gateway/deploy/prod_final.py": {
       "filePath": "gateway/deploy/prod_final.py",
-      "contentHash": "d7e57efc0ac550ced13691f64f1564a43650496e608e9b8ba79542e980254e29",
+      "contentHash": "cd514f36aa31ddf9a1e00446408541bc0398445631024b9249f0297cd25b74dc",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11020,7 +11147,7 @@
     },
     "gateway/deploy/prod_go.py": {
       "filePath": "gateway/deploy/prod_go.py",
-      "contentHash": "be45c24d0f14f1bb2588a5756ac90e8e009850188d08bd404264228f2c61553b",
+      "contentHash": "391b74cbceef72b94cc8bddcc30f7ebc603896ffe6b33821b68b500d4d403811",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11043,7 +11170,7 @@
     },
     "gateway/deploy/prod_one_shot.py": {
       "filePath": "gateway/deploy/prod_one_shot.py",
-      "contentHash": "cdb606561b6654fc7dc8650361c36cbcf9cda9e23ee79f8ee55af3d270043fe3",
+      "contentHash": "8043d3489feda9457c1304edfc28371653779027adc5f5d96cd93f0a4507e02f",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11094,7 +11221,7 @@
     },
     "gateway/deploy/prod_v2.py": {
       "filePath": "gateway/deploy/prod_v2.py",
-      "contentHash": "a0fb21fee0603bc0b1fae38d52fd99ed222c5c52e2f8e906f047c991ea75bfa0",
+      "contentHash": "3382430bd765d1975c048eee161b35305dd1af51fdd090c4e89c36b060aab028",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11129,7 +11256,7 @@
     },
     "gateway/deploy/prod_v3.py": {
       "filePath": "gateway/deploy/prod_v3.py",
-      "contentHash": "1d8ebc0bca0f037945a6bed6b79253d259bb1ad2b296e725c460d8c99a851201",
+      "contentHash": "771afdd0e94856866ee653d74d3ea7314521aa172adc1c65a176a0c4c31d7dbb",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11164,7 +11291,7 @@
     },
     "gateway/deploy/push_docs.py": {
       "filePath": "gateway/deploy/push_docs.py",
-      "contentHash": "cdd390f7de14415bb504cda01dc8c10a8b88f4c13b44e82bce25d9ef14917a38",
+      "contentHash": "2bff8fe01006c7d5b5ceabb97e762454b6831ac4117447d33a66547a06c2fe08",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11199,7 +11326,7 @@
     },
     "gateway/deploy/push_mcp.py": {
       "filePath": "gateway/deploy/push_mcp.py",
-      "contentHash": "1ee6f1b05700c71607b7afc96a09257cf1ea0dbabfe80dccd313365c95f1ae44",
+      "contentHash": "406d67d4610acbb0233ec3da5211320775e6a16d7d3d8e5802cfdf73266c1fe6",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11222,7 +11349,7 @@
     },
     "gateway/deploy/push_mcp_doc.py": {
       "filePath": "gateway/deploy/push_mcp_doc.py",
-      "contentHash": "95d65132e4a09c8698a54f97b611757a38c947af806792ded883d2d5897eac7a",
+      "contentHash": "76640116d9edae470c5796d7050e5168fd44a98a9e3cd4b44cdb7a7d83abffc5",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11245,7 +11372,7 @@
     },
     "gateway/deploy/push_v063.py": {
       "filePath": "gateway/deploy/push_v063.py",
-      "contentHash": "7e97e40e58f042af9edc99f1794809312e16e4873411fb5ca0ad2730dcdff8cf",
+      "contentHash": "ff9f317060a1df69d9436ac62de18bf88769912b258816064d8992ee45aa2aee",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11274,7 +11401,7 @@
     },
     "gateway/deploy/push_v2.py": {
       "filePath": "gateway/deploy/push_v2.py",
-      "contentHash": "390232443e18e3ae85e902c2763fe9e8c69801f9787d484ff30700bb55e0be9a",
+      "contentHash": "ec7e0c9c6236c95c7d5702755a1991b124c57b2f7ea141029fc95ee1bdd7038c",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11309,7 +11436,7 @@
     },
     "gateway/deploy/qcheck.py": {
       "filePath": "gateway/deploy/qcheck.py",
-      "contentHash": "790ecab80b2628d1382650769a461b2be8c983912038d6c8087673a28fcf56f8",
+      "contentHash": "9a0af5f18b80425758b4f3e7f3023228317bc218bc99a45bb8eddf62971600cc",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11326,7 +11453,7 @@
     },
     "gateway/deploy/qcheck2.py": {
       "filePath": "gateway/deploy/qcheck2.py",
-      "contentHash": "167c286e3f9a96a426228f8a754cead2932e79ce5c03ed4dba630302d068f0a2",
+      "contentHash": "e8588deb0c2fae7a29f3b0059a6723b085c693fb010f9a93a1c4174225df7ca5",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11343,7 +11470,7 @@
     },
     "gateway/deploy/quick_check.py": {
       "filePath": "gateway/deploy/quick_check.py",
-      "contentHash": "6e10d76195ae6be71f4cac921c9c793d7726e3e7fc821d523fd1ca89d1bbcc30",
+      "contentHash": "618a8c446dff78159a1d86569448a2b938def4da0aea475765b13527f5961bb8",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11360,7 +11487,7 @@
     },
     "gateway/deploy/rebuild.py": {
       "filePath": "gateway/deploy/rebuild.py",
-      "contentHash": "9010e3518c092c171cf59a4f0d328fde08ea5a8f82d3584c4c3886a35b9d2cb3",
+      "contentHash": "244a262f074c878293ee6ae64a8ba4e6c6ac03741ddec4403d8f783c6cf1df8a",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11389,7 +11516,7 @@
     },
     "gateway/deploy/rebuild_frontend.py": {
       "filePath": "gateway/deploy/rebuild_frontend.py",
-      "contentHash": "4878f916f538d2ca48ef28e73448fe4c81193c34972ff7b67c5b750c500f15b8",
+      "contentHash": "25fc83270ab0e6440d3d80cc0431d8e933bfc3f8d96794f2d84e7c34f2a1bfb7",
       "functions": [
         {
           "name": "run",
@@ -11423,7 +11550,7 @@
     },
     "gateway/deploy/restart.py": {
       "filePath": "gateway/deploy/restart.py",
-      "contentHash": "8a090c1c576ed8991329976a07dc6660ca243bacb5e871252ca4031065e4ab21",
+      "contentHash": "4b8f481eb2992fc67d45dc9ba2e0791c88b670775797612377bcaf127e0d21d9",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11446,7 +11573,7 @@
     },
     "gateway/deploy/restore_frontend.py": {
       "filePath": "gateway/deploy/restore_frontend.py",
-      "contentHash": "18f7b3dce7520937e854429b27c9854177ccef6e9892584e1357103981e7700b",
+      "contentHash": "fefe7fe8c05c0646d6cbda73426434411df9d3052f8708d45d39185872d5098f",
       "functions": [
         {
           "name": "run",
@@ -11480,7 +11607,7 @@
     },
     "gateway/deploy/restore_frontend2.py": {
       "filePath": "gateway/deploy/restore_frontend2.py",
-      "contentHash": "044410bbc8e8501a1ddae6bbb78a67a9cbd2a008b5158030ab10b0dfd9f6a1d5",
+      "contentHash": "8f316e75669e5493756dd3f71d6a5b634ae55fb55a1cf89acc455fccad7ccd90",
       "functions": [
         {
           "name": "run",
@@ -11514,7 +11641,7 @@
     },
     "gateway/deploy/restore_gateway.py": {
       "filePath": "gateway/deploy/restore_gateway.py",
-      "contentHash": "8f04b5599a1a9c5def30cd8122cca4f6e4a399547fe8eed93642e66f5b26c7cd",
+      "contentHash": "caf3d358ff863e642b515025cc67c6f38cec7e4b6b34fabb9cca40265966d793",
       "functions": [
         {
           "name": "run",
@@ -11548,7 +11675,7 @@
     },
     "gateway/deploy/restore_quick.py": {
       "filePath": "gateway/deploy/restore_quick.py",
-      "contentHash": "33f0297e0b9e28482b008c1343bfa437ef8aa555632f93f67d77daea47efc9ba",
+      "contentHash": "5a6abddb07422025e97aef14d617dfb9415335a9be76d78830f4081a10079c82",
       "functions": [
         {
           "name": "run",
@@ -11582,7 +11709,7 @@
     },
     "gateway/deploy/run_bash.py": {
       "filePath": "gateway/deploy/run_bash.py",
-      "contentHash": "6edd4a46c8e6d4ccc0b281f0dbe476b480d5a6a6b61afa4104cf604c26edbb56",
+      "contentHash": "4ed5dc9bd69221f1d7a4aad1ae926383e3e1944765f7d8497f720921b7d2c078",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11599,7 +11726,7 @@
     },
     "gateway/deploy/run_sep.py": {
       "filePath": "gateway/deploy/run_sep.py",
-      "contentHash": "c8959fa1b4d939d74ae8061c2fb21bdd921d24de92299a22cdb24ab141a91502",
+      "contentHash": "e9205ae6371abfcc1fe60de794282ad089caba67a42595ceee4ce2805baf09b2",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11616,7 +11743,7 @@
     },
     "gateway/deploy/sdk_upgrade.py": {
       "filePath": "gateway/deploy/sdk_upgrade.py",
-      "contentHash": "0d508790e96aff1535cbb824affb9bf494f49c370b7c81b61b9af8b20531b2e4",
+      "contentHash": "c51653c99692e4a533abd0a727a92b24f3532939e4f7146d63a5be7754d12da2",
       "functions": [
         {
           "name": "run",
@@ -11657,7 +11784,7 @@
     },
     "gateway/deploy/server_prepare.py": {
       "filePath": "gateway/deploy/server_prepare.py",
-      "contentHash": "4ad38c09a1c4b8cd8e3d086fea09b9f7d42efa770cae768628aa84750639c900",
+      "contentHash": "e96473e74516aea947b736c5be772922ae9de13c9153f0eecbb63eed6d929751",
       "functions": [
         {
           "name": "run",
@@ -11697,7 +11824,7 @@
     },
     "gateway/deploy/server_setup.py": {
       "filePath": "gateway/deploy/server_setup.py",
-      "contentHash": "4880dbad4bfd256748a2e5417021b1b14bba8a54a472e548646e83a79138dc01",
+      "contentHash": "4452632970c893e87fcab905f90351599915e9e49bd56f9fd88b317d3038f0b6",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11720,7 +11847,7 @@
     },
     "gateway/deploy/ssh_check.py": {
       "filePath": "gateway/deploy/ssh_check.py",
-      "contentHash": "279c61055e222d4268a131bbdd56ed85fccbe2b47541bf0d8e5900e676025bf3",
+      "contentHash": "fa88303fcd51b07fd4a93d448eb7481cbeb9d06258205c1b02edb8ac66e4352b",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11737,7 +11864,7 @@
     },
     "gateway/deploy/ssh_push.py": {
       "filePath": "gateway/deploy/ssh_push.py",
-      "contentHash": "31d0097834163586577a28ec57fdec87df02fb3260b8b7c7875b3f682d11c7db",
+      "contentHash": "248c1533a2d43c89cd624c6f4bdd5ab2b67193b02d573ac6f129147bbd6a5416",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11760,7 +11887,7 @@
     },
     "gateway/deploy/start_deploy.py": {
       "filePath": "gateway/deploy/start_deploy.py",
-      "contentHash": "9acd1fdcfdaf2537653842940713e27b14b4e70c9eff108769c7e3e7723431ab",
+      "contentHash": "2dfc9de1a171b098fdb5dfd72bce1382450ac5e62690aba526ad884ff805232b",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11777,7 +11904,7 @@
     },
     "gateway/deploy/start_frontend.py": {
       "filePath": "gateway/deploy/start_frontend.py",
-      "contentHash": "9cef3652cff512861b1dc71ea7f83f1e4e969ad2a9f1fae7aec0807e730d46f8",
+      "contentHash": "6d17ee89c55ffb95d05c6fe8e2fac016c4bec3d311a865139143ea802518dd38",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11794,7 +11921,7 @@
     },
     "gateway/deploy/start_v2.py": {
       "filePath": "gateway/deploy/start_v2.py",
-      "contentHash": "14e53669fba34c4728d3e1d235ed095b385574ce8909fe982f0cd9cc5ad4bcd0",
+      "contentHash": "489845bb6cbb86d303d7ba0e594c31d0eada47896e2145ed21ec15bbb3512e78",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11811,7 +11938,7 @@
     },
     "gateway/deploy/stat.py": {
       "filePath": "gateway/deploy/stat.py",
-      "contentHash": "29083e51188df1e66f0eb4bb00e92f1477db77ad3fa112e8c2f32305155f839b",
+      "contentHash": "8403d54d89d60bf6aecf037835b09b3165afa94e040f310c4cc422acc9431650",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11828,7 +11955,7 @@
     },
     "gateway/deploy/tail_log.py": {
       "filePath": "gateway/deploy/tail_log.py",
-      "contentHash": "b34f17684ad3a63ee8fee137dda963302b9562aa5e802c57477f64e3492f0a2f",
+      "contentHash": "1256dafebcf9b829b7b425e8f8b6934a7271a599fa590ed6542ab1fd5510b895",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11851,7 +11978,7 @@
     },
     "gateway/deploy/update_env.py": {
       "filePath": "gateway/deploy/update_env.py",
-      "contentHash": "a5e2fe3fe3823e9f31b7548886a3d0618a8e8f8e3e2c498b88f5ba351adf227b",
+      "contentHash": "51605c4dcf9b5299120de42441c1721af4707c64c9a462823d636ec873fc71c3",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11880,7 +12007,7 @@
     },
     "gateway/deploy/upload_and_start.py": {
       "filePath": "gateway/deploy/upload_and_start.py",
-      "contentHash": "71f8e0008a96938506dbbdf6b5026a387ac260861dd49ee798e51e7a7cac4d50",
+      "contentHash": "86165cd24dc3f16b110cd493ac33b8317e10b50e5ffd7ebd79948d58e1c3fa1a",
       "functions": [
         {
           "name": "upload_dir",
@@ -11930,7 +12057,7 @@
     },
     "gateway/deploy/verify_a2a.py": {
       "filePath": "gateway/deploy/verify_a2a.py",
-      "contentHash": "ad04f88ed8385d8a0a083a52fd6acf3f7f6a6c63f5e017426de61c152ee9bc14",
+      "contentHash": "3c51f67d26ab664772f7a5682640ef5c4596347a05b47166822205d0e53351e2",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11953,7 +12080,7 @@
     },
     "gateway/deploy/verify_mcp.py": {
       "filePath": "gateway/deploy/verify_mcp.py",
-      "contentHash": "d8996e310d327617966f947487f2035d61995483ab699ea7f33a952539104ca0",
+      "contentHash": "8e24136c6fc1ea985e5f3822915d17ea5ca45d25e029fa65e73e1f4cb8dfacc1",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11976,7 +12103,7 @@
     },
     "gateway/deploy/verify_sdk.py": {
       "filePath": "gateway/deploy/verify_sdk.py",
-      "contentHash": "b3f2dc7a0a68a6db68895eb0e3f551b02d0dc0c9b273e5ef664e65c4f4b42823",
+      "contentHash": "5dd166cc99d764b6b5dcc94e281bf64f281435d8cf867bdbe15e23c440d26cd0",
       "functions": [],
       "classes": [],
       "imports": [
@@ -11993,7 +12120,7 @@
     },
     "gateway/e2e_wallet.js": {
       "filePath": "gateway/e2e_wallet.js",
-      "contentHash": "7a1d46f9496379b7b194e18d33938b552f08540d5e36c2e50d89b371128f0440",
+      "contentHash": "42bac4b106450f267df9747cd8ab1e8f4cb2afd6b0214f392f4fea9dba0368a1",
       "functions": [
         {
           "name": "log",
@@ -12024,7 +12151,7 @@
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 176,
+      "totalLines": 182,
       "hasStructuralAnalysis": true
     },
     "gateway/ecosystem.config.js": {
@@ -12873,7 +13000,7 @@
     },
     "gateway/src/routes/admin-finance.ts": {
       "filePath": "gateway/src/routes/admin-finance.ts",
-      "contentHash": "edb5efd1921b73c6f4174a3cc6ebcb047cf4d7495fa63986f3ceb3d42e042cee",
+      "contentHash": "62d24ad6e19e9ba89dd60f48810f3156cacd648dbef027060766d101c9ae394f",
       "functions": [
         {
           "name": "shortAddr",
@@ -12927,10 +13054,16 @@
             "x402Available",
             "priceWei"
           ]
+        },
+        {
+          "source": "../lib/constants",
+          "specifiers": [
+            "KNOWN_ERC20_SYMBOLS"
+          ]
         }
       ],
       "exports": [],
-      "totalLines": 396,
+      "totalLines": 393,
       "hasStructuralAnalysis": true
     },
     "gateway/src/routes/admin-partners.ts": {
@@ -13576,7 +13709,7 @@
     },
     "gateway/src/routes/mcp-executor.ts": {
       "filePath": "gateway/src/routes/mcp-executor.ts",
-      "contentHash": "3baf44c980fbdededec8c67c5df6e08a720793608f6861ad0eb9e4b098929ca5",
+      "contentHash": "d8f8d809bf33dc031f441a6ae775ef814b19035bb3dc31f3a77cd77ed3a1f36d",
       "functions": [
         {
           "name": "resolveChain",
@@ -13746,12 +13879,18 @@
           "specifiers": [
             "MCP_TOOLS"
           ]
+        },
+        {
+          "source": "../lib/constants",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
         "executeToolCall"
       ],
-      "totalLines": 425,
+      "totalLines": 423,
       "hasStructuralAnalysis": true
     },
     "gateway/src/routes/mcp-tools.ts": {
@@ -14332,7 +14471,7 @@
     },
     "gateway/src/services/agent-indexer.ts": {
       "filePath": "gateway/src/services/agent-indexer.ts",
-      "contentHash": "7768598f79909b09cdb1e4ae6cbd9bb21f8d727107516d1efcb5b3b7d413ba42",
+      "contentHash": "d8ed855a00997959bfc4f2c1d1761eb66ebaba4a58595c4804503e570cc93097",
       "functions": [
         {
           "name": "str",
@@ -14484,6 +14623,12 @@
           "specifiers": [
             "config"
           ]
+        },
+        {
+          "source": "../lib/constants",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
@@ -14497,7 +14642,7 @@
         "syncSubscriptionHistory",
         "startSubscriptionSyncWatcher"
       ],
-      "totalLines": 382,
+      "totalLines": 381,
       "hasStructuralAnalysis": true
     },
     "gateway/src/services/chain-config.ts": {
@@ -14521,7 +14666,7 @@
     },
     "gateway/src/services/chain-data-reader.ts": {
       "filePath": "gateway/src/services/chain-data-reader.ts",
-      "contentHash": "aa2d74f99cc2f4b71afe6902ee798708a53cb4bbebdaa9cbb88ce317e04c2554",
+      "contentHash": "2b7dd2474f4a51743db71fed781b1b47661469d7cc4aeef3258c27bdc53d500a",
       "functions": [],
       "classes": [
         {
@@ -14602,6 +14747,12 @@
             "ChainInfo",
             "ChainKey"
           ]
+        },
+        {
+          "source": "../lib/constants",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
@@ -14610,7 +14761,7 @@
         "ChainDataReader",
         "chainDataReader"
       ],
-      "totalLines": 272,
+      "totalLines": 270,
       "hasStructuralAnalysis": true
     },
     "gateway/src/services/conversation-proxy.ts": {
@@ -15248,27 +15399,8 @@
     },
     "gateway/test/mcp.test.ts": {
       "filePath": "gateway/test/mcp.test.ts",
-      "contentHash": "00019b54b847acb46169e0510ab49082726d8dcc6e60d1c1d425c698115a1783",
-      "functions": [
-        {
-          "name": "callTool",
-          "params": [
-            "name",
-            "args"
-          ],
-          "exported": false,
-          "lineCount": 9
-        },
-        {
-          "name": "textOf",
-          "params": [
-            "body"
-          ],
-          "returnType": "string",
-          "exported": false,
-          "lineCount": 1
-        }
-      ],
+      "contentHash": "b36d08dd541483662d7e27bb6aaed75f84b2da921952b73b7b347c6fb16714ce",
+      "functions": [],
       "classes": [],
       "imports": [
         {
@@ -15300,7 +15432,7 @@
         }
       ],
       "exports": [],
-      "totalLines": 174,
+      "totalLines": 202,
       "hasStructuralAnalysis": true
     },
     "gateway/tsconfig.json": {
@@ -18027,12 +18159,12 @@
     },
     "sdk/README.md": {
       "filePath": "sdk/README.md",
-      "contentHash": "3b2364db93e6ed6c183b0bb8a06bb9d53ea42609c00c0963dcd55bbf8b11dbf5",
+      "contentHash": "0f57fa76816c1ed60ced9829f238110ee344b5d59b4652bff1153c497ff06a92",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 769,
+      "totalLines": 774,
       "hasStructuralAnalysis": true
     },
     "sdk/UPGRADE.md": {
@@ -18132,7 +18264,7 @@
     },
     "sdk/src/agent-loop/a2a-daemon.ts": {
       "filePath": "sdk/src/agent-loop/a2a-daemon.ts",
-      "contentHash": "54ac56722d8c06ed97183f978923f56cdae93e71a6f722c7db11abd72b6bcd30",
+      "contentHash": "bb568d8678ba1f826d84073bb8a5ea8206f75d5d96d9b14de310b3d0e085826f",
       "functions": [],
       "classes": [
         {
@@ -20019,7 +20151,7 @@
     },
     "sdk/src/registry/agent-registry.ts": {
       "filePath": "sdk/src/registry/agent-registry.ts",
-      "contentHash": "66cbbe63301ff1c2418083a7d1105bd06d59818a242a7be1501021c748eb8ef1",
+      "contentHash": "524d4d82533f423796fd5747afb7566061dc800377f317ffd8938d4a5797c5dd",
       "functions": [
         {
           "name": "decodeBase64",
@@ -20108,6 +20240,12 @@
           "specifiers": [
             "OnChainAgentMetadata"
           ]
+        },
+        {
+          "source": "../subscription/subscription",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
@@ -20115,7 +20253,7 @@
         "AgentRegistry",
         "cidFromURI"
       ],
-      "totalLines": 499,
+      "totalLines": 498,
       "hasStructuralAnalysis": true
     },
     "sdk/src/registry/index.ts": {
@@ -20316,7 +20454,7 @@
     },
     "sdk/src/subscription/agent-x402.ts": {
       "filePath": "sdk/src/subscription/agent-x402.ts",
-      "contentHash": "056aee7a94a3609ca2c703571ec8c3681d788ff9092d756304609065ce190d7d",
+      "contentHash": "8b176befe3c67ab43bf8ae7130693e9a0619c32e6c5cb6680a4ed2acd26b05d0",
       "functions": [],
       "classes": [
         {
@@ -20352,12 +20490,18 @@
           "specifiers": [
             "SubscriptionRequired"
           ]
+        },
+        {
+          "source": "./subscription",
+          "specifiers": [
+            "ZERO_ADDRESS"
+          ]
         }
       ],
       "exports": [
         "AgentX402"
       ],
-      "totalLines": 179,
+      "totalLines": 180,
       "hasStructuralAnalysis": true
     },
     "sdk/src/subscription/index.ts": {

@@ -1,0 +1,1355 @@
+{
+  "summary": {
+    "totalFileNodes": 343,
+    "totalImportEdges": 101,
+    "totalAllEdges": 286,
+    "edgeTypes": {
+      "exports": 9,
+      "imports": 101,
+      "contains": 9,
+      "references": 6,
+      "migrates": 3,
+      "documents": 80,
+      "related": 46,
+      "configures": 8,
+      "depends_on": 20,
+      "tested_by": 4
+    },
+    "nodeTypes": {
+      "file": 283,
+      "schema": 3,
+      "table": 11,
+      "document": 23,
+      "config": 22,
+      "service": 1
+    }
+  },
+  "directoryGrouping": {
+    "gateway": {
+      "count": 51,
+      "byType": {
+        "file": 41,
+        "schema": 3,
+        "config": 4,
+        "table": 2,
+        "service": 1
+      },
+      "nodeIds": [
+        "config:gateway/.env.example",
+        "config:gateway/deploy/.env.deploy.example",
+        "config:gateway/package.json",
+        "config:gateway/tsconfig.json",
+        "file:0b632556320e",
+        "file:421e055151c3",
+        "file:61ac38efa378",
+        "file:76cb31ac8888",
+        "file:84b45be8b85a",
+        "file:cac7027d376d",
+        "file:gateway/db/migrations/004_tenant_platform_api_key.sql",
+        "file:gateway/db/migrations/020_agents_category.sql",
+        "file:gateway/db/migrations/021_payments_a2a_period_selfhost.sql",
+        "file:gateway/deploy/check_deploy.sh",
+        "file:gateway/deploy/deploy_a2a.sh",
+        "file:gateway/deploy/deploy_a2a_bg.sh",
+        "file:gateway/deploy/deploy_a2a_v2.sh",
+        "file:gateway/deploy/deploy_sep_a2a.sh",
+        "file:gateway/deploy/prod_setup.sh",
+        "file:gateway/e2e_wallet.js",
+        "file:gateway/src/config.ts",
+        "file:gateway/src/index.ts",
+        "file:gateway/src/lib/constants.ts",
+        "file:gateway/src/lib/crypto.ts",
+        "file:gateway/src/middleware/auth.ts",
+        "file:gateway/src/routes/admin-finance.ts",
+        "file:gateway/src/routes/admin.ts",
+        "file:gateway/src/routes/agent-mcp.ts",
+        "file:gateway/src/routes/agent-runs.ts",
+        "file:gateway/src/routes/agents.ts",
+        "file:gateway/src/routes/chat-tasks.ts",
+        "file:gateway/src/routes/mcp-executor.ts",
+        "file:gateway/src/routes/mcp.ts",
+        "file:gateway/src/routes/payments.ts",
+        "file:gateway/src/routes/skills.ts",
+        "file:gateway/src/routes/tenant.ts",
+        "file:gateway/src/services/a2a-worker.ts",
+        "file:gateway/src/services/agent-access.ts",
+        "file:gateway/src/services/agent-indexer.ts",
+        "file:gateway/src/services/chain-data-reader.ts",
+        "file:gateway/src/services/conversation-proxy.ts",
+        "file:gateway/src/services/payments-a2a-period.ts",
+        "file:gateway/src/services/payments-bridge.ts",
+        "file:gateway/src/services/payments.ts",
+        "file:gateway/test/mcp.test.ts",
+        "schema:gateway/db/migrations/001_init.sql",
+        "schema:gateway/db/migrations/002_agents.sql",
+        "schema:gateway/db/migrations/003_a2a_results.sql",
+        "service:gateway/src/services/payments.ts:paymentsService",
+        "table:gateway/db/migrations/021_payments_a2a_period_selfhost.sql:payment_authorizations",
+        "table:gateway/db/migrations/021_payments_a2a_period_selfhost.sql:payment_intents"
+      ]
+    },
+    "frontend": {
+      "count": 107,
+      "byType": {
+        "file": 95,
+        "config": 12
+      },
+      "nodeIds": [
+        "config:b17_frontend_ecosystem",
+        "config:b18_i18n_index",
+        "config:b18_next_env_dts",
+        "config:b18_postcss_config",
+        "config:b18_tailwind_config",
+        "config:b18_wagmi_config",
+        "config:frontend/.env.production",
+        "config:frontend/lib/i18n/en.json",
+        "config:frontend/lib/i18n/zh-Hant.json",
+        "config:frontend/next.config.js",
+        "config:frontend/package.json",
+        "config:frontend/tsconfig.json",
+        "file:38d69662f5fc",
+        "file:491d87170943",
+        "file:49be7ce89670",
+        "file:a0b679958fe9",
+        "file:ed488613e8bc",
+        "file:frontend/abis/AgentFactory.ts",
+        "file:frontend/abis/ConfigurationRegistry.ts",
+        "file:frontend/abis/IdentityRegistry.ts",
+        "file:frontend/abis/MultiEndpoint.ts",
+        "file:frontend/abis/PaymentGateway.ts",
+        "file:frontend/app/a2a/page.tsx",
+        "file:frontend/app/admin/page.tsx",
+        "file:frontend/app/api/ipfs/upload-json/route.ts",
+        "file:frontend/app/api/ipfs/upload/route.ts",
+        "file:frontend/app/dashboard/agent/page.tsx",
+        "file:frontend/app/globals.css",
+        "file:frontend/app/layout.tsx",
+        "file:frontend/app/marketplace/agent/[id]/page.tsx",
+        "file:frontend/app/marketplace/page.tsx",
+        "file:frontend/app/marketplace/skills/page.tsx",
+        "file:frontend/app/page.tsx",
+        "file:frontend/app/studio/basics/page.tsx",
+        "file:frontend/app/studio/encrypt/page.tsx",
+        "file:frontend/app/studio/layout.tsx",
+        "file:frontend/app/studio/page.tsx",
+        "file:frontend/app/studio/publish/page.tsx",
+        "file:frontend/app/studio/skills/page.tsx",
+        "file:frontend/app/user/agents/page.tsx",
+        "file:frontend/app/user/chat/[agentId]/page.tsx",
+        "file:frontend/app/user/dashboard/page.tsx",
+        "file:frontend/app/user/settings/page.tsx",
+        "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+        "file:frontend/app/user/subscriptions/[subscriptionId]/renew/page.tsx",
+        "file:frontend/app/user/subscriptions/page.tsx",
+        "file:frontend/components/ErrorBoundary.tsx",
+        "file:frontend/components/agent/dashboard/AgentCardList.tsx",
+        "file:frontend/components/agent/dashboard/ConfigurationManager.tsx",
+        "file:frontend/components/agent/dashboard/EndpointManager.tsx",
+        "file:frontend/components/agent/dashboard/RevenuePaymentTable.tsx",
+        "file:frontend/components/agent/dashboard/RevenueStatsSection.tsx",
+        "file:frontend/components/agent/dashboard/SkillConfigForm.tsx",
+        "file:frontend/components/agent/dashboard/SubscriptionManager.tsx",
+        "file:frontend/components/agent/dashboard/SubscriptionPlanCard.tsx",
+        "file:frontend/components/agent/dashboard/hooks/useAgentCards.ts",
+        "file:frontend/components/agent/dashboard/hooks/useAgentRegistration.ts",
+        "file:frontend/components/agent/dashboard/hooks/useRevenueDisplay.ts",
+        "file:frontend/components/agent/dashboard/subscription-utils.ts",
+        "file:frontend/components/agent/hooks/contract-address.ts",
+        "file:frontend/components/agent/hooks/payment-gateway-types.ts",
+        "file:frontend/components/agent/hooks/useA2AProtocol.ts",
+        "file:frontend/components/agent/hooks/useAgentFactory.ts",
+        "file:frontend/components/agent/hooks/useAgentRegistry.ts",
+        "file:frontend/components/agent/hooks/useConfiguration.ts",
+        "file:frontend/components/agent/hooks/useMultiEndpoint.ts",
+        "file:frontend/components/agent/hooks/usePaymentGateway.ts",
+        "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+        "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+        "file:frontend/components/agent/hooks/useReputation.ts",
+        "file:frontend/components/agent/hooks/useSubscription.ts",
+        "file:frontend/components/agent/types/agent.ts",
+        "file:frontend/components/aimarket/SearchFilters.tsx",
+        "file:frontend/components/aimarket/index.ts",
+        "file:frontend/components/chat/ToolCallBubble.tsx",
+        "file:frontend/components/chat/index.ts",
+        "file:frontend/components/guard/SubscriptionGuard.tsx",
+        "file:frontend/components/guard/index.ts",
+        "file:frontend/components/layout/Header.tsx",
+        "file:frontend/components/layout/LanguageSwitcher.tsx",
+        "file:frontend/components/layout/MobileNav.tsx",
+        "file:frontend/components/layout/Sidebar.tsx",
+        "file:frontend/components/layout/index.ts",
+        "file:frontend/components/providers/I18nProvider.tsx",
+        "file:frontend/components/providers/WagmiProvider.tsx",
+        "file:frontend/components/providers/index.ts",
+        "file:frontend/components/studio/EncryptProgress.tsx",
+        "file:frontend/components/studio/StepIndicator.tsx",
+        "file:frontend/components/studio/StepNav.tsx",
+        "file:frontend/components/studio/StudioContext.tsx",
+        "file:frontend/components/studio/StudioHeader.tsx",
+        "file:frontend/components/studio/index.ts",
+        "file:frontend/components/studio/stepFromPath.ts",
+        "file:frontend/components/studio/types.ts",
+        "file:frontend/components/wallet/NetworkSwitcher.tsx",
+        "file:frontend/components/wallet/WalletConnect.tsx",
+        "file:frontend/components/wallet/WalletStatus.tsx",
+        "file:frontend/components/wallet/index.ts",
+        "file:frontend/deploy.sh",
+        "file:frontend/ecosystem.config.js",
+        "file:frontend/hooks/aimarket/index.ts",
+        "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+        "file:frontend/hooks/aimarket/useAgentSearch.ts",
+        "file:frontend/hooks/useAgentChat.ts",
+        "file:frontend/hooks/useGatewayAuth.ts",
+        "file:frontend/hooks/user/useUserSubscriptions.ts",
+        "file:frontend/lib/ipfs.ts"
+      ]
+    },
+    "sdk": {
+      "count": 58,
+      "byType": {
+        "file": 54,
+        "config": 2,
+        "document": 2
+      },
+      "nodeIds": [
+        "config:sdk/package.json",
+        "config:sdk/tsconfig.json",
+        "document:sdk/README.md",
+        "document:sdk/UPGRADE.md",
+        "file:0342c72c219a",
+        "file:15e04f04ee5d",
+        "file:3e3f377d0a09",
+        "file:5192baf78704",
+        "file:627a889630ec",
+        "file:76b74e0fb1e7",
+        "file:a7dfe1427dc3",
+        "file:c0a813397eec",
+        "file:d2674cf7dd4e",
+        "file:d931087f9191",
+        "file:e803b48c6636",
+        "file:f6836c3fb3e6",
+        "file:sdk/src/a2a/a2a.ts",
+        "file:sdk/src/agent-loop/a2a-daemon.ts",
+        "file:sdk/src/agent-loop/loop.ts",
+        "file:sdk/src/agent-loop/types.ts",
+        "file:sdk/src/agent/agent-runner.ts",
+        "file:sdk/src/agent/index.ts",
+        "file:sdk/src/config/config.ts",
+        "file:sdk/src/config/index.ts",
+        "file:sdk/src/configuration/configuration.ts",
+        "file:sdk/src/configuration/index.ts",
+        "file:sdk/src/conversation/client.ts",
+        "file:sdk/src/conversation/index.ts",
+        "file:sdk/src/core/crypto.ts",
+        "file:sdk/src/core/index.ts",
+        "file:sdk/src/core/types.ts",
+        "file:sdk/src/endpoint/index.ts",
+        "file:sdk/src/endpoint/multi-endpoint.ts",
+        "file:sdk/src/index.ts",
+        "file:sdk/src/ipfs/index.ts",
+        "file:sdk/src/ipfs/ipfs-uploader.ts",
+        "file:sdk/src/llm/factory.ts",
+        "file:sdk/src/llm/gateway-provider.ts",
+        "file:sdk/src/llm/index.ts",
+        "file:sdk/src/llm/openai-provider.ts",
+        "file:sdk/src/llm/types.ts",
+        "file:sdk/src/mcp/connector.ts",
+        "file:sdk/src/mcp/index.ts",
+        "file:sdk/src/memory/index.ts",
+        "file:sdk/src/memory/types.ts",
+        "file:sdk/src/payment/a2a-client.ts",
+        "file:sdk/src/payment/index.ts",
+        "file:sdk/src/payment/payments.ts",
+        "file:sdk/src/payment/period-client.ts",
+        "file:sdk/src/react/index.ts",
+        "file:sdk/src/react/useAgentRunner.ts",
+        "file:sdk/src/registry/agent-registry.ts",
+        "file:sdk/src/registry/index.ts",
+        "file:sdk/src/skills/browser.ts",
+        "file:sdk/src/subscription/agent-x402.ts",
+        "file:sdk/src/subscription/index.ts",
+        "file:sdk/src/subscription/subscription.ts",
+        "file:sdk/test/payment.test.ts"
+      ]
+    },
+    "root": {
+      "count": 18,
+      "byType": {
+        "table": 8,
+        "document": 10
+      },
+      "nodeIds": [
+        "document:CHANGELOG.md",
+        "document:CODE_REVIEW_REPORT.md",
+        "document:CONVERSATION_SERVICE.md",
+        "document:DEPLOYMENT.md",
+        "document:FRONTEND_PRD.md",
+        "document:INTEGRATION.md",
+        "document:MCP_SETUP.md",
+        "document:PROPOSAL.md",
+        "document:README.md",
+        "document:TOOLS-NOTES.md",
+        "table:a2a_task_results",
+        "table:agents",
+        "table:chat_messages",
+        "table:plans",
+        "table:platform_api_keys",
+        "table:tenant_api_keys",
+        "table:tenants",
+        "table:usage_logs"
+      ]
+    },
+    "contracts": {
+      "count": 6,
+      "byType": {
+        "config": 2,
+        "document": 1,
+        "file": 3
+      },
+      "nodeIds": [
+        "config:contracts/.solhint.json",
+        "config:contracts/foundry.toml",
+        "document:contracts/CONTRACTS.md",
+        "file:contracts/script/DeployOxaChain.s.sol",
+        "file:contracts/src/erc8004-core/IdentityRegistry.sol",
+        "file:contracts/src/erc8004-interfaces/IERC8004Identity.sol"
+      ]
+    },
+    "test-reports": {
+      "count": 4,
+      "byType": {
+        "document": 4
+      },
+      "nodeIds": [
+        "document:test-reports/TEST_RUN_REPORT.md",
+        "document:test-reports/TEST_SCENARIOS_AT.md",
+        "document:test-reports/TEST_SCENARIOS_CT.md",
+        "document:test-reports/TEST_SCENARIOS_FT.md"
+      ]
+    },
+    "__unresolved__": {
+      "count": 75,
+      "byType": {
+        "file": 75
+      },
+      "nodeIds": [
+        "file:node-18-1",
+        "file:node-18-10",
+        "file:node-18-102",
+        "file:node-18-105",
+        "file:node-18-106",
+        "file:node-18-12",
+        "file:node-18-15",
+        "file:node-18-18",
+        "file:node-18-21",
+        "file:node-18-30",
+        "file:node-18-42",
+        "file:node-18-43",
+        "file:node-18-48",
+        "file:node-18-7",
+        "file:node-18-74",
+        "file:node-18-79",
+        "file:node-18-83",
+        "file:node-18-84",
+        "file:node-18-85",
+        "file:node-18-86",
+        "file:node-18-87",
+        "file:node-18-90",
+        "file:node-18-93",
+        "file:node-18-98",
+        "file:node-18-99",
+        "file:node-19-1",
+        "file:node-19-11",
+        "file:node-19-12",
+        "file:node-19-13",
+        "file:node-19-16",
+        "file:node-19-19",
+        "file:node-19-2",
+        "file:node-19-22",
+        "file:node-19-23",
+        "file:node-19-26",
+        "file:node-19-3",
+        "file:node-19-31",
+        "file:node-19-32",
+        "file:node-19-35",
+        "file:node-19-36",
+        "file:node-19-39",
+        "file:node-19-42",
+        "file:node-19-43",
+        "file:node-19-44",
+        "file:node-19-47",
+        "file:node-19-48",
+        "file:node-19-51",
+        "file:node-19-6",
+        "file:node-19-7",
+        "file:node-19-8",
+        "file:node-20-1",
+        "file:node-20-11",
+        "file:node-20-14",
+        "file:node-20-17",
+        "file:node-20-18",
+        "file:node-20-19",
+        "file:node-20-20",
+        "file:node-20-21",
+        "file:node-20-22",
+        "file:node-20-23",
+        "file:node-20-24",
+        "file:node-20-29",
+        "file:node-20-32",
+        "file:node-20-33",
+        "file:node-20-34",
+        "file:node-20-37",
+        "file:node-20-38",
+        "file:node-20-39",
+        "file:node-20-4",
+        "file:node-20-40",
+        "file:node-20-41",
+        "file:node-20-42",
+        "file:node-20-43",
+        "file:node-20-7",
+        "file:node-20-8"
+      ]
+    },
+    "conversation-service": {
+      "count": 16,
+      "byType": {
+        "file": 13,
+        "table": 1,
+        "config": 2
+      },
+      "nodeIds": [
+        "config:conversation-service/.env.example",
+        "config:conversation-service/package.json",
+        "file:conversation-service/migrations/001_memory.sql",
+        "file:conversation-service/migrations/004_end_user_isolation.sql",
+        "file:conversation-service/src/config.ts",
+        "file:conversation-service/src/index.ts",
+        "file:conversation-service/src/lib/crypto.ts",
+        "file:conversation-service/src/lib/db.ts",
+        "file:conversation-service/src/routes/runs.ts",
+        "file:conversation-service/src/routes/tenants.ts",
+        "file:conversation-service/src/services/agent-context-loader.ts",
+        "file:conversation-service/src/services/agent-runner.ts",
+        "file:conversation-service/src/services/memory-engine.ts",
+        "file:conversation-service/src/services/tenant-llm-resolver.ts",
+        "file:conversation-service/src/services/tool-executor.ts",
+        "table:conversation-service/migrations/001_memory.sql:memories"
+      ]
+    },
+    "memory": {
+      "count": 1,
+      "byType": {
+        "document": 1
+      },
+      "nodeIds": [
+        "document:memory/AGENTX_PROGRESS.md"
+      ]
+    },
+    "scripts": {
+      "count": 1,
+      "byType": {
+        "file": 1
+      },
+      "nodeIds": [
+        "file:scripts/local-payments/run-flows-f7.mjs"
+      ]
+    },
+    ".github": {
+      "count": 1,
+      "byType": {
+        "file": 1
+      },
+      "nodeIds": [
+        "file:.github/workflows/publish-sdk.yml"
+      ]
+    },
+    "docs": {
+      "count": 5,
+      "byType": {
+        "document": 5
+      },
+      "nodeIds": [
+        "document:docs/PROGRESS.md",
+        "document:docs/code-review-2026-08-11.md",
+        "document:docs/integration-callers.md",
+        "document:docs/payments-infrax-migration.md",
+        "document:docs/publish-subscribe-pay.md"
+      ]
+    }
+  },
+  "unresolvedPatterns": {
+    "file:node-18-*": 25,
+    "file:node-19-*": 25,
+    "file:node-20-*": 25
+  },
+  "nodeTypeGrouping": {
+    "file": {
+      "count": 283,
+      "nodeIds": [
+        "file:76cb31ac8888",
+        "file:cac7027d376d",
+        "file:61ac38efa378",
+        "file:84b45be8b85a",
+        "file:421e055151c3",
+        "file:0b632556320e",
+        "file:ed488613e8bc",
+        "file:a0b679958fe9",
+        "file:38d69662f5fc",
+        "file:491d87170943",
+        "file:5192baf78704",
+        "file:76b74e0fb1e7",
+        "file:0342c72c219a",
+        "file:627a889630ec",
+        "file:15e04f04ee5d",
+        "file:f6836c3fb3e6",
+        "file:3e3f377d0a09",
+        "file:c0a813397eec",
+        "file:a7dfe1427dc3",
+        "file:d931087f9191",
+        "file:e803b48c6636",
+        "file:d2674cf7dd4e",
+        "file:49be7ce89670",
+        "file:frontend/components/studio/StepNav.tsx",
+        "file:frontend/components/studio/StudioContext.tsx",
+        "file:frontend/components/studio/types.ts",
+        "file:frontend/deploy.sh",
+        "file:gateway/deploy/check_deploy.sh",
+        "file:gateway/deploy/deploy_a2a.sh",
+        "file:gateway/deploy/deploy_a2a_bg.sh",
+        "file:gateway/deploy/deploy_a2a_v2.sh",
+        "file:gateway/deploy/deploy_sep_a2a.sh",
+        "file:gateway/deploy/prod_setup.sh",
+        "file:frontend/app/dashboard/agent/page.tsx",
+        "file:frontend/app/layout.tsx",
+        "file:frontend/app/marketplace/agent/[id]/page.tsx",
+        "file:frontend/app/marketplace/page.tsx",
+        "file:frontend/app/page.tsx",
+        "file:frontend/app/studio/basics/page.tsx",
+        "file:frontend/app/studio/encrypt/page.tsx",
+        "file:frontend/app/studio/layout.tsx",
+        "file:frontend/app/studio/page.tsx",
+        "file:frontend/app/studio/publish/page.tsx",
+        "file:frontend/app/studio/skills/page.tsx",
+        "file:frontend/app/user/agents/page.tsx",
+        "file:frontend/app/user/chat/[agentId]/page.tsx",
+        "file:frontend/app/user/dashboard/page.tsx",
+        "file:frontend/app/user/subscriptions/[subscriptionId]/renew/page.tsx",
+        "file:frontend/app/user/subscriptions/page.tsx",
+        "file:frontend/components/ErrorBoundary.tsx",
+        "file:frontend/components/agent/hooks/useReputation.ts",
+        "file:frontend/components/agent/types/agent.ts",
+        "file:frontend/components/aimarket/SearchFilters.tsx",
+        "file:frontend/components/aimarket/index.ts",
+        "file:frontend/components/chat/ToolCallBubble.tsx",
+        "file:frontend/components/chat/index.ts",
+        "file:frontend/components/guard/SubscriptionGuard.tsx",
+        "file:frontend/components/guard/index.ts",
+        "file:frontend/components/layout/LanguageSwitcher.tsx",
+        "file:frontend/components/layout/MobileNav.tsx",
+        "file:frontend/components/layout/index.ts",
+        "file:frontend/components/providers/I18nProvider.tsx",
+        "file:frontend/components/providers/WagmiProvider.tsx",
+        "file:frontend/components/providers/index.ts",
+        "file:frontend/components/studio/EncryptProgress.tsx",
+        "file:frontend/components/studio/StepIndicator.tsx",
+        "file:frontend/components/studio/StudioHeader.tsx",
+        "file:frontend/components/studio/index.ts",
+        "file:frontend/components/studio/stepFromPath.ts",
+        "file:frontend/components/wallet/NetworkSwitcher.tsx",
+        "file:frontend/components/wallet/WalletConnect.tsx",
+        "file:frontend/components/wallet/WalletStatus.tsx",
+        "file:frontend/components/wallet/index.ts",
+        "file:frontend/ecosystem.config.js",
+        "file:frontend/hooks/aimarket/index.ts",
+        "file:node-18-1",
+        "file:node-18-7",
+        "file:node-18-10",
+        "file:node-18-12",
+        "file:node-18-15",
+        "file:node-18-18",
+        "file:node-18-21",
+        "file:node-18-30",
+        "file:node-18-42",
+        "file:node-18-43",
+        "file:node-18-48",
+        "file:node-18-74",
+        "file:node-18-79",
+        "file:node-18-83",
+        "file:node-18-84",
+        "file:node-18-85",
+        "file:node-18-86",
+        "file:node-18-87",
+        "file:node-18-90",
+        "file:node-18-93",
+        "file:node-18-98",
+        "file:node-18-99",
+        "file:node-18-102",
+        "file:node-18-105",
+        "file:node-18-106",
+        "file:node-19-1",
+        "file:node-19-2",
+        "file:node-19-3",
+        "file:node-19-6",
+        "file:node-19-7",
+        "file:node-19-8",
+        "file:node-19-11",
+        "file:node-19-12",
+        "file:node-19-13",
+        "file:node-19-16",
+        "file:node-19-19",
+        "file:node-19-22",
+        "file:node-19-23",
+        "file:node-19-26",
+        "file:node-19-31",
+        "file:node-19-32",
+        "file:node-19-35",
+        "file:node-19-36",
+        "file:node-19-39",
+        "file:node-19-42",
+        "file:node-19-43",
+        "file:node-19-44",
+        "file:node-19-47",
+        "file:node-19-48",
+        "file:node-19-51",
+        "file:node-20-1",
+        "file:node-20-4",
+        "file:node-20-7",
+        "file:node-20-8",
+        "file:node-20-11",
+        "file:node-20-14",
+        "file:node-20-17",
+        "file:node-20-18",
+        "file:node-20-19",
+        "file:node-20-20",
+        "file:node-20-21",
+        "file:node-20-22",
+        "file:node-20-23",
+        "file:node-20-24",
+        "file:node-20-29",
+        "file:node-20-32",
+        "file:node-20-33",
+        "file:node-20-34",
+        "file:node-20-37",
+        "file:node-20-38",
+        "file:node-20-39",
+        "file:node-20-40",
+        "file:node-20-41",
+        "file:node-20-42",
+        "file:node-20-43",
+        "file:conversation-service/src/lib/crypto.ts",
+        "file:conversation-service/src/lib/db.ts",
+        "file:frontend/abis/AgentFactory.ts",
+        "file:frontend/abis/ConfigurationRegistry.ts",
+        "file:frontend/abis/IdentityRegistry.ts",
+        "file:frontend/abis/MultiEndpoint.ts",
+        "file:frontend/abis/PaymentGateway.ts",
+        "file:sdk/src/agent/agent-runner.ts",
+        "file:sdk/src/agent/index.ts",
+        "file:sdk/src/config/config.ts",
+        "file:sdk/src/config/index.ts",
+        "file:sdk/src/configuration/configuration.ts",
+        "file:sdk/src/configuration/index.ts",
+        "file:sdk/src/core/index.ts",
+        "file:sdk/src/endpoint/index.ts",
+        "file:sdk/src/endpoint/multi-endpoint.ts",
+        "file:sdk/src/ipfs/index.ts",
+        "file:sdk/src/ipfs/ipfs-uploader.ts",
+        "file:sdk/src/llm/factory.ts",
+        "file:sdk/src/llm/index.ts",
+        "file:sdk/src/llm/types.ts",
+        "file:sdk/src/mcp/connector.ts",
+        "file:sdk/src/mcp/index.ts",
+        "file:sdk/src/memory/index.ts",
+        "file:sdk/src/memory/types.ts",
+        "file:sdk/src/react/index.ts",
+        "file:sdk/src/react/useAgentRunner.ts",
+        "file:conversation-service/migrations/004_end_user_isolation.sql",
+        "file:gateway/db/migrations/004_tenant_platform_api_key.sql",
+        "file:conversation-service/src/routes/tenants.ts",
+        "file:conversation-service/src/services/memory-engine.ts",
+        "file:conversation-service/src/services/tool-executor.ts",
+        "file:gateway/src/routes/agent-mcp.ts",
+        "file:sdk/src/conversation/index.ts",
+        "file:contracts/src/erc8004-core/IdentityRegistry.sol",
+        "file:contracts/src/erc8004-interfaces/IERC8004Identity.sol",
+        "file:conversation-service/src/config.ts",
+        "file:conversation-service/src/index.ts",
+        "file:conversation-service/src/routes/runs.ts",
+        "file:conversation-service/src/services/agent-context-loader.ts",
+        "file:conversation-service/src/services/agent-runner.ts",
+        "file:conversation-service/src/services/tenant-llm-resolver.ts",
+        "file:frontend/app/a2a/page.tsx",
+        "file:frontend/app/admin/page.tsx",
+        "file:frontend/app/api/ipfs/upload-json/route.ts",
+        "file:frontend/app/api/ipfs/upload/route.ts",
+        "file:frontend/app/globals.css",
+        "file:frontend/app/marketplace/skills/page.tsx",
+        "file:frontend/app/user/settings/page.tsx",
+        "file:frontend/components/agent/dashboard/ConfigurationManager.tsx",
+        "file:frontend/components/agent/dashboard/EndpointManager.tsx",
+        "file:frontend/components/agent/dashboard/RevenuePaymentTable.tsx",
+        "file:frontend/components/agent/dashboard/RevenueStatsSection.tsx",
+        "file:frontend/components/agent/dashboard/SkillConfigForm.tsx",
+        "file:frontend/components/agent/dashboard/hooks/useAgentRegistration.ts",
+        "file:frontend/components/agent/hooks/useAgentRegistry.ts",
+        "file:frontend/components/agent/hooks/useConfiguration.ts",
+        "file:frontend/components/agent/hooks/useMultiEndpoint.ts",
+        "file:frontend/components/layout/Header.tsx",
+        "file:frontend/components/layout/Sidebar.tsx",
+        "file:frontend/hooks/aimarket/useAgentRegistry.ts",
+        "file:frontend/hooks/aimarket/useAgentSearch.ts",
+        "file:frontend/hooks/useAgentChat.ts",
+        "file:frontend/hooks/useGatewayAuth.ts",
+        "file:frontend/lib/ipfs.ts",
+        "file:gateway/src/config.ts",
+        "file:gateway/src/index.ts",
+        "file:gateway/src/lib/crypto.ts",
+        "file:gateway/src/middleware/auth.ts",
+        "file:gateway/src/routes/admin.ts",
+        "file:gateway/src/routes/agent-runs.ts",
+        "file:gateway/src/routes/agents.ts",
+        "file:gateway/src/routes/mcp.ts",
+        "file:gateway/src/routes/skills.ts",
+        "file:gateway/src/routes/tenant.ts",
+        "file:gateway/src/services/a2a-worker.ts",
+        "file:gateway/src/services/conversation-proxy.ts",
+        "file:sdk/src/a2a/a2a.ts",
+        "file:sdk/src/agent-loop/loop.ts",
+        "file:sdk/src/agent-loop/types.ts",
+        "file:sdk/src/conversation/client.ts",
+        "file:sdk/src/core/crypto.ts",
+        "file:sdk/src/core/types.ts",
+        "file:sdk/src/index.ts",
+        "file:sdk/src/llm/gateway-provider.ts",
+        "file:sdk/src/llm/openai-provider.ts",
+        "file:sdk/src/registry/index.ts",
+        "file:sdk/src/skills/browser.ts",
+        "file:sdk/src/subscription/index.ts",
+        "file:sdk/src/subscription/subscription.ts",
+        "file:gateway/db/migrations/021_payments_a2a_period_selfhost.sql",
+        "file:gateway/src/routes/payments.ts",
+        "file:scripts/local-payments/run-flows-f7.mjs",
+        "file:gateway/src/services/payments-a2a-period.ts",
+        "file:gateway/src/services/payments-bridge.ts",
+        "file:gateway/src/services/payments.ts",
+        "file:sdk/src/payment/a2a-client.ts",
+        "file:sdk/src/payment/index.ts",
+        "file:sdk/src/payment/period-client.ts",
+        "file:sdk/test/payment.test.ts",
+        "file:.github/workflows/publish-sdk.yml",
+        "file:gateway/db/migrations/020_agents_category.sql",
+        "file:conversation-service/migrations/001_memory.sql",
+        "file:contracts/script/DeployOxaChain.s.sol",
+        "file:sdk/src/payment/payments.ts",
+        "file:gateway/src/routes/chat-tasks.ts",
+        "file:gateway/src/services/agent-access.ts",
+        "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+        "file:frontend/components/agent/dashboard/AgentCardList.tsx",
+        "file:frontend/components/agent/dashboard/SubscriptionManager.tsx",
+        "file:frontend/components/agent/dashboard/SubscriptionPlanCard.tsx",
+        "file:frontend/components/agent/dashboard/hooks/useAgentCards.ts",
+        "file:frontend/components/agent/dashboard/hooks/useRevenueDisplay.ts",
+        "file:frontend/components/agent/dashboard/subscription-utils.ts",
+        "file:frontend/components/agent/hooks/useA2AProtocol.ts",
+        "file:frontend/components/agent/hooks/useAgentFactory.ts",
+        "file:frontend/components/agent/hooks/usePaymentGateway.ts",
+        "file:frontend/components/agent/hooks/useSubscription.ts",
+        "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+        "file:frontend/components/agent/hooks/usePaymentGatewayReads.ts",
+        "file:frontend/components/agent/hooks/payment-gateway-types.ts",
+        "file:frontend/components/agent/hooks/contract-address.ts",
+        "file:frontend/hooks/user/useUserSubscriptions.ts",
+        "file:gateway/e2e_wallet.js",
+        "file:gateway/src/routes/admin-finance.ts",
+        "file:gateway/src/routes/mcp-executor.ts",
+        "file:gateway/src/services/agent-indexer.ts",
+        "file:gateway/src/services/chain-data-reader.ts",
+        "file:gateway/test/mcp.test.ts",
+        "file:sdk/src/agent-loop/a2a-daemon.ts",
+        "file:sdk/src/registry/agent-registry.ts",
+        "file:sdk/src/subscription/agent-x402.ts",
+        "file:gateway/src/lib/constants.ts"
+      ]
+    },
+    "schema": {
+      "count": 3,
+      "nodeIds": [
+        "schema:gateway/db/migrations/001_init.sql",
+        "schema:gateway/db/migrations/002_agents.sql",
+        "schema:gateway/db/migrations/003_a2a_results.sql"
+      ]
+    },
+    "table": {
+      "count": 11,
+      "nodeIds": [
+        "table:plans",
+        "table:tenants",
+        "table:platform_api_keys",
+        "table:tenant_api_keys",
+        "table:usage_logs",
+        "table:chat_messages",
+        "table:agents",
+        "table:a2a_task_results",
+        "table:conversation-service/migrations/001_memory.sql:memories",
+        "table:gateway/db/migrations/021_payments_a2a_period_selfhost.sql:payment_intents",
+        "table:gateway/db/migrations/021_payments_a2a_period_selfhost.sql:payment_authorizations"
+      ]
+    },
+    "document": {
+      "count": 23,
+      "nodeIds": [
+        "document:CODE_REVIEW_REPORT.md",
+        "document:FRONTEND_PRD.md",
+        "document:PROPOSAL.md",
+        "document:TOOLS-NOTES.md",
+        "document:contracts/CONTRACTS.md",
+        "document:test-reports/TEST_RUN_REPORT.md",
+        "document:test-reports/TEST_SCENARIOS_AT.md",
+        "document:test-reports/TEST_SCENARIOS_CT.md",
+        "document:test-reports/TEST_SCENARIOS_FT.md",
+        "document:CONVERSATION_SERVICE.md",
+        "document:INTEGRATION.md",
+        "document:MCP_SETUP.md",
+        "document:README.md",
+        "document:memory/AGENTX_PROGRESS.md",
+        "document:DEPLOYMENT.md",
+        "document:sdk/UPGRADE.md",
+        "document:docs/integration-callers.md",
+        "document:docs/publish-subscribe-pay.md",
+        "document:CHANGELOG.md",
+        "document:docs/PROGRESS.md",
+        "document:docs/payments-infrax-migration.md",
+        "document:sdk/README.md",
+        "document:docs/code-review-2026-08-11.md"
+      ]
+    },
+    "config": {
+      "count": 22,
+      "nodeIds": [
+        "config:gateway/.env.example",
+        "config:gateway/tsconfig.json",
+        "config:frontend/.env.production",
+        "config:frontend/package.json",
+        "config:frontend/tsconfig.json",
+        "config:contracts/.solhint.json",
+        "config:contracts/foundry.toml",
+        "config:sdk/tsconfig.json",
+        "config:b17_frontend_ecosystem",
+        "config:b18_i18n_index",
+        "config:b18_wagmi_config",
+        "config:b18_next_env_dts",
+        "config:b18_postcss_config",
+        "config:b18_tailwind_config",
+        "config:conversation-service/.env.example",
+        "config:conversation-service/package.json",
+        "config:frontend/lib/i18n/en.json",
+        "config:frontend/lib/i18n/zh-Hant.json",
+        "config:gateway/package.json",
+        "config:sdk/package.json",
+        "config:gateway/deploy/.env.deploy.example",
+        "config:frontend/next.config.js"
+      ]
+    },
+    "service": {
+      "count": 1,
+      "nodeIds": [
+        "service:gateway/src/services/payments.ts:paymentsService"
+      ]
+    }
+  },
+  "importAdjacency": {
+    "topFanIn": [
+      {
+        "id": "file:frontend/components/agent/hooks/contract-address.ts",
+        "count": 12
+      },
+      {
+        "id": "file:76cb31ac8888",
+        "count": 6,
+        "name": "db.ts"
+      },
+      {
+        "id": "file:gateway/src/config.ts",
+        "count": 5
+      },
+      {
+        "id": "file:0342c72c219a",
+        "count": 4,
+        "name": "agent-runner.ts"
+      },
+      {
+        "id": "file:frontend/components/agent/hooks/useSubscription.ts",
+        "count": 4
+      },
+      {
+        "id": "file:gateway/src/lib/constants.ts",
+        "count": 4
+      },
+      {
+        "id": "file:sdk/src/agent/agent-runner.ts",
+        "count": 3,
+        "name": "agent-runner.ts"
+      },
+      {
+        "id": "file:sdk/src/subscription/subscription.ts",
+        "count": 3
+      },
+      {
+        "id": "file:frontend/components/agent/hooks/useAgentRegistry.ts",
+        "count": 3
+      },
+      {
+        "id": "file:frontend/components/agent/hooks/payment-gateway-types.ts",
+        "count": 3
+      },
+      {
+        "id": "file:sdk/src/core/types.ts",
+        "count": 3
+      },
+      {
+        "id": "file:c0a813397eec",
+        "count": 2,
+        "name": "ipfs-fetcher.ts"
+      },
+      {
+        "id": "file:frontend/components/studio/types.ts",
+        "count": 2
+      },
+      {
+        "id": "file:sdk/src/config/config.ts",
+        "count": 2,
+        "name": "config.ts"
+      },
+      {
+        "id": "file:sdk/src/llm/types.ts",
+        "count": 2,
+        "name": "types.ts"
+      },
+      {
+        "id": "file:frontend/components/agent/hooks/useA2AProtocol.ts",
+        "count": 2
+      },
+      {
+        "id": "file:frontend/components/agent/dashboard/subscription-utils.ts",
+        "count": 2
+      },
+      {
+        "id": "file:frontend/abis/PaymentGateway.ts",
+        "count": 2,
+        "name": "PaymentGateway.ts"
+      },
+      {
+        "id": "file:gateway/src/services/chain-data-reader.ts",
+        "count": 2
+      },
+      {
+        "id": "file:84b45be8b85a",
+        "count": 1,
+        "name": "rate-limiter.ts"
+      },
+      {
+        "id": "file:ed488613e8bc",
+        "count": 1,
+        "name": "AgentCardManager.tsx"
+      },
+      {
+        "id": "file:38d69662f5fc",
+        "count": 1,
+        "name": "AgentRegistration.tsx"
+      },
+      {
+        "id": "file:491d87170943",
+        "count": 1,
+        "name": "RevenueDisplay.tsx"
+      },
+      {
+        "id": "file:f6836c3fb3e6",
+        "count": 1,
+        "name": "types.ts"
+      },
+      {
+        "id": "file:627a889630ec",
+        "count": 1,
+        "name": "config.ts"
+      }
+    ],
+    "topFanOut": [
+      {
+        "id": "file:frontend/components/agent/dashboard/SubscriptionManager.tsx",
+        "count": 5
+      },
+      {
+        "id": "file:frontend/components/agent/dashboard/hooks/useRevenueDisplay.ts",
+        "count": 4
+      },
+      {
+        "id": "file:gateway/src/routes/mcp-executor.ts",
+        "count": 4
+      },
+      {
+        "id": "file:a0b679958fe9",
+        "count": 3,
+        "name": "AgentDashboard.tsx"
+      },
+      {
+        "id": "file:3e3f377d0a09",
+        "count": 3,
+        "name": "useAgentRunner.ts"
+      },
+      {
+        "id": "file:frontend/app/layout.tsx",
+        "count": 3,
+        "name": "layout.tsx"
+      },
+      {
+        "id": "file:gateway/src/services/payments.ts",
+        "count": 3
+      },
+      {
+        "id": "file:gateway/src/services/payments-a2a-period.ts",
+        "count": 3
+      },
+      {
+        "id": "file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx",
+        "count": 3
+      },
+      {
+        "id": "file:frontend/components/agent/dashboard/SubscriptionPlanCard.tsx",
+        "count": 3
+      },
+      {
+        "id": "file:frontend/components/agent/dashboard/hooks/useAgentCards.ts",
+        "count": 3
+      },
+      {
+        "id": "file:frontend/components/agent/hooks/usePaymentGateway.ts",
+        "count": 3
+      },
+      {
+        "id": "file:gateway/src/routes/admin-finance.ts",
+        "count": 3
+      },
+      {
+        "id": "file:0b632556320e",
+        "count": 2,
+        "name": "chat.ts"
+      },
+      {
+        "id": "file:a7dfe1427dc3",
+        "count": 2,
+        "name": "platform-tools.ts"
+      },
+      {
+        "id": "file:frontend/components/studio/StepNav.tsx",
+        "count": 2,
+        "name": "StepNav.tsx"
+      },
+      {
+        "id": "file:frontend/app/marketplace/agent/[id]/page.tsx",
+        "count": 2,
+        "name": "page.tsx"
+      },
+      {
+        "id": "file:sdk/src/llm/index.ts",
+        "count": 2,
+        "name": "index.ts"
+      },
+      {
+        "id": "file:sdk/src/react/index.ts",
+        "count": 2,
+        "name": "index.ts"
+      },
+      {
+        "id": "file:sdk/src/react/useAgentRunner.ts",
+        "count": 2,
+        "name": "useAgentRunner.ts"
+      },
+      {
+        "id": "file:sdk/test/payment.test.ts",
+        "count": 2
+      },
+      {
+        "id": "file:frontend/components/agent/dashboard/AgentCardList.tsx",
+        "count": 2
+      },
+      {
+        "id": "file:frontend/components/agent/dashboard/subscription-utils.ts",
+        "count": 2
+      },
+      {
+        "id": "file:frontend/components/agent/hooks/useAgentFactory.ts",
+        "count": 2
+      },
+      {
+        "id": "file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts",
+        "count": 2
+      }
+    ],
+    "fanInCount": 54,
+    "fanOutCount": 54
+  },
+  "crossCategoryMatrix": {
+    "file|exports|file": 8,
+    "file|imports|file": 101,
+    "schema|contains|table": 8,
+    "table|references|table": 6,
+    "file|migrates|table": 3,
+    "document|documents|file": 79,
+    "document|related|document": 26,
+    "config|configures|file": 8,
+    "file|depends_on|file": 20,
+    "document|documents|document": 1,
+    "file|contains|service": 1,
+    "file|exports|service": 1,
+    "file|tested_by|file": 4,
+    "config|related|file": 5,
+    "file|related|file": 10,
+    "document|related|file": 5
+  },
+  "interGroupImportMatrix": {},
+  "intraGroupDensity": [
+    {
+      "dir": "sdk",
+      "nodeCount": 58,
+      "internalImportEdges": 33,
+      "maxPossiblePairs": 1653,
+      "density": 0.02
+    },
+    {
+      "dir": "gateway",
+      "nodeCount": 51,
+      "internalImportEdges": 22,
+      "maxPossiblePairs": 1275,
+      "density": 0.0173
+    },
+    {
+      "dir": "frontend",
+      "nodeCount": 107,
+      "internalImportEdges": 46,
+      "maxPossiblePairs": 5671,
+      "density": 0.0081
+    },
+    {
+      "dir": "root",
+      "nodeCount": 18,
+      "internalImportEdges": 0,
+      "maxPossiblePairs": 153,
+      "density": 0
+    },
+    {
+      "dir": "contracts",
+      "nodeCount": 6,
+      "internalImportEdges": 0,
+      "maxPossiblePairs": 15,
+      "density": 0
+    },
+    {
+      "dir": "test-reports",
+      "nodeCount": 4,
+      "internalImportEdges": 0,
+      "maxPossiblePairs": 6,
+      "density": 0
+    },
+    {
+      "dir": "__unresolved__",
+      "nodeCount": 75,
+      "internalImportEdges": 0,
+      "maxPossiblePairs": 2775,
+      "density": 0
+    },
+    {
+      "dir": "conversation-service",
+      "nodeCount": 16,
+      "internalImportEdges": 0,
+      "maxPossiblePairs": 120,
+      "density": 0
+    },
+    {
+      "dir": "memory",
+      "nodeCount": 1,
+      "internalImportEdges": 0,
+      "maxPossiblePairs": 0,
+      "density": 0
+    },
+    {
+      "dir": "scripts",
+      "nodeCount": 1,
+      "internalImportEdges": 0,
+      "maxPossiblePairs": 0,
+      "density": 0
+    },
+    {
+      "dir": ".github",
+      "nodeCount": 1,
+      "internalImportEdges": 0,
+      "maxPossiblePairs": 0,
+      "density": 0
+    },
+    {
+      "dir": "docs",
+      "nodeCount": 5,
+      "internalImportEdges": 0,
+      "maxPossiblePairs": 10,
+      "density": 0
+    }
+  ],
+  "dirPatternMatching": [
+    {
+      "dir": "gateway",
+      "matched": null
+    },
+    {
+      "dir": "frontend",
+      "matched": null
+    },
+    {
+      "dir": "sdk",
+      "matched": null
+    },
+    {
+      "dir": "root",
+      "matched": null
+    },
+    {
+      "dir": "contracts",
+      "matched": [
+        {
+          "pattern": "(^|\\/)contracts(\\/|$)",
+          "layer": "blockchain",
+          "label": "智能合约"
+        }
+      ]
+    },
+    {
+      "dir": "test-reports",
+      "matched": null
+    },
+    {
+      "dir": "__unresolved__",
+      "matched": null
+    },
+    {
+      "dir": "conversation-service",
+      "matched": null
+    },
+    {
+      "dir": "memory",
+      "matched": null
+    },
+    {
+      "dir": "scripts",
+      "matched": [
+        {
+          "pattern": "(^|\\/)script(s)?(\\/|$)",
+          "layer": "scripts",
+          "label": "运维脚本"
+        }
+      ]
+    },
+    {
+      "dir": ".github",
+      "matched": [
+        {
+          "pattern": "(^|\\/)\\.github(\\/|$)",
+          "layer": "ci-cd",
+          "label": "CI/CD"
+        }
+      ]
+    },
+    {
+      "dir": "docs",
+      "matched": [
+        {
+          "pattern": "(^|\\/)docs(\\/|$)",
+          "layer": "documentation",
+          "label": "文档"
+        }
+      ]
+    }
+  ],
+  "deploymentTopology": {
+    "infraEdgeTypesFound": {
+      "exports": 9,
+      "imports": 101,
+      "contains": 9,
+      "references": 6,
+      "migrates": 3,
+      "documents": 80,
+      "related": 46,
+      "configures": 8,
+      "depends_on": 20,
+      "tested_by": 4
+    },
+    "edges": [],
+    "deployDirFiles": [
+      {
+        "id": "file:frontend/deploy.sh",
+        "filePath": "frontend/deploy.sh",
+        "type": "file"
+      },
+      {
+        "id": "file:gateway/deploy/check_deploy.sh",
+        "filePath": "gateway/deploy/check_deploy.sh",
+        "type": "file"
+      },
+      {
+        "id": "file:gateway/deploy/deploy_a2a.sh",
+        "filePath": "gateway/deploy/deploy_a2a.sh",
+        "type": "file"
+      },
+      {
+        "id": "file:gateway/deploy/deploy_a2a_bg.sh",
+        "filePath": "gateway/deploy/deploy_a2a_bg.sh",
+        "type": "file"
+      },
+      {
+        "id": "file:gateway/deploy/deploy_a2a_v2.sh",
+        "filePath": "gateway/deploy/deploy_a2a_v2.sh",
+        "type": "file"
+      },
+      {
+        "id": "file:gateway/deploy/deploy_sep_a2a.sh",
+        "filePath": "gateway/deploy/deploy_sep_a2a.sh",
+        "type": "file"
+      },
+      {
+        "id": "file:gateway/deploy/prod_setup.sh",
+        "filePath": "gateway/deploy/prod_setup.sh",
+        "type": "file"
+      },
+      {
+        "id": "file:.github/workflows/publish-sdk.yml",
+        "filePath": ".github/workflows/publish-sdk.yml",
+        "type": "file"
+      },
+      {
+        "id": "config:gateway/deploy/.env.deploy.example",
+        "filePath": "gateway/deploy/.env.deploy.example",
+        "type": "config"
+      }
+    ]
+  },
+  "dependencyDirection": [
+    {
+      "dir": "gateway",
+      "importsOut": 22,
+      "importsIn": 22,
+      "net": 0,
+      "role": "neutral"
+    },
+    {
+      "dir": "frontend",
+      "importsOut": 46,
+      "importsIn": 46,
+      "net": 0,
+      "role": "neutral"
+    },
+    {
+      "dir": "sdk",
+      "importsOut": 33,
+      "importsIn": 33,
+      "net": 0,
+      "role": "neutral"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "fixedSectionOk": true,
+  "nodesRecovered": 0,
+  "edgesRestored": 9,
+  "crossBatchEdgesAdded": 0,
+  "typesRemapped": 0,
+  "complexityRemapped": 0,
+  "notes": [
+    "Fixed 部分计数核对通过：输入 838 节点/976 边（与各批次之和一致）；8 个重复节点 ID 按 last-wins 去除后 830 节点，与装配图一致。另有 10 条重复边三元组被静默去重（976−54 悬空−10 重复=912），但报告中 Fixed 部分只列了 8 项节点修正、未提及边去重，属报告口径略少；'275 issues' 头部计数=221 未知类型+54 悬空边，一致。",
+    "报告正文只列出 54 条悬空边中的 43 条（未列出的 11 条：db.ts ×2、mcp-tools.ts ×1、chain-config.ts ×2、chat-tasks.ts ×1、subscription-access.ts ×2、sdk/README.md ×3）；实际 54 条全部被剔除，装配图边集与『非悬空且去重后』的输入完全吻合（无缺失、无多余）。",
+    "节点完整性检查：830 个节点均具备 id/type/name/summary/tags/complexity，无空 tags、complexity 均在 {simple, moderate, complex} 内，无需修复。修复后 921 条边无悬空引用、无重复、均含 source/target/type。",
+    "新增增量节点确认存在：file:gateway/src/lib/constants.ts、file:frontend/components/agent/hooks/usePaymentGatewayWrites.ts、file:frontend/components/agent/hooks/usePaymentGatewayReads.ts、document:docs/code-review-2026-08-11.md；43 个变更文件全部有对应节点。",
+    "旧 usePaymentGateway 单体内聚 hook 节点保留是正确的：git diff 799e84c..HEAD 无删除文件，frontend/components/agent/hooks/usePaymentGateway.ts 仍存在，已重构为对 usePaymentGatewayWrites/Reads 的 re-export shim（源码已核实），图中 file 节点正确挂着 imports 到两个新文件；两个新拆分文件及其 function/class 节点均已在图中。",
+    "chat-tasks.ts 属正当剔除：file:gateway/src/services/chat-tasks.ts 在图中无节点且磁盘上文件已不存在（注意 gateway/src/routes/chat-tasks.ts 是另一现存文件，有节点）。",
+    "恢复 9 条边（仅改指到 filePath 比对确认的既有节点，未新建任何节点、无跨批次推测）：payments-infrax-migration.md → config:gateway/package.json、config:sdk/package.json（documents）；next.config.js → config:frontend/package.json（configures）；page.tsx → file:49be7ce89670（AppLayout.tsx）；admin-finance.ts、agent-indexer.ts → file:76cb31ac8888（gateway/src/lib/db.ts）；a2a-daemon.ts / agent-registry.ts / agent-x402.ts → document:sdk/README.md（related，file→document 类型归一，批内 summary 自述即指向 batch 27 文档节点）。",
+    "tested 标记核对：报告称 3 个生产节点打 tested，实际 4 个含 tested 标签，其中 sdk/src/payment/index.ts 在 batch-existing 已带，链路补充器恰好新增 3 个（mcp.ts、payments.ts、mcp-executor.ts），与报告一致；tested_by 边 4 条全部来自批次，链路补充产出 0 条，与报告一致。",
+    "遗留（不在本轮范围）：其余 45 条悬空边目标为历史缺口文件（x402.ts、deploy_config.py ×8、A2AProtocolRegistry.sol ×6、迁移 SQL ×7、docs ×5 等），任何批次均无其节点，按指示不重建；旧图别名 file 节点（file:<hash>、node-XX-N、bXX 前缀）与规范 file: 节点并存（如 AppLayout.tsx 同时有 file:49be7ce89670 与 component 类型的 file:b17_app_layout 双节点），属历史债务，未做去重。"
+  ]
+}

@@ -1,0 +1,80 @@
+Found 16 batch files (16 logical batches, 0 multi-part):
+  batch-existing.json: 727 nodes, 670 edges
+  batch-17.json: 1 nodes, 25 edges
+  batch-20.json: 2 nodes, 41 edges
+  batch-23.json: 5 nodes, 8 edges
+  batch-27.json: 1 nodes, 30 edges
+  batch-33.json: 6 nodes, 12 edges
+  batch-34.json: 45 nodes, 77 edges
+  batch-36.json: 9 nodes, 13 edges
+  batch-37.json: 6 nodes, 12 edges
+  batch-38.json: 3 nodes, 7 edges
+  batch-40.json: 3 nodes, 3 edges
+  batch-41.json: 4 nodes, 18 edges
+  batch-42.json: 10 nodes, 15 edges
+  batch-44.json: 2 nodes, 6 edges
+  batch-46.json: 6 nodes, 16 edges
+  batch-47.json: 8 nodes, 23 edges
+
+Input: 838 nodes, 976 edges
+
+Fixed (8 corrections):
+     8 × duplicate node IDs removed (kept last)
+
+Tested-by linker:
+     0 × tested_by edges produced (path-convention supplement, production → test)
+     3 × production nodes tagged "tested"
+
+Could not fix (275 issues — needs agent review):
+   164 × unknown node type "section" (not in schema, kept as-is)
+    22 × unknown node type "component" (not in schema, kept as-is)
+    13 × unknown node type "script" (not in schema, kept as-is)
+     8 × unknown node type "page" (not in schema, kept as-is)
+     7 × unknown node type "index" (not in schema, kept as-is)
+     3 × unknown node type "batch" (not in schema, kept as-is)
+     2 × unknown node type "hook" (not in schema, kept as-is)
+     1 × unknown node type "types" (not in schema, kept as-is)
+     1 × unknown node type "lib" (not in schema, kept as-is)
+  - Edge document:CHANGELOG.md → file:gateway/db/migrations/019_payments_mpp_period.sql (documents): dropped, missing target 'file:gateway/db/migrations/019_payments_mpp_period.sql'
+  - Edge document:CHANGELOG.md → file:gateway/db/migrations/015_developer_applications.sql (documents): dropped, missing target 'file:gateway/db/migrations/015_developer_applications.sql'
+  - Edge document:CHANGELOG.md → document:docs/R13-change-notes.md (related): dropped, missing target 'document:docs/R13-change-notes.md'
+  - Edge document:CHANGELOG.md → document:REFACTORING_NOTES.md (related): dropped, missing target 'document:REFACTORING_NOTES.md'
+  - Edge document:docs/PROGRESS.md → file:gateway/src/routes/schedules.ts (documents): dropped, missing target 'file:gateway/src/routes/schedules.ts'
+  - Edge document:docs/PROGRESS.md → file:gateway/src/services/schedule-daemon.ts (documents): dropped, missing target 'file:gateway/src/services/schedule-daemon.ts'
+  - Edge document:docs/PROGRESS.md → file:gateway/db/migrations/019_payments_mpp_period.sql (documents): dropped, missing target 'file:gateway/db/migrations/019_payments_mpp_period.sql'
+  - Edge document:docs/PROGRESS.md → file:gateway/db/migrations/017_schedules.sql (documents): dropped, missing target 'file:gateway/db/migrations/017_schedules.sql'
+  - Edge document:docs/PROGRESS.md → file:gateway/db/migrations/014_integration_partners.sql (documents): dropped, missing target 'file:gateway/db/migrations/014_integration_partners.sql'
+  - Edge document:docs/PROGRESS.md → file:gateway/db/migrations/015_developer_applications.sql (documents): dropped, missing target 'file:gateway/db/migrations/015_developer_applications.sql'
+  - Edge document:docs/PROGRESS.md → file:scripts/agentx-integration-test.mjs (documents): dropped, missing target 'file:scripts/agentx-integration-test.mjs'
+  - Edge document:docs/PROGRESS.md → document:docs/payment-architecture.md (related): dropped, missing target 'document:docs/payment-architecture.md'
+  - Edge document:docs/PROGRESS.md → document:docs/sdk-vs-mcp.md (related): dropped, missing target 'document:docs/sdk-vs-mcp.md'
+  - Edge document:docs/payments-infrax-migration.md → file:gateway/package.json (documents): dropped, missing target 'file:gateway/package.json'
+  - Edge document:docs/payments-infrax-migration.md → file:sdk/package.json (documents): dropped, missing target 'file:sdk/package.json'
+  - Edge document:sdk/README.md → file:sdk/src/events/events.ts (documents): dropped, missing target 'file:sdk/src/events/events.ts'
+  - Edge document:sdk/README.md → file:examples/sdk-chain-read.ts (documents): dropped, missing target 'file:examples/sdk-chain-read.ts'
+  - Edge document:sdk/README.md → file:examples/sdk-create-plan.ts (documents): dropped, missing target 'file:examples/sdk-create-plan.ts'
+  - Edge document:sdk/README.md → document:docs/sdk-integration-example.md (related): dropped, missing target 'document:docs/sdk-integration-example.md'
+  - Edge file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx → file:frontend/components/layout/AppLayout.tsx (imports): dropped, missing target 'file:frontend/components/layout/AppLayout.tsx'
+  - Edge file:frontend/app/user/subscriptions/[subscriptionId]/page.tsx → file:frontend/lib/gateway.ts (imports): dropped, missing target 'file:frontend/lib/gateway.ts'
+  - Edge file:frontend/components/agent/dashboard/SubscriptionManager.tsx → file:frontend/components/agent/dashboard/SubscriptionPlanModal.tsx (imports): dropped, missing target 'file:frontend/components/agent/dashboard/SubscriptionPlanModal.tsx'
+  - Edge file:frontend/components/agent/hooks/useAgentFactory.ts → file:frontend/components/agent/hooks/agent-factory-types.ts (imports): dropped, missing target 'file:frontend/components/agent/hooks/agent-factory-types.ts'
+  - Edge file:frontend/components/agent/hooks/useSubscription.ts → file:frontend/lib/gateway.ts (imports): dropped, missing target 'file:frontend/lib/gateway.ts'
+  - Edge file:frontend/components/agent/hooks/useSubscription.ts → file:frontend/abis/SubscriptionManager.ts (imports): dropped, missing target 'file:frontend/abis/SubscriptionManager.ts'
+  - Edge file:frontend/hooks/user/useUserSubscriptions.ts → file:frontend/abis/SubscriptionManagerV1.ts (imports): dropped, missing target 'file:frontend/abis/SubscriptionManagerV1.ts'
+  - Edge config:frontend/next.config.js → file:frontend/package.json (configures): dropped, missing target 'file:frontend/package.json'
+  - Edge file:gateway/deploy/build_deploy_a2a.py → file:gateway/deploy/deploy_config.py (depends_on): dropped, missing target 'file:gateway/deploy/deploy_config.py'
+  - Edge file:gateway/deploy/build_deploy_a2a.py → file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol (deploys): dropped, missing target 'file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol'
+  - Edge file:gateway/deploy/check_pks.py → file:gateway/deploy/deploy_config.py (depends_on): dropped, missing target 'file:gateway/deploy/deploy_config.py'
+  - Edge file:gateway/deploy/deploy_a2a_v2.py → file:gateway/deploy/deploy_config.py (depends_on): dropped, missing target 'file:gateway/deploy/deploy_config.py'
+  - Edge file:gateway/deploy/deploy_a2a_v2.py → file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol (deploys): dropped, missing target 'file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol'
+  - Edge file:gateway/deploy/deploy_bin.py → file:gateway/deploy/deploy_config.py (depends_on): dropped, missing target 'file:gateway/deploy/deploy_config.py'
+  - Edge file:gateway/deploy/deploy_bin.py → file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol (deploys): dropped, missing target 'file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol'
+  - Edge file:gateway/deploy/deploy_final.py → file:gateway/deploy/deploy_config.py (depends_on): dropped, missing target 'file:gateway/deploy/deploy_config.py'
+  - Edge file:gateway/deploy/deploy_final.py → file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol (deploys): dropped, missing target 'file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol'
+  - Edge file:gateway/deploy/deploy_now.py → file:gateway/deploy/deploy_config.py (depends_on): dropped, missing target 'file:gateway/deploy/deploy_config.py'
+  - Edge file:gateway/deploy/deploy_now.py → file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol (deploys): dropped, missing target 'file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol'
+  - Edge file:gateway/deploy/deploy_script.py → file:gateway/deploy/deploy_config.py (depends_on): dropped, missing target 'file:gateway/deploy/deploy_config.py'
+  - Edge file:gateway/deploy/deploy_script.py → file:contracts/script/DeployA2A.s.sol (deploys): dropped, missing target 'file:contracts/script/DeployA2A.s.sol'
+  - Edge file:gateway/deploy/forge_deploy.py → file:gateway/deploy/deploy_config.py (depends_on): dropped, missing target 'file:gateway/deploy/deploy_config.py'
+  - Edge file:gateway/deploy/forge_deploy.py → file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol (deploys): dropped, missing target 'file:contracts/src/erc8004-extensions/A2AProtocolRegistry.sol'
+  - Edge file:gateway/src/routes/admin-finance.ts → file:gateway/src/services/x402.ts (imports): dropped, missing target 'file:gateway/src/services/x402.ts'
