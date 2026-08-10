@@ -1,8 +1,12 @@
 import paramiko, os
+from deploy_config import HOST, USER, PASSWORD, PK
+
+if not PK:
+    raise SystemExit("FATAL: AGENTX_DEPLOY_PRIVATE_KEY 未设置，请先 source gateway/deploy/.env.deploy")
 
 c = paramiko.SSHClient()
 c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-c.connect('43.156.78.59', username='ubuntu', password='REMOVED_CREDENTIAL', timeout=30)
+c.connect(HOST, username=USER, password=PASSWORD, timeout=30)
 
 def run(cmd):
     print(f"> {cmd[:120]}")
@@ -19,11 +23,11 @@ run("export PATH=$HOME/.foundry/bin:$PATH && cd /tmp/a2a_build/src && ln -sf erc
 
 # Try forge script approach - pass IDENTITY_REGISTRY and PRIVATE_KEY as env
 # Write .env file for the script
-env_sep = """IDENTITY_REGISTRY=0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F
-PRIVATE_KEY=REMOVED_PRIVATE_KEY
+env_sep = f"""IDENTITY_REGISTRY=0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F
+PRIVATE_KEY={PK}
 """
-env_ox = """IDENTITY_REGISTRY=0xbf5F9db266c8c97E3334466C88597Eb758AfE212
-PRIVATE_KEY=REMOVED_PRIVATE_KEY
+env_ox = f"""IDENTITY_REGISTRY=0xbf5F9db266c8c97E3334466C88597Eb758AfE212
+PRIVATE_KEY={PK}
 """
 import base64
 b64 = base64.b64encode(env_sep.encode()).decode()

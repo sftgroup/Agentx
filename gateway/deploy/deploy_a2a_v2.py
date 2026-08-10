@@ -3,9 +3,11 @@ import tarfile
 import os
 import time
 import base64
+from deploy_config import HOST, USER, PASSWORD, PK
 
-host = '43.156.78.59'
-pk = 'REMOVED_PRIVATE_KEY'
+if not PK:
+    raise SystemExit("FATAL: AGENTX_DEPLOY_PRIVATE_KEY 未设置，请先 source gateway/deploy/.env.deploy")
+
 SEP_IR = '0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F'
 OX_IR  = '0xbf5F9db266c8c97E3334466C88597Eb758AfE212'
 SEP_RPC = 'https://ethereum-sepolia-rpc.publicnode.com'
@@ -26,8 +28,8 @@ with tarfile.open(tar_path, 'w:gz') as tar:
 print(f"{os.path.getsize(tar_path)} bytes")
 
 # Upload
-transport = paramiko.Transport((host, 22))
-transport.connect(username='ubuntu', password='REMOVED_CREDENTIAL')
+transport = paramiko.Transport((HOST, 22))
+transport.connect(username=USER, password=PASSWORD)
 sftp = paramiko.SFTPClient.from_transport(transport)
 sftp.put(tar_path, '/tmp/a2a_contracts.tar.gz')
 sftp.close()
@@ -35,7 +37,7 @@ transport.close()
 
 c = paramiko.SSHClient()
 c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-c.connect(host, username='ubuntu', password='REMOVED_CREDENTIAL', timeout=30)
+c.connect(HOST, username=USER, password=PASSWORD, timeout=30)
 
 def run(ssh_client, cmd, desc=""):
     print(f"\n[{desc}] > {cmd[:130]}")
@@ -93,7 +95,7 @@ print("=========================================")
 ec, out, err = run(c,
     f"export PATH=$HOME/.foundry/bin:$PATH && cd /tmp/a2a_build && "
     f"forge create src/erc8004-extensions/A2AProtocolRegistry.sol:A2AProtocolRegistry "
-    f"--rpc-url {SEP_RPC} --private-key {pk} --constructor-args {SEP_IR} --legacy 2>&1",
+    f"--rpc-url {SEP_RPC} --private-key {PK} --constructor-args {SEP_IR} --legacy 2>&1",
     "deploy Sepolia")
 
 sep_addr = ""
@@ -109,7 +111,7 @@ print("=========================================")
 ec, out, err = run(c,
     f"export PATH=$HOME/.foundry/bin:$PATH && cd /tmp/a2a_build && "
     f"forge create src/erc8004-extensions/A2AProtocolRegistry.sol:A2AProtocolRegistry "
-    f"--rpc-url {OX_RPC} --private-key {pk} --constructor-args {OX_IR} --legacy 2>&1",
+    f"--rpc-url {OX_RPC} --private-key {PK} --constructor-args {OX_IR} --legacy 2>&1",
     "deploy OxaChain")
 
 ox_addr = ""

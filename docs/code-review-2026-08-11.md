@@ -214,3 +214,27 @@ usePaymentGateway.ts（组合层，113 行）── 对外 API UsePaymentGateway
 - frontend `tsc --noEmit`：✅ 零错误
 - `node --check gateway/e2e_wallet.js`：✅ 语法通过
 - gateway/src 内已无硬编码远程 IP（仅 127.0.0.1 回退与文档注释）
+
+---
+
+## 七、部署脚本硬编码私钥清理（2026-08-11 后续）
+
+复扫 `gateway/deploy/` 发现 3 个真实部署私钥硬编码在 12 个脚本中，已全部改为环境变量（复用既有 `deploy_config.py` 约定）：
+
+| 密钥 | 分布 | 处置 |
+|------|------|------|
+| `0x9ff7f551...` | 4 个 shell 脚本（deploy_a2a / deploy_a2a_bg / deploy_sep_a2a / deploy_a2a_v2） | `${AGENTX_DEPLOY_PRIVATE_KEY:?}` fail-fast |
+| `0x872c3190...` | 7 个 python 脚本（deploy_script / build_deploy_a2a / deploy_a2a_v2 / deploy_bin / deploy_now / forge_deploy / deploy_final） | `from deploy_config import PK` + 缺失即退出 |
+| `0x23632a15...` | check_pks.py（余额查询第二密钥） | `AGENTX_DEPLOY_PRIVATE_KEY_2` 环境变量 |
+
+- SSH 主机/密码（`43.156.78.59` / `REMOVED_CREDENTIAL`）一并改为 `deploy_config` 的 `HOST/USER/PASSWORD`（同属敏感凭证）。
+- [.env.deploy.example](file:///home/steven/Agentx/gateway/deploy/.env.deploy.example) 补充 `AGENTX_DEPLOY_PRIVATE_KEY_2` 说明。
+- 全仓库复扫 3 个密钥：**0 命中**。
+- 保留不动：`scripts/local-payments/*.sh` 与 `payments/tests/*.test.ts` 中的 anvil 默认测试密钥（`0xac0974...`/`0x59c699...`，公开标准测试网密钥，非机密）。
+
+### 验证
+
+- 8 个 python 脚本 `py_compile` ✅ 全通过
+- 4 个 shell 脚本 `bash -n` ✅ 全通过
+
+> ⚠️ **重要提醒**：以上密钥已存在于 **git 历史**中，仅删除源码不足以防泄露。如需彻底清除，需重写历史（`git filter-repo` 等）并**轮换这些私钥**（假设已泄露）。部署私钥涉及链上资金，建议立即在 sepolia/oxachain 上轮换。

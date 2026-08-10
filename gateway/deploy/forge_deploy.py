@@ -1,7 +1,10 @@
 import paramiko
 import subprocess, sys
+from deploy_config import HOST, USER, PASSWORD, PK
 
-pk = 'REMOVED_PRIVATE_KEY'
+if not PK:
+    raise SystemExit("FATAL: AGENTX_DEPLOY_PRIVATE_KEY 未设置，请先 source gateway/deploy/.env.deploy")
+
 sep_ir = '0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F'
 ox_ir = '0xbf5F9db266c8c97E3334466C88597Eb758AfE212'
 sep_rpc = 'https://ethereum-sepolia-rpc.publicnode.com'
@@ -9,7 +12,7 @@ ox_rpc = 'http://43.156.99.215:18545'
 
 c = paramiko.SSHClient()
 c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-c.connect('43.156.78.59', username='ubuntu', password='REMOVED_CREDENTIAL', timeout=30)
+c.connect(HOST, username=USER, password=PASSWORD, timeout=30)
 
 def run(cmd):
     print(f"> {cmd[:130]}")
@@ -29,7 +32,7 @@ print("\n=== SEPOLIA ===")
 ec, out, err = run(
     f"export PATH=$HOME/.foundry/bin:$PATH && cd /tmp/a2a_build && "
     f"forge create src/erc8004-extensions/A2AProtocolRegistry.sol:A2AProtocolRegistry "
-    f"--rpc-url {sep_rpc} --private-key {pk} --legacy "
+    f"--rpc-url {sep_rpc} --private-key {PK} --legacy "
     f'--constructor-args $(cast abi-encode "constructor(address)" {sep_ir}) '
     f"2>&1"
 )
@@ -44,7 +47,7 @@ print("\n=== OXACHAIN L1 ===")
 ec, out, err = run(
     f"export PATH=$HOME/.foundry/bin:$PATH && cd /tmp/a2a_build && "
     f"forge create src/erc8004-extensions/A2AProtocolRegistry.sol:A2AProtocolRegistry "
-    f"--rpc-url {ox_rpc} --private-key {pk} --legacy "
+    f"--rpc-url {ox_rpc} --private-key {PK} --legacy "
     f'--constructor-args $(cast abi-encode "constructor(address)" {ox_ir}) '
     f"2>&1"
 )

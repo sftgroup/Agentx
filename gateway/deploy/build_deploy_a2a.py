@@ -2,9 +2,10 @@ import paramiko
 import tarfile
 import os
 import time
+from deploy_config import HOST, USER, PASSWORD, PK
 
-host = '43.156.78.59'
-pk = 'REMOVED_PRIVATE_KEY'
+if not PK:
+    raise SystemExit("FATAL: AGENTX_DEPLOY_PRIVATE_KEY 未设置，请先 source gateway/deploy/.env.deploy")
 
 # SEP and L1 IdentityRegistry addresses
 SEP_IR = '0xe94ad380d3F8d08a7590eda0C84f354a93F96e5F'
@@ -33,8 +34,8 @@ print(f"{count} files, {os.path.getsize(tar_path)} bytes")
 
 # Upload via SFTP
 print("\n=== Uploading ===")
-transport = paramiko.Transport((host, 22))
-transport.connect(username='ubuntu', password='REMOVED_CREDENTIAL')
+transport = paramiko.Transport((HOST, 22))
+transport.connect(username=USER, password=PASSWORD)
 sftp = paramiko.SFTPClient.from_transport(transport)
 sftp.put(tar_path, '/tmp/a2a_contracts.tar.gz')
 sftp.close()
@@ -43,7 +44,7 @@ transport.close()
 def ssh():
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    c.connect(host, username='ubuntu', password='REMOVED_CREDENTIAL', timeout=30)
+    c.connect(HOST, username=USER, password=PASSWORD, timeout=30)
     return c
 
 def run(client, cmd, desc=""):
@@ -103,7 +104,7 @@ ec, out, err = run(c,
     f"cd /tmp/a2a_build && "
     f"forge create src/erc8004-extensions/A2AProtocolRegistry.sol:A2AProtocolRegistry "
     f"--rpc-url {SEP_RPC} "
-    f"--private-key {pk} "
+    f"--private-key {PK} "
     f"--constructor-args {SEP_IR} "
     f"--legacy "
     f"2>&1",
@@ -126,7 +127,7 @@ ec, out, err = run(c,
     f"cd /tmp/a2a_build && "
     f"forge create src/erc8004-extensions/A2AProtocolRegistry.sol:A2AProtocolRegistry "
     f"--rpc-url {OX_RPC} "
-    f"--private-key {pk} "
+    f"--private-key {PK} "
     f"--constructor-args {OX_IR} "
     f"--legacy "
     f"2>&1",

@@ -3,7 +3,8 @@ export PATH=$HOME/.foundry/bin:$PATH
 cd /tmp/a2a_build
 ln -sf erc8004-interfaces src/interfaces 2>/dev/null
 
-PK=REMOVED_PRIVATE_KEY
+# 私钥从环境变量读取（source gateway/deploy/.env.deploy），禁止硬编码入库
+PK="${AGENTX_DEPLOY_PRIVATE_KEY:?AGENTX_DEPLOY_PRIVATE_KEY 未设置，请先 source gateway/deploy/.env.deploy}"
 LOG=/tmp/a2a_deploy2.log
 
 {
