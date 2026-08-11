@@ -13,11 +13,13 @@
 3. [环境变量配置](#3-环境变量配置)
 4. [Key 签发与轮换](#4-key-签发与轮换)
 5. [验证连接](#5-验证连接)
-6. [SDK 接入示例](#6-sdk-接入示例)
-7. [HTTP API 参考](#7-http-api-参考)
-8. [错误码](#8-错误码)
-9. [常见问题](#9-常见问题)
-10. [安全最佳实践](#10-安全最佳实践)
+6. [付费与配额计费](#6-付费与配额计费当前实况)
+7. [SDK 接入示例](#7-sdk-接入示例)
+8. [HTTP API 参考](#8-http-api-参考)
+9. [MCP 接入（JSON-RPC）](#9-mcp-接入json-rpc)
+10. [错误码](#10-错误码)
+11. [常见问题](#11-常见问题)
+12. [安全最佳实践](#12-安全最佳实践)
 
 ---
 
@@ -57,7 +59,7 @@ AgentX 是一个多租户 AI Agent 平台，对外提供：
 |---|---|---|---|
 | `AGENTX_GATEWAY_URL` | AgentX 网关地址（从本团队网络可达） | ✅ | `http://43.159.60.46:3090` |
 | `AGENTX_CONVERSATION_API_KEY` | 本团队租户 Key（`agentx_` 开头） | ✅ | `agentx_<your-key>` |
-| `AGENTX_CONVERSATION_LLM_KEY` | **应用侧建议显式配置**：本团队自己的 LLM API Key（openai/deepseek 等）。SDK 构造时传入 `llmApiKey`，所有并行任务自动带 BYOK，避免每次请求重复传参，也防止误用平台兜底 Key | 建议 ✅ | `sk-<your-llm-key>` |
+| `AGENTX_CONVERSATION_LLM_KEY` | **应用侧建议（非必填，2026-08-11 起）**：本团队自己的 LLM API Key（openai/deepseek 等）。SDK 构造时传入 `llmApiKey`，所有并行任务自动带 BYOK，费用落自己账户、配额独立；不传则走平台 Key 并按 token 计费（见 [§6](#6-付费与配额计费当前实况)） | 建议 ✅ | `sk-<your-llm-key>` |
 
 ```bash
 # .env 示例（应用侧建议：LLM Key 显式配置，任务自动 BYOK）
@@ -131,10 +133,59 @@ curl -H "X-Api-Key: $AGENTX_CONVERSATION_API_KEY" \
 ```
 
 - `tenant.wallet_address` 为 `partner-<slug>` → 配置正确
-- 返回 `401` → Key 错误或已被轮换（见 [错误码](#8-错误码)）
+- 返回 `401` → Key 错误或已被轮换（见 [错误码](#10-错误码)）
 - 配额 / 限流 / 并发等数值以 `plan` 对象为准（随套餐不同而不同）
 
-## 6. SDK 接入示例
+## 6. 付费与配额计费（当前实况）
+
+> 实况日期 2026-08-11。当前付费体系 = **套餐订阅（配额制）+ 平台 LLM 按 token 计量**。链上按量付费轨（x402 / MPP / Period / Stablecoin）与法币订阅（Stripe）代码已实现但**未启用**（待商户 / 结算通道凭据，见 [docs/PROGRESS.md](PROGRESS.md) R4/R5）。
+
+### 6.1 两种 LLM 模式：BYOK 与平台 Key
+
+| 模式 | 进入方式（`TenantLLMResolver` 判定优先级） | 计费 | 限制 |
+|---|---|---|---|
+| **BYOK**（自带 Key） | ① 请求头 `X-Llm-Api-Key` / 构造参数 `llmApiKey`（无状态透传）② 存储式 `tenantKeyId`（平台保存，明文不出服务器） | ❌ 不计平台配额，费用落在调用方自己的 LLM 账户 | 受套餐 RPM / 并发限制 |
+| **平台 Key**（平台兜底） | ③ 无 BYOK → 平台统一 Key；④ GatewayProvider 兜底 | ✅ **按 token 计费**，扣套餐每日配额 | 受套餐每日配额 + RPM / 并发限制 |
+
+- **BYOK 可选（2026-08-11 起，原「partner 任务强制 BYOK」已废除）**：实时对话与并行任务**均不强制**携带 LLM Key；不带 Key 时自动走平台 Key，平台按 token 精确计费（调用方零代码改动，仅费用归属平台配额）。
+- 平台**推荐**调用方自带 Key：费用落自己账户、配额独立不互相挤占（建议项，非硬性要求）。
+
+### 6.2 套餐配额（`plans` 表）
+
+| 套餐 | 月费 | 每日配额 `quota_daily` | 每月配额 | RPM | 并发 | 平台模型 |
+|---|---|---|---|---|---|---|
+| Free | $0 | 0（无平台配额，平台 Key 不可用 → 须 BYOK） | 0 | 5 | 1 | 无 |
+| Pro | $29 | 500,000 tokens | 15,000,000 | 30 | 3 | 有 |
+| Enterprise | $299 | 5,000,000 tokens | 150,000,000 | 100 | 10 | 有 |
+
+### 6.3 平台模式计费链路
+
+```
+平台 LLM 消耗（conversation-service 的 done 事件携带 usage + llmSource='platform'）
+  ├─ 实时对话  POST /api/v1/agent/runs
+  │      → gateway pipeSSEWithUsage 解析 done 事件 → updateQuota
+  ├─ 并行任务  GET /api/v1/tasks/:id/events（SSE 订阅者）
+  │      → pipeTaskSSE 解析 done 事件 → updateQuota
+  └─ 并行任务「无人订阅」时
+        conversation-service 完成后回调 POST /api/v1/internal/task-billing
+        → gateway 校验 X-Orchestrate-Token + llmSource='platform'
+        → wallet→tenant 映射 → updateQuota
+```
+
+- **幂等**：同一任务 SSE 计量与完成回调**任一先到只计一次**（`billedTaskIds` 去重）
+- **计数存储**：Redis 计数器 `quota:<tenantId>`（24h 过期自动重置）；Redis 不可用时回退 DB `tenants.quota_used` 累加
+- **用量可见**：`GET /api/v1/tenant/me` 返回 `plan.quota_daily` / `quota_used` / `usage_today.total_tokens`，可核对当日消耗
+
+### 6.4 超限行为
+
+| 场景 | 响应 |
+|---|---|
+| 请求到达时已超每日配额 | `429 { limit_type: "daily_quota", error: "Daily quota exceeded. Upgrade your plan or switch to BYOK mode." }` |
+| 流式结束后追加计费超限 | 本次请求已完成，**下次请求**起被 429 拦截 |
+| 无平台模型可用（如 Free） | `400 { error: "No platform models available on current plan" }` |
+| RPM 超限 | `429 { limit_type: "rpm", retry_after: 60 }` |
+
+## 7. SDK 接入示例
 
 ### 安装
 
@@ -150,7 +201,7 @@ import { ConversationClient } from '@agentxv2/sdk/conversation'
 const client = new ConversationClient({
   gatewayUrl: process.env.AGENTX_GATEWAY_URL!,
   apiKey: process.env.AGENTX_CONVERSATION_API_KEY!, // X-Api-Key 鉴权
-  llmApiKey: process.env.AGENTX_CONVERSATION_LLM_KEY, // 建议显式配置：并行任务自动带 BYOK（partner 任务必须，见下）
+  llmApiKey: process.env.AGENTX_CONVERSATION_LLM_KEY, // 可选：BYOK 透传（不传则走平台 Key 并按 token 计费，见 §6）
 })
 ```
 
@@ -223,12 +274,12 @@ const client = new ConversationClient({
 - 方式三：**HTTP 直接调用**——请求头 `X-Llm-Api-Key`（+ `X-Llm-Endpoint` / `X-Llm-Model`），等价 SDK 的 `llmApiKey`
 - 优先级：`tenantKeyId`（服务器解密注入）> 请求头 / `llmApiKey` > 平台兜底 Key
 
-> ⚠️ **B 端（partner）任务强制 BYOK**（2026-08-08 起）：partner 租户创建任务（`POST /sessions/:id/tasks`）**必须**携带 LLM Key——`X-Llm-Api-Key` 请求头、`llmApiKey` 或 `tenantKeyId` 三者之一，否则返回 `400 { code: "LLM_KEY_REQUIRED" }`（防止后台任务消耗平台 LLM 预算）。对话（chat）与 user 类租户不受此限制，未传时走平台兜底 Key。
-> **适用范围**：BYOK 守卫约束 partner 经 **REST / SDK 创建的并行任务**（`POST /sessions/:id/tasks`）。平台托管后台路径（用户定时任务 schedule、编排触发）不经过该守卫——它们按租户存储 Key（`tenantKeyId`）或平台兜底执行；若需后台任务也走调用方自己的 Key，配置存储式 `tenantKeyId` 即可。
+> **BYOK 可选（2026-08-11 起，原「B 端任务强制 BYOK」已废除）**：partner 租户创建任务（`POST /sessions/:id/tasks`）**不再强制**携带 LLM Key——未传时自动走平台兜底 Key，平台按 done 事件 usage 精确计费（扣套餐每日配额，见 [§6](#6-付费与配额计费当前实况)）；传了则费用落调用方自己账户。
+> **BYOK 判定**：请求头 `X-Llm-Api-Key` / 构造参数 `llmApiKey` / 存储式 `tenantKeyId`，优先级 `tenantKeyId`（服务器解密注入）> 请求头 / `llmApiKey` > 平台兜底 Key。平台托管后台路径（用户定时任务 schedule、编排触发）不经过上述 BYOK 通道，按租户存储 Key 或平台兜底执行；若需后台任务也走调用方自己的 Key，配置存储式 `tenantKeyId` 即可。
 > ⚠️ **`tenantKeyId` 严格按租户隔离**（2026-08-08 审计确认）：`tenant_api_keys` 按 `tenant_id` 归属，每个租户只能使用**自己**在 `POST /api/v1/tenant/keys` 存的 Key。**Key 轮换 / 切换租户后，必须用新 Key（`agentx_...`）重新调 `POST /api/v1/tenant/keys` 为新租户存 BYOK**，得到新的 `tenantKeyId` 并更新环境变量；沿用旧租户的 `tenantKeyId` 会报 `400 { error: "Tenant API key not found or inactive" }`（不是 Key 失效，而是该 ID 不属于当前租户）。
-> 若任务「瞬间 error」，先检查是否未配置 BYOK / BYOK 无效（见[常见问题](#9-常见问题)）
+> 若任务「瞬间 error」，先检查平台兜底 Key 是否有效 / 套餐是否有平台模型配额（见[常见问题](#11-常见问题)）
 
-## 7. HTTP API 参考
+## 8. HTTP API 参考
 
 以下端点均需 `X-Api-Key` 请求头。
 
@@ -257,7 +308,7 @@ const client = new ConversationClient({
 |---|---|---|
 | POST | `/api/v1/agent/runs` | 单轮对话，SSE 流式返回 |
 
-## 7.5 MCP 接入（JSON-RPC）
+## 9. MCP 接入（JSON-RPC）
 
 平台暴露标准 MCP 端点 `POST <GATEWAY>/mcp`（共 38 个工具）。除链上数据外，还包含对话与并行任务管理工具：
 
@@ -274,7 +325,7 @@ const client = new ConversationClient({
 >
 > **边界说明（通用）**：以上仅针对 **AgentX 平台 MCP**（Gateway `/mcp` 的 `agentx_gateway_*` 工具，共 6 个：`chat` / `create_session` / `create_task` / `get_task` / `list_tasks` / `cancel_task`）。调用方**自建**的 MCP 服务器（如自部署的 aitrader-mcp、RAG MCP）鉴权由其自行配置，**不在平台边界内**——是否匿名放行、是否提供会话/任务工具，由调用方自己决定。
 >
-> **B 端（含 aihunter 等）最终用户的使用路径**：B 端 Key **不能**调平台 MCP 对话/任务工具（仅注册用户 JWT，R14 收紧，维持不变）。B 端用户的对话/任务能力已由 **REST + 一个 `agentx_` Key + `X-End-User-Id: 0x<钱包>`** 完整覆盖（端用户订阅转发，见 [§6](#6-sdk-接入示例)）——无需走 MCP。若未来需打通「B 端用户 → AgentX 注册用户 JWT」接入平台 MCP，作为独立需求另行设计。
+> **B 端（含 aihunter 等）最终用户的使用路径**：B 端 Key **不能**调平台 MCP 对话/任务工具（仅注册用户 JWT，R14 收紧，维持不变）。B 端用户的对话/任务能力已由 **REST + 一个 `agentx_` Key + `X-End-User-Id: 0x<钱包>`** 完整覆盖（端用户订阅转发，见 [§7](#7-sdk-接入示例)）——无需走 MCP。若未来需打通「B 端用户 → AgentX 注册用户 JWT」接入平台 MCP，作为独立需求另行设计。
 >
 > **B 端自建对话工具（inline 注入）**：若 B 端要让自己的 MCP/HTTP 工具进入对话，可直连 Conversation Service 的 `loadInline`——外部应用直接注入自己的 prompt + skills（含 `execution.type='mcp'/'http'` 工具），跳过平台 Agent 查找（内部 API，非公开 REST）。对话工具的完整模型见 [publish-subscribe-pay.md §1.6](publish-subscribe-pay.md)。
 
@@ -297,7 +348,7 @@ curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
 
 > 完整工具清单与 Claude Desktop 配置见仓库 `MCP_SETUP.md`。
 
-## 8. 错误码
+## 10. 错误码
 
 | HTTP | Code | 说明 | 处理 |
 |---|---|---|---|
@@ -305,24 +356,24 @@ curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
 | 403 | `PARALLEL_TASKS_DISABLED` | 该租户禁用了多任务 / 子 Agent | 回退单轮对话，或联系管理员在 Plans / Tenants 开启 |
 | 404 | — | 会话 / 任务不存在 | 确认 ID 正确 |
 | 409 | — | 冲突（如重复操作） | 按响应 detail 处理 |
-| 429 | — | 触发限流（RPM 随套餐而定：Free=5 / Pro=30 / Enterprise=100，租户可覆盖） | 降低频率，或联系管理员调高配额 |
+| 429 | — | 触发限流：RPM（Free=5 / Pro=30 / Enterprise=100）或每日配额（`limit_type: "daily_quota"`，见 [§6](#6-付费与配额计费当前实况)） | 降低频率 / 切换 BYOK，或联系管理员调高配额 |
 | 500 | — | 服务端异常 | 联系平台运维 |
 
-## 9. 常见问题
+## 11. 常见问题
 
 | 现象 | 可能原因 | 处理 |
 |---|---|---|
 | 连接超时 | 网关地址从本团队网络不可达 | 确认可访问 `43.159.60.46:3090`，检查防火墙 / 白名单 |
-| 如何代已订阅用户对话 | 直接调用按租户自身授权被 403 | 请求带 `X-End-User-Id: 0x<用户钱包>`（B 端代调，见 [§6](#6-sdk-接入示例)）；也可先 `GET /api/v1/chain/check-subscription` 确认订阅 |
+| 如何代已订阅用户对话 | 直接调用按租户自身授权被 403 | 请求带 `X-End-User-Id: 0x<用户钱包>`（B 端代调，见 [§7](#7-sdk-接入示例)）；也可先 `GET /api/v1/chain/check-subscription` 确认订阅 |
 | `401` 但 Key 未变 | Key 被团队内其他人轮换 | 联系平台管理员重新签发 |
-| 任务瞬间 `error` | 平台兜底 LLM Key 无效 / 未配置 BYOK | 配置团队自己的 LLM Key（BYOK 透传，见 [§6](#6-sdk-接入示例)），如仍失败检查 Key 的有效性与配额 |
-| 报 `400 LLM_KEY_REQUIRED` | partner 租户创建任务未携带 LLM Key | 携带 `X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId`（partner 任务强制 BYOK，见 [§6](#6-sdk-接入示例)） |
-| 报 `400 Tenant API key not found or inactive` | `tenantKeyId` 不属于当前租户（Key 轮换 / 切换租户后沿用了旧租户的 `tenantKeyId`） | 用当前租户的 `agentx_` Key 调 `POST /api/v1/tenant/keys` 重新存 BYOK，取新 `tenantKeyId` 更新 `.env`（`tenantKeyId` 严格按租户隔离，见 [§6](#6-sdk-接入示例)） |
+| 任务瞬间 `error` | 平台兜底 LLM Key 无效 / 无平台模型配额 | 自带 LLM Key（BYOK 透传，见 [§7](#7-sdk-接入示例)），如仍失败检查 Key 的有效性与配额 |
+| 报 `400 LLM_KEY_REQUIRED` | **该错误已不再返回**（2026-08-11 起 B 端任务不强制 BYOK） | 无需处理；不带 Key 时平台按 token 计费（见 [§6](#6-付费与配额计费当前实况)） |
+| 报 `400 Tenant API key not found or inactive` | `tenantKeyId` 不属于当前租户（Key 轮换 / 切换租户后沿用了旧租户的 `tenantKeyId`） | 用当前租户的 `agentx_` Key 调 `POST /api/v1/tenant/keys` 重新存 BYOK，取新 `tenantKeyId` 更新 `.env`（`tenantKeyId` 严格按租户隔离，见 [§7](#7-sdk-接入示例)） |
 | 报 `403 PARTNER_TASKS_DISABLED` | **该错误已废弃**（2026-08-08 起 B 端 Key 与注册用户能力统一） | 确认 Gateway 已升级；一个 `agentx_` Key 即可，无需第二把 Key |
 | 多个调用方共用 Key | 用量 / 配额无法区分 | 每个调用方使用独立 Key |
 | 无流式事件 | SSE 被网关 / 代理缓冲 | 确认使用 HTTP/1.1 且未启用 gzip 缓冲 |
 
-## 10. 安全最佳实践
+## 12. 安全最佳实践
 
 - **Key 不入库**：`.env` 加入 `.gitignore`，禁止提交含真实 Key 的配置到代码仓库
 - **最小权限**：各团队仅使用自己调用方的 Key，不用跨团队混用
