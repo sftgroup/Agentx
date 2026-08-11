@@ -14,8 +14,14 @@ router.get('/me', async (req: Request, res: Response) => {
   const tenant = req.tenant
 
   const pool = getPool()
+  // R19.1: B-end tenants register without a plan (plan_id NULL). Guard the plan
+  // query so the empty uuid never hits Postgres (string_to_uuid error).
+  const planId = tenant!.planId || null
+  const planPromise = planId
+    ? pool.query(`SELECT name, slug, quota_daily, quota_monthly, platform_models, byok_enabled, rate_limit_rpm, max_concurrent, features FROM plans WHERE id = $1`, [planId])
+    : Promise.resolve({ rows: [] })
   const [planRow, keysRow, usageRow] = await Promise.all([
-    pool.query(`SELECT name, slug, quota_daily, quota_monthly, platform_models, byok_enabled, rate_limit_rpm, max_concurrent, features FROM plans WHERE id = $1`, [tenant!.planId]),
+    planPromise,
     pool.query(`SELECT id, provider, model, label, endpoint, is_active, last_validated, created_at FROM tenant_api_keys WHERE tenant_id = $1 ORDER BY created_at DESC`, [tenant!.id]),
     pool.query(`SELECT COALESCE(SUM(tokens_total), 0) as total_tokens, COALESCE(SUM(tool_calls), 0) as total_tool_calls FROM usage_logs WHERE tenant_id = $1 AND created_at > NOW() - INTERVAL '24 hours'`, [tenant!.id]),
   ])
@@ -187,8 +193,12 @@ router.get('/models', async (req: Request, res: Response) => {
   const tenant = req.tenant
 
   const pool = getPool()
+  // R19.1: partner tenants have no plan (plan_id NULL) → no platform models.
+  const planId = tenant!.planId || null
   const [planRow, keysRow] = await Promise.all([
-    pool.query(`SELECT platform_models FROM plans WHERE id = $1`, [tenant!.planId]),
+    planId
+      ? pool.query(`SELECT platform_models FROM plans WHERE id = $1`, [planId])
+      : Promise.resolve({ rows: [] }),
     pool.query(`SELECT id, provider, model, label FROM tenant_api_keys WHERE tenant_id = $1 AND is_active = true`, [tenant!.id]),
   ])
 
