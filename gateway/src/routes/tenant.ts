@@ -5,9 +5,36 @@
 import { Router, Request, Response } from 'express'
 import { getPool } from '../lib/db'
 import { encryptApiKey, decryptApiKey } from '../lib/crypto'
+import { generateApiKey, hashApiKey } from '../middleware/auth'
 import { config } from '../config'
 
 const router = Router()
+
+// GET /api/v1/tenant/plans — list purchasable platform subscription tiers
+// (R19.3 / D11: shown in the B-end console "Choose a plan" picker and the
+// C-end Billing page; buy via POST /api/v1/payments purpose='tenant-plan').
+// `priceWei` mirrors the engine-side amount check (USD → wei via
+// FIAT_TOKEN_USD_PRICE) so the frontend can fund the exact amount.
+router.get('/plans', async (_req: Request, res: Response) => {
+  try {
+    const pool = getPool()
+    const result = await pool.query(
+      `SELECT id, name, slug, price_monthly, currency, quota_daily, quota_monthly,
+              byok_enabled, rate_limit_rpm, max_concurrent, platform_models, features
+       FROM plans WHERE is_active = true ORDER BY price_monthly ASC`
+    )
+    const plans = result.rows.map((p) => {
+      const usd = parseFloat(String(p.price_monthly))
+      const priceWei = Number.isFinite(usd) && usd > 0
+        ? BigInt(Math.round((usd / config.fiatTokenUsdPrice) * 1e18)).toString()
+        : '0'
+      return { ...p, price_wei: priceWei }
+    })
+    res.json({ plans })
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message })
+  }
+})
 
 // GET /api/v1/tenant/me
 router.get('/me', async (req: Request, res: Response) => {
@@ -152,6 +179,30 @@ router.post('/keys/:keyId/validate', async (req: Request, res: Response) => {
     }
   } catch (err) {
     res.json({ valid: false, error: String(err) })
+  }
+})
+
+// POST /api/v1/tenant/rotate-key — rotate the platform API key (R19.2)
+// Replaces the stored SHA-256 digest with a fresh key and clears any legacy
+// plaintext, so the OLD key stops working immediately. The NEW key is returned
+// exactly once (keys are never stored in plaintext — this is the recovery path
+// for lost keys, per R19.1 D8/T2).
+router.post('/rotate-key', async (req: Request, res: Response) => {
+  try {
+    const newKey = generateApiKey()
+    const pool = getPool()
+    const result = await pool.query(
+      `UPDATE tenants SET api_key_hash = $1, api_key = NULL, updated_at = NOW()
+       WHERE id = $2 RETURNING id`,
+      [hashApiKey(newKey), req.tenant!.id]
+    )
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Tenant not found' })
+      return
+    }
+    res.json({ api_key: newKey, rotated: true })
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message })
   }
 })
 

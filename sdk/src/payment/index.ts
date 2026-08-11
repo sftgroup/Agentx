@@ -8,6 +8,16 @@ export type {
   X402Info,
 } from './payments'
 
+// R19.3 (D11): platform subscription-tier purchases (tenant plans) share the
+// same unified payments endpoint; the business binding is `purpose='tenant-plan'`.
+export { TenantPlanPayments } from './tenant-plan'
+export type {
+  TenantPlanPaymentMethod,
+  TenantPlanPaymentsConfig,
+  BuyTenantPlanInput,
+  BuyTenantPlanResult,
+} from './tenant-plan'
+
 // v0.9.3: the generic engine (@0xinfrax/payments) adds MPP payment channels,
 // stablecoin (EIP-3009 / Permit2), period authorization and a2a-pay. AgentX
 // re-exports the protocol-level clients so integrators can drive those rails

@@ -18,6 +18,7 @@ import type {
   WebhookEvent,
 } from '@0xinfrax/payments'
 import { getPool } from '../lib/db'
+import { config } from '../config'
 import { chainDataReader, log } from './chain-data-reader'
 
 // ── Platform fee (basis points) with a short TTL cache ─────────────────────
@@ -162,6 +163,14 @@ export class PaymentsBridge {
       case 'checkout.session.completed': {
         const ref = String(obj.client_reference_id ?? '').split('|')
         const subscriber = ref[0] ?? ''
+        // R19.3 / D11: clientReference shape `${subscriber}|0|${planId}|tenant-plan`
+        // — bind the purchased platform plan onto the tenant instead of an agent sub.
+        if (ref[3] === 'tenant-plan') {
+          const planId = ref[2] ?? ''
+          if (!subscriber || !planId) break
+          await this.bindTenantPlan({ subscriber, planId, reference: String(obj.id ?? '') })
+          break
+        }
         const agentId = Number(ref[1] ?? 0)
         if (!subscriber || !agentId) break
         const amountCents = Number(obj.amount_total ?? 0)
@@ -287,6 +296,86 @@ export class PaymentsBridge {
       chain: input.chain,
     })
     return { subscriptionId: sub.id, expiresAt: sub.expires_at.toISOString(), creditedWei: credited.toString() }
+  }
+
+  // ── Tenant-plan purchases (R19.3 / D11) ───────────────────────────────────
+  // Platform subscription tiers live in the `plans` table (UUID, USD pricing);
+  // buying one binds it onto the tenant (plan_id + quota_daily) — the quota
+  // billing then flows through the R18 updateQuota pipeline. Only the engine
+  // verifies payments; AgentX only binds.
+
+  /** USD price of a platform plan → wei (uses FIAT_TOKEN_USD_PRICE). */
+  async resolveTenantPlanAmountWei(planId: string): Promise<{ priceWei: bigint; slug: string } | null> {
+    const { rows } = await getPool().query(
+      `SELECT price_monthly, slug FROM plans WHERE id = $1 AND is_active = true`,
+      [planId]
+    )
+    if (!rows.length) return null
+    const usd = parseFloat(String(rows[0].price_monthly))
+    if (!Number.isFinite(usd) || usd <= 0) return null
+    const priceWei = BigInt(Math.round((usd / config.fiatTokenUsdPrice) * 1e18))
+    return { priceWei, slug: rows[0].slug }
+  }
+
+  /**
+   * Bind a purchased platform plan onto the tenant (D6/D11): the order callback
+   * only updates `plan_id` / `quota_daily`; billing keeps flowing through the
+   * R18 updateQuota pipeline. Idempotent by nature (re-runs overwrite).
+   * @throws when the tenant or plan does not exist / plan is inactive.
+   */
+  async bindTenantPlan(input: {
+    subscriber: string
+    planId: string
+    reference: string
+  }): Promise<{ tenantId: string; planSlug: string; quotaDaily: string }> {
+    const pool = getPool()
+    const { rows } = await pool.query(
+      `UPDATE tenants t
+       SET plan_id = p.id,
+           quota_daily = p.quota_daily,
+           quota_used = 0,
+           updated_at = NOW()
+       FROM plans p
+       WHERE t.wallet_address = $1 AND p.id = $2 AND p.is_active = true
+       RETURNING t.id AS tenant_id, p.slug AS plan_slug, p.quota_daily`,
+      [input.subscriber.toLowerCase(), input.planId]
+    )
+    if (!rows.length) {
+      const missing = await pool.query('SELECT 1 FROM tenants WHERE wallet_address = $1', [input.subscriber.toLowerCase()])
+      if (!missing.rows.length) {
+        throw new Error(`bindTenantPlan: tenant not found for ${input.subscriber}`)
+      }
+      throw new Error(`bindTenantPlan: plan ${input.planId} not found or inactive`)
+    }
+    log.info(`bindTenantPlan(subscriber=${input.subscriber}, plan=${input.planId}, ref=${input.reference}) → tenant=${rows[0].tenant_id}, slug=${rows[0].plan_slug}`)
+    return { tenantId: rows[0].tenant_id, planSlug: rows[0].plan_slug, quotaDaily: String(rows[0].quota_daily) }
+  }
+
+  /**
+   * Full tenant-plan chain/x402 rail: verify the on-chain payment, enforce the
+   * payer is the tenant wallet and that the credited amount covers the plan
+   * price, then bind the plan. Shared by `POST /api/v1/payments`
+   * (purpose='tenant-plan', method='chain' | 'x402').
+   * @returns the bound plan, or null when the tx is not a valid payment.
+   */
+  async buyTenantPlan(input: {
+    subscriber: string
+    planId: string
+    txHash: string
+    chain: ChainKey
+    verify: (txHash: string, chain: ChainKey) => Promise<bigint | null>
+  }): Promise<{ tenantId: string; planSlug: string; quotaDaily: string } | null> {
+    const planAmount = await this.resolveTenantPlanAmountWei(input.planId)
+    if (!planAmount) return null
+    const credited = await input.verify(input.txHash, input.chain)
+    if (credited === null || credited < planAmount.priceWei) return null
+    const { rows: payRows } = await getPool().query(
+      'SELECT from_address FROM x402_payments WHERE tx_hash = $1',
+      [input.txHash.toLowerCase()]
+    )
+    const from = (payRows[0]?.from_address ?? '').toLowerCase()
+    if (!from || from !== input.subscriber.toLowerCase()) return null
+    return this.bindTenantPlan({ subscriber: from, planId: input.planId, reference: input.txHash })
   }
 }
 

@@ -45,7 +45,8 @@ export interface PartnerContext {
   isNew: boolean
 }
 
-export function usePartnerGatewayAuth() {
+export function usePartnerGatewayAuth(opts?: { intent?: 'partner' | 'user' }) {
+  const intent = opts?.intent ?? 'partner'
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient()
   const [state, setState] = useState<AuthState>({ isLoading: false, error: null })
@@ -76,7 +77,7 @@ export function usePartnerGatewayAuth() {
           signature,
           timestamp: Math.floor(Date.now() / 1000),
           nonce: challenge.split(':').pop(),
-          intent: 'partner',
+          intent,
         }),
       })
       const data = await verifyRes.json() as {

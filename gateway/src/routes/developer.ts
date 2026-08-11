@@ -1,46 +1,22 @@
 // ---------------------------------------------------------------------------
 // AgentX Gateway — Developer Application Routes (R13)
 // ---------------------------------------------------------------------------
-// POST /api/v1/developer/apply — External teams self-service apply for
-//   API-key integration. Creates a `type='developer'` row in
-//   partner_applications; an admin approves it via
-//   POST /api/v1/admin/applications/:id/decide which auto-creates a tenant,
-//   issues an `agentx_` key, and registers an integration partner.
+// R19.5 (D-1): the manual application flow is retired. B-end onboarding is now
+// fully self-service: wallet sign-in at the /b console auto-provisions a
+// kind='partner' tenant with a hashed API key (R19.1). This endpoint stays as
+// a 410 so old callers get an explicit redirect signal instead of a silent 404.
 // ---------------------------------------------------------------------------
 
 import { Router, Request, Response } from 'express'
-import { getPool } from '../lib/db'
-import { log } from '../services/chain-data-reader'
 
 const router = Router()
 
-// Public — no auth required
-router.post('/apply', async (req: Request, res: Response) => {
-  try {
-    const { company, contact_name, contact_email, website, description } = req.body
-    const companyTrim = String(company ?? '').trim()
-    const contactNameTrim = String(contact_name ?? '').trim()
-    const contactEmailTrim = String(contact_email ?? '').trim()
-    if (!companyTrim || !contactNameTrim || !contactEmailTrim) {
-      res.status(400).json({ error: 'company, contact_name, and contact_email are required' })
-      return
-    }
-
-    const pool = getPool()
-    const result = await pool.query(
-      `INSERT INTO partner_applications (company, contact_name, contact_email, website, description, type)
-       VALUES ($1, $2, $3, $4, $5, 'developer')
-       RETURNING id, company, type, status, created_at`,
-      [companyTrim, contactNameTrim, contactEmailTrim,
-       website ? String(website).trim() : null, description ? String(description).trim() : null]
-    )
-
-    log.info(`developer/apply(company=${company}, email=${contact_email}) → application #${result.rows[0].id} created`)
-    res.status(201).json({ application: result.rows[0] })
-  } catch (err: any) {
-    log.error(`developer/apply() failed: ${err.message}`)
-    res.status(500).json({ error: err.message })
-  }
+// Public — no auth required. Deprecated since R19.5 (D-1).
+router.post('/apply', (_req: Request, res: Response) => {
+  res.status(410).json({
+    error: 'The application flow is retired. Use wallet self-service at /b (POST /api/v1/auth/verify with intent="partner") to create your business tenant and receive an API key instantly.',
+    redirect: '/b',
+  })
 })
 
 export default router

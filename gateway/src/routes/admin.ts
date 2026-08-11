@@ -160,22 +160,41 @@ router.get('/plans', async (_req: Request, res: Response) => {
   }
 })
 
-// PATCH /api/v1/admin/plans/:id — edit plan capability features
-// Body: { features: { parallel_tasks: false } } — deep-merged into plans.features JSONB
+// PATCH /api/v1/admin/plans/:id — edit plan capability features AND quota
+// Body (R19.6 / G6): { features?: {...}, quota_daily?, quota_monthly?,
+//                      rate_limit_rpm?, max_concurrent?, price_monthly? }
+// features is deep-merged into plans.features JSONB; scalar quotas update
+// directly and take effect immediately (tenants read plan_id → quota_daily).
 router.patch('/plans/:id', async (req: Request, res: Response) => {
   try {
-    const { features } = req.body || {}
-    if (!features || typeof features !== 'object' || Array.isArray(features)) {
-      res.status(400).json({ error: 'features object is required' })
+    const { features, quota_daily, quota_monthly, rate_limit_rpm, max_concurrent, price_monthly } = req.body || {}
+    const pool = getPool()
+
+    const featureExpr = features && typeof features === 'object' && !Array.isArray(features)
+      ? `features = COALESCE(features, '{}'::jsonb) || $1::jsonb`
+      : null
+    const sets: string[] = []
+    const values: unknown[] = []
+    if (featureExpr) {
+      sets.push(featureExpr)
+      values.push(JSON.stringify(features))
+    }
+    if (quota_daily !== undefined) { sets.push('quota_daily = $' + (values.length + 1)); values.push(Number(quota_daily)) }
+    if (quota_monthly !== undefined) { sets.push('quota_monthly = $' + (values.length + 1)); values.push(Number(quota_monthly)) }
+    if (rate_limit_rpm !== undefined) { sets.push('rate_limit_rpm = $' + (values.length + 1)); values.push(Number(rate_limit_rpm)) }
+    if (max_concurrent !== undefined) { sets.push('max_concurrent = $' + (values.length + 1)); values.push(Number(max_concurrent)) }
+    if (price_monthly !== undefined) { sets.push('price_monthly = $' + (values.length + 1)); values.push(Number(price_monthly)) }
+
+    if (sets.length === 0) {
+      res.status(400).json({ error: 'No editable fields provided' })
       return
     }
-    const pool = getPool()
+    values.push(req.params.id)
     const result = await pool.query(
-      `UPDATE plans
-         SET features = COALESCE(features, '{}'::jsonb) || $1::jsonb
-       WHERE id = $2
-       RETURNING id, name, slug, features`,
-      [JSON.stringify(features), req.params.id]
+      `UPDATE plans SET ${sets.join(', ')} WHERE id = $${values.length}
+       RETURNING id, name, slug, price_monthly, quota_daily, quota_monthly,
+                 byok_enabled, rate_limit_rpm, max_concurrent, features, is_active`,
+      values
     )
     if (result.rows.length === 0) {
       res.status(404).json({ error: 'Plan not found' })

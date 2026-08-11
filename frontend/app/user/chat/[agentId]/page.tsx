@@ -15,7 +15,7 @@ import type { RunnableSkill, ToolCallStart, ToolCallResult } from '@agentxv2/sdk
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
 import { useAgentChat, type ChatMessage, type OnChainApprovalPayload } from '@/hooks/useAgentChat'
 import { OnchainApprovalModal } from '@/components/a2a/OnchainApprovalModal'
-import { Send, Brain, AlertCircle, ArrowLeft, Loader2, Trash2, Square, Wrench, Terminal } from 'lucide-react'
+import { Send, Brain, AlertCircle, ArrowLeft, ArrowRight, Loader2, Trash2, Square, Wrench, Terminal } from 'lucide-react'
 import Link from 'next/link'
 import { ModelOption, HISTORY_KEY_PREFIX, llmApiKeyFromLocalStorage } from './chat-utils'
 import { GATEWAY_URL_OPTIONAL as gatewayUrl } from '@/lib/gateway'
@@ -34,6 +34,7 @@ export default function ChatPage() {
   const [clarification, setClarification] = useState<string | null>(null) // pending clarifying question from Conversation Service
   const [clarificationAnswer, setClarificationAnswer] = useState('')
   const [onchainApproval, setOnchainApproval] = useState<OnChainApprovalPayload | null>(null) // pending on-chain delegation approval
+  const [quotaExceeded, setQuotaExceeded] = useState(false) // R19.4 (G8): daily quota exhausted → upgrade CTA
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const loopRef = useRef<AgentLoop | null>(null)
@@ -275,6 +276,7 @@ export default function ChatPage() {
         },
 
         onError: (error: Error) => {
+          if (/quota|exceed/i.test(error.message)) setQuotaExceeded(true) // R19.4 (G8)
           setSseMessages(prev => [...prev, {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
@@ -291,6 +293,7 @@ export default function ChatPage() {
 
       await loop.run(userInput, history)
     } catch (error) {
+      if (/quota|exceed/i.test(error instanceof Error ? error.message : '')) setQuotaExceeded(true) // R19.4 (G8)
       setSseMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -406,6 +409,30 @@ export default function ChatPage() {
               />
             </div>
           </div>
+
+          {/* R19.4 (G8): daily quota exhausted → upgrade / BYOK CTA */}
+          {quotaExceeded && (
+            <div className="mx-6 mt-4 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0" />
+                <div>
+                  <div className="text-sm font-semibold text-yellow-300">Daily quota exceeded</div>
+                  <p className="text-xs text-text-muted mt-0.5">Your plan&apos;s daily token quota is exhausted.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link href="/user/billing" className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5">
+                  Upgrade plan <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <button
+                  onClick={() => setQuotaExceeded(false)}
+                  className="btn-secondary text-xs py-2 px-3"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">

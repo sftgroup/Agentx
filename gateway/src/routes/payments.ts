@@ -55,7 +55,8 @@ function sendPaymentError(res: Response, err: unknown): boolean {
 
 // POST /api/v1/payments — unified create (dispatch by rail)
 // body: { method, subscriber, agentId, planId?, period?, amountCents?, currency?,
-//         chain?, txHash?, valueWei?, successUrl?, cancelUrl? }
+//         chain?, txHash?, valueWei?, successUrl?, cancelUrl?,
+//         purpose?: 'agent-subscription' | 'tenant-plan', tenantPlanId? }
 router.post('/', async (req: Request, res: Response, next) => {
   try {
     const body = req.body ?? {}
@@ -65,6 +66,10 @@ router.post('/', async (req: Request, res: Response, next) => {
     // generic `metadata` / `pricing` bags (PaymentsClient / generic module
     // callers) — resolve both so the unified endpoint accepts either shape.
     const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {}
+    const purpose = String(body.purpose ?? metadata.purpose ?? 'agent-subscription')
+    const tenantPlanId = body.tenantPlanId !== undefined ? String(body.tenantPlanId)
+      : metadata.tenantPlanId !== undefined ? String(metadata.tenantPlanId)
+      : ''
     const agentId = Number(body.agentId ?? metadata.agentId ?? 0)
     const planId =
       body.planId !== undefined ? Number(body.planId)
@@ -72,6 +77,64 @@ router.post('/', async (req: Request, res: Response, next) => {
       : metadata.planId !== undefined ? Number(metadata.planId)
       : undefined
     const chain = resolveChain(body.chain)
+
+    // ── R19.3 / D11: tenant-plan purchases (platform subscription tiers) ────
+    // Same unified entry; the business binding is the only AgentX addition:
+    //   fiat  → Stripe checkout (client_reference carries purpose) → webhook binds
+    //   chain / x402 → verify the on-chain payment then bind (buyTenantPlan)
+    if (purpose === 'tenant-plan') {
+      if (!subscriber || !tenantPlanId) {
+        res.status(400).json({ error: 'tenant-plan: subscriber and tenantPlanId are required' })
+        return
+      }
+      if (method === 'fiat') {
+        const result = await paymentsService.createPayment({
+          method: 'fiat',
+          subscriber,
+          period: body.period ?? 'month',
+          currency: body.currency ?? 'usd',
+          chain,
+          amountCents: body.amountCents ? Number(body.amountCents) : undefined,
+          metadata: { purpose, tenantPlanId, resourceLabel: `tenant plan ${tenantPlanId}` },
+          clientReference: `${subscriber}|0|${tenantPlanId}|tenant-plan`,
+          successUrl: body.successUrl,
+          cancelUrl: body.cancelUrl,
+        })
+        if (result.method !== 'fiat') throw new Error('Unexpected fiat payment result')
+        res.json({ method: 'fiat', purpose, paymentId: result.paymentId, url: result.sessionUrl, sessionUrl: result.sessionUrl, sessionId: result.sessionId, redirect: true })
+        return
+      }
+      if (method !== 'chain' && method !== 'x402') {
+        res.status(400).json({ error: 'tenant-plan: unsupported method (use fiat | chain | x402)' })
+        return
+      }
+      const txHash = body.txHash ?? metadata.txHash
+      if (!txHash) {
+        res.status(400).json({ error: 'tenant-plan: txHash is required (chain | x402)' })
+        return
+      }
+      const bound = await paymentsBridge.buyTenantPlan({
+        subscriber,
+        planId: tenantPlanId,
+        txHash: String(txHash),
+        chain,
+        verify: verifyAndCredit,
+      })
+      if (!bound) {
+        res.status(422).json({ error: 'Transaction is not a valid payment covering this plan price' })
+        return
+      }
+      res.json({
+        method,
+        purpose,
+        paymentId: String(txHash),
+        tenantId: bound.tenantId,
+        planId: tenantPlanId,
+        planSlug: bound.planSlug,
+        quotaDaily: bound.quotaDaily,
+      })
+      return
+    }
 
     switch (method) {
       case 'fiat': {

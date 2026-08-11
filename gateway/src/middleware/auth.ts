@@ -51,11 +51,11 @@ const CHALLENGE_TTL_SEC = 5 * 60
 // New keys are stored ONLY as SHA-256 digests (api_key_hash) and returned to
 // the caller exactly once at issuance. Legacy plaintext keys (tenants.api_key)
 // remain readable and keep working via the fallback match in apiKeyAuth.
-function hashApiKey(apiKey: string): string {
+export function hashApiKey(apiKey: string): string {
   return crypto.createHash('sha256').update(apiKey).digest('hex')
 }
 
-function generateApiKey(): string {
+export function generateApiKey(): string {
   return 'agentx_' + crypto.randomBytes(16).toString('hex')
 }
 

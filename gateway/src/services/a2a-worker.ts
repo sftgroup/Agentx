@@ -34,6 +34,7 @@ import { getPool } from '../lib/db'
 import { config } from '../config'
 import { decryptApiKey } from '../lib/crypto'
 import { canAccessAgent, filterAccessibleAgents } from './agent-access'
+import { canAccessAgentOrPay } from './agent-access-pay'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -286,11 +287,14 @@ async function processTask(
             const targetAgent = allAgents.find(a => a.id === targetId)
             const targetName = targetAgent?.name || `Agent #${targetId}`
 
-            // Access boundary: the task client may only delegate to agents they
-            // own or have an active subscription to. No subscription → refuse.
-            const allowed = await canAccessAgent(task.clientAddress, targetId)
-            if (!allowed) {
-              toolResult = `Error: no access to Agent #${targetId} "${targetName}". Only agents you own or have an active subscription to can be delegated to.`
+            // Access boundary (R19.7): the task client may delegate to agents
+            // they own or have an active subscription to; otherwise a
+            // pay-per-call via the x402 ledger balance (service-side deduct)
+            // grants access for this single delegation. No subscription AND no
+            // balance → refuse with a top-up hint.
+            const access = await canAccessAgentOrPay(task.clientAddress, targetId, { refId: `task:${task.taskId}` })
+            if (!access.allowed) {
+              toolResult = `Error: no access to Agent #${targetId} "${targetName}". ${access.reason ?? 'Only agents you own or have an active subscription to can be delegated to.'}`
               break
             }
 

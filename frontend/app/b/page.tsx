@@ -4,11 +4,17 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useWalletClient } from 'wagmi'
+import type { WalletClient } from 'viem'
 import {
   ArrowLeft, ArrowRight, Check, Copy, KeyRound, Loader2, Wallet, Zap, Server,
   LineChart, ShieldAlert, ShieldCheck, AlertTriangle, Building2, ExternalLink, Info,
 } from 'lucide-react'
 import { WalletConnect } from '@/components/wallet/WalletConnect'
+import { PlanPickerCard } from '@/components/billing/PlanPickerCard'
+import { KeyManageCard } from '@/components/billing/KeyManageCard'
+import { X402WalletCard } from '@/components/billing/X402WalletCard'
+import { UsageStatsCard } from '@/components/billing/UsageStatsCard'
 import { usePartnerGatewayAuth } from '@/hooks/usePartnerGatewayAuth'
 
 const card = 'glass-card p-6 rounded-2xl'
@@ -24,9 +30,11 @@ function copy(text: string, done: (v: boolean) => void) {
 }
 
 export default function BusinessPage() {
-  const { isConnected, isLoading, error, context } = usePartnerGatewayAuth()
+  const { isConnected, isLoading, error, context, authenticate } = usePartnerGatewayAuth()
+  const { data: walletClient } = useWalletClient()
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showPlans, setShowPlans] = useState(false)
 
   const showReveal = !!context?.isNew && !saved && context.tenant.kind === 'partner'
 
@@ -74,6 +82,11 @@ export default function BusinessPage() {
             tenantId={context.tenant.id}
             plan={context.plan}
             usageToday={context.usageToday}
+            accessToken={context.accessToken}
+            walletClient={walletClient}
+            showPlans={showPlans}
+            onTogglePlans={() => setShowPlans(v => !v)}
+            onPurchased={authenticate}
           />
         )}
       </main>
@@ -209,11 +222,16 @@ function KeyRevealCard({ apiKey, copied, onCopy, onSaved }: {
 
 // ── Dashboard (returning partner) ───────────────────────────────────────
 
-function DashboardCard({ address, tenantId, plan, usageToday }: {
+function DashboardCard({ address, tenantId, plan, usageToday, accessToken, walletClient, showPlans, onTogglePlans, onPurchased }: {
   address: string
   tenantId: string
   plan: { name: string; slug: string; quota_daily: number; quota_used: number; rate_limit_rpm: number; max_concurrent: number; platform_models: { provider: string; model: string }[] } | null
   usageToday: { total_tokens: number; total_tool_calls: number }
+  accessToken: string
+  walletClient?: WalletClient
+  showPlans: boolean
+  onTogglePlans: () => void
+  onPurchased: () => void
 }) {
   const pct = plan && plan.quota_daily > 0
     ? Math.min(100, Math.round((plan.quota_used / plan.quota_daily) * 100))
@@ -243,11 +261,10 @@ function DashboardCard({ address, tenantId, plan, usageToday }: {
           </p>
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <button
-              disabled
-              title="Subscription checkout arrives with R19.3"
-              className="btn-primary text-sm py-2.5 flex items-center justify-center gap-2 disabled:opacity-40 cursor-not-allowed"
+              onClick={onTogglePlans}
+              className="btn-primary text-sm py-2.5 flex items-center justify-center gap-2"
             >
-              Choose a plan <ArrowRight className="w-4 h-4" />
+              {showPlans ? 'Hide plans' : 'Choose a plan'} <ArrowRight className="w-4 h-4" />
             </button>
             <a
               href="/docs/sdk"
@@ -322,6 +339,23 @@ function DashboardCard({ address, tenantId, plan, usageToday }: {
           SDK quickstart <ExternalLink className="w-3.5 h-3.5" />
         </a>
       </div>
+
+      {/* R19.2: key rotation + x402 wallet + call statistics */}
+      <KeyManageCard accessToken={accessToken} />
+      <X402WalletCard address={address} walletClient={walletClient} />
+      <UsageStatsCard accessToken={accessToken} />
+
+      {/* R19.3 / D11: platform subscription-tier purchase (x402 rail) */}
+      {showPlans && (
+        <div className={`${card} !p-6`}>
+          <PlanPickerCard
+            accessToken={accessToken}
+            subscriber={address as `0x${string}`}
+            walletClient={walletClient}
+            onPurchased={onPurchased}
+          />
+        </div>
+      )}
     </div>
   )
 }
