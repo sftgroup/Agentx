@@ -1,6 +1,6 @@
 # AgentX — 项目任务清单与进度
 
-> Last updated: 2026-08-10 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
+> Last updated: 2026-08-11 · 统一进度文档，替代过时的 `memory/AGENTX_PROGRESS.md`（后者已归档停用）
 > 状态图例：✅ 完成 · ⏸ 代码完成待外部前提 · 🔧 进行中 · ⏳ 待办 · 🔵 技术债
 
 ---
@@ -127,7 +127,7 @@
 
 ## 二、当前状态
 
-- **当前**：可立即开发任务已清零；R17 / R17.5 / R17.6 支付引擎迁移全链路完成（2026-08-10：sdk@0.11.0~0.11.3 发布、0.1.1 首次跟随演练、0.1.2 剥离应对与业务侧重建、0.1.3 恢复 a2a/period 后切换回模块委托、生产部署+自测全绿、B 端零改动通知）
+- **当前**：可立即开发任务已清零；R17 / R17.5 / R17.6 支付引擎迁移全链路完成（2026-08-10：sdk@0.11.0~0.11.3 发布、0.1.1 首次跟随演练、0.1.2 剥离应对与业务侧重建、0.1.3 恢复 a2a/period 后切换回模块委托、生产部署+自测全绿、B 端零改动通知）；R18 B 端计费策略修订完成并生产部署（2026-08-11：放开 BYOK 强制 + SSE 精确计费，见下）
 - **待办**：均为外部前提——R4/R5（业务方凭据），见下
   - R1 ✅ 已完成（2026-08-06 · commit `0f5c30d`；SDK 0.8.7 已发布 npm）
   - R2 ✅ 已完成（2026-08-06 · 集成测试补 task 并行链路，生产 28/28 通过）
@@ -142,11 +142,12 @@
   - R12 ✅ 已完成（2026-08-06 · commit `c224317`，MCP 6 工具）
   - R13 ✅ 已完成（2026-08-06 · 开发者自助申请）
   - R14 ✅ 已完成（2026-08-06 · B 端仅对话 + MCP 仅注册用户）→ **2026-08-08 部分修订**：并行任务统一 P9 能力位（见 R15）
-  - R15 ✅ 已完成（2026-08-08 · B 端能力修订补完：强制 BYOK + 端用户订阅转发 + kind 统一 + sdk@0.10.1）
+  - R15 ✅ 已完成（2026-08-08 · B 端能力修订补完：强制 BYOK + 端用户订阅转发 + kind 统一 + sdk@0.10.1）→ **2026-08-11 部分修订**：并行任务放开 BYOK 强制，改平台精确计费（见 R18）
   - R16 ✅ 已完成（2026-08-08 · 审计闭环与文档补完：createTask 签名修正 + 边界澄清 + BYOM 文档 + 新调用方 key）
   - R17 ✅ 已完成（2026-08-10：A-E + F1 + F2 全部完成——sdk@0.11.0/0.11.1 发布、gateway 升级、旧包 deprecate、文档、生产升级、应用方通知、0.1.1 首次跟随演练；发布流程见下「### R17 支付引擎迁移发布流程」）
   - R17.5 ✅ 已完成（2026-08-10：@0xinfrax/payments@0.1.2 剥离 a2a/period rail——exact 锁定 → 业务侧重建 → sdk@0.11.2 发布 → issue #1 留痕并回复 infraX；见下「## R17.5」）
   - R17.6 ✅ 已完成（2026-08-10：@0xinfrax/payments@0.1.3 恢复 a2a/period rails（模块内置）→ AgentX 迁移回模块委托、sdk@0.11.3 发布、生产部署+自测（4648bb8 优雅 4xx 修复）、B 端零改动通知；见下「## R17.6」）
+  - R18 ✅ 已完成（2026-08-11：B 端计费策略修订——并行任务放开 BYOK 强制，平台 LLM 按 done 事件 usage+llmSource 精确计费（SSE 透传解析 + 完成回调双通道、billedTaskIds 幂等）；生产部署 c69fdb7 + 历史对齐与防分歧加固；见下「## R18」）
 
 ### 开发任务清单 R（2026-08-06 由 PROGRESS.md 遗留待办整理）
 
@@ -312,11 +313,12 @@
   - MCP 对话/任务工具传 `api_key` → 拒绝；传 `access_token` 正常转发【保持不变】
 - 验证：单测 37/37（chat-tasks 重写为「B 端 key 遵循 P9 能力位」5 用例 + mock canAccessAgent 修复既有失败用例）；生产冒烟——① developer apply→approve→key（39 字符）；② 租户 `kind=partner, quota_daily=5,000,000`；③ `/chat/completions` **200**（2026-08-06 配置正式 DeepSeek 平台 key 后 B 端对话真实可用；key 记录于生产 `.env` 的 `DEEPSEEK_API_KEY`，经 admin API 写入 `platform_api_keys` 加密存储）；④ MCP 传 `api_key` → `access_token (registered-user JWT) is required for this tool` ✅；smoke 数据已清理
 
-**R15 B 端能力修订补完：强制 BYOK + 端用户订阅转发 + kind 统一 + sdk@0.10.1** —— 优先级：高 · ✅ 完成（2026-08-08）
+**R15 B 端能力修订补完：强制 BYOK + 端用户订阅转发 + kind 统一 + sdk@0.10.1** —— 优先级：高 · ✅ 完成（2026-08-08）· ⚠️ 部分修订（2026-08-11，见 R18）
 - 来源：B 端反馈（`/tenant/me` 报 `parallel_tasks: true` 但 `/sessions` 403 `PARTNER_TASKS_DISABLED`）+ 需求确认（放开并行任务、partner 预算约束、端用户授权代调）
 - 实施：
   1. **R14 修订**（`4652d1c`）：`chat-tasks` / `schedules` 删除按 `kind` 拦截的 partner gate → 统一 `parallelTaskGate`（P9 能力位 `allow_parallel_tasks ?? plan.features.parallel_tasks ?? true`），user JWT 与 B 端 key 一视同仁；能力位 false → `403 PARALLEL_TASKS_DISABLED`
   2. **partner 任务强制 BYOK**（`0f1b521`）：`POST /sessions/:id/tasks` 时 partner 租户必须携带 LLM key（`X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId` 三者之一），否则 `400 LLM_KEY_REQUIRED`（防平台兜底 key 被后台任务消耗）；chat 与 user 租户不受限
+     > ⚠️ **2026-08-11 修订（R18）**：此条**已废除**——并行任务不再强制 BYOK，B 端不带 key 时走平台 key 并按 token 精确计费（SSE done 事件 + 完成回调双通道）。保留此处仅作历史留痕。
   3. **B 端端用户订阅转发**（`e8be980`）：请求带 `X-End-User-Id: 0x<钱包>`（或 body `endUserId`）→ 网关按该钱包做「拥有/订阅」授权检查（agent-access `kind='partner'` 分支），通过即放行对话/任务；端用户记忆隔离不变
   4. **SDK 0.10.1 发布**（CI `bump=patch`，run 31227825434）：`ConversationCreateTaskParams.endUserId?` / `ConversationChatParams.endUserId?` per-request 透传；已发布 npm `@agentxv2/sdk@0.10.1`（latest）
   5. **kind 统一**：生产 5 个 `partner-*` 租户全部 `kind='partner'`（`UPDATE 2`：aiservicer/autoops 由 user→partner，R13 创建时 kind 混用的历史遗留），预算约束与端用户转发对全部 B 端 key 一致
@@ -422,6 +424,25 @@
 - **验证**：sdk vitest 32/32、gateway 46/46、双方 tsc 通过；生产自测全绿（health / payments/info / access / a2a worker + 禁用 rail 优雅 4xx）
 - **配套文档**：sdk README/UPGRADE 同步 0.11.3（commit `106e27f`）；DEPLOYMENT.md 修正生产 DB 端口（5433 单库）/ SSH 凭证 / 迁移执行标记（`f2f674a`）；CHANGELOG R17.6 条目（`a461c0b`）；知识图谱增量更新至 `a461c0b`（`.ua/`，`2a856c3`）
 - **通知（B 端零改动）**：`npm install` 吸收 0.11.3 即可（锁精确版本者升级至 0.11.3）；曾用 0.11.1 ESM 构建（启动崩溃）必须升级 ≥0.11.2；`PAYMENT_VERSION` 0.1.2 → 0.1.3 仅当断言该常量时需感知
+
+### R18 B 端计费策略修订：放开 BYOK 强制 + SSE 精确计费（✅ 完成并生产部署，2026-08-11）
+
+> 背景：R15 强制 partner 并行任务携带 BYOK（`400 LLM_KEY_REQUIRED`）。用户确认调整为「**并行任务也不强制 BYOK，平台按 token 计费**」——B 端实时对话与并行任务均可省略自带 key，走平台 key 时按 LLM 实际消耗精确计量（套餐配额 `tenants.quota_daily` / Redis `quota:<tenantId>`）。
+
+- **策略修订**（`gateway/src/routes/chat-tasks.ts`）：删除 partner 任务 BYOK 强制 guard。B 端不带 key 时经 `TenantLLMResolver` 平台分支走平台 key，按任务 `done` 事件的 usage 精确计费
+- **SSE 精确计费（方案 B）**：
+  1. conversation-service：`TenantLLMResolver.resolve()` 返回 `{ provider, source: 'byok' | 'platform' }`（4 分支：header BYOK / DB 持久化 BYOK → byok；平台 key / GatewayProvider 兜底 → platform）；`AgentRunSSEEvent` 新增 `llmSource`，两处 `done` 事件携带 `llmSource` + `usage`（AgentLoop 跨迭代累计 `promptTokens/completionTokens/totalTokens`）
+  2. gateway 新建 `services/sse-usage.ts`：`pipeSSEWithUsage` 逐 chunk 字节级透传 + 按 `\n\n` 定界缓冲解析 `data:` 行 → 命中 `type==='done'` 回调 `{ totalTokens, llmSource }`；支持任务包装格式 `{seq,type,payload}`（usage/llmSource 在 payload 内）；畸形行容错
+  3. `/agent/runs`（agent-runs.ts）：平台模式才累计 `platformTokens`（`llmSource==='platform'`；旧版无 llmSource 时回退启发式 `!headerApiKey && !tenantKeyId`）；流关闭后 fire-and-forget `updateQuota`
+  4. `/tasks/:id/events`（chat-tasks.ts）：`pipeTaskSSE` 仅认精确 `llmSource==='platform'`（任务通道保守，无启发式）；`billedTaskIds` 幂等集合防重复订阅重复计费
+  5. **任务完成回调**：conversation-service `task-manager.ts` 任务完成后捕获 `llmSource`，平台模式且 token>0 时 fire-and-forget POST `{gatewayUrl}/api/v1/internal/task-billing`（复用 `X-Orchestrate-Token` 信任边界）→ gateway `routes/internal-task-billing.ts`：校验平台模式 → `wallet_address`→tenantId 映射 → `updateQuota`——覆盖无订阅者的后台任务；`services/task-billing.ts` 抽共享 `billedTaskIds`，SSE 与回调双通道任一先到只计一次
+  6. **修复计量 bug**：`pipeSSEWithUsage` 此前只解析扁平格式，任务通道 SSE 计量实际从未生效（usage 提取为 0）——已修复
+- **验证**：gateway typecheck + **59/59**（chat-tasks BYOK 用例改「不带 BYOK → 201」+ internal-task-billing.test.ts 6 用例含幂等 + sse-usage.test.ts 加包装格式用例）；conversation-service typecheck + **11/11**；sdk README 同步（移除「partner tasks require BYOK」描述）
+- **生产部署**（43.159.60.46，commit `c69fdb7`）：
+  - **git 历史对齐**：生产服务器此前停在 filter-repo 重写前的旧哈希历史（`4648bb8`），`git pull` 报 divergent → `git fetch origin main && git reset --hard FETCH_HEAD` 一次性对齐（已执行；旧历史含已轮换密钥，顺带清除）
+  - **防分歧加固**：服务器 `pull.ff=only`；删除残留分支 `prod-patches-20260807`；纪律 = 服务器 main 只 pull 不 commit；若再次重写/force-push 历史必须当天同步重新对齐所有服务器
+  - **验证**：gateway/conversation health ok（chain+db connected，66 agents 同步）；`/api/v1/internal/task-billing` 已注册且错误 token → 401；`/runs`、`/tasks` 路由注册正常；双进程稳定无崩溃循环；`ORCHESTRATE_TOKEN` 两服务 .env 一致（回调通道可用）
+- **调用方影响**：B 端零代码改动；并行任务原必须带 LLM key（header/参数），现可省略（平台 key 按 token 计费，不扣调用方 key）
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 
