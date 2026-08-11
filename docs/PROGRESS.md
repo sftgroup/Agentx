@@ -445,16 +445,16 @@
   - **验证**：gateway/conversation health ok（chain+db connected，66 agents 同步）；`/api/v1/internal/task-billing` 已注册且错误 token → 401；`/runs`、`/tasks` 路由注册正常；双进程稳定无崩溃循环；`ORCHESTRATE_TOKEN` 两服务 .env 一致（回调通道可用）
 - **调用方影响**：B 端零代码改动；并行任务原必须带 LLM key（header/参数），现可省略（平台 key 按 token 计费，不扣调用方 key）
 
-### R19 C/B 端分角色商业化方案（⏳ 方案定稿，2026-08-11 · 待实施）
+### R19 C/B 端分角色商业化方案（⏳ 方案定稿 + 决策完成，2026-08-11 · 待实施）
 
 > 背景：商业模式对齐——**B 端**（API/REST/SDK 调用对话，用平台 LLM 付费）目标改为「钱包登录 → 自动生成用户 → 独立 B 端用户面板 → 面板内自助购买套餐 → 面板自动获得 key」；**C 端**（注册用户）目标为「购买 LLM token 套餐」自助闭环。当前 B 端仍是「申请 → admin 审批 → 手动签发 key」模式。完整方案见 `docs/billing-role-model-r19.md`。
 
 - **现状差距**：G1 B 端无钱包登录建租户（仅 `partner_applications` 申请通道）· G2 无独立 B 端面板 · G3 无自助购套餐（admin 手动分配 plan）· G4 key 由 admin 签发（无自助）· G5 C 端购买闭环缺失（R4 Stripe 待办）· G6 用户端无独立「配额/账单」页（仅 chat 内联计数，无进度条/升级入口）· G7 chat 页无 429 配额耗尽引导 · G8 Admin 套餐页只读（无配额数值编辑 UI）
 - **关键复用**：C 端钱包登录（auth.ts EIP-191 → JWT）**已自动签发 `agentx_` key**（新钱包注册即发，kind=user）→ B 端仅需新增 partner 注册通道；R18 计费链路（`updateQuota`/SSE+回调）购买后直接衔接，零改造
-- **设计决策**（D1-D7）：钱包登录扩展 B 端通道（kind=partner）· 申请模式保留为人工审批选项 · 支付通道链上优先（x402/P2 现成），Stripe 待凭据（复用 R4 铺路）· B 端面板独立路由（`/b/*`）API 严格 scoped · C 端新增 Billing 页（与 agent 订阅 plans 页区分）· 购买仅更新 `plan_id/quota_daily` · C 端 Billing 页带**用量进度条 + 升级入口**，chat 页 429 `daily_quota` 加**配额耗尽引导**（exceeded 提示/升级 CTA/BYOK 提示）· Admin plans 页支持**配额数值编辑**（quota_daily/RPM/并发，即时生效）
-- **落地拆分**：R19.1 B 端钱包登录+自动建租户+自动发 key → R19.2 B 端面板骨架（套餐/用量/key 管理）→ R19.3 自助购买通道（链上优先）→ R19.4 C 端 Billing 页 + chat 页 429 配额耗尽引导 → R19.5 申请模式去留 → R19.6 Admin 套餐配额数值编辑
-- **安全要点**：key 明文存储现状 → 自助化前评估 hash 化（T2）；面板租户隔离；key 仅显示一次 + 轮换入口；自助注册接限流（T3）
-- **待定决策**：T1 申请表单去留 · T2 存量 key 迁移 · T3 防滥用策略 · T4 B 端套餐定价结构（订阅/按量/并行）
+- **设计决策**（D1-D10）：钱包登录扩展 B 端通道（kind=partner）· **申请模式全自助下线**（T1，人工审批融入未来客服系统）· 支付通道链上优先（x402/P2 现成），Stripe 待凭据（复用 R4 铺路）· B 端面板独立路由（`/b/*`）API 严格 scoped · C 端新增 Billing 页（与 agent 订阅 plans 页区分）· 购买仅更新 `plan_id/quota_daily` · C 端 Billing 页带**用量进度条 + 升级入口**，chat 页 429 `daily_quota` 加**配额耗尽引导**（exceeded 提示/升级 CTA/BYOK 提示）· Admin plans 页支持**配额数值编辑**（quota_daily/RPM/并发，即时生效）· **新 key hash 化**（T2）· **订阅制**定价（T4）· **B 端无免费套餐**（T3）
+- **落地拆分**：R19.1 B 端钱包登录+自动建租户+自动发 key（新 key hash 化、无免费套餐）→ R19.2 B 端面板骨架（套餐/用量/key 管理）→ R19.3 自助购买通道（链上优先）→ R19.4 C 端 Billing 页 + chat 页 429 配额耗尽引导 → R19.5 申请模式下线（人工审批融入客服系统）→ R19.6 Admin 套餐配额数值编辑
+- **安全要点**：**新 key hash 化**（SHA-256，存量明文保留）；面板租户隔离；key 仅显示一次 + 轮换入口；**B 端无免费套餐**抑制批量注册刷量
+- **决策记录**（2026-08-11 已定）：T1 全自助（下线独立申请流程，人工审批融入未来客服系统）· T2 仅新 key hash 化（存量明文保留）· T3 B 端租户无免费套餐（quota_daily=0，购订阅后才可用平台 LLM）· T4 订阅制（月费+每日配额，复用 plans 表+quota_daily；按量预充值为后续扩展）
 - **验收标准**：B 端钱包登录→自动获 key→面板购套餐→key 调通 `/runs` 与并行任务→用量实时反映；C 端购套餐→`quota_daily` 即时生效→chat 页用量进度条同步，耗尽时出现 429 引导；Admin 可编辑配额数值即时生效；R18 计费链路回归不受影响
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
