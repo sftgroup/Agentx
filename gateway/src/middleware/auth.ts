@@ -47,11 +47,23 @@ interface Challenge {
 // Challenge TTL in seconds (matches the 5-minute window)
 const CHALLENGE_TTL_SEC = 5 * 60
 
+// ── API key issuance & hashing (R19.1, D8/T2) ─────────────────────────────
+// New keys are stored ONLY as SHA-256 digests (api_key_hash) and returned to
+// the caller exactly once at issuance. Legacy plaintext keys (tenants.api_key)
+// remain readable and keep working via the fallback match in apiKeyAuth.
+function hashApiKey(apiKey: string): string {
+  return crypto.createHash('sha256').update(apiKey).digest('hex')
+}
+
+function generateApiKey(): string {
+  return 'agentx_' + crypto.randomBytes(16).toString('hex')
+}
+
 // ── Shared tenant loading (single source of truth for SQL + row mapping) ──
 // Used by verifyChallenge (by wallet), authMiddleware (by JWT tenant id) and
 // apiKeyAuth (by api_key). Must always include t.kind ('user' | 'partner'),
 // allow_parallel_tasks and plan.features (P9 capability bits for parallel tasks).
-const TENANT_SELECT_COLUMNS = `t.id, t.wallet_address, t.status, t.api_key,
+const TENANT_SELECT_COLUMNS = `t.id, t.wallet_address, t.status, t.api_key, t.api_key_hash,
         t.quota_daily, t.quota_used, t.rate_limit_rpm, t.max_concurrent,
         t.kind, t.allow_parallel_tasks,
         p.id as plan_id, p.slug as plan_slug, p.features as plan_features`
@@ -139,7 +151,11 @@ export async function getChallenge(req: Request, res: Response): Promise<void> {
 }
 
 export async function verifyChallenge(req: Request, res: Response): Promise<void> {
-  const { wallet_address, signature, timestamp, nonce } = req.body
+  const { wallet_address, signature, timestamp, nonce, intent } = req.body
+  // R19.1: intent='partner' provisions a B-end tenant (kind='partner') on first
+  // sign-in. Registered users (C-end) omit intent. Existing tenants keep their
+  // original kind regardless of intent — one wallet maps to one tenant (T3).
+  const wantPartner = intent === 'partner'
 
   if (!wallet_address || !signature) {
     res.status(400).json({ error: 'Missing wallet_address or signature' })
@@ -172,6 +188,8 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
 
   const pool = getPool()
   let tenant: TenantContext | null = null
+  let apiKey: string | null = null
+  let isNew = false
 
   const row = await queryTenant('LOWER(t.wallet_address) = $1', [address])
 
@@ -180,24 +198,56 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
       res.status(403).json({ error: 'Account suspended' })
       return
     }
-    // Backfill api_key for legacy tenants
-    let apiKey = row.api_key
-    if (!apiKey) {
-      apiKey = 'agentx_' + crypto.randomBytes(16).toString('hex')
-      await pool.query(`UPDATE tenants SET api_key = $1 WHERE id = $2`, [apiKey, row.id])
+    // Legacy tenants without any key get a new hashed key issued exactly once.
+    // Hashed-key tenants (api_key NULL, api_key_hash set) never receive a key again.
+    if (!row.api_key && !row.api_key_hash) {
+      apiKey = generateApiKey()
+      await pool.query(
+        `UPDATE tenants SET api_key_hash = $1, api_key = NULL WHERE id = $2`,
+        [hashApiKey(apiKey), row.id]
+      )
+      isNew = true
+    } else {
+      apiKey = row.api_key || null
     }
     tenant = rowToTenant(row)
     ;(tenant as any).apiKey = apiKey
+  } else if (wantPartner) {
+    // R19.1 B-end self-service: no free plan (D10/T3) — plan_id NULL, quota 0.
+    // Platform LLM stays unusable until the tenant subscribes (R19.3).
+    apiKey = generateApiKey()
+    const inserted = await pool.query(
+      `INSERT INTO tenants (wallet_address, kind, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key_hash)
+       VALUES ($1, 'partner', NULL, 0, 5, 1, $2)
+       RETURNING id`,
+      [address, hashApiKey(apiKey)]
+    )
+    tenant = {
+      id: inserted.rows[0].id,
+      walletAddress: address,
+      planId: '',
+      planSlug: '',
+      quotaDaily: 0,
+      quotaUsed: 0,
+      rateLimitRpm: 5,
+      maxConcurrent: 1,
+      status: 'active',
+      kind: 'partner',
+      allowParallelTasks: null,
+      planFeatures: null,
+    }
+    ;(tenant as any).apiKey = apiKey
+    isNew = true
   } else {
     const freePlan = await pool.query(`SELECT id, features FROM plans WHERE slug = 'free' LIMIT 1`)
     const planId = freePlan.rows[0]?.id || null
-    const apiKey = 'agentx_' + crypto.randomBytes(16).toString('hex')
+    apiKey = generateApiKey()
 
     const inserted = await pool.query(
-      `INSERT INTO tenants (wallet_address, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO tenants (wallet_address, kind, plan_id, quota_daily, rate_limit_rpm, max_concurrent, api_key_hash)
+       VALUES ($1, 'user', $2, 0, 5, 1, $3)
        RETURNING id`,
-      [address, planId, 0, 5, 1, apiKey]
+      [address, planId, hashApiKey(apiKey)]
     )
     tenant = {
       id: inserted.rows[0].id,
@@ -215,6 +265,7 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
     }
     // Return api_key on first registration only
     ;(tenant as any).apiKey = apiKey
+    isNew = true
   }
 
   const token = jwt.sign(
@@ -227,7 +278,8 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
     access_token: token,
     expires_in: config.sessionTtlSec,
     tenant,
-    api_key: (tenant as any).apiKey,
+    api_key: apiKey,
+    is_new: isNew,
   })
 }
 
@@ -285,7 +337,9 @@ export async function getApiKey(req: Request, res: Response): Promise<void> {
   )
 
   if (result.rows.length === 0 || !result.rows[0].api_key) {
-    res.status(404).json({ error: 'API key not found' })
+    // R19.1: hashed-key tenants never store plaintext — the key is shown once
+    // at issuance. A rotation endpoint (R19.2 panel) will be the recovery path.
+    res.status(404).json({ error: 'API key not found (hashed keys are shown once at issuance)' })
     return
   }
 
@@ -302,7 +356,9 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
     return
   }
 
-  queryTenant('t.api_key = $1', [apiKey])
+  // R19.1: match the SHA-256 digest first (new keys), fall back to the legacy
+  // plaintext column (pre-migration tenants).
+  queryTenant('t.api_key_hash = $1 OR t.api_key = $2', [hashApiKey(apiKey), apiKey])
     .then(row => {
       if (!row) {
         res.status(401).json({ error: 'Invalid API key' })

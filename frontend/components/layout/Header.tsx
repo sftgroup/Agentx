@@ -31,6 +31,8 @@ export function Header() {
               </Link>
               <Link href="/dashboard/agent" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">{t('header.dashboard')}</Link>
               <Link href="/docs/sdk" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">{t('header.docs')}</Link>
+              {/* R19.1: B-end self-service console (wallet sign-in → auto tenant + key) */}
+              <Link href="/b" className="text-text-secondary hover:text-text-primary font-medium text-sm transition-colors">Business</Link>
             </nav>
           </div>
 
