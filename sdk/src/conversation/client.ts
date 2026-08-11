@@ -91,6 +91,10 @@ export interface ConversationSSEEvent {
   approval?: OnChainApprovalRequest
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
   iterations?: number
+  /** Billing source of the LLM that produced this run (emitted on `done`).
+   *  'byok' → caller's own key (not metered); 'platform' → AgentX key (metered
+   *  against the tenant's plan quota). Observability only — metering is server-side. */
+  llmSource?: 'byok' | 'platform'
 }
 
 export interface ConversationChatResult {

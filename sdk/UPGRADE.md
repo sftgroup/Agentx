@@ -19,6 +19,23 @@
 
 ---
 
+## v0.11.3 → v0.11.4（2026-08-11，建议升级）
+
+> 服务端 B 端计费策略修订（R18）的 SDK 对齐版：**无 API 破坏**，纯附加 + 文档/类型同步。
+
+### 变更点
+
+- **服务端策略（2026-08-11 起已生效）**：B 端（partner）并行任务**不再强制 BYOK**——未传 `X-Llm-Api-Key` / `llmApiKey` / `tenantKeyId` 时自动走平台兜底 Key，平台按任务 `done` 事件 usage 精确计费（扣套餐每日配额）。原 `400 LLM_KEY_REQUIRED` 不再返回。旧版 SDK 调用方**零代码改动**（传 BYOK 的照常工作）。
+- **类型补充**：`ConversationSSEEvent`（done 事件）新增可选字段 `llmSource?: 'byok' | 'platform'`——服务端计费来源标记，仅供观测/调试，客户端无需处理（计量由 Gateway 完成）。
+- **文档同步**：README / UPGRADE 的「任务 LLM Key」对照已更新为「不强制；平台按 token 计费」。
+
+### 迁移动作
+
+- `npm install @agentxv2/sdk@0.11.4`（或 `^0.11.x` 范围者 `npm install` 自动吸收）。
+- 无代码改动要求；如使用 TS 且需要读取 done 事件的 `llmSource`，类型已就绪。
+
+---
+
 ## 2026-08-08 — B 端集成 key 能力澄清（文档，无代码变更）
 
 > 无需升级 SDK（npm 未发布新版本）。本说明只澄清**服务端行为**与**调用方最佳实践**，SDK API 完全不变。
@@ -42,7 +59,7 @@
 
 > 未传任何 LLM key 时走平台兜底 key（DeepSeek / OpenAI 平台配额），受租户配额限制。
 >
-> ⚠️ **B 端（partner）任务强制 BYOK**（2026-08-08 起）：partner 租户创建任务必须携带 `X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId` 之一，否则 `400 { code: "LLM_KEY_REQUIRED" }`；对话（chat）与 user 类租户不受此限制。
+> ⚠️ ~~**B 端（partner）任务强制 BYOK**~~（2026-08-08 起，**2026-08-11 已废除**，见顶部 v0.11.4 说明）：partner 租户创建任务**不再强制**携带 LLM Key——未传时自动走平台兜底 Key 并按 token 计费，`400 LLM_KEY_REQUIRED` 不再返回；对话（chat）与 user 类租户不受影响。
 
 ### 端用户订阅转发（B 端代调，Gateway 2026-08-08）
 
@@ -58,12 +75,12 @@ B 端（partner 租户）请求带 `X-End-User-Id: 0x<钱包地址>`（或 body 
 |---|---|---|
 | 会话 / 并行任务（sessions/tasks） | ✅ 可用，受 P9 能力位约束（`403 PARALLEL_TASKS_DISABLED`） | ✅ 同左 |
 | 授权主体（谁须「拥有 / 订阅」agent） | partner 租户自身；或 `X-End-User-Id: 0x<钱包>` 转发到端用户钱包 | 用户自己的钱包 |
-| 任务 LLM Key | ⚠️ **强制 BYOK**：`X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId` 三者之一，否则 `400 LLM_KEY_REQUIRED` | 不强制；未传时走平台兜底 key |
+| 任务 LLM Key | 不强制（2026-08-11 起）：可带 BYOK（`X-Llm-Api-Key` header / `llmApiKey` / `tenantKeyId`）；不带则走平台兜底 key，平台按 token 计费 | 不强制；未传时走平台兜底 key |
 | 平台 MCP 对话 / 任务工具（`agentx_gateway_*`） | ❌ 不可用（R14 拒绝 `agentx_` key） | ✅ 可用（`access_token` 必填） |
 | A2A 上链 / 发布 / 订阅 | ❌ 需用户钱包签名（平台不持私钥） | ✅ 用户钱包签名，用户自付 gas |
 | 订阅状态查询（`GET /api/v1/chain/check-subscription`） | ✅ 可查任意钱包地址 | ✅ 同左 |
 
-> 一句话总结：**`agentx_` key 覆盖 REST 全部对话 + 并行任务（带 BYOK），JWT 额外覆盖 MCP 对话/任务与链上操作**；调用方按自身场景选择，无需两把 key 并存。
+> 一句话总结：**`agentx_` key 覆盖 REST 全部对话 + 并行任务（BYOK 可选，不带则平台按 token 计费），JWT 额外覆盖 MCP 对话/任务与链上操作**；调用方按自身场景选择，无需两把 key 并存。
 
 ### SDK 0.10.1 — per-request `endUserId`（已发布 npm，2026-08-08）
 

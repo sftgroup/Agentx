@@ -742,6 +742,7 @@ ORCHESTRATE_MAX_DEPTH=4               # max nested delegation depth
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.11.4** | 2026-08-11 | **B 端计费策略对齐（R18）** — 服务端「partner 任务强制 BYOK」已废除（2026-08-11 起不强制；未带 key 时走平台兜底 key，平台按 done 事件 usage 精确计费，扣套餐每日配额；`400 LLM_KEY_REQUIRED` 不再返回）；`ConversationSSEEvent` done 事件新增可选 `llmSource?: 'byok' | 'platform'`（计费来源标记，仅供观测）。SDK 调用方**零代码改动**（BYOK 参数仍可用），README/UPGRADE 文档同步。**No breaking changes** |
 | **0.11.3** | 2026-08-10 | **R17.6 a2a/period 回归模块 rails** — 跟随 infraX `@0xinfrax/payments` `^0.1.3`（0.1.3 在模块内置恢复 a2a/period rails，并新增 batch/invite/transfer）；AgentX Gateway 自托管 a2a/period 迁移为模块委托，**HTTP 契约与客户端签名完全不变**，`PAYMENT_VERSION` 对齐 `0.1.3`。`A2AClient` 继续由 SDK 本地实现（修复 0.11.1 ESM 导入崩溃）。**No breaking changes** |
 | **0.11.2** | 2026-08-10 | **A2AClient ESM 修复** — `A2AClient` 从 `@0xinfrax/payments` 导入（0.1.2 已移除该导出 → ESM 构建 `Named export not found` 崩溃）改为 SDK 本地实现，签名不变；`PAYMENT_VERSION` 对齐 `0.1.2`。CJS 调用方不受影响。**No breaking changes** |
 | **0.11.1** | 2026-08-10 | **首次跟随演练（F2）** — 跟随 infraX `@0xinfrax/payments` `^0.1.1`（补丁版：新增 `createWebhookForwarder` 事件出站转发 + `ChainAdapter` `rpcHeaders`）；解耦回归 19 项断言通过（消费已安装 npm 包）、sdk 32/32 全绿；`PAYMENT_VERSION` 对齐 `0.1.1`。`SubscriptionPayments` + 协议客户端 API 不变。**No breaking changes** |

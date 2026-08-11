@@ -2520,7 +2520,7 @@ __export(index_exports, {
   SubscriptionPayments: () => SubscriptionPayments,
   ToolExecutor: () => ToolExecutor,
   X402Client: () => import_payments3.X402Client,
-  ZERO_ADDRESS: () => ZERO_ADDRESS2,
+  ZERO_ADDRESS: () => ZERO_ADDRESS,
   aesDecrypt: () => aesDecrypt,
   aesEncrypt: () => aesEncrypt,
   buildPlatformTools: () => buildPlatformTools,
@@ -4714,6 +4714,488 @@ function createLLMProvider(config) {
   }
 }
 
+// src/subscription/subscription.ts
+var ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+var PLAN_CREATED_EVENT2 = parseAbiItem(
+  "event PlanCreated(uint256 indexed planId, uint256 indexed agentId, uint256 price, string period, address payToken, uint256 trialDays)"
+);
+var SUBSCRIBED_EVENT2 = parseAbiItem(
+  "event Subscribed(uint256 indexed subscriptionId, address indexed subscriber, uint256 indexed agentId, uint256 expiresAt)"
+);
+var PLAN_CREATED_TOPIC = toSignatureHash(PLAN_CREATED_EVENT2);
+var SUBSCRIBED_TOPIC = toSignatureHash(SUBSCRIBED_EVENT2);
+var SUBSCRIPTION_ABI_V2 = {
+  // Admin
+  platformFeeBps: {
+    inputs: [],
+    name: "platformFeeBps",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  tokenWhitelist: {
+    inputs: [{ name: "token", type: "address" }],
+    name: "tokenWhitelist",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  // Plans
+  createPlan: {
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "price", type: "uint256" },
+      { name: "period", type: "string" },
+      { name: "payToken", type: "address" },
+      { name: "trialDays", type: "uint256" }
+    ],
+    name: "createPlan",
+    outputs: [{ name: "planId", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  getPlan: {
+    inputs: [{ name: "planId", type: "uint256" }],
+    name: "getPlan",
+    // Contract returns `SubscriptionPlan memory` (struct → dynamic tuple encoding).
+    outputs: [{
+      type: "tuple",
+      components: [
+        { name: "planId", type: "uint256" },
+        { name: "agentId", type: "uint256" },
+        { name: "creator", type: "address" },
+        { name: "price", type: "uint256" },
+        { name: "period", type: "string" },
+        { name: "active", type: "bool" },
+        { name: "payToken", type: "address" },
+        { name: "trialDays", type: "uint256" }
+      ]
+    }],
+    stateMutability: "view",
+    type: "function"
+  },
+  // Subscribe
+  subscribe: {
+    inputs: [{ name: "planId", type: "uint256" }],
+    name: "subscribe",
+    outputs: [{ name: "subscriptionId", type: "uint256" }],
+    stateMutability: "payable",
+    type: "function"
+  },
+  // Trial / Release
+  releaseFunds: {
+    inputs: [{ name: "subscriptionId", type: "uint256" }],
+    name: "releaseFunds",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  cancelSubscription: {
+    inputs: [{ name: "subscriptionId", type: "uint256" }],
+    name: "cancelSubscription",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  // Queries
+  getSubscription: {
+    inputs: [
+      { name: "subscriber", type: "address" },
+      { name: "agentId", type: "uint256" }
+    ],
+    name: "getSubscription",
+    outputs: [
+      { name: "subscriptionId", type: "uint256" },
+      { name: "subscriber", type: "address" },
+      { name: "agentId", type: "uint256" },
+      { name: "status", type: "uint8" },
+      { name: "startedAt", type: "uint256" },
+      { name: "expiresAt", type: "uint256" },
+      { name: "period", type: "string" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  hasActiveSubscription: {
+    inputs: [
+      { name: "subscriber", type: "address" },
+      { name: "agentId", type: "uint256" }
+    ],
+    name: "hasActiveSubscription",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  getUserSubscriptions: {
+    inputs: [{ name: "user", type: "address" }],
+    name: "getUserSubscriptions",
+    outputs: [{ name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  getSubscriptionDetail: {
+    inputs: [{ name: "subscriptionId", type: "uint256" }],
+    name: "getSubscriptionDetail",
+    outputs: [
+      { name: "subscriptionId", type: "uint256" },
+      { name: "subscriber", type: "address" },
+      { name: "agentId", type: "uint256" },
+      { name: "status", type: "uint8" },
+      { name: "startedAt", type: "uint256" },
+      { name: "expiresAt", type: "uint256" },
+      { name: "period", type: "string" },
+      { name: "payToken", type: "address" },
+      { name: "amountPaid", type: "uint256" },
+      { name: "trialActive", type: "bool" },
+      { name: "trialEndsAt", type: "uint256" },
+      { name: "fundsReleased", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  }
+};
+var ERC20_ABI = {
+  approve: {
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" }
+    ],
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  allowance: {
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" }
+    ],
+    name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
+  }
+};
+var SUBSCRIPTION_STATUS_NAMES = {
+  0: "pending",
+  1: "active",
+  2: "expired",
+  3: "cancelled"
+};
+var SUBSCRIPTION_PERIODS = ["day", "week", "month", "year"];
+var SubscriptionManager = class {
+  address;
+  publicClient;
+  walletClient;
+  constructor(config) {
+    this.address = config.contractAddress;
+    this.publicClient = config.publicClient;
+    this.walletClient = config.walletClient;
+  }
+  /**
+   * Resolve the caller account for write operations.
+   *
+   * Prefers `walletClient.account` (a full viem Account object with signing
+   * capability) over `getAddresses()[0]` (a bare address string). Passing a
+   * bare string as `account` makes viem route `writeContract` through
+   * `eth_sendTransaction` (node-managed accounts only), which fails for local
+   * signers; the full object enables local signing via `eth_sendRawTransaction`.
+   * In browser wallets (e.g. MetaMask) `client.account` is a json-rpc account
+   * and the provider signs, so both paths keep working.
+   */
+  async _resolveAccount() {
+    const clientAccount = this.walletClient.account;
+    if (clientAccount) return clientAccount;
+    const [address] = await this.walletClient.getAddresses();
+    if (!address) throw new Error("Wallet not connected");
+    return address;
+  }
+  // ── Config Read ──────────────────────────────────────────────────────────
+  /** Get current platform fee in basis points (e.g. 250 = 2.5%). */
+  async getPlatformFeeBps() {
+    const result = await this.publicClient.readContract({
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.platformFeeBps],
+      functionName: "platformFeeBps"
+    });
+    return Number(result);
+  }
+  /** Check if a token is whitelisted for payments. */
+  async isTokenWhitelisted(token) {
+    const result = await this.publicClient.readContract({
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.tokenWhitelist],
+      functionName: "tokenWhitelist",
+      args: [token]
+    });
+    return result;
+  }
+  // ── Plans ────────────────────────────────────────────────────────────────
+  /** Get full plan details with v2 fields. */
+  async getPlan(planId) {
+    const result = await this.publicClient.readContract({
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.getPlan],
+      functionName: "getPlan",
+      args: [BigInt(planId)]
+    });
+    const r = result;
+    return {
+      planId: Number(r.planId),
+      agentId: Number(r.agentId),
+      creator: r.creator,
+      price: r.price,
+      period: r.period,
+      active: r.active,
+      payToken: r.payToken,
+      trialDays: Number(r.trialDays)
+    };
+  }
+  // ── Plans ────────────────────────────────────────────────────────────────
+  /**
+   * Create a subscription plan for an agent.
+   *
+   * @param params.period  Must be 'day' | 'week' | 'month' | 'year' — the only
+   *                       values the contract maps to real durations. Anything
+   *                       else silently becomes 30 days on-chain.
+   * @returns              { planId, txHash } (planId parsed from PlanCreated event)
+   */
+  async createPlan(params) {
+    const { agentId, price, period, payToken = ZERO_ADDRESS, trialDays = 0 } = params;
+    if (!SUBSCRIPTION_PERIODS.includes(period)) {
+      throw new Error(
+        `Invalid period "${period}". Must be one of: ${SUBSCRIPTION_PERIODS.join(", ")}`
+      );
+    }
+    if (trialDays < 0 || trialDays > 30) {
+      throw new Error("trialDays must be between 0 and 30");
+    }
+    const account = await this._resolveAccount();
+    const { request: request2 } = await this.publicClient.simulateContract({
+      account,
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.createPlan],
+      functionName: "createPlan",
+      args: [BigInt(agentId), price, period, payToken, BigInt(trialDays)]
+    });
+    const hash2 = await this.walletClient.writeContract({ ...request2, account });
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
+    return { planId: this._parsePlanIdFromReceipt(receipt), txHash: hash2 };
+  }
+  /**
+   * Subscribe to a plan.
+   * For ETH plans: pass valueWei = plan.price.
+   * For ERC20 plans: auto-detects from plan.payToken, calls approve + subscribe.
+   *                    User must have approved this contract for plan.price tokens.
+   *
+   * @returns SubscribeResult — subscriptionId/expiresAt/subscriber parsed from
+   *          the Subscribed event (no longer hardcoded to 0).
+   */
+  async subscribe(planId, opts) {
+    const account = await this._resolveAccount();
+    const plan = await this.getPlan(planId);
+    if (!plan.active) throw new Error("Plan not active");
+    if (plan.payToken === ZERO_ADDRESS) {
+      const value = opts?.valueWei ?? plan.price;
+      const { request: request2 } = await this.publicClient.simulateContract({
+        account,
+        address: this.address,
+        abi: [SUBSCRIPTION_ABI_V2.subscribe],
+        functionName: "subscribe",
+        args: [BigInt(planId)],
+        value
+      });
+      const hash2 = await this.walletClient.writeContract({ ...request2, account });
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
+      return { txHash: hash2, ...this._parseSubscribedFromReceipt(receipt) };
+    } else {
+      const accountAddress = typeof account === "string" ? account : account.address;
+      if (opts?.approveTokenFirst !== false) {
+        const allowance = await this.publicClient.readContract({
+          address: plan.payToken,
+          abi: [ERC20_ABI.allowance],
+          functionName: "allowance",
+          args: [accountAddress, this.address]
+        });
+        if (allowance < plan.price) {
+          const { request: approveReq } = await this.publicClient.simulateContract({
+            account,
+            address: plan.payToken,
+            abi: [ERC20_ABI.approve],
+            functionName: "approve",
+            args: [this.address, plan.price]
+          });
+          await this.walletClient.writeContract({ ...approveReq, account });
+        }
+      }
+      const { request: request2 } = await this.publicClient.simulateContract({
+        account,
+        address: this.address,
+        abi: [SUBSCRIPTION_ABI_V2.subscribe],
+        functionName: "subscribe",
+        args: [BigInt(planId)]
+      });
+      const hash2 = await this.walletClient.writeContract({ ...request2, account });
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
+      return { txHash: hash2, ...this._parseSubscribedFromReceipt(receipt) };
+    }
+  }
+  /**
+   * One-step createPlan + subscribe (two transactions).
+   * Saves the caller one round of plan lookup when the plan does not exist yet.
+   */
+  async createPlanAndSubscribe(params) {
+    const { planId } = await this.createPlan(params);
+    const subscribed = await this.subscribe(planId);
+    return { planId, ...subscribed };
+  }
+  /** Release escrowed funds to creator after trial window ends. */
+  async releaseFunds(subscriptionId) {
+    const account = await this._resolveAccount();
+    const { request: request2 } = await this.publicClient.simulateContract({
+      account,
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.releaseFunds],
+      functionName: "releaseFunds",
+      args: [BigInt(subscriptionId)]
+    });
+    return this.walletClient.writeContract({ ...request2, account });
+  }
+  /** Cancel subscription (trial refund if within window). */
+  async cancel(subscriptionId) {
+    const account = await this._resolveAccount();
+    const { request: request2 } = await this.publicClient.simulateContract({
+      account,
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.cancelSubscription],
+      functionName: "cancelSubscription",
+      args: [BigInt(subscriptionId)]
+    });
+    return this.walletClient.writeContract({ ...request2, account });
+  }
+  // ── Read ─────────────────────────────────────────────────────────────────
+  async hasActiveSubscription(subscriber, agentId) {
+    const result = await this.publicClient.readContract({
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.hasActiveSubscription],
+      functionName: "hasActiveSubscription",
+      args: [subscriber, BigInt(agentId)]
+    });
+    return result;
+  }
+  async getSubscription(subscriber, agentId) {
+    const result = await this.publicClient.readContract({
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.getSubscription],
+      functionName: "getSubscription",
+      args: [subscriber, BigInt(agentId)]
+    });
+    const [subId, sub, aId, status, started, expires, period] = result;
+    if (Number(subId) === 0) return null;
+    return {
+      subscriptionId: Number(subId),
+      subscriber: sub,
+      agentId: Number(aId),
+      status: SUBSCRIPTION_STATUS_NAMES[status] ?? "pending",
+      startedAt: Number(started),
+      expiresAt: Number(expires),
+      period
+    };
+  }
+  /** Get full subscription detail with v2 fields (trial, payToken, fundsReleased). */
+  async getSubscriptionDetail(subscriptionId) {
+    const result = await this.publicClient.readContract({
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.getSubscriptionDetail],
+      functionName: "getSubscriptionDetail",
+      args: [BigInt(subscriptionId)]
+    });
+    const [
+      sid,
+      sub,
+      aId,
+      status,
+      started,
+      expires,
+      period,
+      payToken,
+      amountPaid,
+      trialActive,
+      trialEndsAt,
+      fundsReleased
+    ] = result;
+    return {
+      subscriptionId: Number(sid),
+      subscriber: sub,
+      agentId: Number(aId),
+      status,
+      startedAt: Number(started),
+      expiresAt: Number(expires),
+      period,
+      payToken,
+      amountPaid,
+      trialActive,
+      trialEndsAt: Number(trialEndsAt),
+      fundsReleased
+    };
+  }
+  async getUserSubscriptions(user) {
+    const result = await this.publicClient.readContract({
+      address: this.address,
+      abi: [SUBSCRIPTION_ABI_V2.getUserSubscriptions],
+      functionName: "getUserSubscriptions",
+      args: [user]
+    });
+    return result.map(Number);
+  }
+  // ── Receipt parsing (event-driven, no hardcoded IDs) ─────────────────────
+  _findEventLog(receipt, topic) {
+    return receipt.logs.find((l) => l.topics?.[0] === topic);
+  }
+  /** Parse planId from the PlanCreated event in a transaction receipt. */
+  _parsePlanIdFromReceipt(receipt) {
+    const log = this._findEventLog(receipt, PLAN_CREATED_TOPIC);
+    if (!log) {
+      throw new Error("PlanCreated event not found in transaction receipt");
+    }
+    const decoded = decodeEventLog({
+      abi: [PLAN_CREATED_EVENT2],
+      data: log.data,
+      topics: log.topics
+    });
+    return Number(decoded.args.planId);
+  }
+  /** Parse subscriptionId/subscriber/agentId/expiresAt from the Subscribed event. */
+  _parseSubscribedFromReceipt(receipt) {
+    const log = this._findEventLog(receipt, SUBSCRIBED_TOPIC);
+    if (!log) {
+      throw new Error("Subscribed event not found in transaction receipt");
+    }
+    const decoded = decodeEventLog({
+      abi: [SUBSCRIBED_EVENT2],
+      data: log.data,
+      topics: log.topics
+    });
+    return {
+      subscriptionId: Number(decoded.args.subscriptionId),
+      subscriber: decoded.args.subscriber,
+      agentId: Number(decoded.args.agentId),
+      expiresAt: Number(decoded.args.expiresAt)
+    };
+  }
+};
+async function guardSubscription(manager, user, agentId) {
+  const active = await manager.hasActiveSubscription(user, agentId);
+  if (!active) {
+    throw new Error(
+      `No active subscription for agent #${agentId}. Address ${user} must purchase a subscription first.`
+    );
+  }
+  const sub = await manager.getSubscription(user, agentId);
+  if (!sub) throw new Error(`Subscription not found for agent #${agentId}`);
+  return sub;
+}
+
 // src/registry/agent-registry.ts
 var IDENTITY_REGISTRY_ABI = {
   // Register
@@ -4799,7 +5281,6 @@ var IDENTITY_REGISTRY_ABI = {
     type: "function"
   }
 };
-var ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 function decodeBase64(b64) {
   if (typeof Buffer !== "undefined") {
     return Buffer.from(b64, "base64").toString("utf-8");
@@ -5064,488 +5545,6 @@ function cidFromURI(uri) {
 // src/registry/index.ts
 var REGISTRY_VERSION = "0.1.0";
 
-// src/subscription/subscription.ts
-var ZERO_ADDRESS2 = "0x0000000000000000000000000000000000000000";
-var PLAN_CREATED_EVENT2 = parseAbiItem(
-  "event PlanCreated(uint256 indexed planId, uint256 indexed agentId, uint256 price, string period, address payToken, uint256 trialDays)"
-);
-var SUBSCRIBED_EVENT2 = parseAbiItem(
-  "event Subscribed(uint256 indexed subscriptionId, address indexed subscriber, uint256 indexed agentId, uint256 expiresAt)"
-);
-var PLAN_CREATED_TOPIC = toSignatureHash(PLAN_CREATED_EVENT2);
-var SUBSCRIBED_TOPIC = toSignatureHash(SUBSCRIBED_EVENT2);
-var SUBSCRIPTION_ABI_V2 = {
-  // Admin
-  platformFeeBps: {
-    inputs: [],
-    name: "platformFeeBps",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function"
-  },
-  tokenWhitelist: {
-    inputs: [{ name: "token", type: "address" }],
-    name: "tokenWhitelist",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function"
-  },
-  // Plans
-  createPlan: {
-    inputs: [
-      { name: "agentId", type: "uint256" },
-      { name: "price", type: "uint256" },
-      { name: "period", type: "string" },
-      { name: "payToken", type: "address" },
-      { name: "trialDays", type: "uint256" }
-    ],
-    name: "createPlan",
-    outputs: [{ name: "planId", type: "uint256" }],
-    stateMutability: "nonpayable",
-    type: "function"
-  },
-  getPlan: {
-    inputs: [{ name: "planId", type: "uint256" }],
-    name: "getPlan",
-    // Contract returns `SubscriptionPlan memory` (struct → dynamic tuple encoding).
-    outputs: [{
-      type: "tuple",
-      components: [
-        { name: "planId", type: "uint256" },
-        { name: "agentId", type: "uint256" },
-        { name: "creator", type: "address" },
-        { name: "price", type: "uint256" },
-        { name: "period", type: "string" },
-        { name: "active", type: "bool" },
-        { name: "payToken", type: "address" },
-        { name: "trialDays", type: "uint256" }
-      ]
-    }],
-    stateMutability: "view",
-    type: "function"
-  },
-  // Subscribe
-  subscribe: {
-    inputs: [{ name: "planId", type: "uint256" }],
-    name: "subscribe",
-    outputs: [{ name: "subscriptionId", type: "uint256" }],
-    stateMutability: "payable",
-    type: "function"
-  },
-  // Trial / Release
-  releaseFunds: {
-    inputs: [{ name: "subscriptionId", type: "uint256" }],
-    name: "releaseFunds",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function"
-  },
-  cancelSubscription: {
-    inputs: [{ name: "subscriptionId", type: "uint256" }],
-    name: "cancelSubscription",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function"
-  },
-  // Queries
-  getSubscription: {
-    inputs: [
-      { name: "subscriber", type: "address" },
-      { name: "agentId", type: "uint256" }
-    ],
-    name: "getSubscription",
-    outputs: [
-      { name: "subscriptionId", type: "uint256" },
-      { name: "subscriber", type: "address" },
-      { name: "agentId", type: "uint256" },
-      { name: "status", type: "uint8" },
-      { name: "startedAt", type: "uint256" },
-      { name: "expiresAt", type: "uint256" },
-      { name: "period", type: "string" }
-    ],
-    stateMutability: "view",
-    type: "function"
-  },
-  hasActiveSubscription: {
-    inputs: [
-      { name: "subscriber", type: "address" },
-      { name: "agentId", type: "uint256" }
-    ],
-    name: "hasActiveSubscription",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function"
-  },
-  getUserSubscriptions: {
-    inputs: [{ name: "user", type: "address" }],
-    name: "getUserSubscriptions",
-    outputs: [{ name: "", type: "uint256[]" }],
-    stateMutability: "view",
-    type: "function"
-  },
-  getSubscriptionDetail: {
-    inputs: [{ name: "subscriptionId", type: "uint256" }],
-    name: "getSubscriptionDetail",
-    outputs: [
-      { name: "subscriptionId", type: "uint256" },
-      { name: "subscriber", type: "address" },
-      { name: "agentId", type: "uint256" },
-      { name: "status", type: "uint8" },
-      { name: "startedAt", type: "uint256" },
-      { name: "expiresAt", type: "uint256" },
-      { name: "period", type: "string" },
-      { name: "payToken", type: "address" },
-      { name: "amountPaid", type: "uint256" },
-      { name: "trialActive", type: "bool" },
-      { name: "trialEndsAt", type: "uint256" },
-      { name: "fundsReleased", type: "bool" }
-    ],
-    stateMutability: "view",
-    type: "function"
-  }
-};
-var ERC20_ABI = {
-  approve: {
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" }
-    ],
-    name: "approve",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function"
-  },
-  allowance: {
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" }
-    ],
-    name: "allowance",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function"
-  }
-};
-var SUBSCRIPTION_STATUS_NAMES = {
-  0: "pending",
-  1: "active",
-  2: "expired",
-  3: "cancelled"
-};
-var SUBSCRIPTION_PERIODS = ["day", "week", "month", "year"];
-var SubscriptionManager = class {
-  address;
-  publicClient;
-  walletClient;
-  constructor(config) {
-    this.address = config.contractAddress;
-    this.publicClient = config.publicClient;
-    this.walletClient = config.walletClient;
-  }
-  /**
-   * Resolve the caller account for write operations.
-   *
-   * Prefers `walletClient.account` (a full viem Account object with signing
-   * capability) over `getAddresses()[0]` (a bare address string). Passing a
-   * bare string as `account` makes viem route `writeContract` through
-   * `eth_sendTransaction` (node-managed accounts only), which fails for local
-   * signers; the full object enables local signing via `eth_sendRawTransaction`.
-   * In browser wallets (e.g. MetaMask) `client.account` is a json-rpc account
-   * and the provider signs, so both paths keep working.
-   */
-  async _resolveAccount() {
-    const clientAccount = this.walletClient.account;
-    if (clientAccount) return clientAccount;
-    const [address] = await this.walletClient.getAddresses();
-    if (!address) throw new Error("Wallet not connected");
-    return address;
-  }
-  // ── Config Read ──────────────────────────────────────────────────────────
-  /** Get current platform fee in basis points (e.g. 250 = 2.5%). */
-  async getPlatformFeeBps() {
-    const result = await this.publicClient.readContract({
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.platformFeeBps],
-      functionName: "platformFeeBps"
-    });
-    return Number(result);
-  }
-  /** Check if a token is whitelisted for payments. */
-  async isTokenWhitelisted(token) {
-    const result = await this.publicClient.readContract({
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.tokenWhitelist],
-      functionName: "tokenWhitelist",
-      args: [token]
-    });
-    return result;
-  }
-  // ── Plans ────────────────────────────────────────────────────────────────
-  /** Get full plan details with v2 fields. */
-  async getPlan(planId) {
-    const result = await this.publicClient.readContract({
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.getPlan],
-      functionName: "getPlan",
-      args: [BigInt(planId)]
-    });
-    const r = result;
-    return {
-      planId: Number(r.planId),
-      agentId: Number(r.agentId),
-      creator: r.creator,
-      price: r.price,
-      period: r.period,
-      active: r.active,
-      payToken: r.payToken,
-      trialDays: Number(r.trialDays)
-    };
-  }
-  // ── Plans ────────────────────────────────────────────────────────────────
-  /**
-   * Create a subscription plan for an agent.
-   *
-   * @param params.period  Must be 'day' | 'week' | 'month' | 'year' — the only
-   *                       values the contract maps to real durations. Anything
-   *                       else silently becomes 30 days on-chain.
-   * @returns              { planId, txHash } (planId parsed from PlanCreated event)
-   */
-  async createPlan(params) {
-    const { agentId, price, period, payToken = ZERO_ADDRESS2, trialDays = 0 } = params;
-    if (!SUBSCRIPTION_PERIODS.includes(period)) {
-      throw new Error(
-        `Invalid period "${period}". Must be one of: ${SUBSCRIPTION_PERIODS.join(", ")}`
-      );
-    }
-    if (trialDays < 0 || trialDays > 30) {
-      throw new Error("trialDays must be between 0 and 30");
-    }
-    const account = await this._resolveAccount();
-    const { request: request2 } = await this.publicClient.simulateContract({
-      account,
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.createPlan],
-      functionName: "createPlan",
-      args: [BigInt(agentId), price, period, payToken, BigInt(trialDays)]
-    });
-    const hash2 = await this.walletClient.writeContract({ ...request2, account });
-    const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
-    return { planId: this._parsePlanIdFromReceipt(receipt), txHash: hash2 };
-  }
-  /**
-   * Subscribe to a plan.
-   * For ETH plans: pass valueWei = plan.price.
-   * For ERC20 plans: auto-detects from plan.payToken, calls approve + subscribe.
-   *                    User must have approved this contract for plan.price tokens.
-   *
-   * @returns SubscribeResult — subscriptionId/expiresAt/subscriber parsed from
-   *          the Subscribed event (no longer hardcoded to 0).
-   */
-  async subscribe(planId, opts) {
-    const account = await this._resolveAccount();
-    const plan = await this.getPlan(planId);
-    if (!plan.active) throw new Error("Plan not active");
-    if (plan.payToken === ZERO_ADDRESS2) {
-      const value = opts?.valueWei ?? plan.price;
-      const { request: request2 } = await this.publicClient.simulateContract({
-        account,
-        address: this.address,
-        abi: [SUBSCRIPTION_ABI_V2.subscribe],
-        functionName: "subscribe",
-        args: [BigInt(planId)],
-        value
-      });
-      const hash2 = await this.walletClient.writeContract({ ...request2, account });
-      const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
-      return { txHash: hash2, ...this._parseSubscribedFromReceipt(receipt) };
-    } else {
-      const accountAddress = typeof account === "string" ? account : account.address;
-      if (opts?.approveTokenFirst !== false) {
-        const allowance = await this.publicClient.readContract({
-          address: plan.payToken,
-          abi: [ERC20_ABI.allowance],
-          functionName: "allowance",
-          args: [accountAddress, this.address]
-        });
-        if (allowance < plan.price) {
-          const { request: approveReq } = await this.publicClient.simulateContract({
-            account,
-            address: plan.payToken,
-            abi: [ERC20_ABI.approve],
-            functionName: "approve",
-            args: [this.address, plan.price]
-          });
-          await this.walletClient.writeContract({ ...approveReq, account });
-        }
-      }
-      const { request: request2 } = await this.publicClient.simulateContract({
-        account,
-        address: this.address,
-        abi: [SUBSCRIPTION_ABI_V2.subscribe],
-        functionName: "subscribe",
-        args: [BigInt(planId)]
-      });
-      const hash2 = await this.walletClient.writeContract({ ...request2, account });
-      const receipt = await this.publicClient.waitForTransactionReceipt({ hash: hash2 });
-      return { txHash: hash2, ...this._parseSubscribedFromReceipt(receipt) };
-    }
-  }
-  /**
-   * One-step createPlan + subscribe (two transactions).
-   * Saves the caller one round of plan lookup when the plan does not exist yet.
-   */
-  async createPlanAndSubscribe(params) {
-    const { planId } = await this.createPlan(params);
-    const subscribed = await this.subscribe(planId);
-    return { planId, ...subscribed };
-  }
-  /** Release escrowed funds to creator after trial window ends. */
-  async releaseFunds(subscriptionId) {
-    const account = await this._resolveAccount();
-    const { request: request2 } = await this.publicClient.simulateContract({
-      account,
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.releaseFunds],
-      functionName: "releaseFunds",
-      args: [BigInt(subscriptionId)]
-    });
-    return this.walletClient.writeContract({ ...request2, account });
-  }
-  /** Cancel subscription (trial refund if within window). */
-  async cancel(subscriptionId) {
-    const account = await this._resolveAccount();
-    const { request: request2 } = await this.publicClient.simulateContract({
-      account,
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.cancelSubscription],
-      functionName: "cancelSubscription",
-      args: [BigInt(subscriptionId)]
-    });
-    return this.walletClient.writeContract({ ...request2, account });
-  }
-  // ── Read ─────────────────────────────────────────────────────────────────
-  async hasActiveSubscription(subscriber, agentId) {
-    const result = await this.publicClient.readContract({
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.hasActiveSubscription],
-      functionName: "hasActiveSubscription",
-      args: [subscriber, BigInt(agentId)]
-    });
-    return result;
-  }
-  async getSubscription(subscriber, agentId) {
-    const result = await this.publicClient.readContract({
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.getSubscription],
-      functionName: "getSubscription",
-      args: [subscriber, BigInt(agentId)]
-    });
-    const [subId, sub, aId, status, started, expires, period] = result;
-    if (Number(subId) === 0) return null;
-    return {
-      subscriptionId: Number(subId),
-      subscriber: sub,
-      agentId: Number(aId),
-      status: SUBSCRIPTION_STATUS_NAMES[status] ?? "pending",
-      startedAt: Number(started),
-      expiresAt: Number(expires),
-      period
-    };
-  }
-  /** Get full subscription detail with v2 fields (trial, payToken, fundsReleased). */
-  async getSubscriptionDetail(subscriptionId) {
-    const result = await this.publicClient.readContract({
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.getSubscriptionDetail],
-      functionName: "getSubscriptionDetail",
-      args: [BigInt(subscriptionId)]
-    });
-    const [
-      sid,
-      sub,
-      aId,
-      status,
-      started,
-      expires,
-      period,
-      payToken,
-      amountPaid,
-      trialActive,
-      trialEndsAt,
-      fundsReleased
-    ] = result;
-    return {
-      subscriptionId: Number(sid),
-      subscriber: sub,
-      agentId: Number(aId),
-      status,
-      startedAt: Number(started),
-      expiresAt: Number(expires),
-      period,
-      payToken,
-      amountPaid,
-      trialActive,
-      trialEndsAt: Number(trialEndsAt),
-      fundsReleased
-    };
-  }
-  async getUserSubscriptions(user) {
-    const result = await this.publicClient.readContract({
-      address: this.address,
-      abi: [SUBSCRIPTION_ABI_V2.getUserSubscriptions],
-      functionName: "getUserSubscriptions",
-      args: [user]
-    });
-    return result.map(Number);
-  }
-  // ── Receipt parsing (event-driven, no hardcoded IDs) ─────────────────────
-  _findEventLog(receipt, topic) {
-    return receipt.logs.find((l) => l.topics?.[0] === topic);
-  }
-  /** Parse planId from the PlanCreated event in a transaction receipt. */
-  _parsePlanIdFromReceipt(receipt) {
-    const log = this._findEventLog(receipt, PLAN_CREATED_TOPIC);
-    if (!log) {
-      throw new Error("PlanCreated event not found in transaction receipt");
-    }
-    const decoded = decodeEventLog({
-      abi: [PLAN_CREATED_EVENT2],
-      data: log.data,
-      topics: log.topics
-    });
-    return Number(decoded.args.planId);
-  }
-  /** Parse subscriptionId/subscriber/agentId/expiresAt from the Subscribed event. */
-  _parseSubscribedFromReceipt(receipt) {
-    const log = this._findEventLog(receipt, SUBSCRIBED_TOPIC);
-    if (!log) {
-      throw new Error("Subscribed event not found in transaction receipt");
-    }
-    const decoded = decodeEventLog({
-      abi: [SUBSCRIBED_EVENT2],
-      data: log.data,
-      topics: log.topics
-    });
-    return {
-      subscriptionId: Number(decoded.args.subscriptionId),
-      subscriber: decoded.args.subscriber,
-      agentId: Number(decoded.args.agentId),
-      expiresAt: Number(decoded.args.expiresAt)
-    };
-  }
-};
-async function guardSubscription(manager, user, agentId) {
-  const active = await manager.hasActiveSubscription(user, agentId);
-  if (!active) {
-    throw new Error(
-      `No active subscription for agent #${agentId}. Address ${user} must purchase a subscription first.`
-    );
-  }
-  const sub = await manager.getSubscription(user, agentId);
-  if (!sub) throw new Error(`Subscription not found for agent #${agentId}`);
-  return sub;
-}
-
 // src/subscription/agent-x402.ts
 var getPlanAbi = {
   inputs: [{ name: "planId", type: "uint256" }],
@@ -5649,7 +5648,7 @@ var AgentX402 = class {
    */
   async subscribeAndWait(planId, price, payToken) {
     const { publicClient, walletClient, subscriptionManagerAddress } = this.config;
-    const isETH = payToken === "0x0000000000000000000000000000000000000000";
+    const isETH = payToken === ZERO_ADDRESS;
     const { request: request2 } = await publicClient.simulateContract({
       address: subscriptionManagerAddress,
       abi: [subscribeAbi],
