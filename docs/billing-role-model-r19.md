@@ -60,6 +60,7 @@ B 端                                C 端（已有登录）
 - **D8 key 存储**（已定 T2）：**仅新 key hash 化**——新增签发的 key 存 `api_key_hash`（SHA-256），存量明文 key 保留不迁移。
 - **D9 定价结构**（已定 T4）：**订阅制**——B 端套餐为「月费 + 每日配额」，复用现有 `plans` 表 + `quota_daily` 体系；按量预充值作为后续扩展。
 - **D10 B 端无免费套餐**（已定 T3）：自助注册的 partner 租户**不授予 free plan**（`quota_daily=0`），必须购订阅套餐后才可使用平台 LLM——从源头抑制批量注册刷配额。
+- **D11 套餐购买复用 infraX 支付引擎**（2026-08-12 定）：套餐购买**不新建支付链路**，复用 `@0xinfrax/payments` 引擎的统一入口（`POST /api/v1/payments` 三轨分发 + `verify` + `webhook` 归一化 + 幂等）——引擎负责通用支付协议（chain 意图验证 / Stripe 签名校验 / x402 验签入账），AgentX 业务侧只写「订单 → 更新 `tenants.plan_id/quota_daily`」一条线（衔接 D6）。当前统一入口绑定 agent 订阅语义（`agentId` 必填），R19.3 扩展为 `agentId` 可选 + 新增 `purpose:'tenant-plan'`/`tenantPlanId` 元数据；`payments-bridge` 回调加 tenant-plan 分支。减少维护量：不重复实现引擎已有的支付验证/幂等/webhook 逻辑。SDK 随 R19.3 新增 `TenantPlanPayments` 客户端（三轨购买 tenant plan）发新版。
 
 ## 6. 落地拆分（阶段）
 
@@ -67,7 +68,7 @@ B 端                                C 端（已有登录）
 |---|---|---|
 | R19.1 | B 端钱包登录 + 自动建租户 + 自动发 key | auth 扩展 kind=partner；**新 key hash 化**；**无免费套餐**（quota_daily=0，购订阅才可用平台 LLM） |
 | R19.2 | B 端独立面板骨架 | 前端 `/b` 路由：套餐展示 / 用量 / key 查看（仅一次后隐藏）/ 调用统计 |
-| R19.3 | 自助购买通道 | 链上支付优先；订单→绑定 plan→配额生效；Stripe 预留接口 |
+| R19.3 | 自助购买通道 | 复用 infraX 引擎统一入口（`POST /api/v1/payments`）扩展 tenant-plan 语义（`agentId` 可选 + `purpose:'tenant-plan'`）；链上支付优先；订单→绑定 plan→配额生效（D6/D11）；`payments-bridge` 回调加 tenant-plan 分支；SDK 新增 `TenantPlanPayments` 发新版；Stripe 预留接口 |
 | R19.4 | C 端 Billing 页 + 429 引导 | 购买 token 套餐 + **用量进度条** + 升级入口 + chat 页 429 `daily_quota` 配额耗尽引导（exceeded 提示 / 升级 CTA / BYOK 切换提示） |
 | R19.5 | 申请模式下线 | 下线 `/developer/apply` 独立申请流程与申请页；未来人工审批走客服系统 |
 | R19.6 | Admin 套餐配额编辑 | plans 页支持编辑 `quota_daily`/RPM/并发 数值（直接改库即时生效），不依赖 API/DB 手工 |
@@ -100,3 +101,54 @@ B 端                                C 端（已有登录）
 | T2 | 存量 key 迁移 | **仅新 key hash 化**：新增 key 存 SHA-256，存量明文保留 |
 | T3 | 自助注册防滥用 | **B 端租户无免费套餐**（quota_daily=0），购订阅后才可用平台 LLM |
 | T4 | B 端套餐定价结构 | **订阅制**：月费 + 每日配额（复用 plans 表 + quota_daily）；按量预充值为后续扩展 |
+| T5 | A2A 按次付费通道 | **x402 余额模式**（服务端自动 deduct，适配 worker 编排）；独立付款（PAYMENT-SIGNATURE / X-PAYMENT）可选并存 |
+
+## 11. R19.7 A2A 委派按次付费（2026-08-12 新增）
+
+> 背景：A2A 编排中主 agent 为完成当次任务**临时委派子 agent**（a2a-worker `agentx_a2a_create_task`），属于**当次操作**——为它购买月订阅（chain 合约）过重。按次付费（pay-per-call）天然匹配该场景。属 D9「按量预充值为后续扩展」的落地。
+
+### 现状与差距
+
+- **现状**：委派边界仅 `canAccessAgent(task.clientAddress, targetId)`（[a2a-worker.ts](gateway/src/services/a2a-worker.ts#L291)）= 拥有 OR 订阅（chain 合约 / fiat / x402 订阅记录）。主 agent 想临时用未订阅的子 agent → 直接拒绝，**无按次付费通道**。
+- **差距**：A2A 编排是**服务端→服务端**（worker 内部 tool call），不能像 `/runs` 那样套 `x402Guard` HTTP 中间件做 402 握手；MPP 的 voucher 需 payer 每次 EIP-712 签名，worker 无法自动完成 → **唯一可行 = x402 余额模式**（`balanceOf` + 服务端 `deduct`，原子、无链上等待）。
+
+### 支付模式
+
+| 模式 | 机制 | A2A 适用 |
+|---|---|---|
+| **余额模式（主）** | 主 agent 客户端预充值入 ledger（独立付款一笔 / a2a settle 入账）→ 每次委派服务端 `balanceOf → deduct 1 单位 → 放行` | ✅ 服务端原子扣费，适配 worker |
+| 独立付款（可选并存） | v2 `PAYMENT-SIGNATURE`（EIP-712 + verifyOnly tx）/ v1 `X-PAYMENT`（txHash） | ⚠️ 用户在线低频场景可用；worker 内部不用 |
+
+### 方案设计
+
+```
+agentx_a2a_create_task 分支（替换现 canAccessAgent 调用）：
+  allowed = canAccessAgentOrPay(clientAddress, targetId)
+    ├─ canAccessAgent() == true            → 放行（拥有/订阅，不扣费）
+    └─ 否则 x402Enabled 且 balanceOf(client) ≥ priceWei
+         → deduct(client, priceWei)        → 放行（按次付费，写审计）
+         → 否则拒绝（错误信息提示「充值 x402 余额或订阅」）
+```
+
+- **计费对象**：`task.clientAddress`（发起任务的用户钱包，预充值 x402 余额）
+- **单次价**：复用 `X402_PRICE_WEI`（全局按次价）
+- **审计**：新增轻量表 `a2a_pay_log`（payer / agent_id / amount_wei / created_at，迁移 023），幂等防重复
+- **会话内重复委派**：同一次编排对同一 agent 多次委派逐次扣费（按次语义）；如需「本次任务内只扣一次」可后续加 taskId 幂等（不阻塞首版）
+- **启用配置**：`X402_ENABLED=true` + `X402_PAY_TO=<平台收款钱包>`（唯一外部前提，无 Stripe 依赖）
+
+### 落地拆分（Tasks）
+
+| # | 任务 | 文件 | 验收 |
+|---|---|---|---|
+| A2A-1 | 方案文档更新（本节 + PROGRESS.md 落地拆分补充） | `docs/billing-role-model-r19.md`、`docs/PROGRESS.md` | 文档合并完成 |
+| A2A-2 | 迁移 023：`a2a_pay_log` 表（幂等） | `gateway/db/migrations/023_a2a_pay_log.sql` | 迁移幂等可重跑 |
+| A2A-3 | 新服务 `agent-access-pay.ts`：`canAccessAgentOrPay()`（订阅检查 + 余额扣减 + 审计写入） | `gateway/src/services/agent-access-pay.ts` | 单元测试覆盖：已订阅豁免不扣费 / 余额足够扣减放行 / 余额不足拒绝 / x402 未启用回退旧逻辑 |
+| A2A-4 | `a2a-worker.ts` 委派分支接入 `canAccessAgentOrPay`，拒绝信息区分「订阅或充值」 | `gateway/src/services/a2a-worker.ts` | typecheck 通过；`agentx_a2a_create_task` 走新边界 |
+| A2A-5 | 测试：`agent-access-pay.test.ts`（4 用例）+ worker 接入回归 | `gateway/test/agent-access-pay.test.ts` | gateway 全量测试通过 |
+| A2A-6 | 生产部署：配置 `X402_ENABLED/X402_PAY_TO` + 迁移 023 + 重建重启 + 自测 | 生产 .env / pm2 | 生产自测：委派按次扣费生效 |
+
+### 决策记录（T5 已定）
+
+| # | 决策 | 已定方案 |
+|---|---|---|
+| T5 | A2A 按次付费通道 | **x402 余额模式**（服务端自动 deduct）；独立付款（PAYMENT-SIGNATURE / X-PAYMENT）可选并存；MPP 因 voucher 需 payer 签名不适合 worker 编排，不用于 A2A |
