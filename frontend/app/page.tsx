@@ -3,18 +3,10 @@
 import Link from 'next/link'
 import { Hexagon, Shield, Key, Users, Terminal, ArrowRight, Sparkles, Cpu, Lock, Globe, Zap, Coins } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { WalletConnect } from '@/components/wallet/WalletConnect'
-import { NetworkSwitcher } from '@/components/wallet/NetworkSwitcher'
-import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher'
+import { Header } from '@/components/layout/Header'
 
 export default function HomePage() {
   const { t } = useTranslation()
-
-  const navLinks = [
-    { href: '/marketplace', label: t('header.marketplace') },
-    { href: '/studio', label: t('header.studio') },
-    { href: '/b', label: 'Business' },
-  ]
 
   const pillars = [
     { icon: Lock, title: t('home.pillar1Title'), desc: t('home.pillar1Desc'), accent: 'purple' },
@@ -37,32 +29,11 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-bg text-text-primary font-sans overflow-x-hidden">
-      {/* Nav */}
-      <header className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-bg/70 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-purple to-accent-cyan flex items-center justify-center ring-1 ring-white/10 group-hover:ring-accent-purple/50 transition-all">
-              <Hexagon className="w-4 h-4 text-white" strokeWidth={2} />
-            </div>
-            <span className="text-lg font-bold tracking-tight">AgentX</span>
-          </Link>
-          <nav className="hidden sm:flex items-center gap-6">
-            {navLinks.map(l => (
-              <Link key={l.href} href={l.href} className="text-sm text-text-secondary hover:text-text-primary transition-colors">
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            <NetworkSwitcher />
-            <WalletConnect />
-          </div>
-        </div>
-      </header>
+      {/* Shared header (unified nav across all pages, incl. Business + mobile nav) */}
+      <Header />
 
       {/* Hero */}
-      <section className="relative pt-32 pb-24 px-6 grid-bg">
+      <section className="relative pt-20 pb-24 px-6 grid-bg">
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-accent-purple/6 blur-[120px] rounded-full pointer-events-none" />
         <div className="absolute top-40 right-1/4 w-[400px] h-[400px] bg-accent-cyan/5 blur-[100px] rounded-full pointer-events-none" />
 
