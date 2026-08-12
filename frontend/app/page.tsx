@@ -13,6 +13,7 @@ export default function HomePage() {
   const navLinks = [
     { href: '/marketplace', label: t('header.marketplace') },
     { href: '/studio', label: t('header.studio') },
+    { href: '/b', label: 'Business' },
   ]
 
   const pillars = [
