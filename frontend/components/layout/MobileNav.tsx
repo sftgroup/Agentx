@@ -4,22 +4,24 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import { Menu, X, Home, ShoppingBag, Sparkles, BarChart3, Terminal, MessageSquare, BookOpen, Briefcase } from 'lucide-react'
-
-const navigation = [
-  { name: 'Home', href: '/', icon: Home },
-  { name: 'Marketplace', href: '/marketplace', icon: ShoppingBag },
-  { name: 'Studio', href: '/studio', icon: Sparkles },
-  { name: 'Dashboard', href: '/dashboard/agent', icon: BarChart3 },
-  { name: 'Business', href: '/b', icon: Briefcase },
-  { name: 'My Chats', href: '/user/chat', icon: MessageSquare },
-  { name: 'A2A Tasks', href: '/a2a', icon: Terminal },
-  { name: 'Docs', href: '/docs/sdk', icon: BookOpen },
-]
 
 export function MobileNav() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+  const { t } = useTranslation()
+
+  const navigation = [
+    { name: t('header.home'), href: '/', icon: Home },
+    { name: t('header.marketplace'), href: '/marketplace', icon: ShoppingBag },
+    { name: t('header.studio'), href: '/studio', icon: Sparkles },
+    { name: t('header.dashboard'), href: '/dashboard/agent', icon: BarChart3 },
+    { name: t('header.business'), href: '/b', icon: Briefcase },
+    { name: t('header.myChats'), href: '/user/chat', icon: MessageSquare },
+    { name: t('header.a2aTasks'), href: '/a2a', icon: Terminal },
+    { name: t('header.docs'), href: '/docs/sdk', icon: BookOpen },
+  ]
 
   return (
     <div className="md:hidden">

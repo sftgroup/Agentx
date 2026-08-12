@@ -6,6 +6,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useWalletClient } from 'wagmi'
 import type { WalletClient } from 'viem'
+import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft, ArrowRight, Check, Copy, KeyRound, Loader2, Wallet, Zap, Server,
   LineChart, ShieldAlert, ShieldCheck, AlertTriangle, Building2, ExternalLink, Info,
@@ -35,6 +36,7 @@ export default function BusinessPage() {
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showPlans, setShowPlans] = useState(false)
+  const { t } = useTranslation()
 
   const showReveal = !!context?.isNew && !saved && context.tenant.kind === 'partner'
 
@@ -45,13 +47,13 @@ export default function BusinessPage() {
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 text-text-muted hover:text-text-primary text-sm transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back to home
+              <ArrowLeft className="w-4 h-4" /> {t('b.backHome')}
             </Link>
             <div className="flex items-center gap-2">
               {/* AgentX wordmark: hidden on small screens to save space */}
               <span className="hidden sm:inline font-semibold tracking-tight">AgentX</span>
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-accent-purple/15 text-accent-purple border border-accent-purple/20 font-medium">
-                For Business
+                {t('b.forBusiness')}
               </span>
             </div>
           </div>
@@ -64,7 +66,7 @@ export default function BusinessPage() {
         {isConnected && isLoading && (
           <div className="text-center py-24 text-text-muted flex flex-col items-center gap-3">
             <Loader2 className="w-6 h-6 animate-spin text-accent-purple" />
-            <span className="text-sm">Signing in with your wallet…</span>
+            <span className="text-sm">{t('b.signingIn')}</span>
           </div>
         )}
         {isConnected && !isLoading && error && !context && <ErrorCard message={error} />}
@@ -98,10 +100,11 @@ export default function BusinessPage() {
 // ── Sign-in (wallet not connected) ──────────────────────────────────────
 
 function SignInCard() {
+  const { t } = useTranslation()
   const perks = [
-    { icon: KeyRound, title: 'Instant API key', desc: 'Connect your wallet — a B-end tenant and agentx_ key are provisioned automatically.' },
-    { icon: Zap, title: 'Platform LLM metering', desc: 'One gateway for chat, parallel tasks & on-chain data. Pay per token via a subscription.' },
-    { icon: LineChart, title: 'Usage visibility', desc: 'Monitor quota consumption in your console and upgrade as you grow.' },
+    { icon: KeyRound, title: t('b.perk1Title'), desc: t('b.perk1Desc') },
+    { icon: Zap, title: t('b.perk2Title'), desc: t('b.perk2Desc') },
+    { icon: LineChart, title: t('b.perk3Title'), desc: t('b.perk3Desc') },
   ]
   return (
     <div className="space-y-8">
@@ -110,11 +113,10 @@ function SignInCard() {
           <Building2 className="w-7 h-7 text-accent-purple" />
         </div>
         <h1 className="heading-lg mb-2">
-          Build on <span className="gradient-text">AgentX</span>
+          {t('b.buildOn')} <span className="gradient-text">AgentX</span>
         </h1>
         <p className="body text-text-secondary max-w-lg mx-auto">
-          Integrate conversational AI into your product. Sign in with your wallet to create your
-          business tenant and receive your dedicated API key — no application review.
+          {t('b.signInSubtitle')}
         </p>
       </div>
 
@@ -131,15 +133,14 @@ function SignInCard() {
       <div className="glass-card p-6 rounded-2xl text-center space-y-4">
         <Wallet className="w-8 h-8 text-accent-cyan mx-auto" />
         <div>
-          <div className="font-semibold">Connect your wallet to get started</div>
+          <div className="font-semibold">{t('b.connectWalletTitle')}</div>
           <p className="text-sm text-text-muted mt-1">
-            Use the <span className="text-text-primary font-medium">Connect Wallet</span> button in the top-right corner.
-            A signature is requested to verify ownership — one wallet maps to one business tenant.
+            {t('b.connectWalletDesc')}
           </p>
         </div>
         <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
           <Info className="w-3.5 h-3.5" />
-          Already registered as a consumer? Use a different wallet for your business account.
+          {t('b.consumerHint')}
         </div>
       </div>
     </div>
@@ -149,29 +150,30 @@ function SignInCard() {
 // ── Errors ──────────────────────────────────────────────────────────────
 
 function ErrorCard({ message }: { message: string }) {
+  const { t } = useTranslation()
   return (
     <div className={`${card} text-center space-y-3`}>
       <ShieldAlert className="w-8 h-8 text-red-400 mx-auto" />
-      <div className="font-semibold">Sign-in failed</div>
+      <div className="font-semibold">{t('b.signInFailed')}</div>
       <p className="text-sm text-text-muted">{message}</p>
       <Link href="/" className="btn-primary text-sm inline-flex items-center gap-2 mt-2">
-        Back to Home <ArrowRight className="w-4 h-4" />
+        {t('b.backHome')} <ArrowRight className="w-4 h-4" />
       </Link>
     </div>
   )
 }
 
 function WrongKindCard() {
+  const { t } = useTranslation()
   return (
     <div className={`${card} text-center space-y-3 max-w-md mx-auto`}>
       <ShieldAlert className="w-8 h-8 text-yellow-400 mx-auto" />
-      <div className="font-semibold">This wallet is already a consumer account</div>
+      <div className="font-semibold">{t('b.wrongKindTitle')}</div>
       <p className="text-sm text-text-muted">
-        One wallet maps to a single tenant. To create a business account, connect a different wallet —
-        or continue using your existing account for personal usage.
+        {t('b.wrongKindDesc')}
       </p>
       <Link href="/user/dashboard" className="btn-primary text-sm inline-flex items-center gap-2 mt-2">
-        Go to consumer dashboard <ArrowRight className="w-4 h-4" />
+        {t('b.wrongKindCta')} <ArrowRight className="w-4 h-4" />
       </Link>
     </div>
   )
@@ -185,22 +187,20 @@ function KeyRevealCard({ apiKey, copied, onCopy, onSaved }: {
   onCopy: () => void
   onSaved: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className={`${card} space-y-5 max-w-xl mx-auto`}>
       <div className="text-center space-y-2">
         <div className="w-12 h-12 rounded-2xl bg-green-400/10 flex items-center justify-center mx-auto">
           <Check className="w-6 h-6 text-green-400" />
         </div>
-        <h2 className="heading-md">Your business tenant is ready</h2>
-        <p className="text-sm text-text-muted">Here is your dedicated API key.</p>
+        <h2 className="heading-md">{t('b.keyRevealTitle')}</h2>
+        <p className="text-sm text-text-muted">{t('b.keyRevealSub')}</p>
       </div>
 
       <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3 flex items-start gap-2 text-xs text-yellow-300">
         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-        <span>
-          <strong>Shown only once.</strong> For security we store only a fingerprint of your key.
-          If you lose it, key rotation arrives with the full business console.
-        </span>
+        <span>{t('b.keyRevealWarning')}</span>
       </div>
 
       <div className="rounded-xl bg-black/40 border border-white/10 p-3 font-mono text-sm break-all text-accent-cyan">
@@ -210,11 +210,11 @@ function KeyRevealCard({ apiKey, copied, onCopy, onSaved }: {
       <div className="flex flex-col sm:flex-row gap-2">
         <button onClick={onCopy} className="btn-primary flex-1 py-2.5 text-sm flex items-center justify-center gap-2">
           {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-          {copied ? 'Copied!' : 'Copy key'}
+          {copied ? t('b.copied') : t('b.copyKey')}
         </button>
         <button onClick={onSaved} className="btn-secondary flex-1 py-2.5 text-sm flex items-center justify-center gap-2">
           <ShieldCheck className="w-4 h-4" />
-          I have saved it
+          {t('b.savedIt')}
         </button>
       </div>
     </div>
@@ -234,6 +234,7 @@ function DashboardCard({ address, tenantId, plan, usageToday, accessToken, walle
   onTogglePlans: () => void
   onPurchased: () => void
 }) {
+  const { t } = useTranslation()
   const pct = plan && plan.quota_daily > 0
     ? Math.min(100, Math.round((plan.quota_used / plan.quota_daily) * 100))
     : 0
@@ -243,10 +244,10 @@ function DashboardCard({ address, tenantId, plan, usageToday, accessToken, walle
       {/* Identity */}
       <div className="glass-card p-5 rounded-2xl flex flex-wrap items-center gap-3">
         <span className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400">
-          <ShieldCheck className="w-3.5 h-3.5" /> Active
+          <ShieldCheck className="w-3.5 h-3.5" /> {t('b.active')}
         </span>
         <span className="font-mono text-sm text-text-secondary">{formatAddress(address)}</span>
-        <span className="text-xs text-text-muted font-mono">tenant:{tenantId.slice(0, 8)}</span>
+        <span className="text-xs text-text-muted font-mono">{t('b.tenantPrefix')}{tenantId.slice(0, 8)}</span>
       </div>
 
       {/* Subscription status */}
@@ -254,24 +255,23 @@ function DashboardCard({ address, tenantId, plan, usageToday, accessToken, walle
         <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-6 space-y-3">
           <div className="flex items-center gap-2 text-yellow-300">
             <AlertTriangle className="w-5 h-5" />
-            <h2 className="font-semibold">No active subscription</h2>
+            <h2 className="font-semibold">{t('b.noPlanTitle')}</h2>
           </div>
           <p className="text-sm text-text-muted">
-            Your business tenant is created, but <strong className="text-text-primary">platform LLM usage requires a subscription</strong>.
-            Until then you can still integrate with your own LLM key (BYOK) — or subscribe to unlock metered platform models.
+            {t('b.noPlanDesc')}
           </p>
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <button
               onClick={onTogglePlans}
               className="btn-primary text-sm py-2.5 flex items-center justify-center gap-2"
             >
-              {showPlans ? 'Hide plans' : 'Choose a plan'} <ArrowRight className="w-4 h-4" />
+              {showPlans ? t('b.hidePlans') : t('b.choosePlan')} <ArrowRight className="w-4 h-4" />
             </button>
             <a
               href="/docs/sdk"
               className="btn-secondary text-sm py-2.5 flex items-center justify-center gap-2"
             >
-              Read the SDK docs <ExternalLink className="w-4 h-4" />
+              {t('b.readSdkDocs')} <ExternalLink className="w-4 h-4" />
             </a>
           </div>
         </div>
@@ -279,16 +279,16 @@ function DashboardCard({ address, tenantId, plan, usageToday, accessToken, walle
         <div className="glass-card p-6 rounded-2xl space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs text-text-muted uppercase tracking-wider">Plan</div>
+              <div className="text-xs text-text-muted uppercase tracking-wider">{t('b.planLabel')}</div>
               <div className="font-semibold text-lg">{plan.name}</div>
             </div>
             <span className="text-xs font-medium px-2.5 py-1 rounded-lg bg-accent-purple/15 text-accent-purple border border-accent-purple/20">
-              {plan.platform_models?.length ?? 0} platform models
+              {t('b.platformModels', { count: plan.platform_models?.length ?? 0 })}
             </span>
           </div>
           <div>
             <div className="flex justify-between text-xs text-text-muted mb-1.5">
-              <span>Daily token usage</span>
+              <span>{t('b.dailyTokenUsage')}</span>
               <span className="font-mono text-text-primary">
                 {plan.quota_used.toLocaleString()} / {plan.quota_daily.toLocaleString()} ({pct}%)
               </span>
@@ -303,15 +303,15 @@ function DashboardCard({ address, tenantId, plan, usageToday, accessToken, walle
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="rounded-xl bg-white/5 p-3">
               <div className="font-mono text-sm text-text-primary">{plan.rate_limit_rpm}</div>
-              <div className="text-[11px] text-text-muted mt-0.5">RPM</div>
+              <div className="text-[11px] text-text-muted mt-0.5">{t('b.rpm')}</div>
             </div>
             <div className="rounded-xl bg-white/5 p-3">
               <div className="font-mono text-sm text-text-primary">{plan.max_concurrent}</div>
-              <div className="text-[11px] text-text-muted mt-0.5">Concurrent</div>
+              <div className="text-[11px] text-text-muted mt-0.5">{t('b.concurrent')}</div>
             </div>
             <div className="rounded-xl bg-white/5 p-3">
               <div className="font-mono text-sm text-text-primary">{usageToday.total_tool_calls}</div>
-              <div className="text-[11px] text-text-muted mt-0.5">Tool calls</div>
+              <div className="text-[11px] text-text-muted mt-0.5">{t('b.toolCalls')}</div>
             </div>
           </div>
         </div>
@@ -320,24 +320,24 @@ function DashboardCard({ address, tenantId, plan, usageToday, accessToken, walle
       {/* Next steps */}
       <div className={`${card} space-y-3`}>
         <h3 className="font-semibold text-sm flex items-center gap-2">
-          <Server className="w-4 h-4 text-accent-cyan" /> Connect your integration
+          <Server className="w-4 h-4 text-accent-cyan" /> {t('b.integrationTitle')}
         </h3>
         <ol className="space-y-2 text-sm text-text-muted">
           <li className="flex gap-3">
             <span className="w-5 h-5 rounded-full bg-white/5 text-text-primary text-xs flex items-center justify-center shrink-0">1</span>
-            Call the gateway with your API key: <span className="font-mono text-accent-cyan">X-Api-Key</span> header or <span className="font-mono text-accent-cyan">agentx_</span> key.
+            {t('b.step1')}
           </li>
           <li className="flex gap-3">
             <span className="w-5 h-5 rounded-full bg-white/5 text-text-primary text-xs flex items-center justify-center shrink-0">2</span>
-            Use <span className="font-mono text-accent-cyan">POST /api/v1/agent/runs</span> for streaming chat and <span className="font-mono text-accent-cyan">POST /api/v1/sessions/:id/tasks</span> for parallel tasks.
+            {t('b.step2')}
           </li>
           <li className="flex gap-3">
             <span className="w-5 h-5 rounded-full bg-white/5 text-text-primary text-xs flex items-center justify-center shrink-0">3</span>
-            Track token usage here in your console as it accrues.
+            {t('b.step3')}
           </li>
         </ol>
         <a href="/docs/sdk" className="text-sm text-accent-cyan inline-flex items-center gap-1.5 hover:underline">
-          SDK quickstart <ExternalLink className="w-3.5 h-3.5" />
+          {t('b.sdkQuickstart')} <ExternalLink className="w-3.5 h-3.5" />
         </a>
       </div>
 

@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Address, WalletClient } from 'viem'
 import { AlertTriangle, ArrowDownToLine, Check, Loader2, Wallet, Zap } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { GATEWAY_URL } from '@/lib/gateway'
 
 interface X402Info {
@@ -30,6 +31,7 @@ export function X402WalletCard({ address, walletClient }: {
   address: string
   walletClient?: WalletClient
 }) {
+  const { t } = useTranslation()
   const [info, setInfo] = useState<X402Info | null>(null)
   const [balance, setBalance] = useState('0')
   const [amount, setAmount] = useState('')
@@ -58,7 +60,7 @@ export function X402WalletCard({ address, walletClient }: {
     if (!walletClient || !info?.payTo) return
     const token = Number(amount || 0)
     if (!Number.isFinite(token) || token <= 0) {
-      setError('Enter a positive amount')
+      setError(t('billing.enterPositiveAmount'))
       return
     }
     setBusy(true)
@@ -78,12 +80,12 @@ export function X402WalletCard({ address, walletClient }: {
         body: JSON.stringify({ txHash: hash, chain: info.chain }),
       })
       const vData = await vRes.json() as { balanceWei?: string; error?: string }
-      if (!vRes.ok) throw new Error(vData.error || 'Verification failed')
+      if (!vRes.ok) throw new Error(vData.error || t('billing.verifyFailed'))
       setBalance(vData.balanceWei ?? balance)
       setAmount('')
       setTxHash(hash)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Top-up failed')
+      setError(err instanceof Error ? err.message : t('billing.topUpFailed'))
     } finally {
       setBusy(false)
     }
@@ -96,39 +98,39 @@ export function X402WalletCard({ address, walletClient }: {
     <div className="glass-card p-6 rounded-2xl space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-sm flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-accent-cyan" /> x402 wallet
+          <Wallet className="w-4 h-4 text-accent-cyan" /> {t('billing.x402WalletTitle')}
         </h3>
         <span className={`text-[11px] px-2 py-0.5 rounded-full border ${info?.enabled ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}`}>
-          {info?.enabled ? 'enabled' : 'disabled'}
+          {info?.enabled ? t('billing.enabled') : t('billing.disabled')}
         </span>
       </div>
 
       {!info?.enabled ? (
         <p className="text-sm text-text-muted">
-          The x402 pay-per-request rail is not enabled on this Gateway yet (X402_ENABLED / X402_PAY_TO).
+          {t('billing.x402RailDisabled')}
         </p>
       ) : (
         <div className="space-y-4">
           {/* Balance + price */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-white/5 p-4">
-              <div className="text-[11px] text-text-muted uppercase tracking-wider">Balance</div>
+              <div className="text-[11px] text-text-muted uppercase tracking-wider">{t('billing.balance')}</div>
               <div className="font-mono text-lg text-accent-cyan mt-1">{weiToToken(balance)}</div>
-              <div className="text-[11px] text-text-muted mt-0.5">native token</div>
+              <div className="text-[11px] text-text-muted mt-0.5">{t('billing.nativeToken')}</div>
             </div>
             <div className="rounded-xl bg-white/5 p-4">
-              <div className="text-[11px] text-text-muted uppercase tracking-wider">Per request</div>
+              <div className="text-[11px] text-text-muted uppercase tracking-wider">{t('billing.perRequest')}</div>
               <div className="font-mono text-lg text-text-primary mt-1">{priceToken}</div>
-              <div className="text-[11px] text-text-muted mt-0.5">{priceCents ? `≈ $${(priceCents / 100).toFixed(4)}` : 'native token'}</div>
+              <div className="text-[11px] text-text-muted mt-0.5">{priceCents ? t('billing.approxUsd', { value: (priceCents / 100).toFixed(4) }) : t('billing.nativeToken')}</div>
             </div>
           </div>
 
           {/* Pay-to wallet */}
           <div className="text-xs text-text-muted">
-            <div className="mb-1">Pay-to wallet <span className="font-mono text-accent-cyan break-all">{info.payTo}</span></div>
+            <div className="mb-1">{t('billing.payToWallet')} <span className="font-mono text-accent-cyan break-all">{info.payTo}</span></div>
             <div className="flex items-center gap-1">
               <Zap className="w-3 h-3 text-accent-cyan" />
-              Top-ups also cover A2A pay-per-call access (balance-mode x402).
+              {t('billing.topUpCoversA2a')}
             </div>
           </div>
 
@@ -144,7 +146,7 @@ export function X402WalletCard({ address, walletClient }: {
               type="number"
               min={0}
               step="any"
-              placeholder="Amount (native token)"
+              placeholder={t('billing.amountPlaceholder')}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               disabled={busy}
@@ -156,14 +158,14 @@ export function X402WalletCard({ address, walletClient }: {
               className="btn-primary text-sm py-2.5 px-4 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowDownToLine className="w-4 h-4" />}
-              {busy ? 'Sending…' : 'Top up'}
+              {busy ? t('billing.sending') : t('billing.topUp')}
             </button>
           </div>
 
           {txHash && (
             <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-xs text-green-400 flex items-start gap-2">
               <Check className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>Balance credited. Tx <span className="font-mono break-all">{txHash}</span></span>
+              <span>{t('billing.balanceCredited', { hash: txHash })}</span>
             </div>
           )}
         </div>
