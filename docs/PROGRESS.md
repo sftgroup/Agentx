@@ -445,7 +445,7 @@
   - **验证**：gateway/conversation health ok（chain+db connected，66 agents 同步）；`/api/v1/internal/task-billing` 已注册且错误 token → 401；`/runs`、`/tasks` 路由注册正常；双进程稳定无崩溃循环；`ORCHESTRATE_TOKEN` 两服务 .env 一致（回调通道可用）
 - **调用方影响**：B 端零代码改动；并行任务原必须带 LLM key（header/参数），现可省略（平台 key 按 token 计费，不扣调用方 key）
 
-### R19 C/B 端分角色商业化方案（⏳ 方案定稿 + 决策完成，2026-08-11 · 待实施）
+### R19 C/B 端分角色商业化方案（✅ 已上线，2026-08-12 · commit `2295443` + `d9eecd3` + `7014f17`）
 
 > 背景：商业模式对齐——**B 端**（API/REST/SDK 调用对话，用平台 LLM 付费）目标改为「钱包登录 → 自动生成用户 → 独立 B 端用户面板 → 面板内自助购买套餐 → 面板自动获得 key」；**C 端**（注册用户）目标为「购买 LLM token 套餐」自助闭环。当前 B 端仍是「申请 → admin 审批 → 手动签发 key」模式。完整方案见 `docs/billing-role-model-r19.md`。
 
@@ -456,6 +456,15 @@
 - **安全要点**：**新 key hash 化**（SHA-256，存量明文保留）；面板租户隔离；key 仅显示一次 + 轮换入口；**B 端无免费套餐**抑制批量注册刷量
 - **决策记录**（2026-08-11 已定）：T1 全自助（下线独立申请流程，人工审批融入未来客服系统）· T2 仅新 key hash 化（存量明文保留）· T3 B 端租户无免费套餐（quota_daily=0，购订阅后才可用平台 LLM）· T4 订阅制（月费+每日配额，复用 plans 表+quota_daily；按量预充值为后续扩展）· **T5 A2A 按次付费 = x402 余额模式**（2026-08-12 定，服务端自动 deduct，MPP voucher 需签名不适合 worker 编排；方案详见 billing-role-model-r19.md §11）
 - **验收标准**：B 端钱包登录→自动获 key→面板购套餐→key 调通 `/runs` 与并行任务→用量实时反映；C 端购套餐→`quota_daily` 即时生效→chat 页用量进度条同步，耗尽时出现 429 引导；Admin 可编辑配额数值即时生效；R18 计费链路回归不受影响；**R19.7 A2A 委派未订阅 agent 可经 x402 余额按次扣费放行**
+- **实施记录**（2026-08-12，commit `2295443`/`d9eecd3`/`7014f17`/`975ec1a`）：R19.1 沿用 · R19.2 B 端面板（key 轮换 `POST /tenant/rotate-key` + x402 余额/充值 + 30 天调用统计）· R19.3 统一支付入口 `purpose=tenant-plan`（SDK `TenantPlanPayments`，@agentxv2/sdk@0.11.5）· R19.4 C 端 `/user/billing` + chat 429 升级引导 · R19.5 `/developer/apply` → 410 下线 · R19.6 Admin plans 配额行内编辑 · R19.7 `a2a_pay_log`（迁移 023）+ `canAccessAgentOrPay` 按次扣费
+- **生产部署与验证**（43.159.60.46，2026-08-12）：
+  - **迁移**：生产 PG 已执行 `023_a2a_pay_log.sql`（幂等）
+  - **配置**：`X402_ENABLED=true` + `X402_PAY_TO=0x70997970C51812dc3A010C7d01b50e0d17dc79C8`（统一环境文件 scripts/local-payments 地址），oxachain 链验证
+  - **API 冒烟**：B 端 partner 注册 + 自动发 key、`/tenant/me`（含 kind）、plans 3 档、usage、rotate-key（旧 key 401/新 key 200）、`/developer/apply` 410 → **全部通过**
+  - **链上闭环**：向 payTo 充值 0.5 OXA → `/x402/verify` 记账（余额 0.5 OXA）；pro 套餐金额不足购买 → 422 拒绝且 plan 不绑定
+  - **A2A 按次**：未拥有 agent 66 委派 → 余额扣 0.001 OXA + `a2a_pay_log` 审计 1 行，同 ref 幂等
+  - **UI**：`/b`、`/apply`、`/user/billing`、`/admin`、`/` 浏览器验证全部正常渲染无 JS 错误；首页顶栏补 Business 入口
+  - **遗留**：成功套餐绑定需 ~29 OXA 链上付款（测试钱包余额约 9 OXA，待补充后验证成功绑定路径；拒绝路径已验证）
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 
