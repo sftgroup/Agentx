@@ -5738,6 +5738,64 @@ var SubscriptionPayments = class {
   }
 };
 
+// src/payment/tenant-plan.ts
+var TenantPlanPayments = class {
+  constructor(config) {
+    this.config = config;
+  }
+  config;
+  /** Buy a platform subscription tier on the chosen rail. */
+  async buy(input) {
+    if (!input.txHash && input.method !== "fiat") {
+      throw new Error("txHash is required for the chain / x402 rails");
+    }
+    const body = {
+      method: input.method,
+      purpose: "tenant-plan",
+      tenantPlanId: input.tenantPlanId,
+      subscriber: input.subscriber,
+      chain: this.config.chain ?? "oxachain",
+      txHash: input.txHash,
+      successUrl: input.successUrl,
+      cancelUrl: input.cancelUrl
+    };
+    const data = await this._fetchJson("/api/v1/payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (input.method === "fiat") {
+      if (!data.sessionUrl) throw new Error("Fiat checkout returned no redirect URL");
+      return { method: "fiat", sessionUrl: data.sessionUrl, sessionId: data.sessionId, redirect: true };
+    }
+    return {
+      method: input.method,
+      tenantId: String(data.tenantId ?? ""),
+      planId: String(data.planId ?? ""),
+      planSlug: String(data.planSlug ?? ""),
+      quotaDaily: String(data.quotaDaily ?? "0"),
+      txHash: String(input.txHash ?? "")
+    };
+  }
+  // ── HTTP helpers ────────────────────────────────────────────────────────
+  async _fetchJson(path, init) {
+    const base = (this.config.gatewayUrl ?? "").replace(/\/$/, "");
+    const headers = { ...init?.headers };
+    if (this.config.accessToken) headers.Authorization = `Bearer ${this.config.accessToken}`;
+    const resp = await fetch(`${base}${path}`, { ...init, headers });
+    if (!resp.ok) {
+      let message = `Gateway request failed (${resp.status}): ${path}`;
+      try {
+        const body = await resp.json();
+        if (body.error) message = body.error;
+      } catch {
+      }
+      throw new Error(message);
+    }
+    return await resp.json();
+  }
+};
+
 // src/payment/index.ts
 import { MPPClient, X402Client, PaymentsClient as PaymentsClient2 } from "@0xinfrax/payments";
 
@@ -7305,6 +7363,7 @@ export {
   SUBSCRIPTION_VERSION,
   SubscriptionManager,
   SubscriptionPayments,
+  TenantPlanPayments,
   ToolExecutor,
   X402Client,
   ZERO_ADDRESS,

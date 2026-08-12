@@ -164,6 +164,48 @@ declare class SubscriptionPayments {
     private _fetchJson;
 }
 
+type TenantPlanPaymentMethod = 'chain' | 'fiat' | 'x402';
+interface TenantPlanPaymentsConfig {
+    /** AgentX Gateway base URL. */
+    gatewayUrl: string;
+    /** Optional gateway bearer token (B-end wallet JWT). */
+    accessToken?: string;
+    /** Which chain to verify on-chain payments on (default: oxachain). */
+    chain?: ChainKey;
+}
+interface BuyTenantPlanInput {
+    /** Platform plan id (plans table UUID). */
+    tenantPlanId: string;
+    /** Buying wallet address. */
+    subscriber: Address;
+    method: TenantPlanPaymentMethod;
+    /** chain | x402: already-sent on-chain payment tx. */
+    txHash?: Hash | string;
+    /** fiat: redirect targets after Stripe checkout. */
+    successUrl?: string;
+    cancelUrl?: string;
+}
+type BuyTenantPlanResult = {
+    method: 'chain' | 'x402';
+    tenantId: string;
+    planId: string;
+    planSlug: string;
+    quotaDaily: string;
+    txHash: string;
+} | {
+    method: 'fiat';
+    sessionUrl: string;
+    sessionId: string;
+    redirect: true;
+};
+declare class TenantPlanPayments {
+    private config;
+    constructor(config: TenantPlanPaymentsConfig);
+    /** Buy a platform subscription tier on the chosen rail. */
+    buy(input: BuyTenantPlanInput): Promise<BuyTenantPlanResult>;
+    private _fetchJson;
+}
+
 /** a2a-pay client: paymentId two-phase (create → pay → settle). */
 declare class A2AClient {
     private opts;
@@ -287,4 +329,4 @@ declare const REPUTATION_VERSION = "0.1.0";
 
 declare const CONFIG_VERSION = "0.1.0";
 
-export { A2AClient, A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, PAYMENT_VERSION, type PaySubscriptionInput, type PaySubscriptionResult, PeriodClient, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, SubscriptionManager, type SubscriptionPaymentMethod, SubscriptionPayments, type SubscriptionPaymentsConfig, type X402Info, subscribeToEvents };
+export { A2AClient, A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, type BuyTenantPlanInput, type BuyTenantPlanResult, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, PAYMENT_VERSION, type PaySubscriptionInput, type PaySubscriptionResult, PeriodClient, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, SubscriptionManager, type SubscriptionPaymentMethod, SubscriptionPayments, type SubscriptionPaymentsConfig, type TenantPlanPaymentMethod, TenantPlanPayments, type TenantPlanPaymentsConfig, type X402Info, subscribeToEvents };
