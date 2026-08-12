@@ -47,8 +47,9 @@ export default function BusinessPage() {
             <Link href="/" className="flex items-center gap-2 text-text-muted hover:text-text-primary text-sm transition-colors">
               <ArrowLeft className="w-4 h-4" /> Back to home
             </Link>
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="font-semibold tracking-tight">AgentX</span>
+            <div className="flex items-center gap-2">
+              {/* AgentX wordmark: hidden on small screens to save space */}
+              <span className="hidden sm:inline font-semibold tracking-tight">AgentX</span>
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-accent-purple/15 text-accent-purple border border-accent-purple/20 font-medium">
                 For Business
               </span>
