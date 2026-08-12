@@ -74,6 +74,7 @@ router.get('/me', async (req: Request, res: Response) => {
       id: tenant!.id,
       wallet_address: tenant!.walletAddress,
       status: tenant!.status,
+      kind: tenant!.kind,
     },
     plan: planRow.rows[0] ? {
       name: planRow.rows[0].name,
