@@ -11,7 +11,7 @@
 
 import { ConversationClient } from '@agentxv2/sdk/conversation'
 
-const GATEWAY_URL = 'http://43.159.60.46:3090'
+const GATEWAY_URL = 'https://agentx.0xainet.top'
 
 // ── 基础客户端（只带租户 API Key，BYOK 全部走请求级/请求参数） ────────────
 const client = new ConversationClient({

@@ -148,7 +148,7 @@ const unsubscribe = await subscribeToEvents(publicClient, {
 import { ConversationClient } from '@agentxv2/sdk/conversation'
 
 const client = new ConversationClient({
-  gatewayUrl: 'http://43.159.60.46:3090',
+  gatewayUrl: 'https://agentx.0xainet.top',
   apiKey: 'agentx_sk_live_...',   // 租户 API Key
   llmApiKey: 'sk-...',            // 可选：无状态 BYOK，自带 LLM Key
   llmEndpoint: 'https://api.deepseek.com/v1',
@@ -173,7 +173,7 @@ for await (const event of client.stream({ message: '你好', agentId: 1 })) {
 import { TenantPlanPayments } from '@agentxv2/sdk'
 
 const plans = new TenantPlanPayments({
-  gatewayUrl: 'http://43.159.60.46:3090',
+  gatewayUrl: 'https://agentx.0xainet.top',
   chain: 'oxachain',
 })
 
@@ -236,19 +236,19 @@ if (priceWei && BigInt(balanceWei) < BigInt(priceWei)) {
 
 ```bash
 # 列出全部工具
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 # 批量查询 Agent（等价 SDK getAllAgents）
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call",
        "params":{"name":"agentx_identity_list_all",
                  "arguments":{"chain":"oxachain","activeOnly":true}}}'
 
 # 创建套餐（WRITE，返回待签名的交易参数）
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call",
        "params":{"name":"agentx_subscription_create_plan",
@@ -267,14 +267,14 @@ Gateway 维护 Agent 链上索引（事件驱动增量同步 + 全量兜底）�
 
 ```bash
 # 列表 + 分页 + 筛选
-curl -s "http://43.159.60.46:3090/api/v1/agents?activeOnly=true&page=1&pageSize=50"
+curl -s "https://agentx.0xainet.top/api/v1/agents?activeOnly=true&page=1&pageSize=50"
 
 # 统计
-curl -s "http://43.159.60.46:3090/api/v1/agents/count"
+curl -s "https://agentx.0xainet.top/api/v1/agents/count"
 # → {"total":62,"active":62}
 
 # 单个详情
-curl -s "http://43.159.60.46:3090/api/v1/agents/1"
+curl -s "https://agentx.0xainet.top/api/v1/agents/1"
 ```
 
 ---
@@ -293,7 +293,7 @@ curl -s "http://43.159.60.46:3090/api/v1/agents/1"
 
 ```javascript
 // example.mjs — 验证 MCP 通道联通性（等价第 3 节）
-const MCP_URL = 'http://43.159.60.46:3090/mcp'
+const MCP_URL = 'https://agentx.0xainet.top/mcp'
 const rpc = async (method, params) => {
   const res = await fetch(MCP_URL, {
     method: 'POST',

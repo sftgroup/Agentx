@@ -5,11 +5,11 @@
  *
  * 用法:
  *   node scripts/mcp-tools-test.mjs [MCP_URL]
- *   默认 MCP_URL = http://43.159.60.46:3090/mcp
+ *   默认 MCP_URL = https://agentx.0xainet.top/mcp
  *
  * 退出码: 0 = 全部通过, 1 = 有失败
  */
-const MCP_URL = process.argv[2] || 'http://43.159.60.46:3090/mcp'
+const MCP_URL = process.argv[2] || 'https://agentx.0xainet.top/mcp'
 const FETCH_TIMEOUT_MS = 60_000
 
 let pass = 0

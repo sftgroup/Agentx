@@ -57,13 +57,13 @@ AgentX 是一个多租户 AI Agent 平台，对外提供：
 
 | 变量 | 说明 | 必填 | 示例 |
 |---|---|---|---|
-| `AGENTX_GATEWAY_URL` | AgentX 网关地址（从本团队网络可达） | ✅ | `http://43.159.60.46:3090` |
+| `AGENTX_GATEWAY_URL` | AgentX 网关地址（从本团队网络可达） | ✅ | `https://agentx.0xainet.top` |
 | `AGENTX_CONVERSATION_API_KEY` | 本团队租户 Key（`agentx_` 开头） | ✅ | `agentx_<your-key>` |
 | `AGENTX_CONVERSATION_LLM_KEY` | **应用侧建议（非必填，2026-08-11 起）**：本团队自己的 LLM API Key（openai/deepseek 等）。SDK 构造时传入 `llmApiKey`，所有并行任务自动带 BYOK，费用落自己账户、配额独立；不传则走平台 Key 并按 token 计费（见 [§6](#6-付费与配额计费当前实况)） | 建议 ✅ | `sk-<your-llm-key>` |
 
 ```bash
 # .env 示例（应用侧建议：LLM Key 显式配置，任务自动 BYOK）
-export AGENTX_GATEWAY_URL=http://43.159.60.46:3090
+export AGENTX_GATEWAY_URL=https://agentx.0xainet.top
 export AGENTX_CONVERSATION_API_KEY=agentx_<your-key>
 export AGENTX_CONVERSATION_LLM_KEY=sk-<your-llm-key>
 ```
@@ -73,9 +73,9 @@ export AGENTX_CONVERSATION_LLM_KEY=sk-<your-llm-key>
 同一项目若需接入多个调用方，请使用前缀区分，避免变量名冲突：
 
 ```bash
-AITRADER_AGENTX_GATEWAY_URL=http://43.159.60.46:3090
+AITRADER_AGENTX_GATEWAY_URL=https://agentx.0xainet.top
 AITRADER_AGENTX_CONVERSATION_API_KEY=agentx_<aitrader-key>
-AISERVICER_AGENTX_GATEWAY_URL=http://43.159.60.46:3090
+AISERVICER_AGENTX_GATEWAY_URL=https://agentx.0xainet.top
 AISERVICER_AGENTX_CONVERSATION_API_KEY=agentx_<aiservicer-key>
 ```
 
@@ -363,7 +363,7 @@ curl -s -X POST <GATEWAY>/mcp -H "Content-Type: application/json" -d '{
 
 | 现象 | 可能原因 | 处理 |
 |---|---|---|
-| 连接超时 | 网关地址从本团队网络不可达 | 确认可访问 `43.159.60.46:3090`，检查防火墙 / 白名单 |
+| 连接超时 | 网关地址从本团队网络不可达 | 确认可访问 `https://agentx.0xainet.top`，检查防火墙 / 白名单 |
 | 如何代已订阅用户对话 | 直接调用按租户自身授权被 403 | 请求带 `X-End-User-Id: 0x<用户钱包>`（B 端代调，见 [§7](#7-sdk-接入示例)）；也可先 `GET /api/v1/chain/check-subscription` 确认订阅 |
 | `401` 但 Key 未变 | Key 被团队内其他人轮换 | 联系平台管理员重新签发 |
 | 任务瞬间 `error` | 平台兜底 LLM Key 无效 / 无平台模型配额 | 自带 LLM Key（BYOK 透传，见 [§7](#7-sdk-接入示例)），如仍失败检查 Key 的有效性与配额 |

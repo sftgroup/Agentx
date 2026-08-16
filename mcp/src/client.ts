@@ -6,7 +6,7 @@ import type {
 } from './types'
 
 export interface McpClientConfig {
-  /** AgentX Gateway base URL, e.g. http://43.159.60.46:3090 */
+  /** AgentX Gateway base URL, e.g. https://agentx.0xainet.top */
   gatewayUrl: string
   /** Chain used by default when a tool call omits `chain`. Aligns with the server default ('sepolia'). */
   defaultChain?: McpChain

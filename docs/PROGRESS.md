@@ -503,8 +503,8 @@
 | 服务 | agentx-gateway:3090 · agentx-conversation:8100 · agentx-frontend:3100（pm2） |
 | 数据库 | agentx_gateway（索引层）+ agentx_conversation（对话，端口 5433） |
 | SDK | `@agentxv2/sdk@0.8.6`（npm latest；gateway/conversation/frontend 三服务一致） |
-| 文档站点 | http://43.159.60.46:3100/docs/sdk（实时渲染 README） |
-| 管理后台 | http://43.159.60.46:3100/admin（X-Admin-Key） |
+| 文档站点 | https://agentx.0xainet.top/docs/sdk（实时渲染 README） |
+| 管理后台 | https://agentx.0xainet.top/admin（X-Admin-Key） |
 | 测试钱包 | `0x52Ec58173042E8d0C9be0BdA81e95a8CbB5B8e06`（OXA 余额充足，私钥在本地 `.env.local`，已被 gitignore 保护） |
 
 ## 四、链上合约地址

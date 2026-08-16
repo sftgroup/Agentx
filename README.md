@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.10.0 · Contracts on Sepolia + OxaChain L1 · Production: `http://43.159.60.46:3100` · Last updated: 2026-08-08
+> SDK v0.10.0 · Contracts on Sepolia + OxaChain L1 · Production: `https://agentx.0xainet.top` · Last updated: 2026-08-08
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -50,14 +50,14 @@ Agentx/
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│              43.156.99.215 (Production)                  │
+│       43.159.60.46 — agentx.0xainet.top (Production)     │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐  │
 │  │ Next.js FE  │  │ Express GW   │  │  PostgreSQL 14 │  │
-│  │   :3100     │  │   :3090      │  │    :5432       │  │
+│  │   :3100     │  │   :3090      │  │    :5433       │  │
 │  │             │  │  + MCP Srv   │  │                │  │
 │  └─────────────┘  └──────────────┘  └────────────────┘  │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │ OxaChain L1 Geth Node  :18545  (Clique PoA)     │   │
+│  │ Conversation Service :8100 (agent dialogue, SSE) │   │
 │  └──────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────┘
 
@@ -110,7 +110,7 @@ Run agents on our hosted Conversation Service from your own app — no chain syn
 import { ConversationClient } from '@agentxv2/sdk/conversation'
 
 const client = new ConversationClient({
-  gatewayUrl: 'http://43.159.60.46:3090',
+  gatewayUrl: 'https://agentx.0xainet.top',
   apiKey: 'agentx_xxx',      // Tenant API Key (issued after registration)
   endUserId: 'user_123',     // Optional: per end-user memory isolation
   llmApiKey: 'sk-...',       // Optional: stateless BYOK — your own LLM key (highest priority)
@@ -155,18 +155,18 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 
 | Service | URL |
 |---------|-----|
-| **Frontend** | `http://43.159.60.46:3100` |
-| **Admin Panel** | `http://43.159.60.46:3100/admin` |
-| **Gateway** | `http://43.159.60.46:3090` |
-| **Gateway Health** | `http://43.159.60.46:3090/api/v1/health` |
-| **Chain Data API** | `http://43.159.60.46:3090/api/v1/chain`（实时链上读取：health/total/agents/plans/check-subscription） |
-| **MCP Server** | `http://43.159.60.46:3090/mcp` |
-| **Conversation Service** | `http://43.159.60.46:8100` |
-| **SDK Docs (live)** | `http://43.159.60.46:3100/docs/sdk`（实时渲染 SDK README） |
+| **Frontend** | `https://agentx.0xainet.top` |
+| **Admin Panel** | `https://agentx.0xainet.top/admin` |
+| **Gateway** | `https://agentx.0xainet.top` |
+| **Gateway Health** | `https://agentx.0xainet.top/api/v1/health` |
+| **Chain Data API** | `https://agentx.0xainet.top/api/v1/chain`（实时链上读取：health/total/agents/plans/check-subscription） |
+| **MCP Server** | `https://agentx.0xainet.top/mcp` |
+| **Conversation Service** | `http://127.0.0.1:8100` |
+| **SDK Docs (live)** | `https://agentx.0xainet.top/docs/sdk`（实时渲染 SDK README） |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
 | **SDK (npm)** | `npm install @agentxv2/sdk@0.10.0` |
-| **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.10.0`, production :3100) |
+| **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.10.0`, production `https://agentx.0xainet.top`) |
 
 ---
 

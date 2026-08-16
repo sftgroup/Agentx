@@ -558,7 +558,7 @@ npm install @agentxv2/sdk@0.10.0
 import { ConversationClient } from '@agentxv2/sdk/conversation'
 
 const client = new ConversationClient({
-  gatewayUrl: 'http://43.159.60.46:3090',
+  gatewayUrl: 'https://agentx.0xainet.top',
   apiKey: 'agentx_abc123...',      // Tenant API Key (issued after registration)
   endUserId: 'user_123',           // Optional: per end-user memory isolation
   llmApiKey: 'sk-...',             // Optional: stateless BYOK — caller's own LLM key

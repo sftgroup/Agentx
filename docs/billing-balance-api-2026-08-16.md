@@ -71,7 +71,7 @@ if (priceWei && BigInt(balanceWei) < BigInt(priceWei)) {
 
 - gateway：tsc 0 error，测试 82/82（新增 5 例：401 / 租户余额 / 端用户透传 / 零余额 / 增强字段）
 - sdk：tsc 0 error，测试 38/38（新增 6 例：apiKey / Bearer / 必填校验 / endUserId / 零余额 / 错误传播）
-- 生产：`43.159.60.46:3090/api/v1/billing/balance` 无鉴权 401、无效 key 401、有效 key 200
+- 生产：`agentx.0xainet.top/api/v1/billing/balance` 无鉴权 401、无效 key 401、有效 key 200
 - 生产 commit：`47ed889`（功能）+ `f78013b`（README 补充说明）
 
 ## 五、需求单回复文案（可直接发送）

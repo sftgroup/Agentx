@@ -17,7 +17,7 @@
 //   const daemon = new A2ADaemon({
 //     agentId: 53,
 //     a2a: a2aProtocol,
-//     gatewayUrl: 'http://43.159.60.46:3090',
+//     gatewayUrl: 'https://agentx.0xainet.top',
 //     pollIntervalMs: 15000,
 //   })
 //   daemon.start()

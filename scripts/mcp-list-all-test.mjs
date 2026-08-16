@@ -8,12 +8,12 @@
  *
  * 用法:
  *   node scripts/mcp-list-all-test.mjs [MCP_URL] [--chain oxachain] [--verbose]
- *   默认 MCP_URL = http://43.159.60.46:3090/mcp
+ *   默认 MCP_URL = https://agentx.0xainet.top/mcp
  *
  * 退出码: 0 = 全部用例通过, 1 = 有失败
  */
 
-const MCP_URL = process.argv[2] || 'http://43.159.60.46:3090/mcp'
+const MCP_URL = process.argv[2] || 'https://agentx.0xainet.top/mcp'
 const CHAIN = process.argv.find((a) => a.startsWith('--chain='))?.split('=')[1] || 'oxachain'
 const VERBOSE = process.argv.includes('--verbose')
 const TIMEOUT_MS = 120_000

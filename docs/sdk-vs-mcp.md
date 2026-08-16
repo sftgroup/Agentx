@@ -70,7 +70,7 @@ const unwatch = await subscribeToEvents(publicClient, { events: ['Transfer'], on
 ```typescript
 import { McpClient } from '@agentxv2/mcp'
 
-const mcp = new McpClient({ gatewayUrl: 'http://43.159.60.46:3090', defaultChain: 'oxachain' })
+const mcp = new McpClient({ gatewayUrl: 'https://agentx.0xainet.top', defaultChain: 'oxachain' })
 
 const tools = await mcp.listTools()              // → 38
 const { agents } = await mcp.listAgents({ activeOnly: true })

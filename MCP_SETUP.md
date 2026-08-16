@@ -44,7 +44,7 @@ npm install @agentxv2/mcp
 import { McpClient } from '@agentxv2/mcp'
 
 const mcp = new McpClient({
-  gatewayUrl: 'http://43.159.60.46:3090',  // AgentX Gateway
+  gatewayUrl: 'https://agentx.0xainet.top',  // AgentX Gateway
   defaultChain: 'oxachain',                 // 'sepolia' (默认) | 'oxachain'
 })
 
@@ -67,7 +67,7 @@ Add to `claude_desktop_config.json`:
 {
   "mcpServers": {
     "agentx": {
-      "url": "http://43.159.60.46:3090/mcp"
+      "url": "https://agentx.0xainet.top/mcp"
     }
   }
 }
@@ -82,39 +82,39 @@ In Cursor Settings → MCP → Add new MCP Server:
 ```
 Name: agentx
 Type: HTTP
-URL:  http://43.159.60.46:3090/mcp
+URL:  https://agentx.0xainet.top/mcp
 ```
 
 ### curl (Manual Test)
 
 ```bash
 # List all tools
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 # Call a tool (read-only)
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"agentx_reputation_get","arguments":{"agentId":1}}}'
 
 # List all agents on OxaChain with structured metadata + filters (SDK getAllAgents)
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"agentx_identity_list_all","arguments":{"chain":"oxachain","activeOnly":true,"capabilities":"trading"}}}'
 
 # Create a subscription plan (WRITE — returns tx payload)
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"agentx_subscription_create_plan","arguments":{"agentId":1,"price":"10000000000000000","period":"month","chain":"oxachain"}}}'
 
 # Health check
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"agentx_gateway_health","arguments":{}}}'
 
 # Single-turn conversation (auth via api_key in arguments)
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"agentx_gateway_chat","arguments":{"api_key":"agentx_...","message":"hi","agent_id":1}}}'
 ```
@@ -262,7 +262,7 @@ This allows any AgentX agent to serve as a drop-in MCP server for Claude Desktop
 {
   "mcpServers": {
     "agentx-agent-42": {
-      "url": "http://43.159.60.46:3090/mcp/agent/42"
+      "url": "https://agentx.0xainet.top/mcp/agent/42"
     }
   }
 }
@@ -292,7 +292,7 @@ Claude: [calls agentx_subscription_check]
 
 ```typescript
 // Any MCP client can use the standard JSON-RPC 2.0 protocol
-const res = await fetch('http://43.159.60.46:3090/mcp', {
+const res = await fetch('https://agentx.0xainet.top/mcp', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -319,7 +319,7 @@ import { MCPConnector } from '@agentxv2/sdk'
 
 const mcp = new MCPConnector({
   transport: 'http',
-  url: 'http://43.159.60.46:3090/mcp',
+  url: 'https://agentx.0xainet.top/mcp',
 })
 
 // List all 38 platform tools
@@ -441,16 +441,16 @@ The AgentX MCP server does not require authentication for read-only tools. For w
 
 ```bash
 # 1. Get challenge
-curl http://43.159.60.46:3090/api/v1/auth/challenge?address=0x...
+curl https://agentx.0xainet.top/api/v1/auth/challenge?address=0x...
 
 # 2. Sign the challenge with your wallet
 # 3. Verify and get JWT
-curl -X POST http://43.159.60.46:3090/api/v1/auth/verify \
+curl -X POST https://agentx.0xainet.top/api/v1/auth/verify \
   -H "Content-Type: application/json" \
   -d '{"wallet_address":"0x...","signature":"0x...","timestamp":...,"nonce":"..."}'
 
 # 4. Use JWT in MCP requests
-curl -X POST http://43.159.60.46:3090/mcp \
+curl -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <jwt>" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",...}'

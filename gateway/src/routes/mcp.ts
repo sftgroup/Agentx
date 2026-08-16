@@ -9,7 +9,7 @@
 //     initialize  → handshake
 //
 // Claude Desktop config:
-//   { "mcpServers": { "agentx": { "url": "http://43.159.60.46:3090/mcp" } } }
+//   { "mcpServers": { "agentx": { "url": "https://agentx.0xainet.top/mcp" } } }
 // ---------------------------------------------------------------------------
 
 import { Router, Request, Response } from 'express'

@@ -23,7 +23,7 @@ import { McpClient } from '@agentxv2/mcp'
 
 // ── 0. 配置（生产值；生产环境应从 env 注入，勿硬编码在源码）────────────
 const RPC_URL = 'https://rpc-oxa.0xainet.top'          // OxaChain L1 RPC
-const GATEWAY_URL = 'http://43.159.60.46:3090'         // AgentX Gateway（MCP 入口）
+const GATEWAY_URL = 'https://agentx.0xainet.top'         // AgentX Gateway（MCP 入口）
 const IDENTITY_REGISTRY = '0xbf5F9db266c8c97E3334466C88597Eb758AfE212'
 const SUBSCRIPTION_MANAGER = '0x019AC9d945467478Dd371CDbD70cb2f325800E6B'
 

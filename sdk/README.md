@@ -46,7 +46,7 @@ const provider = new OpenAIProvider({ apiKey: 'sk-...', model: 'gpt-4o' })
 
 // Mode B: SaaS multi-tenant — via AgentX Gateway (API key never in browser)
 const provider = new GatewayProvider({
-  gatewayUrl: 'http://localhost:3090',
+  gatewayUrl: 'https://agentx.0xainet.top',   // 生产域名；本地开发可填 http://localhost:3090
   accessToken: 'jwt...',
   keySource: 'platform',
 })
@@ -479,7 +479,7 @@ const a2a = new A2AProtocol({
 const daemon = new A2ADaemon({
   agentId: 53,
   a2a,
-  gatewayUrl: 'http://localhost:3090',
+  gatewayUrl: 'https://agentx.0xainet.top',   // 生产域名；本地开发可填 http://localhost:3090
   pollIntervalMs: 15000,
   autoComplete: true,
 })

@@ -202,7 +202,7 @@ const result = await publishAgent({ agent, publicKey, uploader })
 
 **SDK 连接机制**：
 - SDK 连接点由构造参数决定：`new ConversationClient({ gatewayUrl, apiKey, llmApiKey })` —— `gatewayUrl` 由调用方配置。
-- B 端调用方（交付包 `agentx-callers.env`）配置的是**我们的生产网关** `http://43.159.60.46:3090`。
+- B 端调用方（交付包 `agentx-callers.env`）配置的是**我们的生产网关** `https://agentx.0xainet.top`。
 - 关键约束：`agentx_` Key 是**平台签发的**，只有我们的 Gateway 能校验——调用方用我们的 Key 就必须连我们的网关。所以 **「我们的 SDK + 我们的 Key」= 连接我们的 AgentX 市场**。SDK 本身开源，若配置自建 Gateway 则需自签 Key（另一种独立部署形态，不在此文档范围）。
 
 **订阅付费分账逻辑**（钱先进平台托管，平台抽成后结算给发布者）：

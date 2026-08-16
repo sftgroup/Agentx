@@ -76,9 +76,9 @@ pm2 restart agentx-frontend
 ### `.env.production` (key values)
 
 ```
-NEXT_PUBLIC_APP_URL=http://43.159.60.46:3100
-NEXT_PUBLIC_SITE_URL=http://43.159.60.46:3100
-NEXT_PUBLIC_AGENTX_GATEWAY_URL=http://43.159.60.46:3090
+NEXT_PUBLIC_APP_URL=https://agentx.0xainet.top
+NEXT_PUBLIC_SITE_URL=https://agentx.0xainet.top
+NEXT_PUBLIC_AGENTX_GATEWAY_URL=https://agentx.0xainet.top
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=19505
 NEXT_PUBLIC_OXACHAIN_RPC_URL=https://rpc-oxa.0xainet.top
 NEXT_PUBLIC_OXACHAIN_EXPLORER=https://explorer-oxa.0xainet.top
@@ -128,7 +128,7 @@ MASTER_ENCRYPTION_KEY=agentx-master-encryption-key-32b
 ADMIN_KEY=agentx-admin-key-2026
 SESSION_TTL_SEC=86400
 FREE_PLAN_ID=
-CORS_ORIGIN=http://43.159.60.46:3100
+CORS_ORIGIN=https://agentx.0xainet.top
 RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
 RPC_URL_OXACHAIN=http://localhost:18545
 CHAIN_ID=11155111
@@ -283,7 +283,7 @@ psql -h 127.0.0.1 -p 5433 -U agentx -d agentx_conversation -f db/migrations/003_
 ### Health Check
 
 ```bash
-curl -s http://43.159.60.46:3090/api/v1/a2a/worker-status
+curl -s https://agentx.0xainet.top/api/v1/a2a/worker-status
 # → {"running":true,"totalOrchestrated":0,"taskCounts":{"completed":1,...}}
 ```
 
@@ -412,24 +412,24 @@ forge script script/DeployOxaChainFull.s.sol \
 
 ```bash
 # Frontend
-curl -sI http://43.159.60.46:3100/ | head -1
+curl -sI https://agentx.0xainet.top/ | head -1
 
 # Gateway
-curl -s http://43.159.60.46:3090/api/v1/health
+curl -s https://agentx.0xainet.top/api/v1/health
 
 # Agents API
-curl -s http://43.159.60.46:3090/api/v1/agents | jq '.total'
+curl -s https://agentx.0xainet.top/api/v1/agents | jq '.total'
 
 # MCP
-curl -s -X POST http://43.159.60.46:3090/mcp \
+curl -s -X POST https://agentx.0xainet.top/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
 # A2A Worker
-curl -s http://43.159.60.46:3090/api/v1/a2a/worker-status
+curl -s https://agentx.0xainet.top/api/v1/a2a/worker-status
 
 # Conversation Service
-curl -s http://43.159.60.46:8100/health
+curl -s http://127.0.0.1:8100/health
 
 # OxaChain RPC
 curl -s -X POST https://rpc-oxa.0xainet.top \
@@ -582,7 +582,7 @@ IPFS_GATEWAY_URL=https://ipfs.io
 ## 8. Admin Dashboard
 
 ### Access
-`http://43.159.60.46:3100/admin`
+`https://agentx.0xainet.top/admin`
 
 ### Admin Key
 Set `ADMIN_KEY` in Gateway `.env`:
@@ -619,7 +619,7 @@ Auth: `Authorization: Bearer <ADMIN_KEY>` or `X-Admin-Key: <ADMIN_KEY>`
 ### Platform LLM Key Setup (DeepSeek example)
 
 ```bash
-curl -X POST http://43.159.60.46:3090/api/v1/admin/platform-keys \
+curl -X POST https://agentx.0xainet.top/api/v1/admin/platform-keys \
   -H 'X-Admin-Key: agentx-admin-key-2026' \
   -H 'Content-Type: application/json' \
   -d '{

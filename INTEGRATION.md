@@ -604,7 +604,7 @@ npm install @agentxv2/sdk@0.8.6
 import { ConversationClient } from '@agentxv2/sdk/conversation'
 
 const client = new ConversationClient({
-  gatewayUrl: 'http://43.159.60.46:3090',
+  gatewayUrl: 'https://agentx.0xainet.top',
   apiKey: 'agentx_xxx',      // Tenant API Key (GET /api/v1/auth/api-key after login)
   endUserId: 'user_123',     // Optional: per end-user memory isolation
   llmApiKey: 'sk-...',       // Optional: stateless BYOK — your own LLM key (highest priority)
@@ -672,8 +672,8 @@ const ragResult = await client.chat({
 - **SDK**: `agentx/sdk/` — npm: [`@agentxv2/sdk@0.8.6`](https://www.npmjs.com/package/@agentxv2/sdk)
 - **Contracts**: `agentx/contracts/` — Foundry + Solidity 0.8.20-0.8.24
 - **Frontend**: `agentx/frontend/` — Next.js 14 + wagmi 2.x
-- **Production**: `http://43.159.60.46:3100`
-- **Conversation Service**: `agentx/conversation-service/` — hosted on `http://43.159.60.46:8100` (docs: [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md))
+- **Production**: `https://agentx.0xainet.top`
+- **Conversation Service**: `agentx/conversation-service/` — hosted on `http://127.0.0.1:8100` (docs: [`CONVERSATION_SERVICE.md`](./CONVERSATION_SERVICE.md))
 
 ---
 
