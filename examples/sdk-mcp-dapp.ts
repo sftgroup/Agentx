@@ -13,7 +13,7 @@
  *  - SDK：链上读写 / 真实交易 / 事件监听 / 加密 / IPFS / 对话 SSE → 深度集成
  *  - MCP：AI Agent 工具化调用 / 快速接入 / 只读为主 / 零依赖、免链配置
  *
- * 依赖：@agentxv2/sdk@^0.11.5 · @agentxv2/mcp@^0.1.0 · viem@^2
+ * 依赖：@agentxv2/sdk@^0.11.6 · @agentxv2/mcp@^0.1.0 · viem@^2
  * 运行：浏览器 DApp（window.ethereum 钱包）或任何带 fetch 的 Node 18+
  */
 

@@ -34,4 +34,9 @@ export { A2AClient } from './a2a-client'
 export { PeriodClient } from './period-client'
 export type { ClientOptions } from '@0xinfrax/payments'
 
+// R19.7 companion (2026-08-16): B-end balance pre-check before pay-per-call
+// delegation — GET /api/v1/billing/balance (tenant / end-user wallet).
+export { BillingClient } from './billing'
+export type { BillingClientConfig, BalanceResult } from './billing'
+
 export const PAYMENT_VERSION = '0.1.3'

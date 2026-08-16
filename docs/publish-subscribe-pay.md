@@ -1,6 +1,6 @@
 # AgentX 发布 / 订阅 / 付费 集成指南
 
-> 适用版本：`@agentxv2/sdk >= 0.11.5`（含 `AgentCategory` / `AGENT_CATEGORIES` / 三轨订阅支付 / 平台套餐购买 `TenantPlanPayments` / 服务端 A2A 按次付费 / 用户钱包签名上链编排）
+> 适用版本：`@agentxv2/sdk >= 0.11.6`（含 `AgentCategory` / `AGENT_CATEGORIES` / 三轨订阅支付 / 平台套餐购买 `TenantPlanPayments` / 服务端 A2A 按次付费 + `BillingClient` 余额预检 / 用户钱包签名上链编排）
 > 面向对象：集成方（想把自己的 Agent 发布到 AgentX 市场、并对用户订阅/付费进行管理的团队）
 
 AgentX 有三角色：

@@ -2,7 +2,7 @@
 
 > 面向任何想要接入 AgentX 平台的第三方服务（AI 助手平台、交易工具、SaaS 产品等）。
 > 本文提供三种接入通道（SDK / MCP / REST）的完整可运行样例，以及必须注意的关键约定。
-> 版本：SDK v0.11.5 · 2026-08-12
+> 版本：SDK v0.11.6 · 2026-08-16
 >
 > 更完整的业务指南（发布 / 订阅 / 付费三轨 + 多 Agent 编排分层）见 [publish-subscribe-pay.md](./publish-subscribe-pay.md)。
 
@@ -199,6 +199,34 @@ const { sessionUrl } = await plans.buy({
 ### 2.8 A2A 按次付费（v0.11.5，多 Agent 编排服务端自动）
 
 多 Agent 编排委派（a2a-worker 将子任务委派给未订阅的 Agent）时，服务端**自动按次扣费**——从调用者 x402 余额扣 `X402_PRICE_WEI`（`a2a_pay_log` 审计幂等），SDK 调用方**零改动**。缺余额时委派返回 `403 AGENT_ACCESS_DENIED`（充值后自动恢复）；对话/会话直达路径不触发按次扣费（仍按订阅判定）。
+
+### 2.9 余额预检（v0.11.6，BillingClient，委派前查询 x402 余额）
+
+按次付费前程序化预检余额，避免「先撞 403 再引导充值」：
+
+```ts
+import { BillingClient } from '@agentxv2/sdk'
+
+const billing = new BillingClient({
+  gatewayUrl: 'https://gw.example.com',
+  apiKey: 'agentx_xxx', // 或 accessToken
+})
+
+// 租户余额（默认）
+const { balance, balanceWei, currency, updatedAt, payTo, priceWei } = await billing.getBalance()
+
+// 端用户余额（partner 透传端用户 0x 钱包，与 R19.7 口径一致）
+const user = await billing.getBalance({ endUserId: '0xabc…' })
+
+// 委派前预检：余额不足时展示充值引导
+if (priceWei && BigInt(balanceWei) < BigInt(priceWei)) {
+  // 引导端用户向 payTo 转原生代币（OXA），充值后自动恢复
+}
+```
+
+- 余额为 0 / 未充值：返回 `balance: "0"`（正常响应，不抛错）；`balance` 为 OXA 高精度 decimal，`balanceWei` 为原始 wei（与 `priceWei` 精确比较）
+- `payTo` / `priceWei` 仅当 x402 开启时返回
+- 等价 REST：`GET /api/v1/billing/balance`（`X-Api-Key: agentx_xxx`；`X-End-User-Id: 0x…` 透传查端用户）
 
 ---
 

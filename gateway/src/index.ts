@@ -33,6 +33,7 @@ import tracesRouter from './routes/traces'
 import skillsRouter from './routes/skills'
 import agentMcpRouter from './routes/agent-mcp'
 import schedulesRouter from './routes/schedules'
+import billingRouter from './routes/billing'
 
 const app = express()
 
@@ -168,7 +169,7 @@ app.post('/api/v1/agents-sync', async (_req, res, next) => {
 // ── Protected routes (auth + rate-limit only on known paths) ─────────────
 
 // Known protected API path prefixes (anything else under /api/v1 returns 404)
-const PROTECTED_PREFIXES = ['/chat/completions', '/tenant/', '/agent/', '/traces/', '/auth/api-key', '/sessions', '/tasks', '/schedules']
+const PROTECTED_PREFIXES = ['/chat/completions', '/tenant/', '/agent/', '/traces/', '/auth/api-key', '/sessions', '/tasks', '/schedules', '/billing/']
 
 app.use('/api/v1', (req, _res, next) => {
   if (PROTECTED_PREFIXES.some(p => req.path.startsWith(p))) {
@@ -196,6 +197,8 @@ api.use('/traces', tracesRouter)
 api.use('/', chatTasksRouter)
 // User scheduled tasks (R10) — triggers chat tasks automatically.
 api.use('/schedules', schedulesRouter)
+// B-end billing (R19.7 companion): balance query for tenant / end-user wallets.
+api.use('/billing', billingRouter)
 
 app.use('/api/v1', api)
 

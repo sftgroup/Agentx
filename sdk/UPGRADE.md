@@ -1,5 +1,26 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.11.5 → v0.11.6（2026-08-16，建议升级）
+
+> B 端余额预检（R19.7 companion）：新增 `BillingClient` + `GET /api/v1/billing/balance`。**无 API 破坏**，纯附加。
+
+### 变更点
+
+- **新增 `BillingClient`**：委派未订阅 agent（A2A 按次付费）前程序化预检 x402 余额，不再「先撞 403 再引导充值」。
+  - 构造 `{ gatewayUrl, apiKey? | accessToken?, endUserId? }`（鉴权与 `ConversationClient` 一致：`X-Api-Key` 或 Bearer JWT）
+  - `getBalance({ endUserId? } = {})` → `{ balance, balanceWei, currency: 'OXA', updatedAt, subject, payTo?, priceWei? }`
+    - 默认查租户余额；传 `endUserId`（0x 钱包）返回该端用户余额（与 R19.7 端用户透传口径一致）
+    - `balance` = OXA 高精度 decimal 字符串；`balanceWei` = 原始 wei（与 `priceWei` 精确比较）
+    - **余额为 0 / 未充值：返回 `"0"`，不抛错**
+    - `payTo` / `priceWei` 仅当 x402 开启时返回（充值引导用）
+
+### 迁移动作
+
+- `npm install @agentxv2/sdk@0.11.6`（或 `^0.11.x` 范围者 `npm install` 自动吸收）。
+- 无代码改动要求；需要余额预检的调用方使用新增 `BillingClient`（用法见 README「BillingClient」节）。
+
+---
+
 ## v0.11.4 → v0.11.5（2026-08-12，建议升级）
 
 > R19.3/R19.7 商业化闭环的 SDK 对齐版：新增 `TenantPlanPayments`（平台套餐购买）+ 服务端 A2A 按次付费。**无 API 破坏**，纯附加。

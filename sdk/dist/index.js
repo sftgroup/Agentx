@@ -2489,6 +2489,7 @@ __export(index_exports, {
   AgentX402: () => AgentX402,
   AgentXError: () => AgentXError,
   AgentXErrorCode: () => AgentXErrorCode,
+  BillingClient: () => BillingClient,
   CONFIG_VERSION: () => CONFIG_VERSION,
   ConfigurationClient: () => ConfigurationClient,
   ConfigurationRegistry: () => ConfigurationRegistry,
@@ -5952,6 +5953,51 @@ var PeriodClient = class {
   }
 };
 
+// src/payment/billing.ts
+var BillingClient = class {
+  constructor(config) {
+    this.config = config;
+    this.baseUrl = config.gatewayUrl.replace(/\/$/, "");
+  }
+  config;
+  baseUrl;
+  _headers(endUserId) {
+    const headers = {
+      "Content-Type": "application/json"
+    };
+    if (this.config.apiKey) headers["X-Api-Key"] = this.config.apiKey;
+    if (this.config.accessToken) headers["Authorization"] = `Bearer ${this.config.accessToken}`;
+    if (!this.config.apiKey && !this.config.accessToken) {
+      throw new Error("BillingClient requires either apiKey or accessToken");
+    }
+    const uid = endUserId ?? this.config.endUserId;
+    if (uid) headers["X-End-User-Id"] = uid;
+    return headers;
+  }
+  /**
+   * Query the x402 ledger balance for the tenant (default) or a proxied
+   * end-user wallet. Never throws on a zero balance — balance "0" is a normal
+   * response. Throws only on auth/transport errors.
+   * @param opts.endUserId 0x wallet to query instead of the tenant's own balance
+   */
+  async getBalance(opts = {}) {
+    const res = await fetch(`${this.baseUrl}/api/v1/billing/balance`, {
+      method: "GET",
+      headers: this._headers(opts.endUserId)
+    });
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const body = await res.json();
+        detail = body?.error ?? "";
+      } catch {
+      }
+      throw new Error(`Balance query failed (HTTP ${res.status}) ${detail}`.trim());
+    }
+    return res.json();
+  }
+};
+
 // src/payment/index.ts
 var PAYMENT_VERSION = "0.1.3";
 
@@ -7425,6 +7471,7 @@ var ConversationClient = class {
   AgentX402,
   AgentXError,
   AgentXErrorCode,
+  BillingClient,
   CONFIG_VERSION,
   ConfigurationClient,
   ConfigurationRegistry,

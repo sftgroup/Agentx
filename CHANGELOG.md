@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-08-16 — 发布 sdk@0.11.6（B 端余额预检：BillingClient + GET /api/v1/billing/balance）
+
+- **背景**：aihunter-saas 提出 R19.7 A2A 按次付费下，委派前无法程序化预检 x402 余额——只能先撞 403 再引导充值，体验差。
+- **@agentxv2/sdk@0.11.6 已发布 npm**（minor）：
+  - 新增 `BillingClient`：`getBalance({ endUserId? })` → `{ balance, balanceWei, currency: 'OXA', updatedAt, subject, payTo?, priceWei? }`
+  - 余额 0 / 未充值返回 `"0"` 不抛错；鉴权沿用 `X-Api-Key` / Bearer JWT；支持端用户 0x 钱包透传
+- **gateway 新增 `GET /api/v1/billing/balance`**（只读幂等，挂载于鉴权 api router）：租户维度默认，`X-End-User-Id` 透传返回端用户余额；x402 开启时附带 `payTo` / `priceWei` 充值引导
+- **验证**：gateway tsc 0 + 82/82（新增 5 例）、sdk tsc 0 + 38/38（新增 6 例）
+- **升级提示**：应用方 `npm install @agentxv2/sdk@0.11.6`（或 `^0.11.x` 自动吸收）**无需改代码**；需要余额预检的调用方使用新增 `BillingClient`
+
+---
+
 ## 2026-08-12 — 发布 sdk@0.11.5（R19.3/R19.7：TenantPlanPayments 套餐购买 + A2A 按次付费）
 
 - **@agentxv2/sdk@0.11.5 已发布 npm**（minor）：

@@ -253,6 +253,56 @@ declare class PeriodClient {
     }>;
 }
 
+interface BillingClientConfig {
+    /** Gateway base URL, e.g. http://43.159.60.46:3090 */
+    gatewayUrl: string;
+    /** Tenant API Key (agentx_...) issued after registration (alternative to accessToken) */
+    apiKey?: string;
+    /** Gateway JWT access token from wallet-signed login (alternative to apiKey) */
+    accessToken?: string;
+    /** End-user wallet for balance queries within the tenant (optional) */
+    endUserId?: string;
+}
+interface BalanceResult {
+    /** Balance in OXA as a high-precision decimal string, e.g. "1.500000000000000000". "0" when never funded. */
+    balance: string;
+    /** Raw balance in wei (string) — use for exact programmatic comparison against priceWei. */
+    balanceWei: string;
+    currency: 'OXA';
+    /** ISO timestamp of the last ledger update, or null when never funded. */
+    updatedAt: string | null;
+    /** The wallet the balance was queried for (tenant or proxied end user). */
+    subject: string;
+    /** Platform pay-to wallet for top-ups (present when x402 is enabled). */
+    payTo?: string;
+    /** Per-request pay-per-call price in wei (present when x402 is enabled). */
+    priceWei?: string;
+}
+/**
+ * Balance query client for B-end integrations.
+ * @example
+ * const billing = new BillingClient({ gatewayUrl, apiKey: 'agentx_xxx' })
+ * const { balanceWei, priceWei } = await billing.getBalance()
+ * if (balanceWei && priceWei && BigInt(balanceWei) < BigInt(priceWei)) {
+ *   // show top-up prompt: send native token to billing.payTo
+ * }
+ */
+declare class BillingClient {
+    private readonly config;
+    private readonly baseUrl;
+    constructor(config: BillingClientConfig);
+    private _headers;
+    /**
+     * Query the x402 ledger balance for the tenant (default) or a proxied
+     * end-user wallet. Never throws on a zero balance — balance "0" is a normal
+     * response. Throws only on auth/transport errors.
+     * @param opts.endUserId 0x wallet to query instead of the tenant's own balance
+     */
+    getBalance(opts?: {
+        endUserId?: string;
+    }): Promise<BalanceResult>;
+}
+
 declare const PAYMENT_VERSION = "0.1.3";
 
 declare const A2A_VERSION = "0.1.0";
@@ -329,4 +379,4 @@ declare const REPUTATION_VERSION = "0.1.0";
 
 declare const CONFIG_VERSION = "0.1.0";
 
-export { A2AClient, A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, type BuyTenantPlanInput, type BuyTenantPlanResult, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, PAYMENT_VERSION, type PaySubscriptionInput, type PaySubscriptionResult, PeriodClient, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, SubscriptionManager, type SubscriptionPaymentMethod, SubscriptionPayments, type SubscriptionPaymentsConfig, type TenantPlanPaymentMethod, TenantPlanPayments, type TenantPlanPaymentsConfig, type X402Info, subscribeToEvents };
+export { A2AClient, A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, type BalanceResult, BillingClient, type BillingClientConfig, type BuyTenantPlanInput, type BuyTenantPlanResult, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, PAYMENT_VERSION, type PaySubscriptionInput, type PaySubscriptionResult, PeriodClient, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, SubscriptionManager, type SubscriptionPaymentMethod, SubscriptionPayments, type SubscriptionPaymentsConfig, type TenantPlanPaymentMethod, TenantPlanPayments, type TenantPlanPaymentsConfig, type X402Info, subscribeToEvents };
