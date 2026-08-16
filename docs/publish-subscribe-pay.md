@@ -1,6 +1,6 @@
 # AgentX 发布 / 订阅 / 付费 集成指南
 
-> 适用版本：`@agentxv2/sdk >= 0.10.0`（含 `AgentCategory` / `AGENT_CATEGORIES` / 三轨订阅支付 / 用户钱包签名上链编排）
+> 适用版本：`@agentxv2/sdk >= 0.11.5`（含 `AgentCategory` / `AGENT_CATEGORIES` / 三轨订阅支付 / 平台套餐购买 `TenantPlanPayments` / 服务端 A2A 按次付费 / 用户钱包签名上链编排）
 > 面向对象：集成方（想把自己的 Agent 发布到 AgentX 市场、并对用户订阅/付费进行管理的团队）
 
 AgentX 有三角色：
@@ -264,19 +264,22 @@ if (!ok) { /* 引导订阅 */ }
 
 ## 三、付费（Pay）与访问控制
 
-### 3.1 按次付费（x402，免订阅）
+### 3.1 按次付费（x402 余额，服务端自动，R19.7）
 
-若 Agent/平台开启 x402（`X402_PRICE_WEI`），对话路径 `POST /api/v1/agent/runs` 会要求请求头携带支付凭证（`PAYMENT-SIGNATURE` / `X-PAYMENT` / 余额抵扣）。**通过 x402 付费的调用者免订阅直接对话**。
+平台开启 x402（`X402_ENABLED=true` + `X402_PRICE_WEI`）后，**多 Agent 编排委派**（a2a-worker 收到对未订阅 Agent 的子任务委派）时会**自动按次付费**：服务端从调用者的 **x402 余额**扣 `X402_PRICE_WEI`（如 0.001 OXA），写 `a2a_pay_log` 审计（幂等，同一任务重复调用不重复记账），放行本次委派。
 
-前端自动处理：对话页检测 `402 + payment-response` 头 → 弹出支付（钱包签名或余额抵扣）→ 重试。
+- **SDK / REST 调用方零改动**——无需携带任何支付凭证，缺余额时委派返回 `403 AGENT_ACCESS_DENIED`（`Insufficient x402 balance`），充值后自动恢复。
+- 对话 / 会话 / 并行任务**直达**路径（`/agent/runs`、`/sessions/:id/tasks`）仍按 `canAccessAgent` 判定（自己写的 OR 已订阅），不触发按次扣费。
+- 前端自动处理：对话页遇 `403` 余额不足 → 提示充值（B 端面板 / C 端 `/user/billing`）→ 重试。
+- 余额路径：链上转账到平台 `X402_PAY_TO` → `/api/v1/x402/verify` 记账 → 余额可用。
 
 ### 3.2 统一访问控制（服务端强制）
 
 | 路径 | 校验 |
 |---|---|
-| `POST /api/v1/agent/runs`（对话） | agentId 模式：`canAccessAgent`（自己写的 OR 已订阅 OR x402 已付费） |
-| `POST /api/v1/sessions` / `/sessions/:id/tasks` | 同上 |
-| 多 Agent 编排（a2a-worker） | `agentx_list_agents` 只列可访问 Agent；委派前校验，无权限拒绝 |
+| `POST /api/v1/agent/runs`（对话） | agentId 模式：`canAccessAgent`（自己写的 OR 已订阅；x402 按次付费不适用直达路径） |
+| `POST /api/v1/sessions` / `/sessions/:id/tasks` | 同上（任务计费走 done 事件配额扣减 R18） |
+| 多 Agent 编排（a2a-worker） | `agentx_list_agents` 只列可访问 Agent；委派前 `canAccessAgentOrPay` 校验（未订阅自动按次扣费，R19.7），无权限/缺余额拒绝 |
 | MCP / 链上 API | `hasSubscriptionAccess`（既有） |
 
 无权限响应：

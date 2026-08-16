@@ -2,7 +2,7 @@
 
 > 面向任何想要接入 AgentX 平台的第三方服务（AI 助手平台、交易工具、SaaS 产品等）。
 > 本文提供三种接入通道（SDK / MCP / REST）的完整可运行样例，以及必须注意的关键约定。
-> 版本：SDK v0.9.4 · 2026-08-07
+> 版本：SDK v0.11.5 · 2026-08-12
 >
 > 更完整的业务指南（发布 / 订阅 / 付费三轨 + 多 Agent 编排分层）见 [publish-subscribe-pay.md](./publish-subscribe-pay.md)。
 
@@ -31,7 +31,7 @@
 ### 2.1 安装
 
 ```bash
-npm install @agentxv2/sdk@0.9.4
+npm install @agentxv2/sdk@0.11.5
 ```
 
 ### 2.2 初始化（chain-agnostic，viem）
@@ -164,6 +164,41 @@ for await (const event of client.stream({ message: '你好', agentId: 1 })) {
 ```
 
 > **一个 `agentx_` Key 即可**（2026-08-08 起）：B 端集成 Key 与注册用户 JWT 在对话 / 会话 / 并行任务上能力一致（统一受套餐 / 租户能力位约束），无需第二把 Key。**建议自带 LLM Key**（上方 `llmApiKey` / `llmEndpoint` / `llmModel`）——计费落在自己账户；未传时走平台兜底 Key（受租户配额限制）。
+
+### 2.7 购买平台套餐（v0.11.5，TenantPlanPayments）
+
+平台订阅套餐（B 端面板可购买的 tier，含每日配额 / 限流）通过统一支付入口购买。chain / x402 需先发起链上支付再提交 `txHash`；fiat 直接返回 Stripe checkout 链接。
+
+```typescript
+import { TenantPlanPayments } from '@agentxv2/sdk'
+
+const plans = new TenantPlanPayments({
+  gatewayUrl: 'http://43.159.60.46:3090',
+  chain: 'oxachain',
+})
+
+// x402 轨：先转账到 PAY_TO，再提交 txHash 绑定套餐
+const bound = await plans.buy({
+  method: 'x402',
+  tenantPlanId: 'c9f4...',        // plans 表 UUID（GET /api/v1/admin/plans 或平台套餐页获取）
+  subscriber: '0x你的钱包',
+  txHash: '0x...',                // 链上支付交易
+})
+// → { method:'x402', tenantId, planId, planSlug, quotaDaily, txHash }
+
+// fiat 轨：返回 Stripe checkout，用户完成支付后 webhook 自动绑定
+const { sessionUrl } = await plans.buy({
+  method: 'fiat',
+  tenantPlanId: 'c9f4...',
+  subscriber: '0x你的钱包',
+  successUrl: 'https://app.example.com/b/success',
+  cancelUrl: 'https://app.example.com/b',
+})
+```
+
+### 2.8 A2A 按次付费（v0.11.5，多 Agent 编排服务端自动）
+
+多 Agent 编排委派（a2a-worker 将子任务委派给未订阅的 Agent）时，服务端**自动按次扣费**——从调用者 x402 余额扣 `X402_PRICE_WEI`（`a2a_pay_log` 审计幂等），SDK 调用方**零改动**。缺余额时委派返回 `403 AGENT_ACCESS_DENIED`（充值后自动恢复）；对话/会话直达路径不触发按次扣费（仍按订阅判定）。
 
 ---
 

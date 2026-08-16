@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-08-12 — 发布 sdk@0.11.5（R19.3/R19.7：TenantPlanPayments 套餐购买 + A2A 按次付费）
+
+- **@agentxv2/sdk@0.11.5 已发布 npm**（minor）：
+  - 新增 `TenantPlanPayments`（R19.3 平台套餐购买）：统一支付入口 `purpose=tenant-plan` + `tenantPlanId`；`buy({ method: 'fiat'|'chain'|'x402', ... })`——fiat 返回 Stripe checkout，chain/x402 需携带 `txHash`（先链上支付再绑定）；绑定后返回 `{ tenantId, planId, planSlug, quotaDaily, txHash }`
+  - `PaymentsClient.create({ purpose: 'tenant-plan', ... })` 支持协议级套餐购买元数据
+  - **服务端 A2A 按次付费（R19.7）**：多 Agent 编排委派到未订阅 Agent 时服务端自动扣 x402 余额（`a2a_pay_log` 审计幂等）——SDK 调用方零改动
+- **平台升级**：gateway / conversation-service / frontend 依赖 `@agentxv2/sdk` 对齐 **^0.11.5**
+- **验证**：sdk 32/32、gateway 77/77、conversation 11/11、三端 tsc 全绿；生产 R19 已上线（链上充值→购套餐→x402 记账→A2A 按次扣费闭环，见 docs/PROGRESS.md R19）
+- **配套文档**：sdk README/UPGRADE 同步 0.11.5；docs/sdk-integration-example.md（新增 2.7 套餐购买 / 2.8 按次付费样例）、docs/publish-subscribe-pay.md（3.1 按次付费对齐 R19.7 服务端模型）、docs/sdk-vs-mcp.md 版本行更新；examples/sdk-mcp-dapp.ts 依赖注释更新
+- **升级提示**：应用方 `npm install @agentxv2/sdk@0.11.5`（或 `^0.11.x` 自动吸收）**无需改代码**；需要购买平台套餐的调用方使用新增 `TenantPlanPayments`
+
+---
+
 ## 2026-08-10 — 发布 sdk@0.11.3（R17.6：a2a/period 回归模块内置 rails，引擎升级 @0xinfrax/payments@0.1.3）
 
 - **事件**：infraX 发布 @0xinfrax/payments@0.1.3，恢复 0.1.2 移除的 **a2a rail 与 period 授权 rail**（模块内置），并新增 batch / invite / transfer rails。AgentX 将 R17.5 的自托管实现**迁移回模块委托**——HTTP 契约与客户端签名保持逐字不变。

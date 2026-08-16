@@ -1,5 +1,24 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.11.4 → v0.11.5（2026-08-12，建议升级）
+
+> R19.3/R19.7 商业化闭环的 SDK 对齐版：新增 `TenantPlanPayments`（平台套餐购买）+ 服务端 A2A 按次付费。**无 API 破坏**，纯附加。
+
+### 变更点
+
+- **新增 `TenantPlanPayments`（R19.3）**：平台订阅套餐购买客户端，走统一支付入口 `purpose=tenant-plan`。构造 `{ gatewayUrl, chain?, accessToken? }`，`buy({ method, tenantPlanId, subscriber, txHash?|successUrl/cancelUrl })`：
+  - `method: 'fiat'` → 返回 Stripe checkout `sessionUrl`（webhook 完成绑定）
+  - `method: 'chain' | 'x402'` → **必须携带 `txHash`**（先发起链上支付再提交），绑定后返回 `{ tenantId, planId, planSlug, quotaDaily, txHash }`
+- **服务端 A2A 按次付费（R19.7）**：未订阅 agent 时，gateway 按次扣 x402 余额（服务端 deduct + `a2a_pay_log` 审计幂等），**SDK 调用方零改动**——对话/调用自动触发，无需新增参数。
+- **协议级套餐购买**：`PaymentsClient.create({ purpose: 'tenant-plan', tenantPlanId, ... })` 可直接传 `purpose` 元数据。
+
+### 迁移动作
+
+- `npm install @agentxv2/sdk@0.11.5`（或 `^0.11.x` 范围者 `npm install` 自动吸收）。
+- 无代码改动要求；需要购买平台套餐的调用方使用新增的 `TenantPlanPayments`（用法见 README「TenantPlanPayments」节）。
+
+---
+
 ## v0.11.1 → v0.11.3（2026-08-10，建议升级）
 
 > 跟随 `@0xinfrax/payments` `^0.1.3`（R17.6）。`SubscriptionPayments` + 协议客户端（MPP/A2A/Period/X402/Payments）**API 签名不变**，HTTP 契约不变，**无需改代码**，仅建议升级依赖。
