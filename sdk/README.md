@@ -739,6 +739,7 @@ if (priceWei && BigInt(balanceWei) < BigInt(priceWei)) {
 - `balance` is a high-precision OXA decimal string (`"1.500000000000000000"`); use `balanceWei` (raw wei string) for exact comparison against `priceWei`.
 - `payTo` / `priceWei` are present only when x402 is enabled (the optional enhancement), so callers can build a funding prompt directly.
 - Auth: same as `ConversationClient` — `X-Api-Key` (tenant key) or Bearer JWT. `401` on missing/invalid auth; `403` on a suspended account.
+- **Legacy partner tenants keyed by a logical name** (e.g. `partner-xxx`) hold no on-ledger balance — the pay-per-call ledger is keyed by the **end user's `0x` wallet** that signs the delegation. For these callers the default (tenant) query returns `"0"`; always pre-check with `getBalance({ endUserId })` (the wallet the delegation will charge).
 
 ### Protocol Clients (v0.9.3)
 
