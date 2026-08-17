@@ -57,6 +57,11 @@ export async function runX402Reconciliation(): Promise<ReconcileResult> {
 
   const pool = getPool()
   const tolerance = BigInt(process.env.X402_RECONCILE_TOLERANCE_WEI || DEFAULT_TOLERANCE_WEI)
+  // OE-5 迁移基准：escrow 启用前经 EOA（X402_PAY_TO）入账的存量 ledger 余额，
+  // 资金仍锚定在收款 EOA。对账口径 = (ledger_total - legacy) == escrow 合约余额，
+  // 即只核对 escrow 期新增入账。配置 X402_ESCROW_LEGACY_WEI（与 infraX reconcile
+  // 的 LEGACY_BASE_* 概念一致）。
+  const legacy = BigInt(process.env.X402_ESCROW_LEGACY_WEI || '0')
 
   // 1. Ledger total + holder count.
   const { rows } = await pool.query(
@@ -77,7 +82,9 @@ export async function runX402Reconciliation(): Promise<ReconcileResult> {
   try {
     const onchainTotal = await publicClient.getBalance({ address: anchorAddress })
     result.onchainTotalWei = onchainTotal.toString()
-    const diff = ledgerTotal - onchainTotal
+    // escrow 模式：仅核对 escrow 期新增入账（ledger_total - legacy）；EOA 模式总量直接对比。
+    const effectiveLedger = escrow ? (ledgerTotal - legacy < 0n ? 0n : ledgerTotal - legacy) : ledgerTotal
+    const diff = effectiveLedger - onchainTotal
     result.diffWei = (diff < 0n ? -diff : diff).toString()
     result.withinTolerance = (diff < 0n ? -diff : diff) <= tolerance
   } catch (err: any) {
@@ -86,12 +93,14 @@ export async function runX402Reconciliation(): Promise<ReconcileResult> {
   }
 
   // 3. Per-user anchor (escrow only): ledger holder ↔ escrow.balanceOf(user).
+  // 存量用户（余额 ≤ legacy 基准，escrow 前 EOA 入账）无法在 escrow 中核对，跳过。
+  // legacy=0 时等效核对全部持有者（无存量场景）。
   if (escrow && result.mode === 'escrow') {
     try {
       const { rows: holders } = await pool.query(
         `SELECT address, balance_wei FROM x402_balances
-         WHERE balance_wei::numeric > 0 ORDER BY updated_at DESC LIMIT $1`,
-        [MAX_ESCROW_USERS_PER_RUN]
+         WHERE balance_wei::numeric > $1 ORDER BY updated_at DESC LIMIT $2`,
+        [legacy.toString(), MAX_ESCROW_USERS_PER_RUN]
       )
       const mismatches: NonNullable<ReconcileResult['escrowMismatches']> = []
       for (const h of holders) {
