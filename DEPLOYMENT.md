@@ -291,7 +291,7 @@ curl -s https://agentx.0xainet.top/api/v1/a2a/worker-status
 
 ## 2.7 Conversation Service (v0.7.1 · SDK 0.8.11 · 链下编排默认)
 
-Agent dialogue microservice — multi-tenant AgentLoop execution engine (Memory + Context + Skills + inline MCP/HTTP tools). Hosted on `43.159.60.46:8100`, called by Gateway via `ConversationProxy` (`POST /api/v1/agent/runs` → SSE pipe).
+Agent dialogue microservice — multi-tenant AgentLoop execution engine (Memory + Context + Skills + inline MCP/HTTP tools). Hosted on `127.0.0.1:8100` (internal only, not exposed publicly), called by Gateway via `ConversationProxy` (`POST /api/v1/agent/runs` → SSE pipe).
 
 > **多 Agent 编排（2026-08-08，v0.10.0）**：`AgentRunnerService` 注入平台工具 `agentx_list_agents`（列出调用方可委派 Agent，含 category）与 `agentx_delegate`（`mode: offchain | onchain`，默认 `offchain`，由 `ORCHESTRATE_DEFAULT_MODE` 控制）。链下委派经 Gateway 内部端点 `/api/v1/internal/orchestrate/*`（`ORCHESTRATE_TOKEN` 守卫）校验访问后同步递归执行；嵌套深度受 `ORCHESTRATE_MAX_DEPTH`（默认 4）限制，嵌套运行跳过澄清（子 Agent 无法与用户对话）。**链上轨道（`mode: onchain`）不经过任何签名端点**：Conversation Service 校验访问后直接发 `onchain_approval_required` SSE 事件，**用户钱包**签 `createTask`（用户付 gas）；`/api/v1/internal/orchestrate/create-task` 路由已移除（2026-08-08），Gateway 不持有签名密钥。
 
