@@ -35,6 +35,8 @@ import { config } from '../config'
 import { decryptApiKey } from '../lib/crypto'
 import { canAccessAgent, filterAccessibleAgents } from './agent-access'
 import { canAccessAgentOrPay } from './agent-access-pay'
+import { tryAutoPayForDelegation } from './agent-payer'
+import { emitA2ATaskEvent } from './a2a-events'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +56,27 @@ interface AgentInfo {
   name: string
   owner: string
   description: string
+}
+
+/** 委派需要付款且余额不足：任务挂起为 awaiting_payment，等待充值后 resume。 */
+export class AwaitingPaymentError extends Error {
+  rootTaskId: number
+  payer: string
+  targetAgentId: number
+  payTo: string
+  priceWei: string
+  refId: string
+
+  constructor(opts: { rootTaskId: number; payer: string; targetAgentId: number; payTo: string; priceWei: string; refId: string }) {
+    super(`A2A delegation to Agent #${opts.targetAgentId} requires payment (${opts.priceWei} wei to ${opts.payTo})`)
+    this.name = 'AwaitingPaymentError'
+    this.rootTaskId = opts.rootTaskId
+    this.payer = opts.payer
+    this.targetAgentId = opts.targetAgentId
+    this.payTo = opts.payTo
+    this.priceWei = opts.priceWei
+    this.refId = opts.refId
+  }
 }
 
 // ── Worker State ───────────────────────────────────────────────────────────
@@ -109,9 +132,9 @@ async function pollAndProcess(): Promise<void> {
       }
 
       const { rows: existingResults } = await pool.query(
-        `SELECT task_id FROM a2a_task_results WHERE agent_id = $1 AND status = 2`, [agentId]
+        `SELECT task_id FROM a2a_task_results WHERE agent_id = $1 AND status IN (2, 4)`, [agentId]
       )
-      const completedTaskIds = new Set(existingResults.map((r: any) => r.task_id))
+      const completedOrAwaitingIds = new Set(existingResults.map((r: any) => r.task_id))
 
       try {
         const tasks = await a2a.getAgentTasks(agentId)
@@ -119,7 +142,7 @@ async function pollAndProcess(): Promise<void> {
           if (processedCount >= MAX_BATCH_SIZE) break
           const taskId = task.taskId
           if (task.status === 'in_progress' || task.status === 'completed' || task.status === 'failed'
-            || completedTaskIds.has(taskId) || processingSet.has(taskId)) continue
+            || completedOrAwaitingIds.has(taskId) || processingSet.has(taskId)) continue
 
           const onChainTask: A2ATaskOnChain = {
             taskId,
@@ -146,8 +169,37 @@ async function pollAndProcess(): Promise<void> {
       }
     }
     if (processedCount > 0) console.log(`[A2A Worker] Queued ${processedCount} task(s)`)
+
+    await expireAwaitingPaymentTasks(pool)
   } catch (err: any) { console.error('[A2A Worker] Poll error:', err.message) }
   finally { isRunning = false }
+}
+
+// ── Expire awaiting_payment tasks after 24h ────────────────────────────────
+// 用户 24 小时内未充值 resume，任务过期失败（status=3）。resume 时 payment_pending_since
+// 会被清空，因此仅挂起超时的任务会被命中，不会误伤已恢复的任务。
+const PAYMENT_EXPIRY_HOURS = 24
+
+async function expireAwaitingPaymentTasks(pool: ReturnType<typeof getPool>): Promise<void> {
+  try {
+    const { rows } = await pool.query(
+      `SELECT task_id FROM a2a_task_results
+       WHERE status = 4 AND payment_pending_since < NOW() - ($1 || ' hours')::interval`,
+      [String(PAYMENT_EXPIRY_HOURS)]
+    )
+    if (rows.length === 0) return
+    for (const row of rows) {
+      await pool.query(
+        `UPDATE a2a_task_results SET status = 3,
+           error_message = 'expired: awaiting payment for more than ' || $2 || 'h'
+         WHERE task_id = $1`,
+        [row.task_id, String(PAYMENT_EXPIRY_HOURS)]
+      )
+    }
+    console.log(`[A2A Worker] Expired ${rows.length} awaiting_payment task(s) (${PAYMENT_EXPIRY_HOURS}h timeout)`)
+  } catch (err: any) {
+    console.error('[A2A Worker] Expire scan error:', err.message)
+  }
 }
 
 // ── ReAct AgentLoop Task Processing ────────────────────────────────────────
@@ -198,6 +250,7 @@ async function processTask(
   tenantId: string | null,
   allAgents: AgentInfo[],
   depth: number,
+  rootTaskId?: number,
 ): Promise<string> {
   const indent = '  '.repeat(depth)
   const taskId = task.taskId
@@ -286,14 +339,44 @@ async function processTask(
 
             const targetAgent = allAgents.find(a => a.id === targetId)
             const targetName = targetAgent?.name || `Agent #${targetId}`
+            const refId = `task:${rootTaskId ?? task.taskId}`
 
             // Access boundary (R19.7): the task client may delegate to agents
             // they own or have an active subscription to; otherwise a
             // pay-per-call via the x402 ledger balance (service-side deduct)
             // grants access for this single delegation. No subscription AND no
-            // balance → refuse with a top-up hint.
-            const access = await canAccessAgentOrPay(task.clientAddress, targetId, { refId: `task:${task.taskId}` })
+            // balance → agent self-pay (t8, MPC wallet) is attempted first, then
+            // the delegation is suspended as awaiting_payment for manual top-up.
+            let payer = task.clientAddress
+            let access = await canAccessAgentOrPay(payer, targetId, { refId })
             if (!access.allowed) {
+              // 余额不足 → 若当前处理任务的 agent 配置了自主钱包（MPC），
+              // 自动代付入账其钱包 ledger 后，用钱包地址重试扣费放行。
+              if (access.insufficient && access.payment) {
+                const agentWallet = await tryAutoPayForDelegation({
+                  agentId: agent.id,
+                  payTo: access.payment.payTo,
+                  priceWei: access.payment.priceWei,
+                })
+                if (agentWallet) {
+                  payer = agentWallet
+                  console.log(`${indent}[A2A] Agent #${agent.id} wallet auto-paid ${access.payment.priceWei} wei → retry access (${refId})`)
+                  access = await canAccessAgentOrPay(payer, targetId, { refId })
+                }
+              }
+            }
+            if (!access.allowed) {
+              // 自动代付未生效/不足 → 任务挂起为 awaiting_payment（不失败），等待充值后 resume。
+              if (access.insufficient && access.payment) {
+                throw new AwaitingPaymentError({
+                  rootTaskId: rootTaskId ?? task.taskId,
+                  payer: task.clientAddress,
+                  targetAgentId: targetId,
+                  payTo: access.payment.payTo,
+                  priceWei: access.payment.priceWei,
+                  refId,
+                })
+              }
               toolResult = `Error: no access to Agent #${targetId} "${targetName}". ${access.reason ?? 'Only agents you own or have an active subscription to can be delegated to.'}`
               break
             }
@@ -321,6 +404,7 @@ async function processTask(
               tenantId,
               allAgents,
               depth + 1,
+              rootTaskId ?? task.taskId,
             )
 
             subTaskResults.push({ taskId: subTaskId, agentName: targetName, output: subOutput })
@@ -372,6 +456,8 @@ async function processTask(
       [taskId, finalContent, llmConfig.model, totalTokens]
     )
 
+    emitA2ATaskEvent({ type: 'status', taskId, status: 2, outputData: finalContent, ts: Date.now() })
+
     const orchestrationNote = subTaskResults.length > 0
       ? ` (orchestrated ${subTaskResults.length} sub-task(s): ${subTaskResults.map(s => `#${s.taskId}→${s.agentName}`).join(', ')})`
       : ''
@@ -379,10 +465,37 @@ async function processTask(
 
     return finalContent
   } catch (err: any) {
+    // 委派需付款且余额不足 → 顶层任务挂起 awaiting_payment（不失败）。
+    // 每层递归都会命中（幂等 UPDATE 顶层记录），子任务负记录标记失败清理。
+    if (err instanceof AwaitingPaymentError) {
+      await pool.query(
+        `UPDATE a2a_task_results SET status = 4, error_message = $2,
+           payment_payer = $3, payment_amount_wei = $4, payment_pay_to = $5,
+           payment_target_agent_id = $6, payment_ref = $7, payment_pending_since = NOW(),
+           processed_at = NULL
+         WHERE task_id = $1`,
+        [err.rootTaskId, `Awaiting payment: ${err.priceWei} wei to ${err.payTo} for Agent #${err.targetAgentId}`, err.payer, err.priceWei, err.payTo, err.targetAgentId, err.refId]
+      )
+      if (taskId < 0) {
+        await pool.query(
+          `UPDATE a2a_task_results SET status = 3, error_message = $2 WHERE task_id = $1`,
+          [taskId, 'Interrupted: awaiting payment on root task']
+        )
+      }
+      emitA2ATaskEvent({
+        type: 'status', taskId: err.rootTaskId, status: 4,
+        errorMessage: `Awaiting payment: ${err.priceWei} wei to ${err.payTo} for Agent #${err.targetAgentId}`,
+        payment: { payer: err.payer, payTo: err.payTo, priceWei: err.priceWei, targetAgentId: err.targetAgentId, ref: err.refId },
+        ts: Date.now(),
+      })
+      console.log(`${'  '.repeat(depth)}[A2A] Task #${err.rootTaskId} awaiting payment (${err.priceWei} wei to ${err.payTo})`)
+      throw err
+    }
     await pool.query(
       `UPDATE a2a_task_results SET status = 3, error_message = $2, processed_at = NOW() WHERE task_id = $1`,
       [taskId, err.message.slice(0, 500)]
     )
+    emitA2ATaskEvent({ type: 'status', taskId, status: 3, errorMessage: err.message.slice(0, 500), ts: Date.now() })
     console.error(`${'  '.repeat(depth)}[A2A] Task #${taskId} failed:`, err.message.slice(0, 100))
     throw err
   }

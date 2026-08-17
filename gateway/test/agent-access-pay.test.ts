@@ -23,6 +23,7 @@ vi.mock('../src/services/payments', () => ({
     x402: {
       priceWei: () => PRICE,
       available: () => true,
+      escrowAddress: () => null,
     },
     balanceOf: vi.fn(),
     deduct: vi.fn(),

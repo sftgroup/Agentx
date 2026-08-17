@@ -26,6 +26,7 @@ import { config } from '../config'
 import { chainDataReader, log } from '../services/chain-data-reader'
 import financeRouter from './admin-finance'
 import partnersRouter from './admin-partners'
+import { bindAgentPayerWallet, resolveAgentPayer, unlockAgentPayerSession, agentPayerChainBalance } from '../services/agent-payer'
 
 const router = Router()
 
@@ -369,6 +370,78 @@ router.get('/system', async (_req: Request, res: Response) => {
     })
   } catch (err: any) {
     log.error(`admin/system failed: ${err.message}`)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Agent Payer (t8): agent MPC wallet auto-pay management ────────────────
+// GET    /admin/agent-payers                — list bound agent payer wallets
+// GET    /admin/agent-payers/:agentId       — detail incl. on-chain balance
+// POST   /admin/agent-payers                — bind { agentId, email, walletAddress, chain? }
+// POST   /admin/agent-payers/:agentId/unlock— unlock MPC session { code }
+// DELETE /admin/agent-payers/:agentId       — unbind (clear wallet + session)
+
+router.get('/agent-payers', async (_req: Request, res: Response) => {
+  try {
+    const { rows } = await getPool().query(
+      `SELECT agent_id, email, wallet_address, chain,
+              (session_token_enc IS NOT NULL AND session_expires_at > NOW()) AS session_unlocked,
+              session_expires_at, created_at, updated_at
+       FROM agent_payer_wallets ORDER BY agent_id`
+    )
+    res.json({ wallets: rows })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.get('/agent-payers/:agentId', async (req: Request, res: Response) => {
+  try {
+    const agentId = Number(req.params.agentId)
+    const wallet = await resolveAgentPayer(agentId)
+    if (!wallet) { res.status(404).json({ error: 'No agent payer wallet bound' }); return }
+    const balance = await agentPayerChainBalance(wallet.walletAddress)
+    res.json({ wallet, chainBalanceWei: balance })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.post('/agent-payers', async (req: Request, res: Response) => {
+  try {
+    const { agentId, email, walletAddress, chain } = req.body || {}
+    if (!agentId || !email || !walletAddress) {
+      res.status(400).json({ error: 'agentId, email, and walletAddress are required' })
+      return
+    }
+    await bindAgentPayerWallet({ agentId: Number(agentId), email, walletAddress, chain })
+    res.status(201).json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.post('/agent-payers/:agentId/unlock', async (req: Request, res: Response) => {
+  try {
+    const agentId = Number(req.params.agentId)
+    const { code } = req.body || {}
+    if (!code) { res.status(400).json({ error: 'code is required' }); return }
+    const result = await unlockAgentPayerSession(agentId, String(code))
+    res.json({ success: true, address: result.address, expiresAt: result.expiresAt })
+  } catch (err: any) {
+    res.status(400).json({ error: err.message })
+  }
+})
+
+router.delete('/agent-payers/:agentId', async (req: Request, res: Response) => {
+  try {
+    const result = await getPool().query(
+      `DELETE FROM agent_payer_wallets WHERE agent_id = $1 RETURNING agent_id`,
+      [Number(req.params.agentId)]
+    )
+    if (result.rows.length === 0) { res.status(404).json({ error: 'Not found' }); return }
+    res.json({ success: true })
+  } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
 })

@@ -254,7 +254,7 @@ declare class PeriodClient {
 }
 
 interface BillingClientConfig {
-    /** Gateway base URL, e.g. http://43.159.60.46:3090 */
+    /** Gateway base URL, e.g. https://agentx.0xainet.top */
     gatewayUrl: string;
     /** Tenant API Key (agentx_...) issued after registration (alternative to accessToken) */
     apiKey?: string;
@@ -301,6 +301,68 @@ declare class BillingClient {
     getBalance(opts?: {
         endUserId?: string;
     }): Promise<BalanceResult>;
+}
+
+/** AgentWalletConfig 客户端配置。 */
+interface AgentWalletConfigOptions {
+    /** Gateway 地址（如 https://agentx.0xainet.top）。 */
+    baseUrl: string;
+    /** Gateway ADMIN_KEY（admin 路由鉴权）。 */
+    adminKey: string;
+}
+interface AgentWalletInfo {
+    agentId: number;
+    email: string;
+    walletAddress: string;
+    chain: string;
+    sessionUnlocked: boolean;
+    sessionExpiresAt: string | null;
+}
+interface BindAgentWalletInput {
+    agentId: number;
+    /** MPC 钱包注册邮箱（sendCode/register 所用）。 */
+    email: string;
+    /** MPC 钱包地址。 */
+    walletAddress: string;
+    /** 链名，默认 'oxachain'。 */
+    chain?: string;
+}
+interface AuthorizePaymentSessionInput {
+    agentId: number;
+    email: string;
+    /** 邮箱收到的 6 位验证码（MPC session.unlock）。 */
+    code: string;
+}
+interface AuthorizePaymentSessionResult {
+    address: string;
+    expiresAt: string;
+}
+interface AgentWalletStatus extends AgentWalletInfo {
+    chainBalanceWei: string | null;
+}
+/**
+ * agent 自主钱包管理客户端：绑定 MPC 钱包 / 授权付款会话 / 查询状态。
+ * 绑定 + 解锁完成后，A2A 委派由 gateway 服务端自动代付，SDK 侧无需再参与付款。
+ */
+declare class AgentWalletConfig {
+    private opts;
+    constructor(opts: AgentWalletConfigOptions);
+    /** 绑定 agent 与 MPC 钱包（agent_id 唯一，重复绑定覆盖 email/地址/链）。 */
+    bindWallet(input: BindAgentWalletInput): Promise<{
+        success: boolean;
+    }>;
+    /** 邮箱验证码解锁 MPC 会话（令牌由 gateway 加密存储，服务端自动代付使用）。 */
+    authorizePaymentSession(input: AuthorizePaymentSessionInput): Promise<AuthorizePaymentSessionResult>;
+    /** 查询单个 agent 自主钱包状态（含链上原生币余额）。 */
+    status(agentId: number): Promise<AgentWalletStatus>;
+    /** 列出所有已绑定 agent 钱包。 */
+    list(): Promise<{
+        wallets: AgentWalletInfo[];
+    }>;
+    /** 解绑（清除钱包绑定与会话）。 */
+    unbind(agentId: number): Promise<{
+        success: boolean;
+    }>;
 }
 
 declare const PAYMENT_VERSION = "0.1.3";
@@ -379,4 +441,4 @@ declare const REPUTATION_VERSION = "0.1.0";
 
 declare const CONFIG_VERSION = "0.1.0";
 
-export { A2AClient, A2A_VERSION, AgentReputation, AgentReview, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, type BalanceResult, BillingClient, type BillingClientConfig, type BuyTenantPlanInput, type BuyTenantPlanResult, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, PAYMENT_VERSION, type PaySubscriptionInput, type PaySubscriptionResult, PeriodClient, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, SubscriptionManager, type SubscriptionPaymentMethod, SubscriptionPayments, type SubscriptionPaymentsConfig, type TenantPlanPaymentMethod, TenantPlanPayments, type TenantPlanPaymentsConfig, type X402Info, subscribeToEvents };
+export { A2AClient, A2A_VERSION, AgentReputation, AgentReview, AgentWalletConfig, type AgentWalletConfigOptions, type AgentWalletInfo, type AgentWalletStatus, AgentX402, type AgentX402Config, type AgentXChainEvent, type AgentXEventType, type AuthorizePaymentSessionInput, type AuthorizePaymentSessionResult, type BalanceResult, BillingClient, type BillingClientConfig, type BindAgentWalletInput, type BuyTenantPlanInput, type BuyTenantPlanResult, CONFIG_VERSION, type EventListenerOptions, type MCPCallResult, MCPConnector, type MCPConnectorConfig, type MCPTool, MCP_VERSION, McpConnection, PAYMENT_VERSION, type PaySubscriptionInput, type PaySubscriptionResult, PeriodClient, REGISTRY_VERSION, REPUTATION_VERSION, type ReputationConfig, ReputationRegistry, SUBSCRIPTION_VERSION, SubscriptionManager, type SubscriptionPaymentMethod, SubscriptionPayments, type SubscriptionPaymentsConfig, type TenantPlanPaymentMethod, TenantPlanPayments, type TenantPlanPaymentsConfig, type X402Info, subscribeToEvents };

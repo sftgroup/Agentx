@@ -222,6 +222,7 @@ function shutdown(signal: string): void {
   Promise.allSettled([
     import('./services/a2a-worker').then(({ stopA2AWorker }) => stopA2AWorker()),
     import('./services/schedule-daemon').then(({ stopScheduleDaemon }) => stopScheduleDaemon()),
+    import('./services/reconcile-x402').then(({ stopX402Reconciler }) => stopX402Reconciler()),
     closePool(),
   ]).finally(() => process.exit(0))
 }
@@ -247,6 +248,13 @@ app.listen(config.port, () => {
     startScheduleDaemon()
   }).catch(err => {
     console.error('[AgentX Gateway] Failed to start schedule daemon:', err.message)
+  })
+
+  // Start x402 ledger ↔ on-chain reconciliation job (t3)
+  import('./services/reconcile-x402').then(({ startX402Reconciler }) => {
+    startX402Reconciler()
+  }).catch(err => {
+    console.error('[AgentX Gateway] Failed to start x402 reconciler:', err.message)
   })
 
   // Start agent sync event watcher (incremental on-chain updates)

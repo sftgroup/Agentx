@@ -39,4 +39,16 @@ export type { ClientOptions } from '@0xinfrax/payments'
 export { BillingClient } from './billing'
 export type { BillingClientConfig, BalanceResult } from './billing'
 
+// t9 (2026-08-17): agent 自主钱包（InfraX MPC）管理客户端 — 绑定/解锁/查询。
+// A2A 委派自动代付由 gateway agent-payer 服务端完成。
+export { AgentWalletConfig } from './agent-wallet'
+export type {
+  AgentWalletConfigOptions,
+  AgentWalletInfo,
+  BindAgentWalletInput,
+  AuthorizePaymentSessionInput,
+  AuthorizePaymentSessionResult,
+  AgentWalletStatus,
+} from './agent-wallet'
+
 export const PAYMENT_VERSION = '0.1.3'

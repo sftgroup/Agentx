@@ -332,6 +332,8 @@ router.get('/info', (_req: Request, res: Response) => {
           enabled: x402.available(),
           priceWei: x402.priceWei().toString(),
           payTo: x402.payTo(),
+          // OE-5: escrow 金库地址（配置时存在）。支付/充值应调 escrow.deposit()。
+          escrowAddress: x402.escrowAddress() ?? undefined,
           network: x402.network(),
           chain,
         }

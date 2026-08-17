@@ -27,6 +27,10 @@ export interface A2AAccessResult {
   mode: 'subscription' | 'pay-per-call' | 'denied'
   /** 按次付费时扣减的 wei（否则 0）。 */
   amountWei: string
+  /** 余额不足（可等待付款后 resume）时为 true。 */
+  insufficient?: boolean
+  /** 待付款信息（insufficient=true 时携带，供前端渲染付款按钮）。 */
+  payment?: { payTo: string; priceWei: string }
   reason?: string
 }
 
@@ -61,7 +65,23 @@ export async function canAccessAgentOrPay(
     log.warn(`canAccessAgentOrPay: canAccessAgent failed: ${(err as Error).message}`)
   }
 
-  // 2. 按次付费（x402 余额模式）
+  // 2. 已按次付费（a2a_pay_log 幂等）：同一 ref（task）重复委派不重复扣费。
+  //    用于 resume 后任务重放：此前已 deduct 过该委派，直接放行。
+  const refId = String(opts?.refId ?? `a2a:${randomUUID()}`)
+  try {
+    const { rows } = await getPool().query(
+      `SELECT 1 FROM a2a_pay_log WHERE payer = $1 AND agent_id = $2 AND ref_id = $3 LIMIT 1`,
+      [sub, agentId, refId]
+    )
+    if (rows.length > 0) {
+      log.info(`A2A pay-per-call already settled (ref=${refId}) — skip deduct`)
+      return { allowed: true, mode: 'pay-per-call', amountWei: '0' }
+    }
+  } catch (err) {
+    log.warn(`canAccessAgentOrPay: pay_log probe failed: ${(err as Error).message}`)
+  }
+
+  // 3. 按次付费（x402 余额模式）
   if (!x402Enabled()) {
     return { allowed: false, mode: 'denied', amountWei: '0', reason: 'No subscription access to this agent' }
   }
@@ -71,6 +91,10 @@ export async function canAccessAgentOrPay(
     return { allowed: false, mode: 'denied', amountWei: '0', reason: 'x402 price misconfigured' }
   }
 
+  // 充值目标：配置 escrow 金库时优先指向金库（资金托管、verify 走 Deposited 判定）；
+  // 未配置时保持直转 X402_PAY_TO（EOA）兼容。旧路径直转 EOA 依旧可 verify 入账。
+  const payTo = paymentsService.x402?.escrowAddress() ?? config.x402PayTo
+
   try {
     const balance = await paymentsService.balanceOf(sub)
     if (balance < price) {
@@ -78,16 +102,17 @@ export async function canAccessAgentOrPay(
         allowed: false,
         mode: 'denied',
         amountWei: '0',
+        insufficient: true,
+        payment: { payTo, priceWei: price.toString() },
         reason: `Insufficient x402 balance (${balance.toString()} wei) — top up or subscribe to this agent`,
       }
     }
     const deducted = await paymentsService.deduct(sub, price)
     if (!deducted) {
-      return { allowed: false, mode: 'denied', amountWei: '0', reason: 'Insufficient x402 balance' }
+      return { allowed: false, mode: 'denied', amountWei: '0', insufficient: true, payment: { payTo, priceWei: price.toString() }, reason: 'Insufficient x402 balance' }
     }
 
     // 审计（幂等）：同一 ref（taskId）重复调用不重复记账
-    const refId = String(opts?.refId ?? `a2a:${randomUUID()}`)
     await getPool().query(
       `INSERT INTO a2a_pay_log (payer, agent_id, amount_wei, ref_id)
        VALUES ($1, $2, $3, $4)

@@ -90,6 +90,14 @@ export const config = {
   x402PayTo: process.env.X402_PAY_TO || '',
   x402PriceWei: process.env.X402_PRICE_WEI || '1000000000000000', // 0.001 native by default
   x402Chain: process.env.X402_CHAIN || 'oxachain',
+  // OE-5: InfraXEscrow 托管合约地址（infraX projects/escrow 部署）。
+  // 配置后 verify 校验 `tx.to == escrow` + Deposited 事件入账，资金进金库而非 EOA。
+  x402EscrowAddress: process.env.X402_ESCROW_ADDRESS || '',
+
+  // ── Agent Payer（t8，P2）：agent 自主钱包自动代付（InfraX MPC 钱包）─────
+  // 需部署 infraX projects/mpc 服务并配置以下两项；未配置时 agent-payer 能力禁用。
+  mpcServerUrl: process.env.MPC_SERVER_URL || '',
+  mpcApiKey: process.env.MPC_API_KEY || '',
 
   // ── Stablecoin accept/verify (P3, x402 rail) ─────────────────────────────
   // When configured, the x402 v2 challenge also advertises an `exact` accept

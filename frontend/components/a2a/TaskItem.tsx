@@ -63,6 +63,15 @@ export function TaskItem({ task, gw, isMine, onOpenComplete }: TaskItemProps) {
                   {gw.llm_model && <span className="opacity-60">({gw.llm_model})</span>}
                 </span>
               )}
+              {gw.status === 4 && (
+                <span className="text-xs text-yellow-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {t('a2a.awaitingPayment')}
+                  {gw.payment_amount_wei && (
+                    <span className="opacity-80">· {(Number(gw.payment_amount_wei) / 1e18).toFixed(4)} OXA</span>
+                  )}
+                </span>
+              )}
               {gw.status === 2 && (
                 <span className="text-xs text-green-400 flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" /> {t('a2a.gatewayDone')}

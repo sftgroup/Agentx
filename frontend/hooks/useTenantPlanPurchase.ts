@@ -34,12 +34,26 @@ interface X402Info {
   enabled: boolean
   priceWei?: string
   payTo?: string
+  /** OE-5: escrow 金库地址（配置时存在）。支付应调 escrow.deposit()。 */
+  escrowAddress?: string
 }
+
+// InfraXEscrow.deposit()（payable，无参，emit Deposited 事件）— 金库支付调用。
+const ESCROW_DEPOSIT_ABI = [
+  {
+    name: 'deposit',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [],
+    outputs: [],
+  },
+] as const
 
 export function useTenantPlanPurchase(opts: { accessToken: string | null; walletClient?: WalletClient }) {
   const { accessToken, walletClient } = opts
   const [plans, setPlans] = useState<TenantPlanOption[]>([])
   const [payTo, setPayTo] = useState<string>('')
+  const [escrowAddress, setEscrowAddress] = useState<string>('')
   const [purchasing, setPurchasing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,6 +69,7 @@ export function useTenantPlanPurchase(opts: { accessToken: string | null; wallet
       const infoData = await infoRes.json() as { x402?: X402Info }
       setPlans((plansData.plans ?? []).filter((p) => p.price_wei && p.price_wei !== '0'))
       setPayTo(infoData.x402?.payTo ?? '')
+      setEscrowAddress(infoData.x402?.escrowAddress ?? '')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load plans')
     }
@@ -69,12 +84,23 @@ export function useTenantPlanPurchase(opts: { accessToken: string | null; wallet
     try {
       if (!walletClient) throw new Error('Wallet not connected')
       if (!payTo) throw new Error('x402 is not enabled on the Gateway (X402_PAY_TO missing)')
-      const hash = await walletClient.sendTransaction({
-        to: payTo as Address,
-        value: BigInt(plan.price_wei),
-        chain: undefined,
-        account: walletClient.account!,
-      })
+      // 支付路径：escrow 金库已配置 → 调 escrow.deposit()（emit Deposited 事件，
+      // verify 走金库判定入账）；否则原生币直转 payTo（EOA）。
+      const hash = escrowAddress
+        ? await walletClient.writeContract({
+            address: escrowAddress as Address,
+            abi: ESCROW_DEPOSIT_ABI,
+            functionName: 'deposit',
+            value: BigInt(plan.price_wei),
+            chain: undefined,
+            account: walletClient.account!,
+          })
+        : await walletClient.sendTransaction({
+            to: payTo as Address,
+            value: BigInt(plan.price_wei),
+            chain: undefined,
+            account: walletClient.account!,
+          })
       const res = await fetch(`${GATEWAY_URL}/api/v1/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +123,7 @@ export function useTenantPlanPurchase(opts: { accessToken: string | null; wallet
     } finally {
       setPurchasing(false)
     }
-  }, [walletClient, payTo, loadPlans])
+  }, [walletClient, payTo, escrowAddress, loadPlans])
 
   return { plans, payTo, purchasing, error, purchase }
 }

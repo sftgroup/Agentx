@@ -256,6 +256,7 @@
     "gatewayProcessing": "Gateway 處理中...",
     "gatewayDone": "Gateway 結果已就緒",
     "gatewayFailed": "Gateway 處理失敗",
+    "awaitingPayment": "等待付款",
     "gatewayGenerated": "由 {{model}} 自動生成",
     "clickToComplete": "點擊使用此結果",
     "fromOther": "他人創建",

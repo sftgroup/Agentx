@@ -18,9 +18,22 @@ interface X402Info {
   enabled: boolean
   priceWei: string
   payTo: string
+  /** OE-5: escrow 金库地址（配置时存在）。充值应调 escrow.deposit()。 */
+  escrowAddress?: string
   network: string
   chain: string
 }
+
+// InfraXEscrow.deposit()（payable，无参，emit Deposited 事件）— 金库充值调用。
+const ESCROW_DEPOSIT_ABI = [
+  {
+    name: 'deposit',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [],
+    outputs: [],
+  },
+] as const
 
 function weiToToken(wei: string): string {
   const n = Number(wei || 0) / 1e18
@@ -68,12 +81,23 @@ export function X402WalletCard({ address, walletClient }: {
     setTxHash(null)
     try {
       const value = BigInt(Math.round(token * 1e18))
-      const hash = await walletClient.sendTransaction({
-        to: info.payTo as Address,
-        value,
-        chain: undefined,
-        account: walletClient.account!,
-      })
+      // 充值路径：escrow 金库已配置 → 调 escrow.deposit()（emit Deposited 事件，
+      // verify 走金库判定入账）；否则原生币直转 payTo（EOA）。
+      const hash = info.escrowAddress
+        ? await walletClient.writeContract({
+            address: info.escrowAddress as Address,
+            abi: ESCROW_DEPOSIT_ABI,
+            functionName: 'deposit',
+            value,
+            chain: undefined,
+            account: walletClient.account!,
+          })
+        : await walletClient.sendTransaction({
+            to: info.payTo as Address,
+            value,
+            chain: undefined,
+            account: walletClient.account!,
+          })
       const vRes = await fetch(`${GATEWAY_URL}/api/v1/x402/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

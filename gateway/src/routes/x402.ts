@@ -14,13 +14,16 @@ import type { ChainKey } from '../services/chain-data-reader'
 
 const router = Router()
 
-// GET /api/v1/x402/info — protocol discovery (price / pay-to / network)
+// GET /api/v1/x402/info — protocol discovery (price / pay-to / network / escrow)
 router.get('/info', (_req: Request, res: Response) => {
   const chain: ChainKey = config.x402Chain === 'sepolia' ? 'sepolia' : 'oxachain'
   res.json({
     enabled: x402Available(),
     priceWei: priceWei().toString(),
     payTo: config.x402PayTo,
+    // OE-5: escrow 金库地址（配置时存在）。前端充值应调 escrow.deposit()（emit
+    // Deposited 事件，verify 走金库判定入账）；未配置时直转 payTo（EOA）。
+    escrowAddress: config.x402EscrowAddress || undefined,
     network: `eip155:${chain === 'sepolia' ? config.chainId : config.chainIdOxaChain}`,
     chain,
   })

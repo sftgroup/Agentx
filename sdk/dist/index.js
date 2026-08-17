@@ -2486,6 +2486,7 @@ __export(index_exports, {
   AgentLoop: () => AgentLoop,
   AgentRegistry: () => AgentRegistry,
   AgentRunner: () => AgentRunner,
+  AgentWalletConfig: () => AgentWalletConfig,
   AgentX402: () => AgentX402,
   AgentXError: () => AgentXError,
   AgentXErrorCode: () => AgentXErrorCode,
@@ -5998,6 +5999,61 @@ var BillingClient = class {
   }
 };
 
+// src/payment/agent-wallet.ts
+async function adminRequest(baseUrl, adminKey, path, init) {
+  const base = baseUrl.replace(/\/$/, "");
+  const headers = {
+    "X-Admin-Key": adminKey,
+    ...init?.headers ?? {}
+  };
+  const resp = await fetch(`${base}${path}`, { ...init, headers });
+  if (!resp.ok) {
+    let message = `AgentWalletConfig request failed (${resp.status}): ${path}`;
+    try {
+      const body = await resp.json();
+      if (body.error) message = body.error;
+    } catch {
+    }
+    throw new Error(message);
+  }
+  return resp.json();
+}
+var AgentWalletConfig = class {
+  constructor(opts) {
+    this.opts = opts;
+  }
+  opts;
+  /** 绑定 agent 与 MPC 钱包（agent_id 唯一，重复绑定覆盖 email/地址/链）。 */
+  async bindWallet(input) {
+    return adminRequest(this.opts.baseUrl, this.opts.adminKey, "/api/v1/admin/agent-payers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    });
+  }
+  /** 邮箱验证码解锁 MPC 会话（令牌由 gateway 加密存储，服务端自动代付使用）。 */
+  async authorizePaymentSession(input) {
+    return adminRequest(
+      this.opts.baseUrl,
+      this.opts.adminKey,
+      `/api/v1/admin/agent-payers/${input.agentId}/unlock`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: input.code }) }
+    );
+  }
+  /** 查询单个 agent 自主钱包状态（含链上原生币余额）。 */
+  async status(agentId) {
+    return adminRequest(this.opts.baseUrl, this.opts.adminKey, `/api/v1/admin/agent-payers/${agentId}`);
+  }
+  /** 列出所有已绑定 agent 钱包。 */
+  async list() {
+    return adminRequest(this.opts.baseUrl, this.opts.adminKey, "/api/v1/admin/agent-payers");
+  }
+  /** 解绑（清除钱包绑定与会话）。 */
+  async unbind(agentId) {
+    return adminRequest(this.opts.baseUrl, this.opts.adminKey, `/api/v1/admin/agent-payers/${agentId}`, { method: "DELETE" });
+  }
+};
+
 // src/payment/index.ts
 var PAYMENT_VERSION = "0.1.3";
 
@@ -7468,6 +7524,7 @@ var ConversationClient = class {
   AgentLoop,
   AgentRegistry,
   AgentRunner,
+  AgentWalletConfig,
   AgentX402,
   AgentXError,
   AgentXErrorCode,

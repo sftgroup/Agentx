@@ -232,6 +232,12 @@ export default function A2ATasksPage() {
                     {t('a2a.processing')}: {workerStatus.taskCounts?.processing}
                   </span>
                 )}
+                {(workerStatus.taskCounts?.awaiting_payment || 0) > 0 && (
+                  <span className="text-xs text-yellow-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {t('a2a.awaitingPayment')}: {workerStatus.taskCounts?.awaiting_payment}
+                  </span>
+                )}
               </div>
             )}
           </div>

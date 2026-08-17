@@ -24,10 +24,16 @@ export interface A2ATaskDisplay {
 }
 
 export interface GatewayTaskStatus {
-  status: number  // 0=pending, 1=processing, 2=completed, 3=failed
+  status: number  // 0=pending, 1=processing, 2=completed, 3=failed, 4=awaiting_payment
   output_data?: string
   llm_model?: string
   processed_at?: string
+  // awaiting_payment (status=4) 时由 gateway 写入的付款信息
+  payment_payer?: string
+  payment_amount_wei?: string
+  payment_pay_to?: string
+  payment_target_agent_id?: number
+  payment_ref?: string
 }
 
 export interface AgentOption { id: number; name: string; description: string; owner?: string }

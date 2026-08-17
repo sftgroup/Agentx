@@ -43,6 +43,10 @@ export const paymentsService = new PaymentsService({
     payTo: config.x402PayTo,
     priceWei: config.x402PriceWei,
     chain: resolveX402Chain(),
+    // OE-5 escrow（金库托管）：@0xinfrax/payments ≥0.1.4（AX-1 服务层透传已修复）。
+    // 配置后 verify 双路径兼容：native 直转 payTo 仍可入账；资金优先经 InfraXEscrow
+    // 托管（tx.to==escrow + Deposited 事件）。生产 escrow proxy：0x8Bf8Ff…（oxachain）。
+    escrow: config.x402EscrowAddress ? { address: config.x402EscrowAddress } : undefined,
     stablecoin:
       config.stablecoinEnabled && config.stablecoinAsset
         ? {
