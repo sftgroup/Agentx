@@ -2,14 +2,19 @@
 // AgentX Gateway — x402 Ledger ↔ On-Chain Balance Reconciliation (t3)
 // ---------------------------------------------------------------------------
 // Periodically anchors the off-chain ledger (x402_balances) against the
-// on-chain balance that backs it:
-//   1. Aggregate anchor (always): total ledger balance vs native balance of
-//      X402_PAY_TO (EOA 收款模式) 或 escrow 合约（OE-5 金库模式，总余额读
-//      escrow 内全部资金 —— EOA 模式没有 escrow 时读收款 EOA 余额）。
-//   2. Per-user anchor (escrow only): 每个 ledger holder 的余额 vs
-//      escrow.balanceOf(user)。非 escrow 模式 EOA 无法按用户对账，仅做总量。
+// on-chain assets that back it.
 //
-// 差异超过容差（默认 0.1 原生币）时打 error 日志告警。对账周期可配
+//   EOA 模式：链上资产 = 收款 X402_PAY_TO 余额（所有充值直转该 EOA）。
+//   escrow 模式：链上资产 = Σ escrow.balanceOf(AgentX ledger 持有者)
+//                + 收款 X402_PAY_TO 余额（legacy/旧路径充值滞留）。
+//                Σ balanceOf 只遍历 AgentX ledger holder，天然排除同合约中
+//                infraX 平台资金（OE-4 迁移的 9.99994 OXA 记在其 EOA 名下）。
+//
+//   消费模型：AgentX 的 deduct 只改 ledger（x402_balances），不调 escrow.charge，
+//   因此链上托管 ≥ ledger 负债（已消费资金滞留金库/EOA）。对账 = 资金充足性
+//   检查：链上资产 < ledger 总量 - 容差 → 缺口告警（真实风控）；富余为正常。
+//
+// 差异超过容差（默认 0.1 原生币）时打 error 日志告警。周期可配
 // X402_RECONCILE_INTERVAL_SEC（默认 1800s）。
 // ---------------------------------------------------------------------------
 
@@ -20,7 +25,7 @@ import { config } from '../config'
 import { escrowReadAbi } from '../lib/escrow-abi'
 
 const DEFAULT_TOLERANCE_WEI = '100000000000000000' // 0.1 native
-const MAX_ESCROW_USERS_PER_RUN = 200 // 单轮 escrow 逐用户对账上限，防 RPC 打爆
+const MAX_ESCROW_USERS_PER_RUN = 200 // 单轮 escrow 逐用户查询上限，防 RPC 打爆
 
 let timer: ReturnType<typeof setInterval> | null = null
 
@@ -32,10 +37,12 @@ export interface ReconcileResult {
   mode: 'eoa' | 'escrow' | 'disabled'
   ledgerTotalWei: string
   onchainTotalWei: string
-  diffWei: string
+  /** 资金缺口（链上资产 < ledger 时为差值，否则 0）。 */
+  deficitWei: string
+  /** 链上资产相对 ledger 的富余（已消费未退出资金），仅信息性。 */
+  surplusWei: string
   withinTolerance: boolean
   holders: number
-  escrowMismatches?: { address: string; ledgerWei: string; onchainWei: string }[]
   checkedAt: string
 }
 
@@ -44,7 +51,8 @@ export async function runX402Reconciliation(): Promise<ReconcileResult> {
     mode: 'disabled',
     ledgerTotalWei: '0',
     onchainTotalWei: '0',
-    diffWei: '0',
+    deficitWei: '0',
+    surplusWei: '0',
     withinTolerance: true,
     holders: 0,
     checkedAt: new Date().toISOString(),
@@ -57,13 +65,8 @@ export async function runX402Reconciliation(): Promise<ReconcileResult> {
 
   const pool = getPool()
   const tolerance = BigInt(process.env.X402_RECONCILE_TOLERANCE_WEI || DEFAULT_TOLERANCE_WEI)
-  // OE-5 迁移基准：escrow 启用前经 EOA（X402_PAY_TO）入账的存量 ledger 余额，
-  // 资金仍锚定在收款 EOA。对账口径 = (ledger_total - legacy) == escrow 合约余额，
-  // 即只核对 escrow 期新增入账。配置 X402_ESCROW_LEGACY_WEI（与 infraX reconcile
-  // 的 LEGACY_BASE_* 概念一致）。
-  const legacy = BigInt(process.env.X402_ESCROW_LEGACY_WEI || '0')
 
-  // 1. Ledger total + holder count.
+  // 1. Ledger total + holder count（负债侧）。
   const { rows } = await pool.query(
     `SELECT COALESCE(SUM(balance_wei::numeric), 0) AS total, COUNT(*) AS holders
      FROM x402_balances WHERE balance_wei::numeric > 0`
@@ -74,70 +77,59 @@ export async function runX402Reconciliation(): Promise<ReconcileResult> {
 
   const publicClient = createPublicClient({ transport: http(getChainRpc(config.x402Chain)) })
 
-  // 2. On-chain anchor.
+  // 2. 链上资产侧（资产锚）。
   const escrow = config.x402EscrowAddress.toLowerCase()
-  const anchorAddress = (escrow || config.x402PayTo.toLowerCase()) as Address
-  result.mode = escrow ? 'escrow' : 'eoa'
+  const eoa = config.x402PayTo.toLowerCase()
+  let onchainAssets = 0n
 
   try {
-    const onchainTotal = await publicClient.getBalance({ address: anchorAddress })
-    result.onchainTotalWei = onchainTotal.toString()
-    // escrow 模式：仅核对 escrow 期新增入账（ledger_total - legacy）；EOA 模式总量直接对比。
-    const effectiveLedger = escrow ? (ledgerTotal - legacy < 0n ? 0n : ledgerTotal - legacy) : ledgerTotal
-    const diff = effectiveLedger - onchainTotal
-    result.diffWei = (diff < 0n ? -diff : diff).toString()
-    result.withinTolerance = (diff < 0n ? -diff : diff) <= tolerance
-  } catch (err: any) {
-    console.error('[x402-reconcile] failed to read on-chain balance:', err.message)
-    result.withinTolerance = false
-  }
-
-  // 3. Per-user anchor (escrow only): ledger holder ↔ escrow.balanceOf(user).
-  // 存量用户（余额 ≤ legacy 基准，escrow 前 EOA 入账）无法在 escrow 中核对，跳过。
-  // legacy=0 时等效核对全部持有者（无存量场景）。
-  if (escrow && result.mode === 'escrow') {
-    try {
+    if (escrow) {
+      result.mode = 'escrow'
+      // AgentX ledger 持有者在金库的托管之和（不含 infraX 平台资金）。
       const { rows: holders } = await pool.query(
-        `SELECT address, balance_wei FROM x402_balances
-         WHERE balance_wei::numeric > $1 ORDER BY updated_at DESC LIMIT $2`,
-        [legacy.toString(), MAX_ESCROW_USERS_PER_RUN]
+        `SELECT address FROM x402_balances
+         WHERE balance_wei::numeric > 0 ORDER BY updated_at DESC LIMIT $1`,
+        [MAX_ESCROW_USERS_PER_RUN]
       )
-      const mismatches: NonNullable<ReconcileResult['escrowMismatches']> = []
       for (const h of holders) {
         try {
-          const onchain = await publicClient.readContract({
-            address: anchorAddress,
+          const bal = await publicClient.readContract({
+            address: escrow as Address,
             abi: escrowReadAbi,
             functionName: 'balanceOf',
             args: [h.address as Address],
           }) as bigint
-          const ledger = BigInt(h.balance_wei)
-          if (ledger !== onchain) {
-            mismatches.push({ address: h.address, ledgerWei: ledger.toString(), onchainWei: onchain.toString() })
-          }
+          onchainAssets += bal
         } catch { /* skip unreadable holder */ }
       }
-      result.escrowMismatches = mismatches
-      if (mismatches.length > 0) {
-        result.withinTolerance = false
-      }
-    } catch (err: any) {
-      console.error('[x402-reconcile] per-user escrow check failed:', err.message)
-      result.withinTolerance = false
+      // legacy/旧路径充值滞留资金仍在收款 EOA。
+      onchainAssets += await publicClient.getBalance({ address: eoa as Address })
+    } else {
+      result.mode = 'eoa'
+      onchainAssets = await publicClient.getBalance({ address: eoa as Address })
     }
+    result.onchainTotalWei = onchainAssets.toString()
+
+    // 3. 资金充足性：资产 < 负债 - 容差 → 缺口告警；富余（消费滞留）正常。
+    const deficit = ledgerTotal - onchainAssets
+    result.deficitWei = (deficit > 0n ? deficit : 0n).toString()
+    result.surplusWei = (deficit < 0n ? -deficit : 0n).toString()
+    result.withinTolerance = deficit <= tolerance
+  } catch (err: any) {
+    console.error('[x402-reconcile] failed to read on-chain assets:', err.message)
+    result.withinTolerance = false
   }
 
   // 4. Alert on mismatch.
   if (!result.withinTolerance) {
     console.error(
-      `[x402-reconcile] MISMATCH mode=${result.mode} ledger=${result.ledgerTotalWei} onchain=${result.onchainTotalWei} ` +
-      `diff=${result.diffWei} holders=${result.holders}` +
-      (result.escrowMismatches?.length ? ` escrowMismatches=${result.escrowMismatches.length}` : '')
+      `[x402-reconcile] MISMATCH mode=${result.mode} ledger=${result.ledgerTotalWei} assets=${result.onchainTotalWei} ` +
+      `deficit=${result.deficitWei} holders=${result.holders}`
     )
   } else {
     console.log(
-      `[x402-reconcile] ok mode=${result.mode} ledger=${result.ledgerTotalWei} onchain=${result.onchainTotalWei} ` +
-      `holders=${result.holders}`
+      `[x402-reconcile] ok mode=${result.mode} ledger=${result.ledgerTotalWei} assets=${result.onchainTotalWei} ` +
+      `holders=${result.holders}` + (result.surplusWei !== '0' ? ` surplus=${result.surplusWei}` : '')
     )
   }
 
