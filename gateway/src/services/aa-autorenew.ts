@@ -513,32 +513,51 @@ export async function listAutoRenew(subscriber: string): Promise<any[]> {
 // ============================================================================
 
 /**
- * 当前应续订的订阅：以 current_subscription_id 指针为锚。
- *   - 指针指向的订阅仍 active(1) → 直接返回（续订针对指针订阅，不追新，避免取错行）；
- *   - 否则（指针失效 / 指针订阅已过期且 indexer 已产生新订阅）→ 回退最新一条
- *     active/过期订阅，并标记 pointerMoved 供 renewOne 前移指针（自愈）。
+ * 当前应续订的订阅。
+ * 自动续订的链上归属是智能账户（ERC-4337 的 msg.sender），indexer 按 msg.sender
+ * 写入 chain_subscriptions，因此查询必须同时覆盖 EOA 与 account_address 两个归属。
+ *   - 指针优先：current_subscription_id 指向的订阅 active 且无更新订阅时直接使用；
+ *     若续订后 indexer 已产生账户名下的新订阅 → 前移指针返回新订阅（防对旧订阅
+ *     重复续订扣费）；
+ *   - 回退：EOA 或智能账户名下的最新一条 active/过期订阅（pointerMoved 供自愈前移）。
  */
 async function resolveCurrentSubscription(
   subscriber: string,
   agentId: number,
+  accountAddress: string,
   currentSubscriptionId?: number | null,
 ): Promise<{ subscription: any; pointerMoved?: number } | null> {
   const pool = getPool()
+  const subjects = [subscriber.toLowerCase(), accountAddress.toLowerCase()]
+  // ① 指针优先：指针指向的订阅仍 active → 若无更新订阅则直接使用
   if (currentSubscriptionId) {
     const { rows } = await pool.query(
       `SELECT subscription_id, status, started_at, expires_at, amount_wei
-       FROM chain_subscriptions
-       WHERE subscription_id = $1 AND LOWER(subscriber) = $2`,
-      [currentSubscriptionId, subscriber.toLowerCase()],
+       FROM chain_subscriptions WHERE subscription_id = $1`,
+      [currentSubscriptionId],
     )
-    if (rows[0] && Number(rows[0].status) === 1) return { subscription: rows[0] }
+    if (rows[0] && Number(rows[0].status) === 1) {
+      const newer = await pool.query(
+        `SELECT subscription_id, status, started_at, expires_at, amount_wei
+         FROM chain_subscriptions
+         WHERE LOWER(subscriber) IN ($1, $2) AND agent_id = $3 AND subscription_id > $4 AND status IN (1,2)
+         ORDER BY subscription_id DESC LIMIT 1`,
+        [...subjects, agentId, currentSubscriptionId],
+      )
+      if (newer.rows[0]) {
+        // 已有更新的订阅（自动续订产生，归属智能账户）→ 前移指针
+        return { subscription: newer.rows[0], pointerMoved: Number(newer.rows[0].subscription_id) }
+      }
+      return { subscription: rows[0] }
+    }
   }
+  // ② 回退：EOA 或智能账户名下的最新一条 active/过期订阅
   const { rows } = await pool.query(
     `SELECT subscription_id, status, started_at, expires_at, amount_wei
      FROM chain_subscriptions
-     WHERE LOWER(subscriber) = $1 AND agent_id = $2 AND status IN (1,2)
+     WHERE LOWER(subscriber) IN ($1, $2) AND agent_id = $3 AND status IN (1,2)
      ORDER BY subscription_id DESC LIMIT 1`,
-    [subscriber.toLowerCase(), agentId],
+    [...subjects, agentId],
   )
   const sub = rows[0] ?? null
   if (!sub) return null
@@ -560,8 +579,8 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
   const pool = getPool()
   const { subscriber, agent_id: agentId, plan_id: planId } = row
 
-  // ① 当前应续订的订阅（以 current_subscription_id 指针为锚）
-  const resolved = await resolveCurrentSubscription(subscriber, agentId, row.current_subscription_id)
+  // ① 当前应续订的订阅（指针为锚；覆盖 EOA 与智能账户两个归属）
+  const resolved = await resolveCurrentSubscription(subscriber, agentId, row.account_address, row.current_subscription_id)
   if (!resolved) {
     await markRenewError(subscriber, agentId, planId, 'no active subscription to renew')
     return null
