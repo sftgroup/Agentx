@@ -101,7 +101,7 @@ async function relayRequest(path: string, body?: unknown): Promise<any> {
     const res = await fetch(`${config.aaRelayUrl.replace(/\/+$/, '')}${path}`, {
       method: body === undefined ? 'GET' : 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': config.aaRelayApiKey },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)),
       signal: ctrl.signal,
     })
     const json = (await res.json().catch(() => null)) as { code?: number; message?: string; data?: any } | null
