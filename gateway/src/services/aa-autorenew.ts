@@ -149,7 +149,7 @@ function stringifyPolicy(policy: any): string {
 
 /**
  * 部署 Kernel 智能账户（平台代付 gas，一次性；digest 依赖已部署账户 currentNonce）。
- * 用与 aa-relay 相同输入（owner、salt=0、kernel 0.3.0-beta）复算 factoryData 并
+ * 用与 aa-relay 相同输入（owner、salt=0、kernel cfg.kernelVersion）复算 factoryData 并
  * 校验预测地址与 relay 返回一致，防止部署错账户。
  */
 export async function ensureAccountDeployed(accountAddress: Address, ownerAddress: Address): Promise<boolean> {
@@ -159,7 +159,7 @@ export async function ensureAccountDeployed(accountAddress: Address, ownerAddres
   if (!config.aaDeployerPrivateKey) {
     throw new Error('AA_DEPLOYER_PRIVATE_KEY not configured — cannot deploy smart account')
   }
-  const { factory, factoryData } = aa.encodeKernelFactoryData(cfg, ownerAddress, 0n, '0.3.0-beta')
+  const { factory, factoryData } = aa.encodeKernelFactoryData(cfg, ownerAddress, 0n, cfg.kernelVersion)
   const predicted = await aa.predictWithFactoryGetAddress(cfg, factoryData)
   if (!predicted || predicted.toLowerCase() !== accountAddress.toLowerCase()) {
     throw new Error(`account address mismatch (relay=${accountAddress}, predicted=${predicted ?? 'n/a'})`)
