@@ -124,9 +124,10 @@ async function estimateFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePer
   }
 }
 
-/** policy_json（bigint 已字符串化）→ 还原为 aa-sdk 需要的 SessionPolicy */
-function parsePolicy(raw: string): any {
-  const p = JSON.parse(raw)
+/** policy_json（bigint 已字符串化）→ 还原为 aa-sdk 需要的 SessionPolicy。
+ *  pg 会把 jsonb 列自动解析为 JS 对象，此处兼容 string 与 object 两种形态。 */
+function parsePolicy(raw: string | any): any {
+  const p = typeof raw === 'string' ? JSON.parse(raw) : raw
   p.validAfter = BigInt(p.validAfter ?? '0')
   p.validUntil = BigInt(p.validUntil)
   p.permissions = (p.permissions ?? []).map((perm: any) => ({
