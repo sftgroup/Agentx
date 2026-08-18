@@ -93,10 +93,12 @@ function aaPublicClient() {
   return createPublicClient({ transport: http(config.rpcUrlOxaChain) })
 }
 
-/** aa-relay 统一调用（X-API-Key 鉴权；code!==0 或非 2xx 抛错） */
-async function relayRequest(path: string, body?: unknown): Promise<any> {
+/** aa-relay 统一调用（X-API-Key 鉴权；code!==0 或非 2xx 抛错）。
+ *  timeoutMs：默认 30s；/v1/userops(wait:true) 需覆盖 relay 的
+ *  charge（escrow 上链 ~12s）+ bundler 模拟/收据轮询（≤120s）总耗时 → 150s。 */
+async function relayRequest(path: string, body?: unknown, timeoutMs = 30_000): Promise<any> {
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), 30_000)
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
     const res = await fetch(`${config.aaRelayUrl.replace(/\/+$/, '')}${path}`, {
       method: body === undefined ? 'GET' : 'POST',
@@ -398,7 +400,7 @@ export async function confirmAutoRenew(p: ConfirmAutoRenewParams): Promise<{
     signMessage: async () => p.ownerSignature as Hex,
   }
   const op = await aa.signEnableUserOp({ chainConfig: cfg, draft, ownerSigner, agentSigner })
-  const result = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: true })
+  const result = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: true }, 150_000)
 
   const receiptSuccess = Boolean(result?.receipt?.success)
   if (receiptSuccess) {
@@ -593,7 +595,7 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
      WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
     [subscriber.toLowerCase(), agentId, planId],
   )
-  const result = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: true })
+  const result = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: true }, 150_000)
   const success = Boolean(result?.receipt?.success)
   if (success) {
     await pool.query(
