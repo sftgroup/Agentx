@@ -80,7 +80,7 @@ export function getAaChainConfig(): any {
     entryPointVersion: '0.7',
     entryPoint: config.aaEntryPointOxaChain as Address,
     rpcUrl: config.rpcUrlOxaChain,
-    kernelVersion: '0.3.0-beta', // 生产 implementation 为 Kernel v3.0-beta（initialize 4 参数）
+    kernelVersion: '0.3.1', // 生产 relay 默认 0.3.1（initialize 5 参数 0x3c3b752b）；0.3.0-beta 会算出不同账户地址
     kernelFactory: config.aaKernelFactoryOxaChain as Address,
     kernelImplementation: config.aaKernelImplementationOxaChain as Address,
     sessionModule: config.aaSessionModuleOxaChain as Address,
