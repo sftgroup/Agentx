@@ -76,6 +76,17 @@ async function loadAaSdk(): Promise<any> {
 // 进程内扫描防重（pm2 fork 单进程；跨进程由 DB last_renew_at 冷却兜底）
 const inFlight = new Set<string>()
 
+/** daemon 健康指标（health 端点暴露，供监控告警） */
+export const autoRenewStats = {
+  lastScanAt: null as string | null,
+  lastScan: { checked: 0, renewed: 0, failed: 0 },
+  pausedCount: 0,
+}
+
+export function getAutoRenewStats(): typeof autoRenewStats {
+  return { ...autoRenewStats, lastScan: { ...autoRenewStats.lastScan } }
+}
+
 export function isAutoRenewEnabled(): boolean {
   return config.aaAutoRenewEnabled && Boolean(config.aaRelayUrl && config.aaRelayApiKey)
 }
@@ -197,11 +208,13 @@ export async function ensureAccountDeployed(accountAddress: Address, ownerAddres
   return true
 }
 
-/** 智能账户资金视图（gas 自付预检：EntryPoint deposit + 账户 native 余额） */
-export async function getAccountFunding(accountAddress: string): Promise<{ nativeWei: bigint; epDepositWei: bigint }> {
+/** 智能账户资金视图（gas 自付预检：native / EntryPoint deposit / InfraXEscrow 三类）。
+ *  实证见 docs/infrax-bundler-restore-handoff.md §5：native 付订阅费、EP deposit 付
+ *  gas、escrow 付 relay A-10 服务费，三者 per-account 独立记账。 */
+export async function getAccountFunding(accountAddress: string): Promise<{ nativeWei: bigint; epDepositWei: bigint; escrowWei: bigint }> {
   const client = aaPublicClient()
   const cfg = getAaChainConfig()
-  const [nativeWei, epDepositWei] = await Promise.all([
+  const [nativeWei, epDepositWei, escrowWei] = await Promise.all([
     client.getBalance({ address: accountAddress as Address }).catch(() => 0n),
     client
       .readContract({
@@ -211,8 +224,16 @@ export async function getAccountFunding(accountAddress: string): Promise<{ nativ
         args: [accountAddress as Address],
       })
       .catch(() => 0n),
+    client
+      .readContract({
+        address: config.aaEscrowAddress as Address,
+        abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
+        functionName: 'balanceOf',
+        args: [accountAddress as Address],
+      })
+      .catch(() => 0n),
   ])
-  return { nativeWei, epDepositWei }
+  return { nativeWei, epDepositWei, escrowWei }
 }
 
 // ============================================================================
@@ -428,7 +449,8 @@ export async function confirmAutoRenew(p: ConfirmAutoRenewParams): Promise<{
   const receiptSuccess = Boolean(result?.receipt?.success)
   if (receiptSuccess) {
     await pool.query(
-      `UPDATE aa_auto_renew SET renew_status = 'enabled', last_renew_err = NULL, updated_at = NOW()
+      `UPDATE aa_auto_renew SET renew_status = 'enabled', last_renew_err = NULL,
+         renew_fail_count = 0, paused_reason = NULL, paused_at = NULL, updated_at = NOW()
        WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
       [p.subscriber.toLowerCase(), p.agentId, p.planId],
     )
@@ -470,7 +492,8 @@ export async function disableAutoRenew(p: DisableAutoRenewParams): Promise<{ dis
     throw err
   }
   await pool.query(
-    `UPDATE aa_auto_renew SET renew_status = 'disabled', disabled_at = NOW(), updated_at = NOW()
+    `UPDATE aa_auto_renew SET renew_status = 'disabled', disabled_at = NOW(), updated_at = NOW(),
+       renew_fail_count = 0, paused_reason = NULL, paused_at = NULL
      WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
     [p.subscriber.toLowerCase(), p.agentId, p.planId],
   )
@@ -495,6 +518,7 @@ export async function listAutoRenew(subscriber: string): Promise<any[]> {
   const { rows } = await getPool().query(
     `SELECT ar.agent_id, ar.plan_id, ar.account_address, ar.current_subscription_id,
             ar.session_id, ar.session_signer, ar.renew_status, ar.renew_count,
+            ar.renew_fail_count, ar.paused_reason, ar.paused_at,
             ar.last_renew_at, ar.last_renew_tx, ar.last_renew_err, ar.created_at, ar.updated_at,
             cs.status AS sub_status, cs.started_at AS sub_started_at, cs.expires_at AS sub_expires_at, cs.amount_wei,
             sp.price AS plan_price, sp.period AS plan_period
@@ -512,8 +536,7 @@ export async function listAutoRenew(subscriber: string): Promise<any[]> {
 // 续订 cron
 // ============================================================================
 
-/**
- * 当前应续订的订阅。
+/** 当前应续订的订阅（导出供单测；续订 cron 与自愈共用）。
  * 自动续订的链上归属是智能账户（ERC-4337 的 msg.sender），indexer 按 msg.sender
  * 写入 chain_subscriptions，因此查询必须同时覆盖 EOA 与 account_address 两个归属。
  *   - 指针优先：current_subscription_id 指向的订阅 active 且无更新订阅时直接使用；
@@ -521,7 +544,7 @@ export async function listAutoRenew(subscriber: string): Promise<any[]> {
  *     重复续订扣费）；
  *   - 回退：EOA 或智能账户名下的最新一条 active/过期订阅（pointerMoved 供自愈前移）。
  */
-async function resolveCurrentSubscription(
+export async function resolveCurrentSubscription(
   subscriber: string,
   agentId: number,
   accountAddress: string,
@@ -565,13 +588,85 @@ async function resolveCurrentSubscription(
   return { subscription: sub, pointerMoved }
 }
 
-async function markRenewError(subscriber: string, agentId: number, planId: number, err: string): Promise<void> {
+/** 告警：配置了 AA_ALERT_WEBHOOK_URL 则 POST JSON（10s 超时）；未配置仅 log.error */
+async function sendAlert(subject: string, detail: Record<string, unknown>): Promise<void> {
+  const msg = { subject, time: new Date().toISOString(), ...detail }
+  if (!config.aaAlertWebhookUrl) {
+    log.error(`[aa-autorenew][ALERT] ${subject} ${JSON.stringify(detail)}`)
+    return
+  }
+  try {
+    await fetch(config.aaAlertWebhookUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(msg),
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch (err) {
+    log.error(`[aa-autorenew] alert webhook failed: ${(err as Error).message}`)
+  }
+}
+
+/** 暂停续订（失败护栏）：扫描只处理 enabled 行，暂停后不再骚扰重试；用户充值后 resume */
+async function pauseAutoRenew(subscriber: string, agentId: number, planId: number, reason: string): Promise<void> {
   await getPool().query(
-    `UPDATE aa_auto_renew SET last_renew_err = $1, last_renew_at = NULL, updated_at = NOW()
+    `UPDATE aa_auto_renew SET renew_status = 'paused', paused_reason = $1, paused_at = NOW(), updated_at = NOW()
      WHERE subscriber = $2 AND agent_id = $3 AND plan_id = $4`,
+    [reason, subscriber.toLowerCase(), agentId, planId],
+  )
+  autoRenewStats.pausedCount++
+  await sendAlert(`auto-renew paused (${subscriber}:${agentId}:${planId})`, { reason })
+  log.warn(`[aa-autorenew] paused ${subscriber}:${agentId}:${planId} → ${reason}`)
+}
+
+/**
+ * 记录续订失败并计数。
+ *  - fatal=false（默认，资金不足/链上失败/临时异常）：递增 renew_fail_count，
+ *    超过 AA_RENEW_MAX_FAIL_COUNT 自动暂停 + 告警（避免每轮无限重试）；
+ *  - fatal=true（订阅消失/计划失效/策略拒绝等不可自愈）：直接暂停 + 告警。
+ */
+async function markRenewError(
+  subscriber: string,
+  agentId: number,
+  planId: number,
+  err: string,
+  opts: { fatal?: boolean } = {},
+): Promise<void> {
+  const pool = getPool()
+  if (opts.fatal) {
+    await pauseAutoRenew(subscriber, agentId, planId, err)
+    return
+  }
+  const { rows } = await pool.query(
+    `UPDATE aa_auto_renew SET last_renew_err = $1, last_renew_at = NULL,
+       renew_fail_count = renew_fail_count + 1, updated_at = NOW()
+     WHERE subscriber = $2 AND agent_id = $3 AND plan_id = $4
+     RETURNING renew_fail_count, renew_status`,
     [err, subscriber.toLowerCase(), agentId, planId],
   )
   log.warn(`[aa-autorenew] ${subscriber}:${agentId}:${planId} → ${err}`)
+  const row = rows[0]
+  if (row && row.renew_status !== 'paused' && Number(row.renew_fail_count) >= config.aaRenewMaxFailCount) {
+    await pauseAutoRenew(subscriber, agentId, planId, `连续失败 ${row.renew_fail_count} 次：${err}`)
+  }
+}
+
+/** resume：用户充值后恢复被暂停的自动续订（重置失败计数） */
+export async function resumeAutoRenew(p: DisableAutoRenewParams): Promise<void> {
+  const pool = getPool()
+  const { rows } = await pool.query(
+    `UPDATE aa_auto_renew SET renew_status = 'enabled', paused_reason = NULL, paused_at = NULL,
+       renew_fail_count = 0, last_renew_err = NULL, updated_at = NOW()
+     WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3 AND renew_status = 'paused'
+     RETURNING plan_id`,
+    [p.subscriber.toLowerCase(), p.agentId, p.planId],
+  )
+  if (!rows[0]) {
+    const err = new Error('no paused auto-renew to resume (call enable first)') as Error & { status?: number }
+    err.status = 404
+    throw err
+  }
+  log.info(`[aa-autorenew] resumed: sub=${p.subscriber} plan=${p.planId}`)
 }
 
 /** 单行续订处理。返回 true=已续订，false=尝试但失败，null=未到期/不应续订。 */
@@ -582,7 +677,8 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
   // ① 当前应续订的订阅（指针为锚；覆盖 EOA 与智能账户两个归属）
   const resolved = await resolveCurrentSubscription(subscriber, agentId, row.account_address, row.current_subscription_id)
   if (!resolved) {
-    await markRenewError(subscriber, agentId, planId, 'no active subscription to renew')
+    // 订阅不存在：重试无意义（fatal 直接暂停）
+    await markRenewError(subscriber, agentId, planId, 'no active subscription to renew', { fatal: true })
     return null
   }
   const cur = resolved.subscription
@@ -601,7 +697,8 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
   const expiresAt = Number(cur.expires_at ?? 0)
   if (expiresAt > nowSec + windowSec) return null // 未到窗口
   if (nowSec - expiresAt > windowSec) {
-    await markRenewError(subscriber, agentId, planId, `subscription expired too long ago (${nowSec - expiresAt}s)`)
+    // 错过续订窗口：重试无意义（fatal 直接暂停）
+    await markRenewError(subscriber, agentId, planId, `subscription expired too long ago (${nowSec - expiresAt}s)`, { fatal: true })
     return null
   }
 
@@ -611,7 +708,8 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
   // ⑤ 计划仍有效
   const planRes = await pool.query(`SELECT price, active FROM subscription_plans WHERE plan_id = $1`, [planId])
   if (!planRes.rows[0] || !planRes.rows[0].active) {
-    await markRenewError(subscriber, agentId, planId, 'plan is inactive — renewal stopped')
+    // 计划下架：重试无意义（fatal 直接暂停）
+    await markRenewError(subscriber, agentId, planId, 'plan is inactive — renewal stopped', { fatal: true })
     return null
   }
   const priceWei = String(planRes.rows[0].price)
@@ -627,12 +725,26 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
   }
   const v = aa.validateSessionCall(policy, call, BigInt(nowSec))
   if (!v.ok) {
-    await markRenewError(subscriber, agentId, planId, `policy denied: ${v.reason}`)
+    // 策略拒绝（白名单/限额/有效期）：配置问题，重试无意义（fatal 直接暂停）
+    await markRenewError(subscriber, agentId, planId, `policy denied: ${v.reason}`, { fatal: true })
     return null
   }
 
-  // ⑦ 资金预检（用户自付 gas：EntryPoint deposit 需非零）
+  // ⑦ 资金预检（三类资金，实证见 docs/infrax-bundler-restore-handoff.md §5）：
+  //    - escrow 余额 → relay A-10 服务费（预扣固定费+预估 gas，实测 ~0.00246 OXA/次），
+  //      不足 relay 会拒绝/扣费失败 → 直接不提交；
+  //    - EntryPoint deposit → UserOp gas（bundler 按实际用量结算，未用部分退还）；
+  //    - native 余额 → execute value（订阅费）。
   const funding = await getAccountFunding(row.account_address)
+  if (funding.escrowWei < BigInt(config.aaRelayServiceFeeWei)) {
+    await markRenewError(
+      subscriber,
+      agentId,
+      planId,
+      `escrow balance too low (${funding.escrowWei} wei < ${config.aaRelayServiceFeeWei} wei) — top up smart account escrow`,
+    )
+    return null
+  }
   if (funding.epDepositWei <= 0n && funding.nativeWei <= 0n) {
     await markRenewError(subscriber, agentId, planId, 'smart account unfunded — top up OXA for gas')
     return null
@@ -665,7 +777,7 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
   if (success) {
     await pool.query(
       `UPDATE aa_auto_renew SET renew_count = renew_count + 1, last_renew_tx = $2, last_renew_err = NULL,
-         renew_log = renew_log || $4::jsonb, updated_at = NOW()
+         renew_fail_count = 0, renew_log = renew_log || $4::jsonb, updated_at = NOW()
        WHERE subscriber = $1 AND agent_id = $3 AND plan_id = $5`,
       [
         subscriber.toLowerCase(),
@@ -720,6 +832,8 @@ export async function runAutoRenewScan(): Promise<{ checked: number; renewed: nu
   if (rows.length > 0) {
     log.info(`[aa-autorenew] scan done: ${rows.length} checked, ${renewed} renewed, ${failed} failed`)
   }
+  autoRenewStats.lastScanAt = new Date().toISOString()
+  autoRenewStats.lastScan = { checked: rows.length, renewed, failed }
   return { checked: rows.length, renewed, failed }
 }
 

@@ -6,6 +6,7 @@
 //   GET  /billing/auto-renew           我的自动续订列表（含账户资金视图）
 //   POST /billing/auto-renew/enable    开启：创建 session + 部署账户 → 返回 digest
 //   POST /billing/auto-renew/confirm   提交 eth_sign 签名 → 上链授权生效
+//   POST /billing/auto-renew/resume    恢复被暂停（失败护栏/资金不足）的自动续订
 //   POST /billing/auto-renew/disable   停用（本地；返回 disableCallData 可选链上撤销）
 // ---------------------------------------------------------------------------
 
@@ -14,6 +15,7 @@ import {
   createAutoRenew,
   confirmAutoRenew,
   disableAutoRenew,
+  resumeAutoRenew,
   listAutoRenew,
   getAccountFunding,
   isAutoRenewEnabled,
@@ -50,7 +52,11 @@ router.get('/auto-renew', async (req: Request, res: Response) => {
         return {
           ...row,
           funding: funding
-            ? { nativeWei: funding.nativeWei.toString(), epDepositWei: funding.epDepositWei.toString() }
+            ? {
+                nativeWei: funding.nativeWei.toString(),
+                epDepositWei: funding.epDepositWei.toString(),
+                escrowWei: funding.escrowWei.toString(),
+              }
             : null,
         }
       }),
@@ -116,6 +122,31 @@ router.post('/auto-renew/confirm', requireEnabled, async (req: Request, res: Res
   } catch (err) {
     log.error(`auto-renew confirm failed: ${(err as Error).message}`)
     res.status(500).json({ error: (err as Error).message })
+  }
+})
+
+// POST /billing/auto-renew/resume
+router.post('/auto-renew/resume', async (req: Request, res: Response) => {
+  try {
+    if (!req.tenant) {
+      res.status(401).json({ error: 'Authentication required' })
+      return
+    }
+    const subscriber = req.tenant.walletAddress as string
+    const { agentId, planId } = req.body ?? {}
+    if (!agentId || !planId) {
+      res.status(400).json({ error: 'agentId, planId required' })
+      return
+    }
+    await resumeAutoRenew({
+      subscriber,
+      agentId: Number(agentId),
+      planId: Number(planId),
+    })
+    res.json({ ok: true })
+  } catch (err) {
+    log.error(`auto-renew resume failed: ${(err as Error).message}`)
+    res.status((err as Error & { status?: number }).status ?? 500).json({ error: (err as Error).message })
   }
 })
 

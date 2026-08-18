@@ -16,8 +16,11 @@ export interface AutoRenewRow {
   current_subscription_id: number | null
   session_id: string | null
   session_signer: string | null
-  renew_status: 'enabled' | 'pending' | 'disabled' | string
+  renew_status: 'enabled' | 'pending' | 'disabled' | 'paused' | string
   renew_count: number
+  renew_fail_count: number
+  paused_reason: string | null
+  paused_at: string | null
   last_renew_at: string | null
   last_renew_tx: string | null
   last_renew_err: string | null
@@ -29,7 +32,7 @@ export interface AutoRenewRow {
   amount_wei: string | null
   plan_price: string | null
   plan_period: number | null
-  funding: { nativeWei: string; epDepositWei: string } | null
+  funding: { nativeWei: string; epDepositWei: string; escrowWei: string } | null
 }
 
 export interface EnableAutoRenewResult {
@@ -95,6 +98,20 @@ export async function confirmAutoRenew(
   })
   if (!res.ok) throw await parseError(res)
   return (await res.json()) as ConfirmAutoRenewResult
+}
+
+/** POST /api/v1/billing/auto-renew/resume — resume a paused auto-renew after topping up */
+export async function resumeAutoRenew(
+  accessToken: string,
+  body: { agentId: number; planId: number },
+): Promise<{ ok: boolean }> {
+  const res = await gatewayFetch('/api/v1/billing/auto-renew/resume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS(accessToken) },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw await parseError(res)
+  return (await res.json()) as { ok: boolean }
 }
 
 /** POST /api/v1/billing/auto-renew/disable — stop future renewals */

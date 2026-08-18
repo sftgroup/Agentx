@@ -74,16 +74,17 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
 // ── Health check ──────────────────────────────────────────────────────────
 
 app.get('/api/v1/health', async (_req, res) => {
-  const services: Record<string, string | number | null> = {
+  const services: Record<string, string | number | null | Record<string, unknown>> = {
     chain: 'disconnected',
     database: 'disconnected',
     lastSyncAt: null,
     syncedAgentCount: 0,
   }
 
-  const [block, poolResult] = await Promise.allSettled([
+  const [block, poolResult, autoRenewResult] = await Promise.allSettled([
     new ethers.JsonRpcProvider(config.rpcUrlOxaChain).getBlockNumber(),
     getPool().query('SELECT COUNT(*) AS total, MAX(synced_at) AS last_sync FROM agents'),
+    import('./services/aa-autorenew').then((m) => m.getAutoRenewStats()),
   ])
 
   if (block.status === 'fulfilled') services.chain = 'connected'
@@ -93,6 +94,7 @@ app.get('/api/v1/health', async (_req, res) => {
     services.syncedAgentCount = Number(row.total ?? 0)
     services.lastSyncAt = (row.last_sync as Date | null)?.toISOString?.() ?? null
   }
+  services.autoRenew = autoRenewResult.status === 'fulfilled' ? autoRenewResult.value : null
 
   const degraded = services.chain === 'disconnected' || services.database === 'disconnected'
   res.status(degraded ? 503 : 200).json({ status: degraded ? 'degraded' : 'ok', services, time: new Date().toISOString() })

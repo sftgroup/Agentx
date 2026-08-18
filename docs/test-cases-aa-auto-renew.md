@@ -256,12 +256,32 @@
 | L3 | disable 未登记返回 500 | **已修复**：服务抛 `err.status=404`，路由映射 404 |
 | L4 | 免费计划仍需账户有 gas 才能续订 | 合理（UserOp 需 gas），文档说明即可 |
 
+### 7.1 2026-08-19 资金预检与失败护栏（P0，已实现）
+
+> 动机：续订 cron 对失败行默认"每轮无限重试"；资金不足（三类资金任一缺失）时
+> 会反复骚扰，且失败原因只落 `last_renew_err` 无暂停机制。本次补齐失败护栏。
+
+| # | 事项 | 状态 |
+|---|---|---|
+| L5 | 续订前 escrow 余额预检（`InfraXEscrow.balanceOf(account)` < `AA_RELAY_SERVICE_FEE_WEI` 默认 0.00246 OXA → 不提交） | **已修复**：`getAccountFunding` 返回三类资金（native / EP deposit / escrow），`renewOne` ⑦ 逐项预检 |
+| L6 | 失败无限重试 | **已修复**：`renew_fail_count` 连续计数（迁移 027），续订成功/confirm 成功/disable/resume 归零；达 `AA_RENEW_MAX_FAIL_COUNT`（默认 3）自动暂停 + 告警 |
+| L7 | 不可自愈失败（无订阅/计划下架/策略拒绝/错过窗口）继续空转 | **已修复**：`markRenewError(fatal)` 直接暂停，不再累计重试 |
+| L8 | 暂停后无法恢复 | **已修复**：新增 `POST /billing/auto-renew/resume`（`resumeAutoRenew`，仅 `paused` 行可恢复，重置计数） |
+| L9 | 无告警通道 | **已修复**：`AA_ALERT_WEBHOOK_URL` 可选告警（JSON POST 10s 超时），未配置时 `log.error`；`/api/v1/health` 暴露 `autoRenew` daemon 指标（lastScan / pausedCount） |
+| L10 | 前端无资金/暂停展示 | **已修复**：AutoRenewCard 三类资金展示 + 充值指引（fallback 路径）+ paused 状态/原因 + Resume 按钮 |
+| L11 | 续订后新订阅归属智能账户，用户 EOA 订阅列表查不到 | **已修复**：订阅列表页新增 `SmartAccountSubscriptionsCard`（懒 JWT 认证，合并展示智能账户名下订阅） |
+
+**新增单测**（`gateway/test/aa-autorenew.test.ts`，9 条，mock DB 不触链上）：
+- `resolveCurrentSubscription` 双归属 + 指针前移（指针优先/前移/回退智能账户归属/回退 EOA/无订阅）5 条；
+- `resumeAutoRenew` 恢复 + 404 2 条；
+- `runAutoRenewScan` fatal 暂停落库 + 空扫描 2 条。
+
 ---
 
 ## 8. 测试执行建议
 
-1. **L0 单元**：对 `aa-autorenew.ts` 纯函数（policy 往返、资金计算、窗口/冷却判定）用 vitest + mock aa-sdk/relay；`renewOne` 用 mock DB。
-2. **L1 API**：supertest 挂载真实路由 + 内存 DB / 现有测试基座（参照 `test/billing.test.ts`）。
-3. **L2 前端**：vitest + testing-library 渲染 AutoRenewCard（mock `useGatewayAuth`/`useWalletClient`/fetch），覆盖 91–110。
-4. **L3 链上 E2E**：参照 infraX `aa-relay/scripts/aa-session-e2e.ts`，用测试钱包跑 111–122；用测试网/短周期计划缩短等待（临时调低 `AA_AUTO_RENEW_WINDOW_SEC`）。
-5. **优先级**：先修 §7 L1/L2/L3 三个缺陷再跑 E2E，避免无效失败。
+1. **L0 单元**：`gateway/test/aa-autorenew.test.ts` 已落地（9 条，2026-08-19）：`resolveCurrentSubscription` 双归属/指针前移、`resumeAutoRenew`、`runAutoRenewScan` 失败护栏。对资金计算、窗口/冷却判定等纯函数继续补 vitest + mock aa-sdk/relay。
+2. **L1 API**：supertest 挂载真实路由 + 内存 DB / 现有测试基座（参照 `test/billing.test.ts`）。新增 `resume` 端点需补回归用例。
+3. **L2 前端**：vitest + testing-library 渲染 AutoRenewCard（mock `useGatewayAuth`/`useWalletClient`/fetch），覆盖 91–110 及 paused/escrow 展示分支。
+4. **L3 链上 E2E**：参照 infraX `aa-relay/scripts/aa-session-e2e.ts`，用测试钱包跑 111–122；用测试网/短周期计划缩短等待（临时调低 `AA_AUTO_RENEW_WINDOW_SEC`）。资金预检已由 2026-08-19 生产实证覆盖（三类资金 + 指针前移复验 0 renewed）。
+5. **优先级**：P0 失败护栏（L5–L11）已上线验证；后续补 L1/L2 层回归用例即可。

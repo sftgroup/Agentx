@@ -140,6 +140,15 @@ export const config = {
   aaAutoRenewWindowSec: parseInt(process.env.AA_AUTO_RENEW_WINDOW_SEC || '86400', 10),
   aaAutoRenewSessionDays: parseInt(process.env.AA_AUTO_RENEW_SESSION_DAYS || '730', 10),
   aaAutoRenewMaxCount: parseInt(process.env.AA_AUTO_RENEW_MAX_COUNT || '366', 10),
+  // 失败护栏：续订失败累计超过上限自动暂停（充值后 resume 恢复）；可选告警 webhook
+  aaRenewMaxFailCount: parseInt(process.env.AA_RENEW_MAX_FAIL_COUNT || '3', 10),
+  aaAlertWebhookUrl: process.env.AA_ALERT_WEBHOOK_URL || '',
+  // 智能账户三类资金（实证见 docs/infrax-bundler-restore-handoff.md §5）：
+  //   native 余额付订阅费（execute value）、EntryPoint deposit 付 UserOp gas、
+  //   InfraXEscrow.balanceOf(account) 付 relay A-10 服务费（预扣固定费+预估 gas，
+  //   实测约 0.00246 OXA/次 = 2460000000000000 wei）。续订前逐项预检。
+  aaEscrowAddress: process.env.AA_ESCROW_ADDRESS || '0x8bf8ffee86f1d4a160f0953eb13bedcbf99eaf9e',
+  aaRelayServiceFeeWei: process.env.AA_RELAY_SERVICE_FEE_WEI || '2460000000000000',
   // Kernel 账户部署 gas（平台代付一次性；未配置且账户未部署时 enable 报错）
   aaDeployerPrivateKey: process.env.AA_DEPLOYER_PRIVATE_KEY || '',
   // oxachain Kernel v3 AA 栈（对齐 infraX AA_SDK_TECH_DESIGN §8.3 生产地址，env 可覆盖）

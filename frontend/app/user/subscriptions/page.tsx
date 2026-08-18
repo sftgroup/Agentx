@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { useAccount } from 'wagmi'
 import { useUserSubscriptions } from '@/hooks/user/useUserSubscriptions'
 import { useAgentRegistry } from '@/hooks/aimarket/useAgentRegistry'
+import { SmartAccountSubscriptionsCard } from '@/components/user/SmartAccountSubscriptionsCard'
 import { useState, useMemo } from 'react'
 import {
   CreditCard, Clock, AlertTriangle, CheckCircle, XCircle,
@@ -78,6 +79,9 @@ export default function SubscriptionsPage() {
               }`}>{tab.label}</button>
           ))}
         </div>
+
+        {/* 智能账户订阅（自动续订产生的订阅归属智能账户，EOA 列表查不到） */}
+        <SmartAccountSubscriptionsCard />
 
         {/* List */}
         {isLoading ? (

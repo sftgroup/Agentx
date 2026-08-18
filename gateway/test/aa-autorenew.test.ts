@@ -1,0 +1,166 @@
+// AgentX Gateway — ERC-4337 auto-renew 核心逻辑单测（t9）
+// 覆盖续订 cron 的双归属解析 / 指针前移 / 失败护栏暂停 / resume 恢复。
+// 纯 DB 查询逻辑，mock getPool；不触碰链上 / aa-relay（链上路径见
+// docs/test-cases-aa-auto-renew.md 的生产实证）。
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const queryMock = vi.hoisted(() => vi.fn())
+
+vi.mock('../src/lib/db', () => ({
+  getPool: () => ({ query: queryMock }),
+}))
+
+vi.mock('../src/config', () => ({
+  config: {
+    nodeEnv: 'test',
+    aaAutoRenewEnabled: true,
+    aaRelayUrl: 'http://relay.test:9131',
+    aaRelayApiKey: 'test-key',
+    aaRelayChain: 'oxachain',
+    aaAutoRenewIntervalSec: 3600,
+    aaAutoRenewWindowSec: 86400,
+    aaAutoRenewSessionDays: 730,
+    aaAutoRenewMaxCount: 366,
+    aaRenewMaxFailCount: 3,
+    aaAlertWebhookUrl: '',
+    aaEscrowAddress: '0x8bf8ffee86f1d4a160f0953eb13bedcbf99eaf9e',
+    aaRelayServiceFeeWei: '2460000000000000',
+    aaDeployerPrivateKey: '',
+    chainIdOxaChain: 19505,
+    rpcUrlOxaChain: 'https://rpc-oxa.0xainet.top',
+    aaEntryPointOxaChain: '0x97e4cddcffeaf4580bc6315fee512f2b2d82798a',
+    aaKernelFactoryOxaChain: '0xf8abe4510a6810d5ef26aa3222c0f63d32b757d1',
+    aaKernelImplementationOxaChain: '0x5131d75af2126eba05edbb6bc24902c42d1b52b4',
+    aaEcdsaValidatorOxaChain: '0xb0d4f548e022b8a9d5b454ffb7f327ee2afeb16c',
+    aaSessionModuleOxaChain: '0xfbbca78d2d7d08c1163aa57a0056973ef4fd8c74',
+    subscriptionManagerOxaChain: '0x1234567890123456789012345678901234567890',
+    masterEncryptionKey: 'test-encryption-key-0000000000000000',
+  },
+}))
+
+vi.mock('../src/services/chain-data-reader', () => ({
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
+import { resolveCurrentSubscription, resumeAutoRenew, runAutoRenewScan } from '../src/services/aa-autorenew'
+
+const EOA = '0x1111111111111111111111111111111111111111'
+const ACCOUNT = '0x2222222222222222222222222222222222222222'
+
+const subRow = (id: number, status: number, over: Record<string, unknown> = {}) => ({
+  subscription_id: id,
+  status,
+  started_at: 1700000000,
+  expires_at: 1730000000,
+  amount_wei: '1000000000000000',
+  ...over,
+})
+
+/** 按 SQL 分支路由的 pool.query 模拟（未命中分支 → 空 rows）。
+ *  注意：vitest 在测试后 cleanup 阶段会 flush 未消费的 mock 调用（参数 undefined），
+ *  必须容忍非字符串入参并返回空 rows，避免未捕获异常导致测试误判失败。 */
+function mockQueries(branches: { pointer?: any[]; newer?: any[]; fallback?: any[]; enabled?: any[] } = {}) {
+  queryMock.mockImplementation((sql: unknown) => {
+    if (typeof sql !== 'string') return Promise.resolve({ rows: [] })
+    if (sql.includes('FROM chain_subscriptions WHERE subscription_id = $1')) return Promise.resolve({ rows: branches.pointer ?? [] })
+    if (sql.includes('subscription_id > $4')) return Promise.resolve({ rows: branches.newer ?? [] })
+    if (sql.includes('status IN (1,2)')) return Promise.resolve({ rows: branches.fallback ?? [] })
+    if (sql.includes('FROM aa_auto_renew WHERE renew_status')) return Promise.resolve({ rows: branches.enabled ?? [] })
+    return Promise.resolve({ rows: [] })
+  })
+}
+
+describe('resolveCurrentSubscription — 双归属解析 + 指针前移', () => {
+  beforeEach(() => queryMock.mockReset())
+
+  it('指针优先：指针指向的订阅仍 active 且无更新订阅 → 直接返回指针订阅', async () => {
+    mockQueries({ pointer: [subRow(10, 1)] })
+    const r = await resolveCurrentSubscription(EOA, 1, ACCOUNT, 10)
+    expect(r?.subscription.subscription_id).toBe(10)
+    expect(r?.pointerMoved).toBeUndefined()
+  })
+
+  it('指针优先 + 续订后已有更新订阅（归属智能账户）→ 前移指针返回新订阅', async () => {
+    mockQueries({ pointer: [subRow(10, 1)], newer: [subRow(11, 1)] })
+    const r = await resolveCurrentSubscription(EOA, 1, ACCOUNT, 10)
+    expect(r?.subscription.subscription_id).toBe(11)
+    expect(r?.pointerMoved).toBe(11)
+  })
+
+  it('指针失效（已过期）→ 回退命中智能账户名下的新订阅并前移', async () => {
+    // 续订后旧指针订阅已过期（status=2），新订阅归属智能账户（LOWER(subscriber)=account_address）
+    mockQueries({ pointer: [subRow(10, 2)], fallback: [subRow(11, 1)] })
+    const r = await resolveCurrentSubscription(EOA, 1, ACCOUNT, 10)
+    expect(r?.subscription.subscription_id).toBe(11)
+    expect(r?.pointerMoved).toBe(11)
+  })
+
+  it('指针失效 → 回退命中 EOA 名下最新订阅（未启用过续订的路径）', async () => {
+    mockQueries({ pointer: [subRow(10, 2)], fallback: [subRow(9, 1)] })
+    const r = await resolveCurrentSubscription(EOA, 1, ACCOUNT, 10)
+    expect(r?.subscription.subscription_id).toBe(9)
+    expect(r?.pointerMoved).toBe(9)
+  })
+
+  it('无任何订阅 → null（触发 fatal 暂停）', async () => {
+    mockQueries()
+    const r = await resolveCurrentSubscription(EOA, 1, ACCOUNT, null)
+    expect(r).toBeNull()
+  })
+})
+
+describe('resumeAutoRenew — 暂停恢复', () => {
+  beforeEach(() => queryMock.mockReset())
+
+  it('paused 行 → 恢复为 enabled 并重置失败计数', async () => {
+    queryMock.mockImplementation(async (sql: unknown) => ({
+      rows: typeof sql === 'string' && sql.includes('RETURNING plan_id') ? [{ plan_id: 1 }] : [],
+    }))
+    await expect(resumeAutoRenew({ subscriber: EOA, agentId: 1, planId: 1 })).resolves.toBeUndefined()
+    const updateSql = queryMock.mock.calls.map((c: unknown[]) => c[0] as string).find(s => typeof s === 'string' && s.includes('RETURNING plan_id'))
+    expect(updateSql).toContain(`renew_status = 'enabled'`)
+    expect(updateSql).toContain('renew_fail_count = 0')
+    expect(updateSql).toContain(`AND renew_status = 'paused'`)
+  })
+
+  it('非 paused 行 → 404 错误（无静默成功）', async () => {
+    queryMock.mockImplementation(async () => ({ rows: [] }))
+    const err = await resumeAutoRenew({ subscriber: EOA, agentId: 1, planId: 1 }).catch((e: Error & { status?: number }) => e)
+    expect(err.status).toBe(404)
+  })
+})
+
+describe('runAutoRenewScan — 失败护栏', () => {
+  beforeEach(() => queryMock.mockReset())
+
+  it('enabled 行无订阅 → fatal 直接暂停（paused_reason 落库）+ 告警，scan 计数不记 failed', async () => {
+    mockQueries({
+      enabled: [
+        {
+          subscriber: EOA,
+          agent_id: 1,
+          plan_id: 1,
+          account_address: ACCOUNT,
+          session_id: '0xdeadbeef',
+          session_key_enc: 'enc',
+          policy_json: '{}',
+          current_subscription_id: 10,
+          last_renew_at: null,
+        },
+      ],
+    })
+    const r = await runAutoRenewScan()
+    expect(r).toEqual({ checked: 1, renewed: 0, failed: 0 })
+    // 应发出 paused 流转（fatal → pauseAutoRenew），reason 作为参数落库
+    const pausedCall = queryMock.mock.calls.find((c: unknown[]) => typeof c[0] === 'string' && (c[0] as string).includes(`renew_status = 'paused'`))
+    expect(pausedCall).toBeDefined()
+    expect((pausedCall as unknown[])[1]).toContain('no active subscription to renew')
+  })
+
+  it('无 enabled 行 → 空扫描不执行任何 DB 更新', async () => {
+    mockQueries()
+    const r = await runAutoRenewScan()
+    expect(r).toEqual({ checked: 0, renewed: 0, failed: 0 })
+    expect(queryMock.mock.calls.filter(c => typeof c[0] === 'string').length).toBe(1) // 仅 SELECT
+  })
+})
