@@ -46,6 +46,14 @@ const AA_RELAY_PRODUCT = 'agentx-auto-renew'
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 /** SubscriptionManager.subscribe(uint256) selector（每订阅一个独立 session 的策略 target） */
 const SUBSCRIBE_SELECTOR: Hex = toFunctionSelector('subscribe(uint256)')
+/**
+ * SubscriptionManager.owner() selector —— ENABLE-mode 良性调用（无副作用 view）。
+ * aa-sdk buildEnableSessionUserOp 默认 benignCall={target:账户自身,data:'0x'}，不在
+ * 会话白名单内 → Session Module 校验失败（FailedOp AA24 signature error）。修复 =
+ * 白名单增加本条 permission + benignCall=SM.owner()（链上探针验证通过，见
+ * scripts/aa-benignfix-probe.mjs；confirm 纯授权不扣费）。
+ */
+const OWNER_SELECTOR: Hex = toFunctionSelector('owner()')
 
 /** 固定 gas 上限（Kernel v3 ENABLE-mode 验证阶段安装模块，预留余量；EntryPoint 按实际用量结算，未用部分退还） */
 const AA_GAS = {
@@ -268,13 +276,23 @@ export async function createAutoRenew(p: CreateAutoRenewParams): Promise<{
   const now = Math.floor(Date.now() / 1000)
   const validUntil = now + config.aaAutoRenewSessionDays * 86400
   const priceWei = BigInt(p.planPriceWei)
+  const sm = config.subscriptionManagerOxaChain as Address
   const permissions = [
     {
-      targets: [config.subscriptionManagerOxaChain],
+      targets: [sm],
       selectors: [SUBSCRIBE_SELECTOR],
       valueLimit: priceWei, // 单笔限额 = 订阅价
       countLimit: config.aaAutoRenewMaxCount, // 总调用上限（2 年窗口保护）
       dailyLimit: priceWei, // 每天最多续订一次
+    },
+    {
+      // ENABLE-mode 良性调用白名单（无副作用）：benignCall 必须命中白名单，
+      // 否则 Session Module 校验失败 → FailedOp AA24（见 aa-autorenew 头注）。
+      targets: [sm],
+      selectors: [OWNER_SELECTOR],
+      valueLimit: 0n,
+      countLimit: 1,
+      dailyLimit: 0n,
     },
   ]
   const relay = await relayRequest('/v1/session', {
@@ -308,6 +326,7 @@ export async function createAutoRenew(p: CreateAutoRenewParams): Promise<{
     chainConfig: cfg,
     account: accountAddress as Address,
     policy,
+    benignCall: { target: sm, value: 0n, data: OWNER_SELECTOR },
     gas: { ...AA_GAS, ...(await estimateFees()) },
   })
 
@@ -374,7 +393,8 @@ export async function confirmAutoRenew(p: ConfirmAutoRenewParams): Promise<{
   const { rows } = await pool.query(
     `SELECT account_address, session_id, session_signer, session_key_enc, policy_json
      FROM aa_auto_renew
-     WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3 AND renew_status = 'pending'`,
+     WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3 AND renew_status = 'pending'
+     ORDER BY updated_at DESC LIMIT 1`,
     [p.subscriber.toLowerCase(), p.agentId, p.planId],
   )
   if (!rows[0]) throw new Error('no pending auto-renew session (call enable first)')
@@ -388,6 +408,9 @@ export async function confirmAutoRenew(p: ConfirmAutoRenewParams): Promise<{
     chainConfig: cfg,
     account: row.account_address as Address,
     policy,
+    // 与 createAutoRenew 一致的良性调用（白名单含 owner() 条目），否则重建的
+    // UserOp 执行调用不在白名单 → FailedOp AA24；digest 亦因 callData 不同而失配。
+    benignCall: { target: config.subscriptionManagerOxaChain as Address, value: 0n, data: OWNER_SELECTOR },
     gas: { ...AA_GAS, ...(await estimateFees()) },
   })
   const sessionKey = decryptApiKey(row.session_key_enc, config.masterEncryptionKey)
@@ -489,16 +512,38 @@ export async function listAutoRenew(subscriber: string): Promise<any[]> {
 // 续订 cron
 // ============================================================================
 
-/** 当前应续订的订阅：最新一条 活跃或已过期 的订阅（自动续订要接住刚过期的订阅） */
-async function resolveCurrentSubscription(subscriber: string, agentId: number): Promise<any | null> {
-  const { rows } = await getPool().query(
+/**
+ * 当前应续订的订阅：以 current_subscription_id 指针为锚。
+ *   - 指针指向的订阅仍 active(1) → 直接返回（续订针对指针订阅，不追新，避免取错行）；
+ *   - 否则（指针失效 / 指针订阅已过期且 indexer 已产生新订阅）→ 回退最新一条
+ *     active/过期订阅，并标记 pointerMoved 供 renewOne 前移指针（自愈）。
+ */
+async function resolveCurrentSubscription(
+  subscriber: string,
+  agentId: number,
+  currentSubscriptionId?: number | null,
+): Promise<{ subscription: any; pointerMoved?: number } | null> {
+  const pool = getPool()
+  if (currentSubscriptionId) {
+    const { rows } = await pool.query(
+      `SELECT subscription_id, status, started_at, expires_at, amount_wei
+       FROM chain_subscriptions
+       WHERE subscription_id = $1 AND LOWER(subscriber) = $2`,
+      [currentSubscriptionId, subscriber.toLowerCase()],
+    )
+    if (rows[0] && Number(rows[0].status) === 1) return { subscription: rows[0] }
+  }
+  const { rows } = await pool.query(
     `SELECT subscription_id, status, started_at, expires_at, amount_wei
      FROM chain_subscriptions
      WHERE LOWER(subscriber) = $1 AND agent_id = $2 AND status IN (1,2)
      ORDER BY subscription_id DESC LIMIT 1`,
     [subscriber.toLowerCase(), agentId],
   )
-  return rows[0] ?? null
+  const sub = rows[0] ?? null
+  if (!sub) return null
+  const pointerMoved = Number(sub.subscription_id) !== Number(currentSubscriptionId ?? 0) ? Number(sub.subscription_id) : undefined
+  return { subscription: sub, pointerMoved }
 }
 
 async function markRenewError(subscriber: string, agentId: number, planId: number, err: string): Promise<void> {
@@ -515,21 +560,22 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
   const pool = getPool()
   const { subscriber, agent_id: agentId, plan_id: planId } = row
 
-  // ① 最新活跃/刚过期订阅
-  const cur = await resolveCurrentSubscription(subscriber, agentId)
-  if (!cur) {
+  // ① 当前应续订的订阅（以 current_subscription_id 指针为锚）
+  const resolved = await resolveCurrentSubscription(subscriber, agentId, row.current_subscription_id)
+  if (!resolved) {
     await markRenewError(subscriber, agentId, planId, 'no active subscription to renew')
     return null
   }
+  const cur = resolved.subscription
 
   // ② 指针自愈（续订成功后 indexer 产生新订阅，这里前移）
-  if (Number(row.current_subscription_id ?? 0) !== Number(cur.subscription_id)) {
+  if (resolved.pointerMoved) {
     await pool.query(
       `UPDATE aa_auto_renew SET current_subscription_id = $1, updated_at = NOW()
        WHERE subscriber = $2 AND agent_id = $3 AND plan_id = $4`,
-      [cur.subscription_id, subscriber.toLowerCase(), agentId, planId],
+      [resolved.pointerMoved, subscriber.toLowerCase(), agentId, planId],
     )
-    row.current_subscription_id = cur.subscription_id
+    row.current_subscription_id = resolved.pointerMoved
   }
 
   // ③ 到期窗口：到期前 windowSec 内或过期不超过 windowSec 才续订
