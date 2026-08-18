@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { SubscriptionManager, SubscriptionPayments } from '@agentxv2/sdk'
 import { GATEWAY_URL } from '@/lib/gateway'
 import { ZERO_ADDRESS } from '@/components/agent/hooks/contract-address'
+import { AutoRenewCard } from '@/components/user/AutoRenewCard'
 
 const SUBSCRIPTION_MANAGER_ADDRESS = (process.env.NEXT_PUBLIC_SUBSCRIPTION_MANAGER_ADDRESS || ZERO_ADDRESS) as `0x${string}`
 
@@ -51,8 +52,23 @@ function SubscriptionContent({ subscriptionId, isConnected, address }: { subscri
   const [isProcessing, setIsProcessing] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [message, setMessage] = useState('')
+  const [planPriceWei, setPlanPriceWei] = useState('')
+  const [planPeriod, setPlanPeriod] = useState(2) // BillingPeriod: 0 Daily … 4 Yearly
 
   useEffect(() => { if (subscriptionId && isConnected) refetch?.() }, [subscriptionId, isConnected])
+
+  // 加载计划价格（自动续订的 session 限额需要）
+  useEffect(() => {
+    if (!subscription) return
+    getPlanDetails(Number(subscription.planId))
+      .then((p: any) => {
+        if (p && p.price > BigInt(0)) {
+          setPlanPriceWei(p.price.toString())
+          setPlanPeriod(Number(p.billingPeriod))
+        }
+      })
+      .catch(() => {})
+  }, [subscription?.planId])
 
   if (!isConnected) {
     return <div className="max-w-4xl mx-auto text-center py-20"><AlertCircle className="w-16 h-16 text-accent-purple/40 mx-auto mb-4" /><h2 className="heading-md mb-3">Connect Wallet</h2><p className="body text-text-muted">Connect to view subscription details.</p></div>
@@ -180,6 +196,18 @@ function SubscriptionContent({ subscriptionId, isConnected, address }: { subscri
           <Link href={`/user/chat/${subscription.agentId}`} className="btn-secondary text-sm px-6 py-2">Chat</Link>
         </div>
       </div>
+
+      {isActive && planPriceWei && (
+        <AutoRenewCard
+          agentId={Number(subscription.agentId)}
+          planId={Number(subscription.planId)}
+          subscriptionId={Number(subscription.subscriptionId)}
+          planPriceWei={planPriceWei}
+          priceDisplay={`${(Number(planPriceWei) / 1e18).toFixed(4)} OXA / ${['day', 'week', 'month', 'quarter', 'year'][planPeriod] ?? 'period'}`}
+          isActive={isActive}
+          expiresAt={subscription.endDate}
+        />
+      )}
     </div>
   )
 }

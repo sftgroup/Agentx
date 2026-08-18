@@ -34,6 +34,7 @@ import skillsRouter from './routes/skills'
 import agentMcpRouter from './routes/agent-mcp'
 import schedulesRouter from './routes/schedules'
 import billingRouter from './routes/billing'
+import autoRenewRouter from './routes/auto-renew'
 
 const app = express()
 
@@ -199,6 +200,8 @@ api.use('/', chatTasksRouter)
 api.use('/schedules', schedulesRouter)
 // B-end billing (R19.7 companion): balance query for tenant / end-user wallets.
 api.use('/billing', billingRouter)
+// ERC-4337 auto-renew (t9): enable/confirm/disable/status for on-chain subscriptions.
+api.use('/billing', autoRenewRouter)
 
 app.use('/api/v1', api)
 
@@ -223,6 +226,7 @@ function shutdown(signal: string): void {
     import('./services/a2a-worker').then(({ stopA2AWorker }) => stopA2AWorker()),
     import('./services/schedule-daemon').then(({ stopScheduleDaemon }) => stopScheduleDaemon()),
     import('./services/reconcile-x402').then(({ stopX402Reconciler }) => stopX402Reconciler()),
+    import('./services/aa-autorenew').then(({ stopAutoRenewDaemon }) => stopAutoRenewDaemon()),
     closePool(),
   ]).finally(() => process.exit(0))
 }
@@ -255,6 +259,13 @@ app.listen(config.port, () => {
     startX402Reconciler()
   }).catch(err => {
     console.error('[AgentX Gateway] Failed to start x402 reconciler:', err.message)
+  })
+
+  // Start ERC-4337 auto-renew daemon (t9): due-subscription scan → session-key UserOps
+  import('./services/aa-autorenew').then(({ startAutoRenewDaemon }) => {
+    startAutoRenewDaemon()
+  }).catch(err => {
+    console.error('[AgentX Gateway] Failed to start auto-renew daemon:', err.message)
   })
 
   // Start agent sync event watcher (incremental on-chain updates)

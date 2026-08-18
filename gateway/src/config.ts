@@ -125,6 +125,29 @@ export const config = {
   mppChain: process.env.MPP_CHAIN || 'oxachain',
   mppSettleThresholdWei: process.env.MPP_SETTLE_THRESHOLD_WEI || '1000000000000000000',
   mppSettleIntervalSec: parseInt(process.env.MPP_SETTLE_INTERVAL_SEC || '86400', 10),
+
+  // ── ERC-4337 auto-renew（t9）─────────────────────────────────────────────
+  // 自动续订 = 用户 EOA 一次授权（Kernel v3 智能账户 + session key）后，服务端
+  // 在订阅到期前用 session key 签发 UserOp 调 subscribe(planId) 续订，用户自付
+  // gas（智能账户需预存 OXA）。依赖 infraX aa-relay（POST /v1/session、/v1/userops）；
+  // AA_AUTO_RENEW_ENABLED=true 且 AA_RELAY_URL/AA_RELAY_API_KEY 配置后能力启用。
+  aaAutoRenewEnabled: process.env.AA_AUTO_RENEW_ENABLED === 'true',
+  aaRelayUrl: process.env.AA_RELAY_URL || '',
+  aaRelayApiKey: process.env.AA_RELAY_API_KEY || '',
+  aaRelayChain: process.env.AA_RELAY_CHAIN || 'oxachain',
+  // 扫描间隔 / 续订窗口（到期前 24h 内触发）/ 会话授权时长 / 单会话最大续订次数
+  aaAutoRenewIntervalSec: parseInt(process.env.AA_AUTO_RENEW_INTERVAL_SEC || '3600', 10),
+  aaAutoRenewWindowSec: parseInt(process.env.AA_AUTO_RENEW_WINDOW_SEC || '86400', 10),
+  aaAutoRenewSessionDays: parseInt(process.env.AA_AUTO_RENEW_SESSION_DAYS || '730', 10),
+  aaAutoRenewMaxCount: parseInt(process.env.AA_AUTO_RENEW_MAX_COUNT || '366', 10),
+  // Kernel 账户部署 gas（平台代付一次性；未配置且账户未部署时 enable 报错）
+  aaDeployerPrivateKey: process.env.AA_DEPLOYER_PRIVATE_KEY || '',
+  // oxachain Kernel v3 AA 栈（对齐 infraX AA_SDK_TECH_DESIGN §8.3 生产地址，env 可覆盖）
+  aaEntryPointOxaChain: process.env.AA_OXACHAIN_ENTRYPOINT_V07 || '0x97e4cddcffeaf4580bc6315fee512f2b2d82798a',
+  aaKernelFactoryOxaChain: process.env.AA_OXACHAIN_FACTORY || '0xf8abe4510a6810d5ef26aa3222c0f63d32b757d1',
+  aaKernelImplementationOxaChain: process.env.AA_OXACHAIN_IMPLEMENTATION || '0x5131d75af2126eba05edbb6bc24902c42d1b52b4',
+  aaEcdsaValidatorOxaChain: process.env.AA_OXACHAIN_ECDSA_VALIDATOR || '0xb0d4f548e022b8a9d5b454ffb7f327ee2afeb16c',
+  aaSessionModuleOxaChain: process.env.AA_OXACHAIN_SESSION_MODULE || '0xfbbca78d2d7d08c1163aa57a0056973ef4fd8c74',
 }
 
 // ---------------------------------------------------------------------------

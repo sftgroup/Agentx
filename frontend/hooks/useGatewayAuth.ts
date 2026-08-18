@@ -55,7 +55,7 @@ export interface GatewayContext {
   }
 }
 
-export function useGatewayAuth(gatewayUrl?: string) {
+export function useGatewayAuth(gatewayUrl?: string, opts?: { lazy?: boolean }) {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient()
   const [state, setState] = useState<GatewayAuthState>({
@@ -135,8 +135,8 @@ export function useGatewayAuth(gatewayUrl?: string) {
   }, [gatewayUrl, isConnected, address, walletClient])
 
   useEffect(() => {
-    authenticate()
-  }, [authenticate])
+    if (!opts?.lazy) authenticate()
+  }, [authenticate, opts?.lazy])
 
   const refreshContext = useCallback(async () => {
     if (!tokenRef.current || !gatewayUrl) return
