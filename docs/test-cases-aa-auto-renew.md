@@ -12,7 +12,7 @@
 |---|---|
 | 合约枚举 | `Inactive=0, Active=1, Expired=2, Cancelled=3`（`contracts/src/SubscriptionManager.sol`） |
 | `subscribe(uint256)` selector | `0x0f574ba7` |
-| Kernel v3 | 0.3.0-beta（initialize 4 参数），EntryPoint v0.7 |
+| Kernel v3 | 0.3.0-beta（initialize 4 参数），EntryPoint v0.7；**aa-relay 必须设 `AA_OXACHAIN_KERNEL_VERSION=0.3.0-beta`**，否则 session 账户地址按 0.3.1 编码（无法部署，链上 revert） |
 | enable 签名组合 | `signature = hook(20B) ‖ abi.encode(validatorData, hookData, executeSelector, enableSig, userOpSig)` |
 | enableSig | **owner 对 EIP-712 enableDigest 的裸 ECDSA（eth_sign，32B 输入）**，非 personal_sign(EIP-191) |
 | userOpSig（enable） | `sessionId(32B) ‖ agent/sessionKey(userOpHash)` |
