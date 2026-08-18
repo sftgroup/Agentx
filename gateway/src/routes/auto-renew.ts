@@ -85,7 +85,7 @@ router.post('/auto-renew/enable', requireEnabled, async (req: Request, res: Resp
     res.json(result)
   } catch (err) {
     log.error(`auto-renew enable failed: ${(err as Error).message}`)
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as Error & { status?: number }).status ?? 500).json({ error: (err as Error).message })
   }
 })
 
@@ -140,7 +140,7 @@ router.post('/auto-renew/disable', async (req: Request, res: Response) => {
     res.json(result)
   } catch (err) {
     log.error(`auto-renew disable failed: ${(err as Error).message}`)
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as Error & { status?: number }).status ?? 500).json({ error: (err as Error).message })
   }
 })
 

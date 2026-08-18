@@ -42,6 +42,8 @@ import { encryptApiKey, decryptApiKey } from '../lib/crypto'
 import { log } from './chain-data-reader'
 
 const AA_RELAY_PRODUCT = 'agentx-auto-renew'
+/** 零地址（ETH 计费计划 pay_token = 0x0 才支持自动续订） */
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 /** SubscriptionManager.subscribe(uint256) selector（每订阅一个独立 session 的策略 target） */
 const SUBSCRIBE_SELECTOR: Hex = toFunctionSelector('subscribe(uint256)')
 
@@ -244,13 +246,20 @@ export async function createAutoRenew(p: CreateAutoRenewParams): Promise<{
   if (Number(sub.status) !== 1) throw new Error('subscription is not active')
   if (sub.amount_wei !== p.planPriceWei) throw new Error('plan price mismatch (subscription vs provided)')
   const planRes = await pool.query(
-    `SELECT plan_id, agent_id, price, active FROM subscription_plans WHERE plan_id = $1`,
+    `SELECT plan_id, agent_id, price, active, pay_token FROM subscription_plans WHERE plan_id = $1`,
     [p.planId],
   )
   const plan = planRes.rows[0]
   if (!plan || Number(plan.agent_id) !== p.agentId) throw new Error('plan not found for agent')
   if (!plan.active) throw new Error('plan is inactive')
   if (plan.price !== p.planPriceWei) throw new Error('plan price mismatch (plan vs provided)')
+  // 自动续订仅支持 ETH 计费：ERC20 计划链上 subscribe() 要求 msg.value==0，
+  // 而 session 策略以 value 支付订阅费，ERC20 续订必然 revert（见测试用例 L2）。
+  if (plan.pay_token && String(plan.pay_token).toLowerCase() !== ZERO_ADDRESS) {
+    const err = new Error('auto-renew only supports ETH plans (pay_token must be zero address)') as Error & { status?: number }
+    err.status = 422
+    throw err
+  }
 
   // ② aa-relay 创建 session（生成 session key + 策略落库 + 预测账户地址）
   const now = Math.floor(Date.now() / 1000)
@@ -391,12 +400,23 @@ export async function confirmAutoRenew(p: ConfirmAutoRenewParams): Promise<{
   const result = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: true })
 
   const receiptSuccess = Boolean(result?.receipt?.success)
-  await pool.query(
-    `UPDATE aa_auto_renew SET renew_status = 'enabled', last_renew_err = NULL, updated_at = NOW()
-     WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
-    [p.subscriber.toLowerCase(), p.agentId, p.planId],
-  )
-  log.info(`[aa-autorenew] enabled: sub=${p.subscriber} plan=${p.planId} op=${result?.userOpHash}`)
+  if (receiptSuccess) {
+    await pool.query(
+      `UPDATE aa_auto_renew SET renew_status = 'enabled', last_renew_err = NULL, updated_at = NOW()
+       WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
+      [p.subscriber.toLowerCase(), p.agentId, p.planId],
+    )
+    log.info(`[aa-autorenew] enabled: sub=${p.subscriber} plan=${p.planId} op=${result?.userOpHash}`)
+  } else {
+    // 链上授权失败：保持 pending 允许用户重签；记录原因便于前端展示
+    const reason = `enable UserOp failed on-chain (op=${result?.userOpHash ?? 'n/a'})`
+    await pool.query(
+      `UPDATE aa_auto_renew SET last_renew_err = $1, updated_at = NOW()
+       WHERE subscriber = $2 AND agent_id = $3 AND plan_id = $4`,
+      [reason, p.subscriber.toLowerCase(), p.agentId, p.planId],
+    )
+    log.warn(`[aa-autorenew] enable failed: sub=${p.subscriber} plan=${p.planId} → ${reason}`)
+  }
   return {
     userOpHash: result?.userOpHash as string,
     txHash: result?.receipt?.txHash ?? null,
@@ -418,7 +438,11 @@ export async function disableAutoRenew(p: DisableAutoRenewParams): Promise<{ dis
      WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
     [p.subscriber.toLowerCase(), p.agentId, p.planId],
   )
-  if (!rows[0]) throw new Error('auto-renew not registered for this plan')
+  if (!rows[0]) {
+    const err = new Error('auto-renew not registered for this plan') as Error & { status?: number }
+    err.status = 404
+    throw err
+  }
   await pool.query(
     `UPDATE aa_auto_renew SET renew_status = 'disabled', disabled_at = NOW(), updated_at = NOW()
      WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
