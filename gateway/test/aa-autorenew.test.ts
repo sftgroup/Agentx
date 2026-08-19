@@ -57,11 +57,34 @@ vi.mock('viem', async (importOriginal) => {
   }
 })
 
+// @0xinfrax/aa-sdk@0.1.2 buildDisableSessionUserOp：三段批量撤销 draft
+// （execute(BATCH, [disableSession@module, uninstallModule, invalidateNonce(cur+1)])）
 vi.mock('@0xinfrax/aa-sdk', () => ({
   KernelV3SessionDataBuilder: { disableData: vi.fn(() => '0xbbbb') },
   MODULE_TYPE_VALIDATOR: 1n,
   getUserOpHash: vi.fn(() => '0x' + 'ab'.repeat(32)),
   estimateFeesPerGas: vi.fn(async () => ({ maxFeePerGas: 1n, maxPriorityFeePerGas: 1n })),
+  buildDisableSessionUserOp: vi.fn(async ({ account, sessionId, gas }) => ({
+    op: {
+      sender: account,
+      nonce: 0n,
+      callData:
+        '0xe9ae5c53' + // execute(bytes32,bytes)
+        '01' + '00'.repeat(62) + // BATCH execMode（MSB 布局）
+        'f42c859d' + '00'.repeat(62) + // ① disableSession(sessionId)@module
+        'a71763a8' + '00'.repeat(62) + // ② uninstallModule(VALIDATOR, module, …)
+        '1f1b92e3' + '00'.repeat(63) + '01', // ③ invalidateNonce(currentNonce(0)+1=1)
+      callGasLimit: gas?.callGasLimit ?? 0n,
+      verificationGasLimit: gas?.verificationGasLimit ?? 0n,
+      preVerificationGas: gas?.preVerificationGas ?? 0n,
+      maxFeePerGas: gas?.maxFeePerGas ?? 0n,
+      maxPriorityFeePerGas: gas?.maxPriorityFeePerGas ?? 0n,
+      signature: '0x',
+    },
+    userOpHash: '0x' + 'ab'.repeat(32),
+    currentNonce: 0,
+    sessionIdBytes: '0x' + 'dd'.repeat(32),
+  })),
 }))
 
 import { resolveCurrentSubscription, resumeAutoRenew, runAutoRenewScan, resolveExistingSessionId, revokeAutoRenew } from '../src/services/aa-autorenew'
@@ -259,10 +282,16 @@ describe('revokeAutoRenew — 链上撤销守卫', () => {
     })
     expect(r.revoked).toBe(true)
     expect(fetchSpy).toHaveBeenCalled()
-    // L12 撤销 draft = execute(BATCH, abi.encode([uninstallModule, invalidateNonce(cur+1)]))
+    // SDK buildDisableSessionUserOp 以 account/sessionId/gas 构建三段批量撤销 draft
+    const aaSdk = await import('@0xinfrax/aa-sdk')
+    expect(aaSdk.buildDisableSessionUserOp).toHaveBeenCalledWith(
+      expect.objectContaining({ account: ACCOUNT, sessionId: expect.any(String), gas: expect.any(Object) }),
+    )
+    // 广播的 op.callData = execute(BATCH, abi.encode([disableSession, uninstallModule, invalidateNonce(cur+1)]))
     const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
     expect(body.op.callData.startsWith('0xe9ae5c53')).toBe(true) // execute(bytes32,bytes)
     expect(body.op.callData).toContain('0100000000000000000000000000000000000000000000000000000000000000') // BATCH execMode
+    expect(body.op.callData).toContain('f42c859d') // disableSession(sessionId)@module —— 三段批量新增（旧 session key 删除）
     expect(body.op.callData).toContain('a71763a8') // uninstallModule selector
     expect(body.op.callData).toContain('1f1b92e3') // invalidateNonce selector
     expect(body.op.callData).toContain('0000000000000000000000000000000000000000000000000000000000000001') // currentNonce(0)+1

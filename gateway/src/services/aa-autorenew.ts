@@ -9,7 +9,7 @@
 // EntryPoint deposit 用于支付 UserOp gas）。
 //
 // 依赖 infraX 能力（AA_SDK_TECH_DESIGN §8.3 oxachain 生产栈）：
-//   - @0xinfrax/aa-sdk@0.1.1（Kernel v3 + ENABLE-mode session enable）
+//   - @0xinfrax/aa-sdk@0.1.2（Kernel v3 + ENABLE-mode session enable + 三段批量 disable）
 //   - aa-relay :9131（POST /v1/session 创建 session、POST /v1/userops 广播）
 //   - 配置 AA_AUTO_RENEW_ENABLED=true + AA_RELAY_URL/AA_RELAY_API_KEY
 //     + AA_DEPLOYER_PRIVATE_KEY（Kernel 账户部署 gas，平台代付一次性）
@@ -30,7 +30,6 @@ import {
   createWalletClient,
   http,
   encodeFunctionData,
-  encodeAbiParameters,
   parseAbi,
   toFunctionSelector,
   type Address,
@@ -55,13 +54,6 @@ const SUBSCRIBE_SELECTOR: Hex = toFunctionSelector('subscribe(uint256)')
  * scripts/aa-benignfix-probe.mjs；confirm 纯授权不扣费）。
  */
 const OWNER_SELECTOR: Hex = toFunctionSelector('owner()')
-
-/**
- * Kernel v3 execute BATCH execMode（ExecLib.encodeSimpleBatch = CALLTYPE_BATCH|EXECTYPE_DEFAULT，
- * abi.encodePacked(callType,execType,bytes4(0),selector(2B),payload) → MSB 布局 0x01+31×00）。
- * 注意 Kernel v3 没有独立的 executeBatch 函数，批量只能走 execute(execMode=BATCH, abi.encode(Execution[]))。
- */
-const BATCH_EXEC_MODE: Hex = ('0x' + '01' + '00'.repeat(31)) as Hex
 
 /** 固定 gas 上限（Kernel v3 ENABLE-mode 验证阶段安装模块，预留余量；EntryPoint 按实际用量结算，未用部分退还） */
 const AA_GAS = {
@@ -278,16 +270,19 @@ export async function hasOnChainSession(accountAddress: string): Promise<boolean
 }
 
 /**
- * 构造撤销旧 session 的 UserOp（未签名），callData = execute(BATCH, [
- *   uninstallModule(VALIDATOR, sessionModule, disableSession),  // 卸载 session validator
- *   self.invalidateNonce(currentNonce + 1),                     // 推进账户 currentNonce
- * ])。
- * 为什么要 invalidateNonce：Kernel v3 重装校验（ValidationManager._installValidation）
- *   state.validationConfig[vId].nonce >= config.nonce 即 revert InvalidNonce —— uninstall 只清
- *   hook 不清 nonce，卸载后 validationConfig[vId].nonce 仍停留在旧值。若不在撤销时推进
- *   currentNonce，紧接着的 enable 会用同一个旧 nonce 再次 install → 必炸 InvalidNonce。
- *   实证：execute(BATCH=0x01…) + abi.encode(Execution[]) 链上 eth_call 通过（aa-batch-direct.mjs）。
+ * 构造撤销旧 session 的 UserOp draft（未签名，三段批量）——
+ * 用 @0xinfrax/aa-sdk@0.1.2 buildDisableSessionUserOp（AA-7 实证编码）：
+ *   execute(BATCH, [disableSession(sessionId)@module,        // 直接删 session 记录
+ *                   uninstallModule(VALIDATOR, module, …),   // 卸载 session validator
+ *                   self.invalidateNonce(currentNonce + 1)]) // 推进 currentNonce
+ * 三段缺一不可（2026-08-20 infraX 契约更新，见 aa-relay-session-rollover-fix-infrax.md §2.4/§2.5）：
+ *   - 已部署 Session Module 的 onUninstall 为空实现 → uninstall 的 deInitData 不删
+ *     session 记录，必须显式 disableSession（否则撤销重装后旧 session key 仍可验证）；
+ *   - 撤销必须推进 currentNonce（invalidateNonce），否则紧接着的 enable 重装会因
+ *     Kernel ValidationManager 的 validationConfig[vId].nonce 残留 revert InvalidNonce（AA23）。
  * 注意 Kernel v3 没有独立的 executeBatch 函数，批量走 execute(execMode=BATCH, …)。
+ * ⚠️ EIP-712 digest 绑定构建时 nonce/gas —— gas 估算后再调用本函数（传入 gas）
+ * 以重算 userOpHash，再交给 owner 签名。
  */
 async function buildDisableUserOpDraft(
   accountAddress: string,
@@ -295,79 +290,21 @@ async function buildDisableUserOpDraft(
 ): Promise<{ op: any; userOpHash: string }> {
   const aa = await loadAaSdk()
   const cfg = getAaChainConfig()
-  const client = aaPublicClient()
-
-  // ① uninstallModule(VALIDATOR, sessionModule, disableData(sessionId))
-  const disableData = aa.KernelV3SessionDataBuilder.disableData(sessionId)
-  const uninstallCalldata = encodeFunctionData({
-    abi: parseAbi(['function uninstallModule(uint256 moduleTypeId, address module, bytes deInitData)']),
-    functionName: 'uninstallModule',
-    args: [aa.MODULE_TYPE_VALIDATOR, cfg.sessionModule as Address, disableData],
-  })
-  // ② invalidateNonce(currentNonce + 1)：Kernel _invalidateNonce 要求 nonce > validNonceFrom
-  //    且 currentNonce + MAX_NONCE_INCREMENT_SIZE(10) >= nonce；cur+1 恒满足。
-  const currentNonce = Number(
-    (await client
-      .readContract({
-        address: accountAddress as Address,
-        abi: parseAbi(['function currentNonce() view returns (uint32)']),
-        functionName: 'currentNonce',
-      })
-      .catch(() => 0n)) as bigint,
-  )
-  const invalidateData = encodeFunctionData({
-    abi: parseAbi(['function invalidateNonce(uint32)']),
-    functionName: 'invalidateNonce',
-    args: [currentNonce + 1],
-  })
-
-  // ③ 组装批量 execute：Kernel v3.0-beta ExecLib.decodeBatch 期望 abi.encode(Execution[])
-  const batchPayload = encodeAbiParameters(
-    [
-      {
-        type: 'tuple[]',
-        components: [
-          { name: 'target', type: 'address' },
-          { name: 'value', type: 'uint256' },
-          { name: 'data', type: 'bytes' },
-        ],
-      },
-    ],
-    [
-      [
-        { target: accountAddress as Address, value: 0n, data: uninstallCalldata },
-        { target: accountAddress as Address, value: 0n, data: invalidateData },
-      ],
-    ],
-  )
-  const callData = encodeFunctionData({
-    abi: parseAbi(['function execute(bytes32 execMode, bytes executionCalldata)']),
-    functionName: 'execute',
-    args: [BATCH_EXEC_MODE, batchPayload],
-  })
-  // root nonce key = 0（owner ECDSA 校验路径）
-  const nonce = (await client
-    .readContract({
-      address: cfg.entryPoint,
-      abi: parseAbi(['function getNonce(address sender, uint192 key) view returns (uint256)']),
-      functionName: 'getNonce',
-      args: [accountAddress as Address, 0n],
-    })
-    .catch(() => 0n)) as bigint
   const fees = await estimateFees()
-  const op = {
-    sender: accountAddress as Address,
-    nonce,
-    callData,
-    callGasLimit: AA_GAS.callGasLimit,
-    verificationGasLimit: AA_GAS.verificationGasLimit,
-    preVerificationGas: AA_GAS.preVerificationGas,
-    maxFeePerGas: fees.maxFeePerGas,
-    maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-    signature: '0x' as Hex,
-  }
-  const userOpHash = aa.getUserOpHash(op, cfg.entryPoint, cfg.chainId)
-  return { op, userOpHash }
+  const draft = await aa.buildDisableSessionUserOp({
+    client: aaPublicClient(),
+    chainConfig: cfg,
+    account: accountAddress as Address,
+    sessionId,
+    gas: {
+      callGasLimit: AA_GAS.callGasLimit,
+      verificationGasLimit: AA_GAS.verificationGasLimit,
+      preVerificationGas: AA_GAS.preVerificationGas,
+      maxFeePerGas: fees.maxFeePerGas,
+      maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+    },
+  })
+  return { op: draft.op, userOpHash: draft.userOpHash }
 }
 
 /** 解析链上残留 session 的 sessionId：① 历史登记行（最近一次 enable 最可能残留）；
