@@ -99,7 +99,9 @@ vi.mock('@0xinfrax/aa-sdk', () => ({
   })),
 }))
 
-import { resolveCurrentSubscription, resumeAutoRenew, runAutoRenewScan, resolveExistingSessionId, revokeAutoRenew, watchFunding } from '../src/services/aa-autorenew'
+import { resolveCurrentSubscription, resumeAutoRenew, runAutoRenewScan, watchFunding } from '../src/services/aa-renewal'
+import { resolveExistingSessionId } from '../src/services/aa-account'
+import { revokeAutoRenew } from '../src/services/aa-session'
 
 const EOA = '0x1111111111111111111111111111111111111111'
 const ACCOUNT = '0x2222222222222222222222222222222222222222'
