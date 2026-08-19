@@ -34,9 +34,9 @@
 - `enable` 实际做两件事：
   1. `installModule(VALIDATOR, sessionModule, enableData)` 把 Session Module 挂到账户的 validator 槽位；
   2. `enableSession(sessionId, …)` 写入该 session 的策略。
-- 账户的 validator 绑定状态可用 **`eth_getStorageAt(account, 0x7bcaa2ced2a71450ed5a9a1b4848e8e5206dbc3f06011e595f7f55428cc6f84f)`** 探测：
-  - 非零（实测 `0x…0101b0d4f548…`）＝ 已绑定 session；
-  - 零 ＝ 干净。
+- 账户的 validator 绑定状态可用 Kernel v3.0-beta 的 **ERC-7579 视图** 探测：
+  `isModuleInstalled(moduleType=1 VALIDATOR, sessionModule, 0x)`（eth_call）——返回 `true` ＝ 已绑定 session validator。
+- **⚠️ 探测方法修正（2026-08-19 实证）**：早期用 `eth_getStorageAt(account, 0x7bcaa2ced2a71450ed5a9a1b4848e8e5206dbc3f06011e595f7f55428cc6f84f)` 判残留是**误报**——该槽存的是常驻 ECDSA root validator 的绑定（永远非零，卸载 session 后该槽不变；`isModuleInstalled(1, ecdsaValidator)` 恒为 true）。正确判定必须针对 session 模块本身调用 `isModuleInstalled`。
 - 当账户已有 session 时，再次 enable 的 `installModule`/`enableSession` 覆盖被拒 → UserOp 在验证阶段 revert → bundler 返回 AA23。
 
 ### 2.2 为什么"本地 disable"无法自愈
@@ -132,7 +132,7 @@
 ## 5. AgentX 侧落地位置（供 infraX 对照）
 
 - 网关服务：`gateway/src/services/aa-autorenew.ts`
-  - `hasOnChainSession()` — slot 探测
+  - `hasOnChainSession()` — Kernel `isModuleInstalled(1, sessionModule)` 探测（ERC-7579 视图）
   - `resolveExistingSessionId()` — 登记表 / relay 兜底
   - `buildDisableUserOpDraft()` — disable UserOp（root nonce，`encodeDisableSessionCall`）
   - `revokeAutoRenew()` — 签名校验 + relay `/v1/userops` 广播

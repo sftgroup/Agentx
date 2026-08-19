@@ -65,13 +65,6 @@ const AA_GAS = {
 const DEFAULT_FEE = { maxFeePerGas: 3_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n }
 /** 续订提交冷却（ms）：防止收据确认前 / indexer 指针前移前对同一期重复提交 */
 const RENEW_COOLDOWN_MS = 10 * 60_000
-/**
- * Kernel v3 账户 validator 绑定状态槽位（eth_getStorageAt 探测）。
- * 实测（docs/test-cases-aa-auto-renew.md §7.2 L12）：非零 = 已绑定 session
- * validator（Kernel v3 单 session 结构，残留会导致重复 enable 时
- * enableSession 覆盖被拒 → FailedOp AA23/AA24）；零 = 干净可 enable。
- */
-const KERNEL_VALIDATOR_SLOT = '0x7bcaa2ced2a71450ed5a9a1b4848e8e5206dbc3f06011e595f7f55428cc6f84f'
 
 // @0xinfrax/aa-sdk 为 ESM-only（gateway 为 CJS），动态 import 一次并缓存
 let aaModule: any = null
@@ -253,13 +246,25 @@ export async function getAccountFunding(accountAddress: string): Promise<{ nativ
 // 会推进账户 currentNonce —— 因此必须在 enable digest 生成之前完成撤销。
 // ============================================================================
 
-/** 探测账户链上是否已绑定 session validator（Kernel v3 单 session 结构） */
+/**
+ * 探测账户链上是否已绑定 session validator（Kernel v3 单 session 结构）。
+ * 用 Kernel v3.0-beta 的 ERC-7579 视图 isModuleInstalled(type=1 VALIDATOR, sessionModule)
+ * 判定 —— eth_getStorageAt 探测 slot 0x7bcaa2… 是误报（那是常驻 ECDSA root
+ * validator 的绑定，永远非零；2026-08-19 实证卸载 session 后该 slot 不变）。
+ * eth_call 失败按无残留处理（不阻塞 enable；真残留会在 confirm 阶段被 bundler 拦截）。 */
 export async function hasOnChainSession(accountAddress: string): Promise<boolean> {
   try {
-    const raw = await aaPublicClient().getStorageAt({ address: accountAddress as Address, slot: KERNEL_VALIDATOR_SLOT })
-    return Boolean(raw && !/^0x0+$/.test(raw))
+    const client = aaPublicClient()
+    return await client.readContract({
+      address: accountAddress as Address,
+      abi: parseAbi([
+        'function isModuleInstalled(uint256 moduleType, address module, bytes additionalContext) view returns (bool)',
+      ]),
+      functionName: 'isModuleInstalled',
+      args: [1n, config.aaSessionModuleOxaChain as Address, '0x' as Hex],
+    })
   } catch {
-    // 读不到槽位按无残留处理（不阻塞 enable；真残留会在 confirm 阶段被 bundler 拦截）
+    // 读不到按无残留处理（不阻塞 enable；真残留会在 confirm 阶段被 bundler 拦截）
     return false
   }
 }
