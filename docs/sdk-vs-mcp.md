@@ -1,7 +1,7 @@
 # SDK vs MCP — 使用场景与区别
 
 > AgentX 提供两种链上数据/能力接入方式：**[`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk)（直连区块链）** 与 **[`@agentxv2/mcp`](https://www.npmjs.com/package/@agentxv2/mcp)（经 Gateway MCP 协议）**。
-> 版本：SDK v0.11.6 · MCP 客户端 v0.1.0 · 2026-08-16（MCP 已新增对话/任务管理工具，工具数 32→38；SDK 新增 BillingClient 余额预检）
+> 版本：SDK v0.11.7 · MCP 客户端 v0.1.0 · 2026-08-20（MCP 已新增对话/任务管理工具，工具数 32→38；SDK 新增 BillingClient 余额预检 + AgentWalletConfig agent 自主钱包管理）
 
 ---
 

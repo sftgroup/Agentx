@@ -1,5 +1,25 @@
 # @agentxv2/sdk Upgrade Guide
 
+## v0.11.6 → v0.11.7（2026-08-18，建议升级）
+
+> Agent 自主钱包 API：新增 `AgentWalletConfig`（绑定 agent 与 InfraX MPC 钱包 + 邮箱验证码解锁付款会话）+ 依赖升级 `@0xinfrax/payments@0.1.4`。**无 API 破坏**，纯附加（补 0.11.6 遗漏的 npm 发布）。
+
+### 变更点
+
+- **新增 `AgentWalletConfig`**（admin 鉴权，构造 `{ baseUrl, adminKey }`，`adminKey` = gateway `ADMIN_KEY`）：
+  - `bindWallet({ agentId, email, walletAddress, chain? })` — 绑定 agent 与 MPC 钱包（agent_id 唯一，重复绑定覆盖）
+  - `authorizePaymentSession({ agentId, email, code })` — 邮箱验证码解锁 MPC 会话（`/api/v1/admin/agent-payers/:agentId/unlock`）
+  - `status(agentId)` / `list()` / `unbind(agentId)`
+  - 用途：A2A 委派按次付费时，配置了自主钱包的 agent 由 gateway 服务端自动代付（agent-payer），无需用户钱包弹窗/预充值
+- **依赖升级**：`@0xinfrax/payments@0.1.3 → 0.1.4`（escrow 透传 / ERC20 deposit / 402 结构化错误）；HTTP 契约与既有客户端签名不变。
+
+### 迁移动作
+
+- `npm install @agentxv2/sdk@0.11.7`（或 `^0.11.x` 范围者 `npm install` 自动吸收）。
+- 无代码改动要求；需要 agent 自主钱包（A2A 服务端代付）管理的调用方使用新增 `AgentWalletConfig`。
+
+---
+
 ## v0.11.5 → v0.11.6（2026-08-16，建议升级）
 
 > B 端余额预检（R19.7 companion）：新增 `BillingClient` + `GET /api/v1/billing/balance`。**无 API 破坏**，纯附加。

@@ -1,4 +1,4 @@
-# @agentxv2/sdk v0.11.6
+# @agentxv2/sdk v0.11.7
 
 **Decentralized AI Agent Platform SDK** — E2E encryption, on-chain subscriptions, ReAct AgentLoop, multi-tenant LLM providers, A2A multi-agent interop (off-chain + user-wallet-signed on-chain rails), IPFS upload, MCP remote tools, chain-data batch query, hosted conversation sessions & parallel tasks, agent application categories, unified multi-rail payments.
 
@@ -10,14 +10,14 @@ Agent = Prompt + Skills[] + MCP
 
 ## Installation
 
-The current release **0.11.6** is built on the **0.10.0 complete feature release** (agent application categories, sessions & parallel tasks, streaming tool_call fix, typed `onchain_approval_required` SSE event, unified `/api/v1/payments` endpoint) — with the payment engine on the InfraX-maintained `@0xinfrax/payments` `^0.1.3`. R17.6: `0.1.3` restores the a2a / period rails inside the engine; the AgentX Gateway now delegates to the module rails while keeping the HTTP contract identical, so **B-side callers see zero change**. Since **0.11.5** (R19.3) the SDK also ships `TenantPlanPayments` — platform subscription-tier purchases (tenant plans) through the unified payments endpoint — and since **0.11.6** the `BillingClient` for B-end balance pre-checks (R19.7 companion). Install and use:
+The current release **0.11.7** is built on the **0.10.0 complete feature release** (agent application categories, sessions & parallel tasks, streaming tool_call fix, typed `onchain_approval_required` SSE event, unified `/api/v1/payments` endpoint) — with the payment engine on the InfraX-maintained `@0xinfrax/payments` `^0.1.4`. R17.6: `0.1.3` restores the a2a / period rails inside the engine; `0.1.4` adds escrow passthrough / ERC20 deposit / structured 402 errors; the AgentX Gateway delegates to the module rails while keeping the HTTP contract identical, so **B-side callers see zero change**. Since **0.11.5** (R19.3) the SDK also ships `TenantPlanPayments` — platform subscription-tier purchases (tenant plans) through the unified payments endpoint — since **0.11.6** the `BillingClient` for B-end balance pre-checks (R19.7 companion), and since **0.11.7** the `AgentWalletConfig` — agent-owned MPC wallet management (bind an agent to an InfraX MPC wallet + email-code payment-session unlock) so A2A per-call fees auto-pay server-side. Install and use:
 
 ```bash
-# latest (recommended) — 0.11.6
+# latest (recommended) — 0.11.7
 npm install @agentxv2/sdk
 
 # or pin the exact release
-npm install @agentxv2/sdk@0.11.6
+npm install @agentxv2/sdk@0.11.7
 ```
 
 ### Peer Dependencies
@@ -711,9 +711,9 @@ const { sessionUrl } = await plans.buy({
 - `PaymentsClient.create({ purpose: 'tenant-plan', ... })` accepts the same `purpose` metadata for raw protocol-level purchases.
 - Insufficient funds → the Gateway rejects with HTTP **422** before binding the plan.
 
-### BillingClient (v0.11.5) — B-end balance pre-check
+### BillingClient (v0.11.6) — B-end balance pre-check
 
-Since **0.11.5** (R19.7 companion) B-end integrators can query the x402 ledger balance **before** delegating to an unsubscribed agent — no more guessing whether the next pay-per-call will hit HTTP `403 AGENT_ACCESS_DENIED` (insufficient balance). Backed by `GET /api/v1/billing/balance` (read-only, idempotent, no side effects).
+Since **0.11.6** (R19.7 companion) B-end integrators can query the x402 ledger balance **before** delegating to an unsubscribed agent — no more guessing whether the next pay-per-call will hit HTTP `403 AGENT_ACCESS_DENIED` (insufficient balance). Backed by `GET /api/v1/billing/balance` (read-only, idempotent, no side effects).
 
 ```ts
 import { BillingClient } from '@agentxv2/sdk'
@@ -801,6 +801,7 @@ ORCHESTRATE_MAX_DEPTH=4               # max nested delegation depth
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| **0.11.7** | 2026-08-18 | **Agent 自主钱包 API + `@0xinfrax/payments` `0.1.4`** — 新增 `AgentWalletConfig`（`bindWallet` / `authorizePaymentSession`（邮箱验证码解锁）/ `status` / `list` / `unbind`）：绑定 agent 与 InfraX MPC 钱包（Email 2-of-2 TSS），A2A 委派按次付费由 gateway 服务端自动代付（agent-payer）；依赖升级 `0.1.3 → 0.1.4`（escrow 透传 / ERC20 deposit / 402 结构化错误），HTTP 契约与既有客户端签名不变（补 0.11.6 遗漏的 npm 发布）。**No breaking changes** |
 | **0.11.6** | 2026-08-16 | **B 端余额预检（R19.7 companion）** — 新增 `BillingClient` + `GET /api/v1/billing/balance`：委派未订阅 agent 前程序化预检 x402 余额（租户维度默认，`endUserId` 0x 钱包透传返回端用户余额）；返回 `{ balance (OXA 高精度 decimal), balanceWei, currency, updatedAt, payTo?, priceWei? }`；余额 0 正常返回不报错；鉴权沿用 X-Api-Key / Bearer JWT。解决 aihunter-saas 提出的「先撞 403 再引导充值」体验问题。**No breaking changes** |
 | **0.11.5** | 2026-08-12 | **R19.3/R19.7 商业化闭环** — 新增 `TenantPlanPayments`（平台套餐购买：统一支付入口 `purpose=tenant-plan`，chain/fiat/x402 三轨，`buy()` 返回 `{ method, ... }` 判别结果，绑定租户套餐）；服务端 A2A 按次付费（R19.7）——未订阅 agent 时按次扣 x402 余额（服务端 deduct + 审计幂等），SDK 调用方零改动、对话自动触发；`PaymentsClient.create({ purpose: 'tenant-plan' })` 支持套餐购买元数据。**No breaking changes** |
 | **0.11.4** | 2026-08-11 | **B 端计费策略对齐（R18）** — 服务端「partner 任务强制 BYOK」已废除（2026-08-11 起不强制；未带 key 时走平台兜底 key，平台按 done 事件 usage 精确计费，扣套餐每日配额；`400 LLM_KEY_REQUIRED` 不再返回）；`ConversationSSEEvent` done 事件新增可选 `llmSource?: 'byok' | 'platform'`（计费来源标记，仅供观测）。SDK 调用方**零代码改动**（BYOK 参数仍可用），README/UPGRADE 文档同步。**No breaking changes** |

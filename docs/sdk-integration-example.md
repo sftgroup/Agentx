@@ -2,7 +2,7 @@
 
 > 面向任何想要接入 AgentX 平台的第三方服务（AI 助手平台、交易工具、SaaS 产品等）。
 > 本文提供三种接入通道（SDK / MCP / REST）的完整可运行样例，以及必须注意的关键约定。
-> 版本：SDK v0.11.6 · 2026-08-16
+> 版本：SDK v0.11.7 · 2026-08-20
 >
 > 更完整的业务指南（发布 / 订阅 / 付费三轨 + 多 Agent 编排分层）见 [publish-subscribe-pay.md](./publish-subscribe-pay.md)。
 
@@ -13,7 +13,7 @@
 | 通道 | 适用场景 | 入口 |
 |------|----------|------|
 | **SDK**（`@agentxv2/sdk`） | 业务后端需要读链数据 + 发起链上写操作 + 监听链上事件 | 直接使用 viem `PublicClient`/`WalletClient` |
-| **MCP**（`POST /mcp`） | AI Agent / LLM 工具调用场景，标准 MCP JSON-RPC | Gateway 端点，32 个平台工具 |
+| **MCP**（`POST /mcp`） | AI Agent / LLM 工具调用场景，标准 MCP JSON-RPC | Gateway 端点，38 个平台工具 |
 | **REST**（`/api/v1/agents*`） | 前端或服务端需要快速查询 Agent 索引 | Gateway REST API |
 
 ```
@@ -31,7 +31,7 @@
 ### 2.1 安装
 
 ```bash
-npm install @agentxv2/sdk@0.11.5
+npm install @agentxv2/sdk@0.11.7
 ```
 
 ### 2.2 初始化（chain-agnostic，viem）

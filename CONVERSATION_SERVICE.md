@@ -55,7 +55,7 @@ Hosted sessions & parallel tasks are available to integrators through the publis
 # latest (recommended) — includes sessions & parallel tasks client
 npm install @agentxv2/sdk
 # or pin the exact release
-npm install @agentxv2/sdk@0.10.0
+npm install @agentxv2/sdk@0.11.7
 ```
 
 ```ts
@@ -551,7 +551,7 @@ CONVERSATION_SERVICE_TOKEN=agentx-conv-internal-token-2026
 Tenants can call the hosted Conversation Service from their own app via `@agentxv2/sdk`'s `ConversationClient` — no manual SSE parsing needed:
 
 ```bash
-npm install @agentxv2/sdk@0.10.0
+npm install @agentxv2/sdk@0.11.7
 ```
 
 ```typescript

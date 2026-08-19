@@ -1,12 +1,12 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.10.0 · Contracts on Sepolia + OxaChain L1 · Production: `https://agentx.0xainet.top` · Last updated: 2026-08-08
+> SDK v0.11.7 · Contracts on Sepolia + OxaChain L1 · Production: `https://agentx.0xainet.top` · Last updated: 2026-08-20
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
 **两种接入方式，按场景选择：**
 
-- **SDK** · [`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk) v0.10.0 — 直连区块链：链上读写、真实交易（订阅 / 创建套餐）、事件监听、加密、IPFS、对话 SSE、**三轨订阅支付（chain / fiat / x402）**、Agent 应用分类、**用户钱包签名上链编排**。适合 **DApp 与深度集成**。
+- **SDK** · [`@agentxv2/sdk`](https://www.npmjs.com/package/@agentxv2/sdk) v0.11.7 — 直连区块链：链上读写、真实交易（订阅 / 创建套餐）、事件监听、加密、IPFS、对话 SSE、**三轨订阅支付（chain / fiat / x402）**、Agent 应用分类、**用户钱包签名上链编排**、**agent 自主钱包（MPC）管理 · A2A 代付**。适合 **DApp 与深度集成**。
 - **MCP 客户端** · [`@agentxv2/mcp`](https://www.npmjs.com/package/@agentxv2/mcp) v0.1.0 — 经 Gateway MCP 协议：38 个工具（链上读写 + 对话/并行任务管理）、AI Agent 工具化调用、零依赖、免链配置。适合 **快速接入与只读场景**。
 
 > 详细对比（能力 / 场景 / 选型决策树）：[docs/sdk-vs-mcp.md](docs/sdk-vs-mcp.md)
@@ -83,7 +83,7 @@ ERC-8004 Standard (planned):
 ## Quick Start
 
 ```bash
-npm install @agentxv2/sdk@0.10.0
+npm install @agentxv2/sdk@0.11.7
 ```
 
 ```typescript
@@ -165,8 +165,8 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | **SDK Docs (live)** | `https://agentx.0xainet.top/docs/sdk`（实时渲染 SDK README） |
 | **OxaChain RPC** | `https://rpc-oxa.0xainet.top` |
 | **OxaChain Explorer** | `https://explorer-oxa.0xainet.top` |
-| **SDK (npm)** | `npm install @agentxv2/sdk@0.10.0` |
-| **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.10.0`, production `https://agentx.0xainet.top`) |
+| **SDK (npm)** | `npm install @agentxv2/sdk@0.11.7` |
+| **Frontend (Web)** | Next.js platform UI (`frontend/`, SDK `^0.11.5`, production `https://agentx.0xainet.top`) |
 
 ---
 

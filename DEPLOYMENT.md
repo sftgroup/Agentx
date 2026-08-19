@@ -1,7 +1,7 @@
 # AgentX Deployment Guide
 
 > Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-10
-> Server code: `~/Agentx` @ main · SDK published: `@agentxv2/sdk@0.11.3`（依赖 `@0xinfrax/payments@0.1.3`）
+> Server code: `~/Agentx` @ main · SDK published: `@agentxv2/sdk@0.11.7`（依赖 `@0xinfrax/payments@0.1.4`）
 > ⚠️ 测试策略（2026-08-07 起）：**所有功能/回归测试一律在生产环境 `43.159.60.46` 直接进行**（不再使用独立测试服务器）
 
 ---

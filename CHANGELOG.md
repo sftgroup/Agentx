@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-08-18 — 发布 sdk@0.11.7（Agent 钱包 API + @0xinfrax/payments 0.1.4）
+
+- **@agentxv2/sdk@0.11.7 已发布 npm**（minor，补 2e95909 遗漏的 npm 发布——0.11.6 未含 agent-wallet 模块）：
+  - 新增 `AgentWalletConfig`：`bindWallet` / `authorizePaymentSession`（邮箱验证码解锁）/ `status` / `list` / `unbind`——绑定 agent 与 InfraX MPC 钱包（Email 2-of-2 TSS），A2A 委派按次付费由 gateway 服务端自动代付（agent-payer）
+  - 依赖升级 `@0xinfrax/payments@0.1.3 → 0.1.4`（escrow 透传 / ERC20 deposit / 402 结构化错误），HTTP 契约与既有客户端签名不变
+- **升级提示**：应用方 `npm install @agentxv2/sdk@0.11.7`（或 `^0.11.x` 自动吸收）**无需改代码**；需要 agent 自主钱包（A2A 服务端代付）管理的调用方使用新增 `AgentWalletConfig`
+
+---
+
 ## 2026-08-16 — 发布 sdk@0.11.6（B 端余额预检：BillingClient + GET /api/v1/billing/balance）
 
 - **背景**：aihunter-saas 提出 R19.7 A2A 按次付费下，委派前无法程序化预检 x402 余额——只能先撞 403 再引导充值，体验差。
