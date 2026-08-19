@@ -2,8 +2,8 @@
 
 > 范围：C 端（终端用户 / Subscriber）从钱包登录 → 浏览市场 → 订阅/购买 → 对话使用 → 会话/并行任务 → A2A 编排 → 定时任务 → Billing（套餐/用量/升级）→ 订阅管理/自动续订 → 账户安全 → 渠道归因/收益分成 → 调用追踪审计 → 技能市场 → 支付幂等 → 故障韧性/安全渗透 → 前端 UI/本地化/限流/可访问性的完整端到端流程。
 > 覆盖 gateway `routes/{chat,chat-tasks,agent-runs,payments,x402,fiat,agents,chain,billing,auto-renew,schedules,a2a,skills,channel,traces,developer}.ts` + `middleware/{auth,rate-limiter}.ts` + 前端 `user/*`、`marketplace/*`（含 `skills`、`plans`）、`a2a` 页面与 `components/{chat,user,a2a,agent,guard}`。
-> 用例总数：**274 条（C01–C274）**，其中 §2–§17 为 API/契约/韧性与安全层 161 条，§2A–§11A + §18 为前端 UI/深度边界层 113 条。
-> 生成日期：2026-08-20（首次生成）· 2026-08-20（扩充前端 UI 与深度边界层）· 2026-08-20（二轮扩充：渠道归因/追踪审计/技能市场/支付幂等竞态/故障韧性/安全渗透/前端韧性可访问性）
+> 用例总数：**369 条（C01–C369）**，其中 §2–§17 + §19 + §20 为 API/契约/韧性与安全层 256 条，§2A–§11A + §18 为前端 UI/深度边界层 113 条。
+> 生成日期：2026-08-20（首次生成）· 2026-08-20（扩充前端 UI 与深度边界层）· 2026-08-20（二轮扩充：渠道归因/追踪审计/技能市场/支付幂等竞态/故障韧性/安全渗透/前端韧性可访问性）· 2026-08-20（三轮补充：路由代码边界条件）· 2026-08-20（四轮补充：全局异常与中间件异常场景）
 
 ---
 
@@ -607,6 +607,74 @@
 | C335 | a2a/settle 缺参 | — | 缺 paymentId/txHash | 400 `paymentId and txHash are required` |
 | C336 | period/authorize 缺参 | — | 缺 payer/txHash/amountWei | 400 `payer, txHash and amountWei are required` |
 | C337 | 并发槽释放 | max_concurrent=1 流式中 | 客户端中断流式请求后继续请求 | `res.on('finish')` 释放并发槽，后续请求不再 429 |
+
+---
+
+## 20. 异常场景补遗（2026-08-20 全链路异常核对）
+
+> 在 §19 基础上，额外核对 `index.ts`（全局中间件/健康检查/404/优雅停机）、`middleware/{error-handler,rate-limiter}.ts`、`services/{sse-usage,payments-bridge}.ts` 与 `routes/{agents,chain,chat,agent-runs,schedules,a2a}.ts` 中**此前未覆盖的异常分支**：畸形输入、上游故障、超时/中断、基础设施降级（Redis/DB/RPC）、fail-open 语义与 SSE 事件流异常。所有断言均可从源码直接验证。
+
+### 20A. 全局与中间件（index.ts / error-handler.ts / rate-limiter.ts）
+
+| # | 用例 | 前置 | 操作 | 预期 |
+|---|---|---|---|---|
+| C338 | 畸形 JSON body | — | `POST /api/v1/chat/completions` 传 `{bad json` | 400 `Invalid JSON in request body`（`entity.parse.failed` 中间件，非 500） |
+| C339 | body 超限 | — | 任意 POST 传 >1MB body | 413 Payload Too Large（`express.json({ limit:'1mb' })`） |
+| C340 | 未知 /api/v1 路径 | — | `GET /api/v1/foobar` | 404 `Not found`（PROTECTED_PREFIXES guard 短路，不经过 auth/限流） |
+| C341 | 未知非 API 路径 | — | `GET /nonexistent` | 404 `Not found`（catch-all handler） |
+| C342 | 未知内部错误不泄漏 | 服务内部抛非 AppError | 触发未捕获异常 | 500 `Internal server error` + `code:INTERNAL_ERROR`；生产 NODE_ENV 无 `detail`（globalErrorHandler） |
+| C343 | health 降级 | chain RPC 或 DB 断开 | `GET /api/v1/health` | 503 `{ status:'degraded' }`（`Promise.allSettled` 各服务独立判定，不整体崩溃） |
+| C344 | Redis 不可用 → 限流 fail-open | Redis 停 | 高频请求受保护端点 | 放行（`getRedis()` 返回 null → `next()`；RPM/配额/并发三层全部失效） |
+| C345 | Redis 重启计数归零 | Redis 重启 | 重启后立刻高频请求 | `rpm:<tenant>`/`quota:<tenant>`/`concurrent:<tenant>` 键清空 → 限流窗口重置（fail-open 间隙） |
+| C346 | quota 缓存值损坏 | Redis `quota:<tenant>` 被写坏 | 请求带非数字 quota 值 | `parseInt` → NaN → `NaN >= quotaDaily` 为 false → 配额检查放行（fail-open，不误拦截） |
+
+### 20B. 市场与链上（agents.ts / chain.ts）
+
+| # | 用例 | 前置 | 操作 | 预期 |
+|---|---|---|---|---|
+| C347 | DB 故障 agents 列表 | PG 断 | `GET /api/v1/agents` | 500 `Failed to fetch agents`（路由 catch，非全局泄漏） |
+| C348 | agents/:id/stats 非法 id | — | `GET /api/v1/agents/abc/stats` | 400 `Invalid agent id`（独立端点的 `Number.isFinite` 校验） |
+| C349 | agents/:id/stats 正常 | 有订阅数据 | `GET /api/v1/agents/1/stats` | 返回 `total/activeSubscriptions/totalRevenue/mrr`，金额为 **decimal 字符串**（前端 BigInt 无损） |
+| C350 | 分页越界 | 仅 3 条 | `GET /api/v1/agents?page=999` | 空数组 + `total` 真实值（不报错，page 不越界钳制） |
+| C351 | chain RPC 故障 | 链 RPC 不可达 | `GET /api/v1/chain/health`、`/total`、`/agents` | 500 `Internal server error`（`next(err)` → globalErrorHandler 统一，不泄漏 RPC 详情） |
+| C352 | check-subscription agentId=0/空 | — | `?subscriber=0x..&agentId=`（空串） | 400 `subscriber and agentId are required`（`Number('')`=0 为 falsy 短路） |
+
+### 20C. 对话与 SSE（chat.ts / agent-runs.ts / sse-usage.ts）
+
+| # | 用例 | 前置 | 操作 | 预期 |
+|---|---|---|---|---|
+| C353 | /agent/runs 缺 message | 已登录 | `POST /api/v1/agent/runs` 无 message | 400 `message is required` |
+| C354 | /agent/runs 无 agentId 无 inline | 已登录 | 无 agentId 且无 prompt/skills | 400 `agentId or inline prompt/skills is required` |
+| C355 | /agent/runs 无订阅访问 | 未订阅 | 访问受保护 agent | 403 `No subscription access to this agent` + `code:'AGENT_ACCESS_DENIED'` |
+| C356 | LLM fetch 网络故障 | 上游不可达（连接拒绝/DNS） | chat/completions platform 或 BYOK | 500 `Internal server error`（fetch 抛错 → catch → globalErrorHandler；区别于 C288 非 2xx 透传） |
+| C357 | LLM 流无 body | 上游返回无流 body | chat/completions stream | 500 `No response from LLM`（`reader` 为空） |
+| C358 | SSE 流中上游异常 | Conversation/LLM 流中断 | /agent/runs 流式中上游报错 | 客户端收到 `data: {"type":"error","error":"…"}` 后流结束（非静默截断）；畸形 SSE 行被忽略（`sse-usage` 跳过） |
+| C359 | 平台模式无模型 | plan.platform_models 为空 | chat/completions platform | 400 `No platform models available on current plan` + `available_models` |
+| C360 | 无 LLM 访问配置 | 非 BYOK 且 quotaDaily=0 | chat/completions | 400 `No LLM access configured` + hint（BYOK 或升级套餐） |
+
+### 20D. 定时任务（schedules.ts）
+
+| # | 用例 | 前置 | 操作 | 预期 |
+|---|---|---|---|---|
+| C361 | scheduleType 非法 | — | `POST /schedules` 传 `scheduleType:'daily'` | 400 `scheduleType must be "one_time" or "interval"` |
+| C362 | 每租户 10 个上限 | 已有 10 个 | 创建第 11 个 | 429 `Schedule limit reached (max 10 per tenant)` |
+| C363 | parallel_tasks 禁用 | plan 未开通该能力 | 创建/查看 schedules | 403 `Parallel tasks are disabled for this tenant` + `code:'PARALLEL_TASKS_DISABLED'`（路由级 gate） |
+| C364 | create DB 异常 | PG 写失败 | 创建 schedule | 500 含原始错误消息（既有行为直接透出 `error: message`，记录为待收敛项） |
+
+### 20E. A2A 事件流（a2a.ts）
+
+| # | 用例 | 前置 | 操作 | 预期 |
+|---|---|---|---|---|
+| C365 | events 非法 id | — | `GET /api/v1/a2a/tasks/abc/events` | 400 `Invalid task id` |
+| C366 | events 心跳 | SSE 已连接 | 空闲 15s | 收到 `: ping` 注释行（`setInterval` 15s 保活） |
+| C367 | events 晚到订阅回放 | 任务已部分完成 | 中途订阅 events | 先收到 DB 当前状态快照（status 事件，含 payment 信息当 status=4），再收增量事件 |
+| C368 | events 连接关闭清理 | SSE 已连接 | 客户端断开 | `req.on('close')` 清理 heartbeat interval 并 unsubscribe（无泄漏/无重复推送） |
+
+### 20F. x402 校验异常（x402.ts / payments.ts）
+
+| # | 用例 | 前置 | 操作 | 预期 |
+|---|---|---|---|---|
+| C369 | verify 无有效回执 | tx 未打包/pending/无回执 | `POST /api/v1/x402/verify` | 422 `Transaction is not a valid x402 payment…`（`verifyAndCredit` 返回 null → 422，不 credit；已入账重复 verify 走 `ON CONFLICT (tx_hash) DO NOTHING` 幂等） |
 
 ---
 
