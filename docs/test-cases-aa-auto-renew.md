@@ -318,6 +318,8 @@
 
 > 单测同步更新（`aa-autorenew.test.ts` 14 条）：revoke 兜底路径断言 `execute(BATCH)` 编码含 `uninstallModule`/`invalidateNonce`/`cur+1`。验证后测试残留已清理（aa_auto_renew 清空、链上 session 撤销，账户 `validNonceFrom=4`）。
 
+**后续待办（2026-08-20，等 infraX 发布新版 aa-sdk 后对齐）**：infraX 已将 relay revoke 升级为**三段批量**（`disableSession@module + uninstallModule + invalidateNonce`，生产 `rpc-gw.0xainet.top/aa-relay/` 已上线，契约见 infraX `SERVICE_API_REFERENCE.md §7.7`）。⚠️ 已部署 Session Module `onUninstall` 为空实现，AgentX 当前两段版（uninstall+invalidateNonce）撤销后**旧 session key 仍可验证**——待 SDK 发布 `buildDisableSessionUserOp` 后，AgentX `buildDisableUserOpDraft` 切换为三段，并验证撤销后旧 key 调用 revert AA24。
+
 ---
 
 ## 8. 测试执行建议
