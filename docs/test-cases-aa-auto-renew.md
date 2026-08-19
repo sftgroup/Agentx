@@ -297,14 +297,32 @@
 
 | # | 事项 | 状态 |
 |---|---|---|
-| L12 | **旧会话残留导致重复 enable 失败**：测试主钱包 `0xd8e2cf33…` 2026-08-19 曾有 enabled 会话（表已清但链上未撤销），再次 enable 后 confirm 报 `FailedOpWithRevert`（bundler 层 AA23 signature error，tracer 显示 Session Module `isValidSignature` revert）。**根因推断**：Kernel v3 单 session 结构，已有 session 时 enableSession 覆盖被拒。**影响**：用户 disable（未链上撤销）后重新 enable 会失败。**建议**：enable 前检测账户已有 session → 先链上撤销（disableCallData + owner 签名上链）或提示；或 relay 对同 owner 复用 session | 待修复（产品路径） |
+| L12 | **旧会话残留导致重复 enable 失败**：测试主钱包 `0xd8e2cf33…` 曾有 enabled 会话（表已清但链上未撤销），再次 enable 后 confirm 报 `FailedOpWithRevert`（bundler 层 AA23 signature error，tracer 显示 Session Module `isValidSignature` revert）。**根因**：Kernel v3 单 session 结构，已有 session 时 enableSession 覆盖被拒 | **已修复**（commits deb779f/54095e9/dc74d54/7696db6，2026-08-19 全链路生产验证通过，见下） |
 | L13 | relay 402 文案仍含 REQ-4 已淘汰的 self-pay 提示（"账户自身用 session key 调 deposit() 自付"） | 建议 infraX 文案去重 |
+
+**L12 修复方案（已上线 + 生产全链路验证）**：
+
+1. **残留检测改为 `isModuleInstalled(1, sessionModule)`**（`hasOnChainSession`）——`eth_getStorageAt` 探测 slot `0x7bcaa2…` 是误报（那是常驻 root ECDSA validator 的绑定，卸载 session 后仍非零）。
+2. **enable 前残留自愈**：`createAutoRenew` 检测到链上残留 → 返回 `needsSessionRevoke + disableUserOpHash + disableSessionId`（不再直接建新 session）；前端签名后调 `POST /billing/auto-renew/revoke` 上链撤销，再重试 enable。
+3. **revoke 残留兜底**：`revokeAutoRenew` 优先查登记行，登记行被清空时由调用方回传 `accountAddress/sessionId`（哈希一致性校验兜底，传错 → 409）。
+4. **重 enable `InvalidNonce` 修复**（commit 7696db6）：Kernel v3 `_installValidation` 要求 `config.nonce > validationConfig[vId].nonce`，而 `uninstallModule` 只清 hook 不清 nonce → 撤销后 validationConfig.nonce 停留旧值，紧接着的 enable 用同一旧 nonce 再次 install 必 `InvalidNonce`。修复 = 撤销 UserOp 改为 **批量 execute**：`execute(BATCH, abi.encode([uninstallModule, self.invalidateNonce(cur+1)]))`，卸载同时推进账户 `currentNonce`（实证 `execute(bytes32,bytes)` BATCH execMode `0x01…0` 链上通过；Kernel v3 无独立 `executeBatch` 函数）。
+
+**生产全链路验证（2026-08-19，`aa-l12-heal-verify.mjs`，测试钱包）**：
+
+| 步骤 | 结果 |
+|---|---|
+| ① 干净账户 enable → confirm#1 | ✅ `receiptSuccess=true`（tx `0xd1142f8b…`，session `0x1dd6a45a…`） |
+| ② 再 enable → 命中残留 | ✅ `needsSessionRevoke=true` + disable draft |
+| ③ 签名 revoke（批量 uninstall + invalidateNonce） | ✅ `revoked=true`（tx `0x957fa362…`），链上 `validNonceFrom 2→3` |
+| ④ 干净 enable → confirm#2 | ✅ `receiptSuccess=true`（tx `0x87d23706…`，session `0x7d5bf856…`） |
+
+> 单测同步更新（`aa-autorenew.test.ts` 14 条）：revoke 兜底路径断言 `execute(BATCH)` 编码含 `uninstallModule`/`invalidateNonce`/`cur+1`。验证后测试残留已清理（aa_auto_renew 清空、链上 session 撤销，账户 `validNonceFrom=4`）。
 
 ---
 
 ## 8. 测试执行建议
 
-1. **L0 单元**：`gateway/test/aa-autorenew.test.ts` 已落地（9 条，2026-08-19）：`resolveCurrentSubscription` 双归属/指针前移、`resumeAutoRenew`、`runAutoRenewScan` 失败护栏。对资金计算、窗口/冷却判定等纯函数继续补 vitest + mock aa-sdk/relay。
+1. **L0 单元**：`gateway/test/aa-autorenew.test.ts` 已落地（14 条，2026-08-19）：`resolveCurrentSubscription` 双归属/指针前移、`resumeAutoRenew`、`runAutoRenewScan` 失败护栏、`resolveExistingSessionId` 兜底、`revokeAutoRenew`（404/兜底路径断言批量 execute 编码）。对资金计算、窗口/冷却判定等纯函数继续补 vitest + mock aa-sdk/relay。
 2. **L1 API**：supertest 挂载真实路由 + 内存 DB / 现有测试基座（参照 `test/billing.test.ts`）。新增 `resume` 端点需补回归用例。
 3. **L2 前端**：vitest + testing-library 渲染 AutoRenewCard（mock `useGatewayAuth`/`useWalletClient`/fetch），覆盖 91–110 及 paused/escrow 展示分支。
 4. **L3 链上 E2E**：参照 infraX `aa-relay/scripts/aa-session-e2e.ts`，用测试钱包跑 111–122；用测试网/短周期计划缩短等待（临时调低 `AA_AUTO_RENEW_WINDOW_SEC`）。资金预检已由 2026-08-19 生产实证覆盖（三类资金 + 指针前移复验 0 renewed）。

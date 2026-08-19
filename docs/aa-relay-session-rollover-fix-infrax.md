@@ -51,6 +51,28 @@
 - **enable UserOp**（ENABLE-mode）：EIP-712 digest **绑定构建时的 `currentNonce`** 做防重放。
 - 因此**必须先广播 disable（推进 nonce）→ 再构建 enable digest**，顺序不能反、也不能并发；若先算好 enable digest 再撤销，digest 会因 nonce 变化而失配。
 
+### 2.4 第二个坑：撤销后重 enable 的 `InvalidNonce`（2026-08-19 实证修复）
+
+路径 A 落地后再验证发现，**仅卸载模块还不够**——紧接着的 enable 仍会 revert `InvalidNonce`（FailedOp AA23，0x756688fe）。根因在 Kernel `ValidationManager._installValidation`：
+
+```solidity
+if (state.validationConfig[vId].nonce == state.currentNonce) {
+    state.currentNonce++;   // 重装时先推进 currentNonce
+}
+if (state.currentNonce != config.nonce || state.validationConfig[vId].nonce >= config.nonce) {
+    revert InvalidNonce();  // config.nonce 还是旧值 → 必炸
+}
+```
+
+- `uninstallModule` **只清 hook 不清 `validationConfig[vId].nonce`**：卸载后该 nonce 停留在旧值（例如 1），`currentNonce` 也未变（仍是 1）。
+- 紧接着的 enable 用**同一个旧 currentNonce=1** 构建 digest/config.nonce → `currentNonce` 先自增到 2，再与 `config.nonce=1` 比对 → revert。
+- **修复**：撤销 UserOp 不再只是 `uninstallModule`，而是**批量 execute** 同时做两件事：
+  `execute(BATCH, abi.encode([uninstallModule(...), self.invalidateNonce(currentNonce + 1)]))`
+  `invalidateNonce(cur+1)` 把账户 `currentNonce`/`validNonceFrom` 推进，后续 enable 读到推进后的 nonce，`validationConfig[vId].nonce >= config.nonce` 不再触发。
+- **编码实证**：Kernel v3 **没有独立的 `executeBatch` 函数**（用 `executeBatch` selector 必 revert）。批量只能走 `execute(execMode, executionCalldata)`，execMode = `ExecLib.encodeSimpleBatch()` = `CALLTYPE_BATCH(0x01) | EXECTYPE_DEFAULT(0x00)` → `0x0100…0`（MSB 布局），`executionCalldata = abi.encode(Execution[])`。`execute(bytes32,bytes)` selector = `0xe9ae5c53`。链上 eth_call + 真实上链均通过。
+
+**给 infraX 的提示**：`aa-sdk` 目前只有 `encodeExecute`（单调用），建议补充 `encodeExecuteBatch(executions)` 封装（`ExecLib.encodeSimpleBatch` 布局），业务方无需各自踩 batch 编码的坑。
+
 ---
 
 ## 3. 推荐的三种解决路径
@@ -69,9 +91,9 @@
 前端点击 Enable
   → POST /billing/auto-renew/enable
      ① 预测智能账户地址（factory + salt 0）
-     ② eth_getStorageAt 探测残留
+     ② isModuleInstalled(1, sessionModule) 探测残留（ERC-7579 视图，非 storage slot）
      ③ 有残留 → 解析旧 sessionId（登记表 → relay /v1/session 兜底）
-     ④ 构建 disable UserOp draft（root nonce）→ 返回 disableUserOpHash
+     ④ 构建 disable UserOp draft（root nonce + 批量 invalidateNonce，见 §2.4）→ 返回 disableUserOpHash
   → 前端 eth_sign(disableUserOpHash) → POST /billing/auto-renew/revoke
      （网关重建 draft 校验 userOpHash 一致 → relay /v1/userops 广播）
   → 撤销成功 → 前端自动重跑 enable → 正常生成 enable digest → 签名 → confirm
@@ -122,7 +144,7 @@
 
 ## 4. 建议
 
-1. **短期（AgentX 已上线）**：路径 A 作为立即止血方案，AgentX 生产已部署。
+1. **短期（AgentX 已上线并全链路验证）**：路径 A 作为立即止血方案，AgentX 生产已部署。2026-08-19 生产全链路验证通过：干净 enable → confirm → 残留检测 → 批量撤销（uninstall + invalidateNonce）→ 干净 enable → confirm，`L12_HEAL_VERIFY_PASS`。测试残留已清理。
 2. **中期（infraX）**：评估路径 B1（一键撤销端点）+ B2（session 复用）。B 对调用方侵入最小，且能消除"多一次签名"的体验成本。建议 relay 侧提供 `isBound` 与 disable-with-signature 两个 API，让调用方从"自建 disable 流程"中解脱。
 3. **长期**：若多业务方都依赖 session key 能力，路径 C 是彻底解，但需走合约升级流程，建议放在版本规划里评估，不与短期止血互相阻塞。
 4. **保留既有兼容补丁**：Alto bundler 的 TIMESTAMP / Kernel DELEGATECALL storage 放行补丁与本问题独立，继续保留（见 `infrax-bundler-restore-handoff.md`）。
@@ -134,8 +156,8 @@
 - 网关服务：`gateway/src/services/aa-autorenew.ts`
   - `hasOnChainSession()` — Kernel `isModuleInstalled(1, sessionModule)` 探测（ERC-7579 视图）
   - `resolveExistingSessionId()` — 登记表 / relay 兜底
-  - `buildDisableUserOpDraft()` — disable UserOp（root nonce，`encodeDisableSessionCall`）
-  - `revokeAutoRenew()` — 签名校验 + relay `/v1/userops` 广播
+  - `buildDisableUserOpDraft()` — disable UserOp（root nonce），callData = `execute(BATCH, abi.encode([uninstallModule, invalidateNonce(cur+1)]))`（commit 7696db6）
+  - `revokeAutoRenew()` — 签名校验 + relay `/v1/userops` 广播（支持调用方回传 account/sessionId 兜底）
   - `createAutoRenew()` — enable 前残留检测（返回 `needsSessionRevoke`）
   - `disableAutoRenew()` — 本地停用 + 返回 disable draft
 - 网关路由：`gateway/src/routes/auto-renew.ts`（`POST /billing/auto-renew/revoke`）
