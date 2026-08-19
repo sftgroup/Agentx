@@ -58,7 +58,8 @@ vi.mock('viem', async (importOriginal) => {
 })
 
 vi.mock('@0xinfrax/aa-sdk', () => ({
-  encodeDisableSessionCall: vi.fn(() => '0x1234'),
+  KernelV3SessionDataBuilder: { disableData: vi.fn(() => '0xbbbb') },
+  MODULE_TYPE_VALIDATOR: 1n,
   getUserOpHash: vi.fn(() => '0x' + 'ab'.repeat(32)),
   estimateFeesPerGas: vi.fn(async () => ({ maxFeePerGas: 1n, maxPriorityFeePerGas: 1n })),
 }))
@@ -258,6 +259,13 @@ describe('revokeAutoRenew — 链上撤销守卫', () => {
     })
     expect(r.revoked).toBe(true)
     expect(fetchSpy).toHaveBeenCalled()
+    // L12 撤销 draft = execute(BATCH, abi.encode([uninstallModule, invalidateNonce(cur+1)]))
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
+    expect(body.op.callData.startsWith('0xe9ae5c53')).toBe(true) // execute(bytes32,bytes)
+    expect(body.op.callData).toContain('0100000000000000000000000000000000000000000000000000000000000000') // BATCH execMode
+    expect(body.op.callData).toContain('a71763a8') // uninstallModule selector
+    expect(body.op.callData).toContain('1f1b92e3') // invalidateNonce selector
+    expect(body.op.callData).toContain('0000000000000000000000000000000000000000000000000000000000000001') // currentNonce(0)+1
     vi.unstubAllGlobals()
   })
 })
