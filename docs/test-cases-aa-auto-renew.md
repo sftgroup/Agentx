@@ -276,6 +276,30 @@
 - `resumeAutoRenew` 恢复 + 404 2 条；
 - `runAutoRenewScan` fatal 暂停落库 + 空扫描 2 条。
 
+### 7.2 2026-08-19 产品化充值（depositFor 一键充值）+ 真实测试结果
+
+> REQ-1（depositFor）由 infraX 上线后，前端充值引导从 fallback 切换为真实一键充值
+> （commit 8625da6）：AutoRenewCard 三类资金各自金额输入 + 单个充值按钮 + 一键充值全部
+> （顺序 3 笔 tx：`escrow.depositFor` / `EP.depositTo` / native 转账），默认金额按 12 期估算。
+
+**生产真实测试（2026-08-19，全新 EOA `0x8abA0A03…`，无历史会话）**：
+
+| 步骤 | 结果 |
+|---|---|
+| 链上 subscribe（agent 30 / plan 18，0.001 OXA）→ indexer 入库订阅 #28 | ✅ |
+| JWT 登录（challenge + personal_sign）→ enable | ✅ 返回新账户 `0x376Ee450…`（escrow=0）+ digest |
+| **不充值直接 confirm → relay 402 + topupHint** | ✅ `402 余额不足…主钱包 EOA 单笔 tx 调 depositFor(智能账户) 代充值…计费主体=0x376ee450…（当前链上余额 0，本次需 0.00246000003304）`——REQ-2c 文案验收通过 |
+| 一键充值三笔（depositFor 0.03 / EP.depositTo 0.02 / 转账 0.02 OXA） | ✅ 全部 success，`balanceOf` 即时生效 |
+| confirm 重试 | ✅ `receiptSuccess=true`（tx `0x5ca57611…`）——充值闭环打通 |
+| GET /auto-renew | ✅ `renew_status=enabled`，funding 三类资金精确（confirm 已扣 1 次服务费 ~0.00246 OXA） |
+
+**真实测试发现的问题**：
+
+| # | 事项 | 状态 |
+|---|---|---|
+| L12 | **旧会话残留导致重复 enable 失败**：测试主钱包 `0xd8e2cf33…` 2026-08-19 曾有 enabled 会话（表已清但链上未撤销），再次 enable 后 confirm 报 `FailedOpWithRevert`（bundler 层 AA23 signature error，tracer 显示 Session Module `isValidSignature` revert）。**根因推断**：Kernel v3 单 session 结构，已有 session 时 enableSession 覆盖被拒。**影响**：用户 disable（未链上撤销）后重新 enable 会失败。**建议**：enable 前检测账户已有 session → 先链上撤销（disableCallData + owner 签名上链）或提示；或 relay 对同 owner 复用 session | 待修复（产品路径） |
+| L13 | relay 402 文案仍含 REQ-4 已淘汰的 self-pay 提示（"账户自身用 session key 调 deposit() 自付"） | 建议 infraX 文案去重 |
+
 ---
 
 ## 8. 测试执行建议
