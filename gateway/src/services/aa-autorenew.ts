@@ -10,7 +10,8 @@
 //
 // 依赖 infraX 能力（AA_SDK_TECH_DESIGN §8.3 oxachain 生产栈）：
 //   - @0xinfrax/aa-sdk@0.1.2（Kernel v3 + ENABLE-mode session enable + 三段批量 disable）
-//   - aa-relay :9131（POST /v1/session 创建 session、POST /v1/userops 广播）
+//   - aa-relay :9131（POST /v1/session 创建 session、POST /v1/userops 广播 enable/续订、
+//     POST /v1/session/revoke 带 owner 签名上链撤销——2026-08-20 契约对齐）
 //   - 配置 AA_AUTO_RENEW_ENABLED=true + AA_RELAY_URL/AA_RELAY_API_KEY
 //     + AA_DEPLOYER_PRIVATE_KEY（Kernel 账户部署 gas，平台代付一次性）
 //
@@ -371,8 +372,23 @@ export async function revokeAutoRenew(p: {
     err.status = 409
     throw err
   }
-  op.signature = p.ownerSignature as Hex
-  const result = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: true }, 150_000)
+  // 对齐 infraX 2026-08-20 会话接口：撤销上链走 POST /v1/session/revoke
+  // （submitSignedOp 统一流程：owner 派生账户校验 + 签名校验 + userOpHash 一致性 +
+  //  A-10 escrow 计费 + 广播 + 结算）。op 无需预置 signature，relay 侧注入 owner 签名。
+  const result = await relayRequest(
+    '/v1/session/revoke',
+    {
+      chain: config.aaRelayChain,
+      account: accountAddress,
+      owner: p.subscriber,
+      sessionId,
+      userOpHash,
+      signature: p.ownerSignature,
+      op,
+      wait: true,
+    },
+    150_000,
+  )
   const revoked = Boolean(result?.receipt?.success)
   if (revoked) {
     log.info(

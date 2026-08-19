@@ -157,7 +157,7 @@ if (state.currentNonce != config.nonce || state.validationConfig[vId].nonce >= c
   - `hasOnChainSession()` — Kernel `isModuleInstalled(1, sessionModule)` 探测（ERC-7579 视图）
   - `resolveExistingSessionId()` — 登记表 / relay 兜底
   - `buildDisableUserOpDraft()` — disable UserOp（root nonce），callData = `execute(BATCH, abi.encode([uninstallModule, invalidateNonce(cur+1)]))`（commit 7696db6）
-  - `revokeAutoRenew()` — 签名校验 + relay `/v1/userops` 广播（支持调用方回传 account/sessionId 兜底）
+  - `revokeAutoRenew()` — 签名校验 + relay `/v1/session/revoke` 广播（对齐 infraX 2026-08-20 会话接口；支持调用方回传 account/sessionId 兜底）
   - `createAutoRenew()` — enable 前残留检测（返回 `needsSessionRevoke`）
   - `disableAutoRenew()` — 本地停用 + 返回 disable draft
 - 网关路由：`gateway/src/routes/auto-renew.ts`（`POST /billing/auto-renew/revoke`）

@@ -287,8 +287,17 @@ describe('revokeAutoRenew — 链上撤销守卫', () => {
     expect(aaSdk.buildDisableSessionUserOp).toHaveBeenCalledWith(
       expect.objectContaining({ account: ACCOUNT, sessionId: expect.any(String), gas: expect.any(Object) }),
     )
+    // 对齐 infraX 会话接口：撤销走 POST /v1/session/revoke（submitSignedOp 统一流程）
+    const [url, init] = fetchSpy.mock.calls[0] as [string, { body: string }]
+    expect(String(url)).toContain('/v1/session/revoke')
+    const body = JSON.parse(init.body)
+    expect(body.account).toBe(ACCOUNT)
+    expect(body.owner).toBe(EOA) // 撤销以用户 EOA（session owner）签名提交
+    expect(body.sessionId).toBe('0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd')
+    expect(body.userOpHash).toBe('0x' + 'ab'.repeat(32))
+    expect(body.signature).toBe('0x' + '11'.repeat(65))
+    expect(body.wait).toBe(true)
     // 广播的 op.callData = execute(BATCH, abi.encode([disableSession, uninstallModule, invalidateNonce(cur+1)]))
-    const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
     expect(body.op.callData.startsWith('0xe9ae5c53')).toBe(true) // execute(bytes32,bytes)
     expect(body.op.callData).toContain('0100000000000000000000000000000000000000000000000000000000000000') // BATCH execMode
     expect(body.op.callData).toContain('f42c859d') // disableSession(sessionId)@module —— 三段批量新增（旧 session key 删除）

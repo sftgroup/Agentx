@@ -318,7 +318,7 @@
 
 > 单测同步更新（`aa-autorenew.test.ts` 14 条）：revoke 兜底路径断言 `execute(BATCH)` 编码含 `uninstallModule`/`invalidateNonce`/`cur+1`。验证后测试残留已清理（aa_auto_renew 清空、链上 session 撤销，账户 `validNonceFrom=4`）。
 
-**2026-08-20 对齐 infraX 三段批量 revoke 契约（已完成）**：infraX 发布 `@0xinfrax/aa-sdk@0.1.2`（`buildDisableSessionUserOp` 三段批量 disable），AgentX `buildDisableUserOpDraft` 改用该函数（commit f080086），revoke 现为 `execute(BATCH, [disableSession@module, uninstallModule, invalidateNonce(cur+1)])`——显式 `disableSession` 删除旧 session 记录（已部署 Session Module `onUninstall` 为空实现，两段版不删记录 → 旧 session key 仍可验证，已修复）。生产验证：clean→confirm→残留检测→三段批量 revoke（tx `0x044412fe…` success，nonce 4→5）→clean→confirm 全通过；残留已清理（aa_auto_renew 清空、链上无 session、nonce=6）。
+**2026-08-20 对齐 infraX 三段批量 revoke 契约（已完成）**：infraX 发布 `@0xinfrax/aa-sdk@0.1.2`（`buildDisableSessionUserOp` 三段批量 disable），AgentX `buildDisableUserOpDraft` 改用该函数（commit f080086），revoke 现为 `execute(BATCH, [disableSession@module, uninstallModule, invalidateNonce(cur+1)])`——显式 `disableSession` 删除旧 session 记录（已部署 Session Module `onUninstall` 为空实现，两段版不删记录 → 旧 session key 仍可验证，已修复）。生产验证：clean→confirm→残留检测→三段批量 revoke（tx `0x044412fe…` success，nonce 4→5）→clean→confirm 全通过；残留已清理（aa_auto_renew 清空、链上无 session、nonce=6）。**广播路径进一步对齐**：`revokeAutoRenew` 撤销上链由 `POST /v1/userops` 切换为 relay `POST /v1/session/revoke`（submitSignedOp 统一流程：owner 派生账户校验 + ECDSA 签名校验 + userOpHash 一致性 + A-10 escrow 计费 + 广播结算），请求体含 `chain/account/owner/sessionId/userOpHash/signature/op/wait`，op 无需预置 signature（relay 侧注入）；单测同步断言新端点与请求体。
 
 ---
 
