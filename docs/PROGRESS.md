@@ -511,8 +511,8 @@
 
 | # | Task | 状态 | 依赖 / 备注 |
 |---|---|---|---|
-| **e1** | 方案选型与产品路径设计：对比 REQ-1（infraX 合约升级 `depositFor(address user)`，EOA 单笔 tx 代子账户入账）vs REQ-4（AgentX 自理 self-pay fallback，session 白名单加 `escrow.deposit()`），确定主/备方案、UX 流程与一年续订费用估算模型 | ✅ 选型确定 | **主路径 = 一次 `depositFor`（REQ-1 已落地，impl `0x5ff86381…`）**；fallback 关闭。后续补一年续订费用估算模型 |
-| **e2** | 前端充值引导 UI：开启自动续订时展示智能账户三类资金（native / EP deposit / escrow），按估算费用引导用户一步 `depositFor` 充值 | ⏳ 待办 | 主路径可直接实施（不再依赖 REQ-1 排期）；涉及 [AutoRenewCard.tsx](../frontend/components/user/AutoRenewCard.tsx)、[lib/auto-renew.ts](../frontend/lib/auto-renew.ts) |
+| **e1** | 方案选型与产品路径设计：对比 REQ-1（infraX 合约升级 `depositFor(address user)`，EOA 单笔 tx 代子账户入账）vs REQ-4（AgentX 自理 self-pay fallback，session 白名单加 `escrow.deposit()`），确定主/备方案、UX 流程与一年续订费用估算模型 | ✅ 完成 | **主路径 = 一次 `depositFor`（REQ-1 已落地，impl `0x5ff86381…`）**；fallback 关闭。12 期费用估算模型已随 8625da6 落地（订阅价×12 + relay 服务费×12 + gas 缓冲） |
+| **e2** | 前端充值引导 UI：开启自动续订时展示智能账户三类资金（native / EP deposit / escrow），按估算费用引导用户一步 `depositFor` 充值 | ✅ 完成（[8625da6](https://github.com/sftgroup/Agentx/commit/8625da6)） | 2026-08-19 产品化充值闭环已实现：[AutoRenewCard.tsx](../frontend/components/user/AutoRenewCard.tsx)（三类资金展示 + 12 期估算 + `depositFor`/`EP.depositTo`/native 转账 + 一键充值）、[lib/auto-renew.ts](../frontend/lib/auto-renew.ts)。ABI 与 infraX 已部署合约一致（`depositFor(address user) payable`），REQ-1 交付后无需改动 |
 | **e3** | 【fallback 已关闭】自动续订 session 白名单增加 `escrow.deposit()` 条目（self-pay 充值） | ⏸ 不采用 | REQ-1 已落地，无需 fallback（REQ-4 关闭） |
 | **e4** | 余额不足主动告警：gateway 在 escrow 不足时提前发送站内/邮件通知（现状 `renewOne` ⑦ 已有 escrow 预检 + 失败护栏自动暂停，缺「提前主动通知」与恢复引导） | ⏳ 待办 | 复用 [aa-autorenew.ts](../gateway/src/services/aa-autorenew.ts) `sendAlert`/`pauseAutoRenew` 机制 |
 | **e5** | 计费对账：escrow `Charged/Refunded` 事件与本地 `renew_log` 对账任务 | ⏳ 待办 | 参考 [reconcile-x402.ts](../gateway/src/services/reconcile-x402.ts) 模式 |
