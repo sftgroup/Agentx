@@ -11,11 +11,15 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useAccount, useWalletClient } from 'wagmi'
-import { Copy, ExternalLink, Loader2, RefreshCw, ShieldCheck, Sparkles, Wallet } from 'lucide-react'
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
+import { Copy, ExternalLink, Loader2, RefreshCw, ShieldCheck, Sparkles, Wallet, Zap } from 'lucide-react'
+import { encodeFunctionData, parseAbi, parseEther } from 'viem'
 import { GATEWAY_URL } from '@/lib/gateway'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
 import {
+  AA_ENTRYPOINT_V07,
+  AA_ESCROW_ADDRESS,
+  AA_RELAY_SERVICE_FEE_WEI,
   listAutoRenew,
   enableAutoRenew,
   confirmAutoRenew,
@@ -52,6 +56,7 @@ type Step =
 export function AutoRenewCard({ agentId, planId, subscriptionId, planPriceWei, priceDisplay, isActive, expiresAt }: AutoRenewCardProps) {
   const { address } = useAccount()
   const { data: walletClient } = useWalletClient()
+  const publicClient = usePublicClient()
   // lazy: 只有用户点击时才请求 gateway JWT（避免进页面就弹签名）
   const { accessToken, isLoading: authLoading, authenticate } = useGatewayAuth(GATEWAY_URL, { lazy: true })
 
@@ -61,6 +66,13 @@ export function AutoRenewCard({ agentId, planId, subscriptionId, planPriceWei, p
   const [error, setError] = useState<string>('')
   const [info, setInfo] = useState<string>('')
   const [copied, setCopied] = useState(false)
+
+  // —— 充值引导：三类资金各自金额（OXA，默认按 12 期估算） ——
+  const [balanceAmount, setBalanceAmount] = useState(() => formatWei(BigInt(planPriceWei) * BigInt(12)))
+  const [gasAmount, setGasAmount] = useState('0.02')
+  const [escrowAmount, setEscrowAmount] = useState(() => formatWei(AA_RELAY_SERVICE_FEE_WEI * BigInt(12)))
+  const [topUpBusy, setTopUpBusy] = useState(false)
+  const [topUpMsg, setTopUpMsg] = useState('')
 
   const refresh = useCallback(async (token: string) => {
     try {
@@ -162,6 +174,62 @@ export function AutoRenewCard({ agentId, planId, subscriptionId, planPriceWei, p
     }
   }
 
+  // —— 充值：EOA 一笔 tx 给智能账户入账（REQ-1 depositFor / EP.depositTo / native 转账）——
+  const doTopUp = async (kind: 'balance' | 'gas' | 'escrow') => {
+    if (!walletClient || !publicClient || !address || !row?.account_address) {
+      setError('Wallet not connected — reconnect and try again')
+      return
+    }
+    if (!accessToken) {
+      setError('Please sign in first')
+      return
+    }
+    const amountStr = kind === 'balance' ? balanceAmount : kind === 'gas' ? gasAmount : escrowAmount
+    let value: bigint
+    try {
+      value = parseEther(amountStr)
+    } catch {
+      setError('Invalid amount')
+      return
+    }
+    if (value <= BigInt(0)) {
+      setError('Amount must be greater than 0')
+      return
+    }
+    setError('')
+    setTopUpMsg(`${kind === 'escrow' ? 'Service escrow' : kind === 'gas' ? 'Gas deposit' : 'Balance'} top-up pending — confirm in your wallet…`)
+    setTopUpBusy(true)
+    try {
+      const to = (kind === 'escrow' ? AA_ESCROW_ADDRESS : kind === 'gas' ? AA_ENTRYPOINT_V07 : row.account_address) as `0x${string}`
+      const data = kind === 'escrow'
+        ? encodeFunctionData({ abi: parseAbi(['function depositFor(address user) external payable']), functionName: 'depositFor', args: [row.account_address as `0x${string}`] })
+        : kind === 'gas'
+          ? encodeFunctionData({ abi: parseAbi(['function depositTo(address account) external payable']), functionName: 'depositTo', args: [row.account_address as `0x${string}`] })
+          : undefined
+      const hash = await walletClient.sendTransaction({ to, data, value })
+      setTopUpMsg('Waiting for on-chain confirmation…')
+      await publicClient.waitForTransactionReceipt({ hash })
+      await refresh(accessToken)
+      setTopUpMsg('Top-up confirmed — funds are live on-chain.')
+    } catch (e: any) {
+      if (/user rejected|denied|reject/i.test(e?.shortMessage ?? e?.message ?? '')) {
+        setTopUpMsg('Top-up cancelled in wallet.')
+      } else {
+        setTopUpMsg('')
+        setError(e?.shortMessage ?? e?.message ?? String(e))
+      }
+    } finally {
+      setTopUpBusy(false)
+    }
+  }
+
+  // —— 一键充值全部三类资金（顺序执行：escrow → balance → gas）——
+  const doTopUpAll = async () => {
+    for (const kind of ['escrow', 'balance', 'gas'] as const) {
+      await doTopUp(kind)
+    }
+  }
+
   const copyAccount = async () => {
     if (!row?.account_address) return
     try { await navigator.clipboard.writeText(row.account_address); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch {}
@@ -171,9 +239,11 @@ export function AutoRenewCard({ agentId, planId, subscriptionId, planPriceWei, p
   const epDeposit = row?.funding ? BigInt(row.funding.epDepositWei) : null
   const escrowWei = row?.funding ? BigInt(row.funding.escrowWei) : null
   // relay A-10 服务费阈值（实测 ~0.00246 OXA/次，与网关 AA_RELAY_SERVICE_FEE_WEI 对齐）
-  const escrowFeeThreshold = BigInt('2460000000000000')
+  const escrowFeeThreshold = AA_RELAY_SERVICE_FEE_WEI
   const funded = (nativeWei ?? BigInt(0)) > BigInt(0) || (epDeposit ?? BigInt(0)) > BigInt(0)
   const escrowFunded = (escrowWei ?? BigInt(0)) >= escrowFeeThreshold
+  // 12 期估算总额 = 订阅价×12 + relay 服务费×12（gas 缓冲 0.02 OXA 另计）
+  const topUpEstimateWei = BigInt(planPriceWei) * BigInt(12) + AA_RELAY_SERVICE_FEE_WEI * BigInt(12)
   const expiresDate = expiresAt ? new Date(Number(expiresAt) * 1000).toLocaleDateString() : null
   const isEnabled = step === 'enabled' || row?.renew_status === 'enabled'
   const isPaused = step === 'paused' || row?.renew_status === 'paused'
@@ -265,29 +335,54 @@ export function AutoRenewCard({ agentId, planId, subscriptionId, planPriceWei, p
             </div>
           )}
 
-          {/* 充值引导（fallback：不依赖 infraX depositFor；三类资金各自充值路径） */}
+          {/* 充值引导（REQ-1 depositFor：EOA 一键给智能账户入账三类资金） */}
           {(!funded || !escrowFunded) && (
-            <div className="rounded-xl bg-amber-400/5 border border-amber-400/15 p-3 text-xs text-amber-300/90 space-y-2">
-              <div className="flex gap-2 items-start">
+            <div className="rounded-xl bg-amber-400/5 border border-amber-400/15 p-3 text-xs space-y-3">
+              <div className="flex gap-2 items-start text-amber-300/90">
                 <Wallet className="w-4 h-4 mt-0.5 shrink-0" />
-                <span>Smart account needs funds before the next renewal. Three balances are tracked separately:</span>
+                <span>
+                  Smart account needs funds before the next renewal. Estimated for 12 renewals:{' '}
+                  <span className="text-amber-200 font-mono">{formatWei(topUpEstimateWei)} OXA</span> (+ 0.02 OXA gas
+                  buffer). Your wallet pays — the smart account pays the renewals.
+                </span>
               </div>
-              <ol className="list-decimal list-inside space-y-1 text-amber-200/80">
-                <li>
-                  <span className="text-amber-300/90">Balance (pays the subscription price)</span> — send OXA directly to the
-                  smart account address above.
-                </li>
-                <li>
-                  <span className="text-amber-300/90">Gas deposit (pays UserOp gas)</span> — your EOA must deposit gas for the
-                  smart account (EntryPoint <code className="font-mono">depositTo</code>); it does not come from the balance
-                  transfer automatically.
-                </li>
-                <li>
-                  <span className="text-amber-300/90">Service escrow (pays the relay fee, ~0.0025 OXA/renewal)</span> — topped up
-                  by the smart account itself; contact support if you need help funding it.
-                </li>
-              </ol>
-              <p className="text-amber-200/60">Auto-renew is paused while unfunded. Top up, then resume below.</p>
+              <TopUpRow
+                label="Balance — pays the subscription price"
+                desc="native OXA on the smart account"
+                value={balanceAmount}
+                onChange={setBalanceAmount}
+                onTopUp={() => void doTopUp('balance')}
+                busy={topUpBusy}
+              />
+              <TopUpRow
+                label="Gas deposit — pays UserOp gas"
+                desc="EntryPoint depositTo, one-time buffer"
+                value={gasAmount}
+                onChange={setGasAmount}
+                onTopUp={() => void doTopUp('gas')}
+                busy={topUpBusy}
+              />
+              <TopUpRow
+                label="Service escrow — pays the relay fee"
+                desc="depositFor, ~0.0025 OXA / renewal"
+                value={escrowAmount}
+                onChange={setEscrowAmount}
+                onTopUp={() => void doTopUp('escrow')}
+                busy={topUpBusy}
+              />
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => void doTopUpAll()}
+                  disabled={topUpBusy}
+                  className="btn-primary text-xs px-4 py-2 disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  {topUpBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                  Top up all three (3 signatures)
+                </button>
+                {isPaused && <span className="text-amber-200/70">then click Resume below</span>}
+              </div>
+              {topUpMsg && <div className="text-amber-200/80">{topUpMsg}</div>}
+              <p className="text-amber-200/50">Top-ups are live instantly on-chain. Auto-renew stays paused while unfunded.</p>
             </div>
           )}
           {expiresDate && <div className="text-xs text-text-muted">Current period ends {expiresDate} — renewal happens in the window before expiry.</div>}
@@ -372,4 +467,40 @@ function formatWei(wei: bigint): string {
   if (frac === BigInt(0)) return whole.toString()
   const fracStr = frac.toString().padStart(18, '0').replace(/0+$/, '').slice(0, 6)
   return `${whole}.${fracStr}`
+}
+
+/** 充值行：金额输入 + 单个充值按钮（EOA 签名一笔 tx） */
+function TopUpRow(props: {
+  label: string
+  desc: string
+  value: string
+  onChange: (v: string) => void
+  onTopUp: () => void
+  busy: boolean
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 min-w-0">
+        <div className="text-amber-300/90">{props.label}</div>
+        <div className="text-[10px] text-amber-200/50 truncate">{props.desc}</div>
+      </div>
+      <input
+        type="number"
+        min="0"
+        step="any"
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+        disabled={props.busy}
+        className="w-24 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 font-mono text-xs text-text-primary disabled:opacity-40"
+        aria-label={props.label}
+      />
+      <button
+        onClick={props.onTopUp}
+        disabled={props.busy}
+        className="btn-secondary text-xs px-3 py-1.5 shrink-0 disabled:opacity-40"
+      >
+        Top up
+      </button>
+    </div>
+  )
 }

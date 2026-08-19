@@ -9,6 +9,15 @@
 
 import { gatewayFetch } from '@/lib/gateway'
 
+// ---------------------------------------------------------------------------
+// ERC-4337 自动续订 · 链上地址与费率（与 gateway config.ts / relay 生产一致）
+// 2026-08-19 生产实证：InfraXEscrow 0x8bf8ffee…、EntryPoint v0.7 0x97e4cddc…、
+// relay A-10 服务费预扣 ~0.00246 OXA/次（结算按实际退差）。
+// ---------------------------------------------------------------------------
+export const AA_ESCROW_ADDRESS = '0x8bf8ffee86f1d4a160f0953eb13bedcbf99eaf9e' as const
+export const AA_ENTRYPOINT_V07 = '0x97e4cddcffeaf4580bc6315fee512f2b2d82798a' as const
+export const AA_RELAY_SERVICE_FEE_WEI = BigInt('2460000000000000')
+
 export interface AutoRenewRow {
   agent_id: number
   plan_id: number
