@@ -4,6 +4,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const queryMock = vi.hoisted(() => vi.fn())
+/** 链头区块高度（可调，用于模拟不同 head 下 fresh-start 起算点） */
+const headBlockMock = vi.hoisted(() => ({ n: 1000n }))
 
 vi.mock('../src/lib/db', () => ({
   getPool: () => ({ query: queryMock }),
@@ -23,14 +25,18 @@ vi.mock('../src/config', () => ({
   },
 }))
 
+let clientMock: { getBlockNumber: ReturnType<typeof vi.fn>; getLogs: ReturnType<typeof vi.fn> } | null = null
 vi.mock('viem', async (importOriginal) => {
   const actual = await importOriginal<typeof import('viem')>()
   return {
     ...actual,
-    createPublicClient: () => ({
-      getBlockNumber: vi.fn(async () => 1000n),
-      getLogs: vi.fn(async () => []),
-    }),
+    createPublicClient: () => {
+      clientMock = {
+        getBlockNumber: vi.fn(async () => headBlockMock.n),
+        getLogs: vi.fn(async () => []),
+      }
+      return clientMock
+    },
   }
 })
 
@@ -64,6 +70,7 @@ describe('runEscrowReconciliation — escrow 计费对账（e5）', () => {
   beforeEach(() => {
     queryMock.mockReset()
     sendAlertMock.mockReset()
+    headBlockMock.n = 1000n
     ;(config as any).aaAutoRenewEnabled = true
   })
 
@@ -73,6 +80,41 @@ describe('runEscrowReconciliation — escrow 计费对账（e5）', () => {
     expect(r.enabled).toBe(false)
     expect(r.caughtUp).toBe(false)
     ;(config as any).aaAutoRenewEnabled = true
+  })
+
+  it('首次同步（last_block=0）→ 直接从最近 span 块起算（head-5000..head），首轮即追平', async () => {
+    headBlockMock.n = 120000n
+    queryMock.mockImplementation(async (sql: unknown) => {
+      if (typeof sql !== 'string') return { rows: [] }
+      if (sql.includes('SELECT last_block FROM aa_escrow_sync')) return { rows: [{ last_block: 0 }] }
+      if (sql.includes('UPDATE aa_escrow_sync')) return { rows: [] }
+      return { rows: [] }
+    })
+    const r = await runEscrowReconciliation()
+    // getLogs 从 head-span+1=115001 起，toBlock=head=120000（恰好最近 5000 块，含 head）
+    expect(clientMock!.getLogs).toHaveBeenCalledTimes(1)
+    const call = clientMock!.getLogs.mock.calls[0][0]
+    expect(call.fromBlock).toBe(115001n)
+    expect(call.toBlock).toBe(120000n)
+    // 首轮即追平 → 对账立即可用（无登记行 → 无告警）
+    expect(r.caughtUp).toBe(true)
+    expect(r.lastBlock).toBe(120000)
+    expect(r.anomalies).toEqual([])
+  })
+
+  it('last_block>0（已有游标）→ 从 last+1 续拉，不重置起算点', async () => {
+    headBlockMock.n = 120000n
+    queryMock.mockImplementation(async (sql: unknown) => {
+      if (typeof sql !== 'string') return { rows: [] }
+      if (sql.includes('SELECT last_block FROM aa_escrow_sync')) return { rows: [{ last_block: 118000 }] }
+      if (sql.includes('UPDATE aa_escrow_sync')) return { rows: [] }
+      return { rows: [] }
+    })
+    const r = await runEscrowReconciliation()
+    const call = clientMock!.getLogs.mock.calls[0][0]
+    expect(call.fromBlock).toBe(118001n) // last+1，不用 head-span
+    expect(call.toBlock).toBe(120000n)
+    expect(r.caughtUp).toBe(true)
   })
 
   it('追历史期间（未追平）→ 仅同步不对账判定', async () => {

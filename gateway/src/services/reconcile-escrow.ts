@@ -81,9 +81,11 @@ export async function syncEscrowEvents(): Promise<EscrowSyncResult> {
   const head = Number(await client.getBlockNumber())
   const { rows } = await pool.query(`SELECT last_block FROM aa_escrow_sync WHERE id = 1`)
   const lastBlock = Number(rows[0]?.last_block ?? 0)
-  let from = lastBlock + 1
-  if (from <= 0) from = 0
   const span = config.aaEscrowSyncBlockSpan
+  // 首次同步（last_block=0，从未同步过）：不从区块 0 全量回填历史——escrow 计费事件
+  // 均在近期产生，回填旧块无对账价值且每轮仅一个跨度、拖慢追平。直接从最近 span
+  // 块起算，首轮即追平、对账立即可用。
+  const from = lastBlock > 0 ? lastBlock + 1 : Math.max(head - span + 1, 0)
   const to = Math.min(from + span - 1, head)
   let synced = 0
   if (from <= to) {

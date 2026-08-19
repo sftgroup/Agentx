@@ -332,7 +332,7 @@
 | E4-2 | 告警判定口径（与 `renewOne` ⑦ 一致）：escrow ≥ 2×固定费；native ≥ 订阅费；native+EP deposit ≥ 订阅费 | **已实现**：任一不满足 → `sendAlert` webhook（JSON POST） |
 | E4-3 | 告警节流防轰炸 | **已实现**：`last_funding_alert_at`（迁移 028）+ `AA_ALERT_MIN_INTERVAL_SEC`（默认 1 天） |
 | E4-4 | scan 集成与统计 | **已实现**：`runAutoRenewScan` 每行先 `watchFunding`，`alerts` 计入 `lastScan` / health 指标 |
-| E5-1 | escrow 计费事件增量同步 | **已实现**：`reconcile-escrow.ts` `syncEscrowEvents`——`aa_escrow_events`（唯一 tx+log）+ `aa_escrow_sync`（last_block），每轮 `AA_ESCROW_SYNC_BLOCK_SPAN`（默认 5000）块分页 |
+| E5-1 | escrow 计费事件增量同步 | **已实现**：`reconcile-escrow.ts` `syncEscrowEvents`——`aa_escrow_events`（唯一 tx+log）+ `aa_escrow_sync`（last_block），每轮 `AA_ESCROW_SYNC_BLOCK_SPAN`（默认 5000）块分页；**首次同步（last_block=0）不从区块 0 回填，直接从最近 `SPAN` 块起算（head-SPAN+1..head），首轮即追平、对账立即可用** |
 | E5-2 | 对账口径：净扣费 = ΣCharged - ΣRefunded vs `renew_log` 条数×固定费 | **已实现**：漏计费（< 期望×`MIN_RATIO` 0.5）、重复扣费（> 期望×`MAX_RATIO` 3）、净额为负三类异常 |
 | E5-3 | 追平前不判定（防追历史期间误报） | **已实现**：`caughtUp = head - last <= span` 才执行判定 |
 | E5-4 | 对账告警 | **已实现**：异常 → `sendAlert` + `log.error`；无异常 → `log.info` |
