@@ -507,17 +507,18 @@
 
 > 来源：aa-relay A-10 计费（escrow 模式）——每次 UserOp 向 `op.sender`（智能账户）预扣固定费 + 预估 gas；余额取自链上 `InfraXEscrow(0x8bf8ffee…).balanceOf(sender)`，`deposit()` 只记 `msg.sender` → **用户如何给智能账户充值 escrow 是当前唯一产品闭环缺口**。需求文档：[aa-auto-renew-funding-requirements-infrax.md](aa-auto-renew-funding-requirements-infrax.md)（REQ-1~5 + §4 AgentX 侧自理）。
 > **资金模型（链上实证）**：订阅费 = 子账户 native 余额（execute value）；UserOp gas = 子账户 EntryPoint deposit；relay 服务费（约 0.00246 OXA/次）= 子账户在 InfraXEscrow 的 `_balances[account]`。三类资金按账户独立记账，EOA 与子账户互不共用。
+> **2026-08-20 infraX 交付确认**：REQ-1 已落地（`InfraXEscrow.depositFor` 合约升级已部署，impl `0x5ff86381…`）、REQ-2 已交付（ledger-balance 503 修复 + 资金总览 + 402 文案修正）→ **主路径确定，AgentX 前端直接按一次 `depositFor` 引导选型，self-pay fallback（e3）关闭**；REQ-3 价目文档状态待 infraX 确认。
 
 | # | Task | 状态 | 依赖 / 备注 |
 |---|---|---|---|
-| **e1** | 方案选型与产品路径设计：对比 REQ-1（infraX 合约升级 `depositFor(address user)`，EOA 单笔 tx 代子账户入账）vs REQ-4（AgentX 自理 self-pay fallback，session 白名单加 `escrow.deposit()`），确定主/备方案、UX 流程与一年续订费用估算模型 | ⏳ 待办 | 主方案依赖 infraX REQ-1 排期；fallback 不依赖合约升级 |
-| **e2** | 前端充值引导 UI：开启自动续订时展示智能账户三类资金（native / EP deposit / escrow），按估算费用引导用户一步充值（REQ-1 落地后走 `depositFor`；否则三步合一 fallback） | ⏳ 待办 | 依赖 e1 选型；涉及 [AutoRenewCard.tsx](../frontend/components/user/AutoRenewCard.tsx)、[lib/auto-renew.ts](../frontend/lib/auto-renew.ts) |
-| **e3** | 【fallback】自动续订 session 白名单增加 `escrow.deposit()` 条目（valueLimit=充值上限），使子账户可用 session key 自付充值 | ⏳ 待办 | 仅 REQ-1 未落地前启用；REQ-4（funding-requirements §3） |
+| **e1** | 方案选型与产品路径设计：对比 REQ-1（infraX 合约升级 `depositFor(address user)`，EOA 单笔 tx 代子账户入账）vs REQ-4（AgentX 自理 self-pay fallback，session 白名单加 `escrow.deposit()`），确定主/备方案、UX 流程与一年续订费用估算模型 | ✅ 选型确定 | **主路径 = 一次 `depositFor`（REQ-1 已落地，impl `0x5ff86381…`）**；fallback 关闭。后续补一年续订费用估算模型 |
+| **e2** | 前端充值引导 UI：开启自动续订时展示智能账户三类资金（native / EP deposit / escrow），按估算费用引导用户一步 `depositFor` 充值 | ⏳ 待办 | 主路径可直接实施（不再依赖 REQ-1 排期）；涉及 [AutoRenewCard.tsx](../frontend/components/user/AutoRenewCard.tsx)、[lib/auto-renew.ts](../frontend/lib/auto-renew.ts) |
+| **e3** | 【fallback 已关闭】自动续订 session 白名单增加 `escrow.deposit()` 条目（self-pay 充值） | ⏸ 不采用 | REQ-1 已落地，无需 fallback（REQ-4 关闭） |
 | **e4** | 余额不足主动告警：gateway 在 escrow 不足时提前发送站内/邮件通知（现状 `renewOne` ⑦ 已有 escrow 预检 + 失败护栏自动暂停，缺「提前主动通知」与恢复引导） | ⏳ 待办 | 复用 [aa-autorenew.ts](../gateway/src/services/aa-autorenew.ts) `sendAlert`/`pauseAutoRenew` 机制 |
 | **e5** | 计费对账：escrow `Charged/Refunded` 事件与本地 `renew_log` 对账任务 | ⏳ 待办 | 参考 [reconcile-x402.ts](../gateway/src/services/reconcile-x402.ts) 模式 |
-| **e6** | 【外部依赖，非 AgentX 自理】infraX 侧前置：REQ-1 `InfraXEscrow.depositFor(address user)` 合约升级 + REQ-2 relay 资金总览端点 / 402 `topupHint` 文案修正 + REQ-3 价目文档 | ⏸ 外部依赖 | 见 funding-requirements §3，需 infraX 排期 |
+| **e6** | 【infraX 侧前置】REQ-1 `InfraXEscrow.depositFor(address user)` 合约升级 + REQ-2 relay 资金总览端点 / 402 `topupHint` 文案修正 + REQ-3 价目文档 | ✅ 已交付（REQ-1/2）；REQ-3 待确认 | REQ-1 impl `0x5ff86381…` 已部署；REQ-2 已上线（见 funding-requirements §3） |
 
-- **验收标准**：① EOA 单笔 tx 调 `depositFor(子账户)` 入账成功，`balanceOf(子账户)` 即时可见（或 fallback 三步路径可充）；② 子账户 escrow 余额充足时 relay 广播 UserOp 不再 402；③ 前端可引导用户完成智能账户充值并展示三类资金视图；④ 余额不足时用户收到提前通知，补齐后自动恢复续订。
+- **验收标准**：① EOA 单笔 tx 调 `depositFor(子账户)` 入账成功，`balanceOf(子账户)` 即时可见；② 子账户 escrow 余额充足时 relay 广播 UserOp 不再 402；③ 前端可引导用户完成智能账户充值并展示三类资金视图；④ 余额不足时用户收到提前通知，补齐后自动恢复续订。
 
 ### P10 R6-R10 技术债与定时任务（✅ 全部完成，2026-08-06）
 
