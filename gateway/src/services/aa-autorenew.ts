@@ -80,7 +80,7 @@ const inFlight = new Set<string>()
 /** daemon 健康指标（health 端点暴露，供监控告警） */
 export const autoRenewStats = {
   lastScanAt: null as string | null,
-  lastScan: { checked: 0, renewed: 0, failed: 0 },
+  lastScan: { checked: 0, renewed: 0, failed: 0, alerts: 0 },
   pausedCount: 0,
 }
 
@@ -809,8 +809,9 @@ export async function resolveCurrentSubscription(
   return { subscription: sub, pointerMoved }
 }
 
-/** 告警：配置了 AA_ALERT_WEBHOOK_URL 则 POST JSON（10s 超时）；未配置仅 log.error */
-async function sendAlert(subject: string, detail: Record<string, unknown>): Promise<void> {
+/** 告警：配置了 AA_ALERT_WEBHOOK_URL 则 POST JSON（10s 超时）；未配置仅 log.error。
+ *  导出供 escrow 对账（e5）等模块复用。 */
+export async function sendAlert(subject: string, detail: Record<string, unknown>): Promise<void> {
   const msg = { subject, time: new Date().toISOString(), ...detail }
   if (!config.aaAlertWebhookUrl) {
     log.error(`[aa-autorenew][ALERT] ${subject} ${JSON.stringify(detail)}`)
@@ -888,6 +889,74 @@ export async function resumeAutoRenew(p: DisableAutoRenewParams): Promise<void> 
     throw err
   }
   log.info(`[aa-autorenew] resumed: sub=${p.subscriber} plan=${p.planId}`)
+}
+
+/**
+ * 资金巡检（e4，余额不足主动告警）：在续订窗口开启前（到期前 AA_ALERT_AHEAD_SEC 秒）
+ * 检查智能账户三类资金，任一不足则向 webhook 提前告警（不等续订失败才报）。
+ *   - 已进入续订窗口（到期前 windowSec 内）→ 跳过，交给 renewOne ⑦ 的资金预检处理；
+ *   - 告警节流：同登记距上次告警 < AA_ALERT_MIN_INTERVAL_SEC → 跳过（防每轮扫描轰炸）。
+ * 判定口径与 renewOne ⑦ 一致（实证见 docs/infrax-bundler-restore-handoff.md §5）：
+ *   escrow 付服务费（需 ≥ 2×固定费留余量）、native 付订阅费、native+EP deposit 付订阅费+gas。
+ * 返回 null=未进入窗口；否则 { alerted, shortages }。
+ */
+export async function watchFunding(
+  row: any,
+  nowSec: number,
+): Promise<{ alerted: boolean; shortages: string[] } | null> {
+  const pool = getPool()
+  const { subscriber, agent_id: agentId, plan_id: planId } = row
+  const resolved = await resolveCurrentSubscription(subscriber, agentId, row.account_address, row.current_subscription_id)
+  if (!resolved) return null
+  const expiresAt = Number(resolved.subscription.expires_at ?? 0)
+  // ① 未进入提前告警窗口 → 不巡检
+  if (expiresAt <= 0 || nowSec < expiresAt - config.aaAlertAheadSec) return null
+  // ② 已进入续订窗口 → 交给 renewOne 的资金预检（此处跳过，避免与失败护栏重复）
+  if (expiresAt <= nowSec + config.aaAutoRenewWindowSec) return null
+  // ③ 资金检查
+  const funding = await getAccountFunding(row.account_address)
+  const priceWei = BigInt(resolved.subscription.amount_wei ?? 0)
+  const fee2x = BigInt(config.aaRelayServiceFeeWei) * 2n
+  const shortages: string[] = []
+  if (funding.escrowWei < fee2x) {
+    shortages.push(`escrow ${funding.escrowWei} wei < 2×服务费 ${fee2x} wei`)
+  }
+  if (priceWei > 0n && funding.nativeWei < priceWei) {
+    shortages.push(`native ${funding.nativeWei} wei < 订阅费 ${priceWei} wei`)
+  }
+  if (funding.nativeWei + funding.epDepositWei < priceWei) {
+    shortages.push(`native+gas存款 ${funding.nativeWei + funding.epDepositWei} wei < 订阅费 ${priceWei} wei`)
+  }
+  if (shortages.length === 0) return { alerted: false, shortages }
+  // ④ 告警节流：距上次告警 < 最小间隔 → 跳过
+  const { rows } = await pool.query(
+    `SELECT last_funding_alert_at FROM aa_auto_renew
+     WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
+    [subscriber.toLowerCase(), agentId, planId],
+  )
+  const lastAt = rows[0]?.last_funding_alert_at
+  if (lastAt && Date.now() - new Date(lastAt).getTime() < config.aaAlertMinIntervalSec * 1000) {
+    return { alerted: false, shortages }
+  }
+  // ⑤ 发送告警 + 记录告警时间
+  await sendAlert(`auto-renew funding low (${subscriber}:${agentId}:${planId})`, {
+    reason: shortages.join('; '),
+    account: row.account_address,
+    subscriptionId: Number(resolved.subscription.subscription_id),
+    expiresAt,
+    funding: {
+      nativeWei: funding.nativeWei.toString(),
+      epDepositWei: funding.epDepositWei.toString(),
+      escrowWei: funding.escrowWei.toString(),
+    },
+  })
+  await pool.query(
+    `UPDATE aa_auto_renew SET last_funding_alert_at = NOW(), updated_at = NOW()
+     WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
+    [subscriber.toLowerCase(), agentId, planId],
+  )
+  log.warn(`[aa-autorenew] funding alert sent: ${subscriber}:${agentId}:${planId} → ${shortages.join('; ')}`)
+  return { alerted: true, shortages }
 }
 
 /** 单行续订处理。返回 true=已续订，false=尝试但失败，null=未到期/不应续订。 */
@@ -1023,9 +1092,9 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
   return false
 }
 
-/** 全量扫描：对每个 enabled 登记做到期续订 */
-export async function runAutoRenewScan(): Promise<{ checked: number; renewed: number; failed: number }> {
-  if (!isAutoRenewEnabled()) return { checked: 0, renewed: 0, failed: 0 }
+/** 全量扫描：先做资金巡检（e4 提前告警），再对每个 enabled 登记做到期续订 */
+export async function runAutoRenewScan(): Promise<{ checked: number; renewed: number; failed: number; alerts: number }> {
+  if (!isAutoRenewEnabled()) return { checked: 0, renewed: 0, failed: 0, alerts: 0 }
   const { rows } = await getPool().query(
     `SELECT subscriber, agent_id, plan_id, account_address, session_id, session_key_enc, policy_json,
             current_subscription_id, last_renew_at
@@ -1035,11 +1104,19 @@ export async function runAutoRenewScan(): Promise<{ checked: number; renewed: nu
   const windowSec = config.aaAutoRenewWindowSec
   let renewed = 0
   let failed = 0
+  let alerts = 0
   for (const row of rows) {
     const key = `${row.subscriber}:${row.agent_id}:${row.plan_id}`
     if (inFlight.has(key)) continue
     inFlight.add(key)
     try {
+      // e4 资金巡检（提前告警；失败不阻塞续订主流程）
+      try {
+        const w = await watchFunding(row, nowSec)
+        if (w?.alerted) alerts++
+      } catch (wErr: any) {
+        log.warn(`[aa-autorenew] funding watch failed for ${key}: ${wErr.message}`)
+      }
       const r = await renewOne(row, nowSec, windowSec)
       if (r === true) renewed++
       else if (r === false) failed++
@@ -1051,11 +1128,11 @@ export async function runAutoRenewScan(): Promise<{ checked: number; renewed: nu
     }
   }
   if (rows.length > 0) {
-    log.info(`[aa-autorenew] scan done: ${rows.length} checked, ${renewed} renewed, ${failed} failed`)
+    log.info(`[aa-autorenew] scan done: ${rows.length} checked, ${renewed} renewed, ${failed} failed, ${alerts} funding alerts`)
   }
   autoRenewStats.lastScanAt = new Date().toISOString()
-  autoRenewStats.lastScan = { checked: rows.length, renewed, failed }
-  return { checked: rows.length, renewed, failed }
+  autoRenewStats.lastScan = { checked: rows.length, renewed, failed, alerts }
+  return { checked: rows.length, renewed, failed, alerts }
 }
 
 let timer: NodeJS.Timeout | null = null

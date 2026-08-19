@@ -5,6 +5,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const queryMock = vi.hoisted(() => vi.fn())
+/** 智能账户三类资金 mock（getAccountFunding 链上读取，测试可控；默认全 0 = 资金不足） */
+const fundingMock = vi.hoisted(() => ({ native: 0n, epDeposit: 0n, escrow: 0n }))
 
 vi.mock('../src/lib/db', () => ({
   getPool: () => ({ query: queryMock }),
@@ -23,6 +25,12 @@ vi.mock('../src/config', () => ({
     aaAutoRenewMaxCount: 366,
     aaRenewMaxFailCount: 3,
     aaAlertWebhookUrl: '',
+    aaAlertAheadSec: 259200,
+    aaAlertMinIntervalSec: 86400,
+    aaEscrowReconcileIntervalSec: 3600,
+    aaEscrowSyncBlockSpan: 5000,
+    aaEscrowReconcileMinRatio: 0.5,
+    aaEscrowReconcileMaxRatio: 3,
     aaEscrowAddress: '0x8bf8ffee86f1d4a160f0953eb13bedcbf99eaf9e',
     aaRelayServiceFeeWei: '2460000000000000',
     aaDeployerPrivateKey: '',
@@ -48,9 +56,13 @@ vi.mock('viem', async (importOriginal) => {
   return {
     ...actual,
     createPublicClient: () => ({
-      readContract: vi.fn(async () => 0n),
+      readContract: vi.fn(async (params: any) => {
+        // escrow.balanceOf(account) vs entryPoint.balanceOf(account)
+        if (params?.address === '0x8bf8ffee86f1d4a160f0953eb13bedcbf99eaf9e') return fundingMock.escrow
+        return fundingMock.epDeposit
+      }),
       getStorageAt: vi.fn(async () => '0x' + '00'.repeat(32)),
-      getBalance: vi.fn(async () => 0n),
+      getBalance: vi.fn(async () => fundingMock.native),
       getGasPrice: vi.fn(async () => 1n),
       waitForTransactionReceipt: vi.fn(async () => ({ status: 'success' })),
     }),
@@ -87,7 +99,7 @@ vi.mock('@0xinfrax/aa-sdk', () => ({
   })),
 }))
 
-import { resolveCurrentSubscription, resumeAutoRenew, runAutoRenewScan, resolveExistingSessionId, revokeAutoRenew } from '../src/services/aa-autorenew'
+import { resolveCurrentSubscription, resumeAutoRenew, runAutoRenewScan, resolveExistingSessionId, revokeAutoRenew, watchFunding } from '../src/services/aa-autorenew'
 
 const EOA = '0x1111111111111111111111111111111111111111'
 const ACCOUNT = '0x2222222222222222222222222222222222222222'
@@ -195,7 +207,7 @@ describe('runAutoRenewScan — 失败护栏', () => {
       ],
     })
     const r = await runAutoRenewScan()
-    expect(r).toEqual({ checked: 1, renewed: 0, failed: 0 })
+    expect(r).toEqual({ checked: 1, renewed: 0, failed: 0, alerts: 0 })
     // 应发出 paused 流转（fatal → pauseAutoRenew），reason 作为参数落库
     const pausedCall = queryMock.mock.calls.find((c: unknown[]) => typeof c[0] === 'string' && (c[0] as string).includes(`renew_status = 'paused'`))
     expect(pausedCall).toBeDefined()
@@ -205,8 +217,83 @@ describe('runAutoRenewScan — 失败护栏', () => {
   it('无 enabled 行 → 空扫描不执行任何 DB 更新', async () => {
     mockQueries()
     const r = await runAutoRenewScan()
-    expect(r).toEqual({ checked: 0, renewed: 0, failed: 0 })
+    expect(r).toEqual({ checked: 0, renewed: 0, failed: 0, alerts: 0 })
     expect(queryMock.mock.calls.filter(c => typeof c[0] === 'string').length).toBe(1) // 仅 SELECT
+  })
+})
+
+describe('watchFunding — e4 余额不足提前告警', () => {
+  beforeEach(() => {
+    queryMock.mockReset()
+    fundingMock.native = 0n
+    fundingMock.epDeposit = 0n
+    fundingMock.escrow = 0n
+  })
+
+  const regRow = (over: Record<string, unknown> = {}) => ({
+    subscriber: EOA,
+    agent_id: 1,
+    plan_id: 1,
+    account_address: ACCOUNT,
+    current_subscription_id: 10,
+    ...over,
+  })
+
+  it('未进入提前告警窗口（距到期 > aheadSec）→ 不巡检返回 null', async () => {
+    // expires_at = now + 10 天 > aheadSec（3 天）→ 未进入窗口
+    mockQueries({ pointer: [subRow(10, 1, { expires_at: Math.floor(Date.now() / 1000) + 10 * 86400 })] })
+    const r = await watchFunding(regRow(), Math.floor(Date.now() / 1000))
+    expect(r).toBeNull()
+    expect(queryMock.mock.calls.filter(c => typeof c[0] === 'string' && (c[0] as string).includes('last_funding_alert_at')).length).toBe(0)
+  })
+
+  it('已进入续订窗口（到期前 windowSec 内）→ 跳过巡检交给 renewOne', async () => {
+    // expires_at = now + 6 小时 < windowSec（1 天）→ 已进入续订窗口
+    mockQueries({ pointer: [subRow(10, 1, { expires_at: Math.floor(Date.now() / 1000) + 6 * 3600 })] })
+    const r = await watchFunding(regRow(), Math.floor(Date.now() / 1000))
+    expect(r).toBeNull()
+  })
+
+  it('进入提前窗口且资金充足 → 不告警（shortages 空）', async () => {
+    mockQueries({ pointer: [subRow(10, 1, { expires_at: Math.floor(Date.now() / 1000) + 2 * 86400 })] })
+    fundingMock.native = BigInt('20000000000000000') // 0.02 OXA > 订阅费 0.001
+    fundingMock.epDeposit = BigInt('20000000000000000')
+    fundingMock.escrow = BigInt('10000000000000000') // 0.01 OXA > 2×服务费(0.00492)
+    const r = await watchFunding(regRow(), Math.floor(Date.now() / 1000))
+    expect(r).toEqual({ alerted: false, shortages: [] })
+  })
+
+  it('进入提前窗口资金不足 → 告警（未配置 webhook 走 log.error）并记录 last_funding_alert_at', async () => {
+    mockQueries({ pointer: [subRow(10, 1, { expires_at: Math.floor(Date.now() / 1000) + 2 * 86400 })] })
+    // funding 全 0：escrow / native 均不足
+    const fetchSpy = vi.fn(async () => ({ ok: true, status: 200 })) as any
+    vi.stubGlobal('fetch', fetchSpy)
+    const r = await watchFunding(regRow(), Math.floor(Date.now() / 1000))
+    expect(r?.alerted).toBe(true)
+    expect(r?.shortages.length).toBeGreaterThan(0)
+    // 未配置 AA_ALERT_WEBHOOK_URL → sendAlert 仅 log.error，不走 fetch
+    expect(fetchSpy).not.toHaveBeenCalled()
+    // last_funding_alert_at 落库
+    const updateCall = queryMock.mock.calls.find((c: unknown[]) => typeof c[0] === 'string' && (c[0] as string).includes('last_funding_alert_at = NOW()'))
+    expect(updateCall).toBeDefined()
+    vi.unstubAllGlobals()
+  })
+
+  it('告警节流：距上次告警 < minInterval → 跳过不重复告警', async () => {
+    queryMock.mockImplementation(async (sql: unknown) => {
+      if (typeof sql !== 'string') return { rows: [] }
+      if (sql.includes('FROM chain_subscriptions WHERE subscription_id = $1')) {
+        return { rows: [subRow(10, 1, { expires_at: Math.floor(Date.now() / 1000) + 2 * 86400 })] }
+      }
+      if (sql.includes('last_funding_alert_at FROM')) return { rows: [{ last_funding_alert_at: new Date() }] } // 刚刚告警过
+      return { rows: [] }
+    })
+    const fetchSpy = vi.fn(async () => ({ ok: true, status: 200 })) as any
+    vi.stubGlobal('fetch', fetchSpy)
+    const r = await watchFunding(regRow(), Math.floor(Date.now() / 1000))
+    expect(r?.alerted).toBe(false) // 已节流，不发送
+    expect(fetchSpy).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
   })
 })
 

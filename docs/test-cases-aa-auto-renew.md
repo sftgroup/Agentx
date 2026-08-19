@@ -320,6 +320,31 @@
 
 **2026-08-20 对齐 infraX 三段批量 revoke 契约（已完成）**：infraX 发布 `@0xinfrax/aa-sdk@0.1.2`（`buildDisableSessionUserOp` 三段批量 disable），AgentX `buildDisableUserOpDraft` 改用该函数（commit f080086），revoke 现为 `execute(BATCH, [disableSession@module, uninstallModule, invalidateNonce(cur+1)])`——显式 `disableSession` 删除旧 session 记录（已部署 Session Module `onUninstall` 为空实现，两段版不删记录 → 旧 session key 仍可验证，已修复）。生产验证：clean→confirm→残留检测→三段批量 revoke（tx `0x044412fe…` success，nonce 4→5）→clean→confirm 全通过；残留已清理（aa_auto_renew 清空、链上无 session、nonce=6）。**广播路径进一步对齐**：`revokeAutoRenew` 撤销上链由 `POST /v1/userops` 切换为 relay `POST /v1/session/revoke`（submitSignedOp 统一流程：owner 派生账户校验 + ECDSA 签名校验 + userOpHash 一致性 + A-10 escrow 计费 + 广播结算），请求体含 `chain/account/owner/sessionId/userOpHash/signature/op/wait`，op 无需预置 signature（relay 侧注入）；单测同步断言新端点与请求体。
 
+### 7.3 2026-08-20 e4 余额不足主动告警 + e5 escrow 计费对账（已实现）
+
+> 动机：此前资金不足只在**续订窗口内**由 `renewOne` ⑦ 事后预检（失败 → 累计暂停），
+> 缺「到期前提前主动通知」；relay A-10 escrow 计费（Charged/Refunded）无本地对账，
+> 无法发现漏计费/重复扣费。本次补齐 e4/e5。
+
+| # | 事项 | 状态 |
+|---|---|---|
+| E4-1 | 提前告警窗口：到期前 `AA_ALERT_AHEAD_SEC`（默认 3 天）检查三类资金 | **已实现**：`watchFunding`（aa-autorenew.ts）——已进入续订窗口（`AA_AUTO_RENEW_WINDOW_SEC` 内）时跳过交给 `renewOne` ⑦，避免重复 |
+| E4-2 | 告警判定口径（与 `renewOne` ⑦ 一致）：escrow ≥ 2×固定费；native ≥ 订阅费；native+EP deposit ≥ 订阅费 | **已实现**：任一不满足 → `sendAlert` webhook（JSON POST） |
+| E4-3 | 告警节流防轰炸 | **已实现**：`last_funding_alert_at`（迁移 028）+ `AA_ALERT_MIN_INTERVAL_SEC`（默认 1 天） |
+| E4-4 | scan 集成与统计 | **已实现**：`runAutoRenewScan` 每行先 `watchFunding`，`alerts` 计入 `lastScan` / health 指标 |
+| E5-1 | escrow 计费事件增量同步 | **已实现**：`reconcile-escrow.ts` `syncEscrowEvents`——`aa_escrow_events`（唯一 tx+log）+ `aa_escrow_sync`（last_block），每轮 `AA_ESCROW_SYNC_BLOCK_SPAN`（默认 5000）块分页 |
+| E5-2 | 对账口径：净扣费 = ΣCharged - ΣRefunded vs `renew_log` 条数×固定费 | **已实现**：漏计费（< 期望×`MIN_RATIO` 0.5）、重复扣费（> 期望×`MAX_RATIO` 3）、净额为负三类异常 |
+| E5-3 | 追平前不判定（防追历史期间误报） | **已实现**：`caughtUp = head - last <= span` 才执行判定 |
+| E5-4 | 对账告警 | **已实现**：异常 → `sendAlert` + `log.error`；无异常 → `log.info` |
+| E5-5 | daemon 注册 | **已实现**：index.ts 启动 `startEscrowReconciler`（`AA_ESCROW_RECONCILE_INTERVAL_SEC` 默认 3600s） |
+
+**新增单测**：
+- `gateway/test/aa-autorenew.test.ts`（19 条，+5 条 `watchFunding`）：未进入窗口/已进入续订窗口跳过/资金充足不告警/资金不足告警落库（未配置 webhook 走 log.error）/节流跳过；
+- `gateway/test/reconcile-escrow.test.ts`（6 条，mock viem + DB）：未启用直接返回/无登记行无告警/正常对账无告警/漏计费 missing/重复扣费 excess/净额为负 negative。
+
+**配置项**（`.env.example`）：`AA_ALERT_AHEAD_SEC` / `AA_ALERT_MIN_INTERVAL_SEC` / `AA_ALERT_WEBHOOK_URL` / `AA_ESCROW_RECONCILE_INTERVAL_SEC` / `AA_ESCROW_SYNC_BLOCK_SPAN` / `AA_ESCROW_RECONCILE_MIN_RATIO` / `AA_ESCROW_RECONCILE_MAX_RATIO`。
+**迁移**：`028_aa_funding_alert.sql`（`aa_auto_renew.last_funding_alert_at`）、`029_aa_escrow_reconcile.sql`（`aa_escrow_events` / `aa_escrow_sync`）。
+
 ---
 
 ## 8. 测试执行建议

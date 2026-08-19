@@ -143,6 +143,16 @@ export const config = {
   // 失败护栏：续订失败累计超过上限自动暂停（充值后 resume 恢复）；可选告警 webhook
   aaRenewMaxFailCount: parseInt(process.env.AA_RENEW_MAX_FAIL_COUNT || '3', 10),
   aaAlertWebhookUrl: process.env.AA_ALERT_WEBHOOK_URL || '',
+  // 资金巡检（e4 余额不足主动告警）：到期前 AA_ALERT_AHEAD_SEC 秒进入提前告警窗口，
+  // 资金不足时向 webhook 告警；同一登记两次告警最小间隔 AA_ALERT_MIN_INTERVAL_SEC。
+  aaAlertAheadSec: parseInt(process.env.AA_ALERT_AHEAD_SEC || '259200', 10), // 3 天
+  aaAlertMinIntervalSec: parseInt(process.env.AA_ALERT_MIN_INTERVAL_SEC || '86400', 10), // 1 天
+  // escrow 计费对账（e5）：事件同步每轮最大区块跨度（防单次 getLogs 超 RPC 上限）
+  aaEscrowReconcileIntervalSec: parseInt(process.env.AA_ESCROW_RECONCILE_INTERVAL_SEC || '3600', 10),
+  aaEscrowSyncBlockSpan: parseInt(process.env.AA_ESCROW_SYNC_BLOCK_SPAN || '5000', 10),
+  // 对账健全性容差：净扣费 < 期望×下限 → 漏计费告警；> 期望×上限 → 重复/多扣告警
+  aaEscrowReconcileMinRatio: parseFloat(process.env.AA_ESCROW_RECONCILE_MIN_RATIO || '0.5'),
+  aaEscrowReconcileMaxRatio: parseFloat(process.env.AA_ESCROW_RECONCILE_MAX_RATIO || '3'),
   // 智能账户三类资金（实证见 docs/infrax-bundler-restore-handoff.md §5）：
   //   native 余额付订阅费（execute value）、EntryPoint deposit 付 UserOp gas、
   //   InfraXEscrow.balanceOf(account) 付 relay A-10 服务费（预扣固定费+预估 gas，

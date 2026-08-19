@@ -270,6 +270,13 @@ app.listen(config.port, () => {
     console.error('[AgentX Gateway] Failed to start auto-renew daemon:', err.message)
   })
 
+  // Start escrow billing reconciliation (e5): sync Charged/Refunded → reconcile renew_log
+  import('./services/reconcile-escrow').then(({ startEscrowReconciler }) => {
+    startEscrowReconciler()
+  }).catch(err => {
+    console.error('[AgentX Gateway] Failed to start escrow reconciler:', err.message)
+  })
+
   // Start agent sync event watcher (incremental on-chain updates)
   import('./services/agent-indexer').then(({ startAgentSyncWatcher, startPlanSyncWatcher, startSubscriptionSyncWatcher, syncPlanHistory, syncSubscriptionHistory, syncAgents }) => {
     startAgentSyncWatcher()
