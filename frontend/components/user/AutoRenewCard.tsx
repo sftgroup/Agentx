@@ -23,6 +23,7 @@ import {
   listAutoRenew,
   enableAutoRenew,
   confirmAutoRenew,
+  revokeAutoRenew,
   disableAutoRenew,
   resumeAutoRenew,
   type AutoRenewRow,
@@ -101,13 +102,36 @@ export function AutoRenewCard({ agentId, planId, subscriptionId, planPriceWei, p
   }, [accessToken, refresh])
 
   // —— 开启：创建 session + 部署账户，返回 enable digest ——
+  // L12 自愈：若账户链上残留旧 session（Kernel v3 单 session），先 eth_sign
+  // disable UserOp 上链撤销，再重跑 enable 生成新 digest（撤销推进 currentNonce，
+  // 必须先撤销后生成 digest，不能在同一轮 confirm 里做两笔）。
   const handleEnable = async () => {
     if (!accessToken) { setError('Please sign in first'); setStep('error'); return }
     setError(''); setInfo(''); setStep('enabling')
     try {
-      const draft = await enableAutoRenew(accessToken, {
+      let draft = await enableAutoRenew(accessToken, {
         agentId, planId, subscriptionId, planPriceWei,
       })
+      if (draft.needsSessionRevoke) {
+        if (!draft.disableUserOpHash || !walletClient || !address) {
+          setStep('error')
+          setError('Smart account has an old session that cannot be revoked automatically — please contact support')
+          return
+        }
+        setInfo('Revoking the previous session on-chain, then preparing the new one…')
+        const revokeSig = await walletClient.request({
+          method: 'eth_sign',
+          params: [address, draft.disableUserOpHash as `0x${string}`],
+        })
+        await revokeAutoRenew(accessToken, {
+          agentId, planId,
+          disableUserOpHash: draft.disableUserOpHash,
+          ownerSignature: revokeSig,
+        })
+        draft = await enableAutoRenew(accessToken, {
+          agentId, planId, subscriptionId, planPriceWei,
+        })
+      }
       setDraft(draft)
       setStep('pending-sign')
       setInfo(`Smart account ready at ${draft.accountAddress.slice(0, 10)}…${draft.accountAddress.slice(-6)}. Review and sign the enable request.`)
@@ -143,16 +167,37 @@ export function AutoRenewCard({ agentId, planId, subscriptionId, planPriceWei, p
     }
   }
 
-  // —— 停用：本地停用（可选链上撤销 session）——
+  // —— 停用：本地停用 + 链上撤销 session（L12：防残留导致 re-enable 失败）——
   const handleDisable = async () => {
     if (!accessToken) return
-    if (!window.confirm('Disable auto-renew for this subscription? The session key will stop renewing.')) return
+    if (!window.confirm('Disable auto-renew for this subscription? The session key will be revoked on-chain.')) return
     setError(''); setInfo(''); setStep('disabling')
     try {
-      await disableAutoRenew(accessToken, { agentId, planId })
+      const res = await disableAutoRenew(accessToken, { agentId, planId })
       setStep('disabled')
-      setInfo('Auto-renew disabled.')
+      setInfo('Auto-renew disabled locally.')
       setRow(prev => prev ? { ...prev, renew_status: 'disabled' } : prev)
+      // 本地停用后链上 session 仍有效（网关仍可续订）——引导 owner 签名撤销上链。
+      // 用户拒绝签名不视为 disable 失败：本地已停用，残留由下次 enable 自愈兜底。
+      if (res.disableUserOpHash && walletClient && address) {
+        try {
+          setInfo('Revoking the session key on-chain…')
+          const sig = await walletClient.request({
+            method: 'eth_sign',
+            params: [address, res.disableUserOpHash as `0x${string}`],
+          })
+          const r = await revokeAutoRenew(accessToken, {
+            agentId, planId,
+            disableUserOpHash: res.disableUserOpHash,
+            ownerSignature: sig,
+          })
+          setInfo(r.revoked
+            ? 'Auto-renew disabled and the session key revoked on-chain.'
+            : 'Disabled locally, but the on-chain session revoke was not confirmed — re-enabling will auto-revoke first.')
+        } catch {
+          setInfo('Disabled locally. The session key stays on-chain — re-enabling will auto-revoke it first.')
+        }
+      }
     } catch (e: any) {
       setStep('error')
       setError(e?.message ?? String(e))

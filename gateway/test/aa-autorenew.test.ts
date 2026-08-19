@@ -42,7 +42,7 @@ vi.mock('../src/services/chain-data-reader', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { resolveCurrentSubscription, resumeAutoRenew, runAutoRenewScan } from '../src/services/aa-autorenew'
+import { resolveCurrentSubscription, resumeAutoRenew, runAutoRenewScan, resolveExistingSessionId, revokeAutoRenew } from '../src/services/aa-autorenew'
 
 const EOA = '0x1111111111111111111111111111111111111111'
 const ACCOUNT = '0x2222222222222222222222222222222222222222'
@@ -162,5 +162,58 @@ describe('runAutoRenewScan — 失败护栏', () => {
     const r = await runAutoRenewScan()
     expect(r).toEqual({ checked: 0, renewed: 0, failed: 0 })
     expect(queryMock.mock.calls.filter(c => typeof c[0] === 'string').length).toBe(1) // 仅 SELECT
+  })
+})
+
+describe('resolveExistingSessionId — L12 残留 session 解析', () => {
+  beforeEach(() => queryMock.mockReset())
+
+  it('历史登记行命中 → 直接返回该 session_id（不触发 relay）', async () => {
+    queryMock.mockImplementation(async (sql: unknown) => ({
+      rows: typeof sql === 'string' && sql.includes('session_id IS NOT NULL') ? [{ session_id: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }] : [],
+    }))
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const sid = await resolveExistingSessionId(EOA, 1, 1, ACCOUNT)
+    expect(sid).toBe('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+    expect(fetchSpy).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  it('登记行缺失 → relay session store 兜底，取最后一条（最近一次 enable）', async () => {
+    queryMock.mockImplementation(async () => ({ rows: [] }))
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ code: 0, data: [{ sessionId: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }, { sessionId: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }] }),
+    })) as any)
+    const sid = await resolveExistingSessionId(EOA, 1, 1, ACCOUNT)
+    expect(sid).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
+    expect(fetch).toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  it('登记行与 relay 均无 → null（enable 时抛 409 阻止继续）', async () => {
+    queryMock.mockImplementation(async () => ({ rows: [] }))
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ code: 0, data: [] }) })) as any)
+    const sid = await resolveExistingSessionId(EOA, 1, 1, ACCOUNT)
+    expect(sid).toBeNull()
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('revokeAutoRenew — 链上撤销守卫', () => {
+  beforeEach(() => queryMock.mockReset())
+
+  it('无登记行 → 404（无 session 可撤销）', async () => {
+    queryMock.mockImplementation(async () => ({ rows: [] }))
+    const err = await revokeAutoRenew({
+      subscriber: EOA,
+      agentId: 1,
+      planId: 1,
+      disableUserOpHash: '0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      ownerSignature: '0x' + '11'.repeat(65),
+    }).catch((e: Error & { status?: number }) => e)
+    expect(err.status).toBe(404)
   })
 })

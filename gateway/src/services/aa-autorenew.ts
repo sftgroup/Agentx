@@ -65,6 +65,13 @@ const AA_GAS = {
 const DEFAULT_FEE = { maxFeePerGas: 3_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n }
 /** 续订提交冷却（ms）：防止收据确认前 / indexer 指针前移前对同一期重复提交 */
 const RENEW_COOLDOWN_MS = 10 * 60_000
+/**
+ * Kernel v3 账户 validator 绑定状态槽位（eth_getStorageAt 探测）。
+ * 实测（docs/test-cases-aa-auto-renew.md §7.2 L12）：非零 = 已绑定 session
+ * validator（Kernel v3 单 session 结构，残留会导致重复 enable 时
+ * enableSession 覆盖被拒 → FailedOp AA23/AA24）；零 = 干净可 enable。
+ */
+const KERNEL_VALIDATOR_SLOT = '0x7bcaa2ced2a71450ed5a9a1b4848e8e5206dbc3f06011e595f7f55428cc6f84f'
 
 // @0xinfrax/aa-sdk 为 ESM-only（gateway 为 CJS），动态 import 一次并缓存
 let aaModule: any = null
@@ -237,6 +244,136 @@ export async function getAccountFunding(accountAddress: string): Promise<{ nativ
 }
 
 // ============================================================================
+// L12：链上 session 残留检测 + 撤销 UserOp（Kernel v3 单 session 结构自愈）
+// 根因：Kernel v3 同一时刻只绑定一个 session validator；若账户链上仍有旧
+// session（disable 未上链 / 登记被清但链上未撤销），再次 enableSession 覆盖
+// 会被拒（bundler tracer 显示 Session Module isValidSignature revert）。
+// 自愈 = enable 前探测残留 → 构造 disable UserOp（owner 签名上链撤销）→ 再 enable。
+// disable UserOp 为 root nonce key + owner ECDSA 签名（非 ENABLE-mode），
+// 会推进账户 currentNonce —— 因此必须在 enable digest 生成之前完成撤销。
+// ============================================================================
+
+/** 探测账户链上是否已绑定 session validator（Kernel v3 单 session 结构） */
+export async function hasOnChainSession(accountAddress: string): Promise<boolean> {
+  try {
+    const raw = await aaPublicClient().getStorageAt({ address: accountAddress as Address, slot: KERNEL_VALIDATOR_SLOT })
+    return Boolean(raw && !/^0x0+$/.test(raw))
+  } catch {
+    // 读不到槽位按无残留处理（不阻塞 enable；真残留会在 confirm 阶段被 bundler 拦截）
+    return false
+  }
+}
+
+/** 构造撤销旧 session 的 UserOp（未签名）：callData = uninstallModule(VALIDATOR, sessionModule, disableSession)。
+ *  注意 encodeDisableSessionCall 已返回完整 execute calldata，不可再包 buildUserOp（会双重嵌套）。 */
+async function buildDisableUserOpDraft(
+  accountAddress: string,
+  sessionId: string,
+): Promise<{ op: any; userOpHash: string }> {
+  const aa = await loadAaSdk()
+  const cfg = getAaChainConfig()
+  const client = aaPublicClient()
+  const disableCallData = aa.encodeDisableSessionCall({ accountAddress: accountAddress as Address, sessionId, chainConfig: cfg })
+  // root nonce key = 0（owner ECDSA 校验路径；推进 currentNonce，故必须在 enable digest 前撤销）
+  const nonce = (await client
+    .readContract({
+      address: cfg.entryPoint,
+      abi: parseAbi(['function getNonce(address sender, uint192 key) view returns (uint256)']),
+      functionName: 'getNonce',
+      args: [accountAddress as Address, 0n],
+    })
+    .catch(() => 0n)) as bigint
+  const fees = await estimateFees()
+  const op = {
+    sender: accountAddress as Address,
+    nonce,
+    callData: disableCallData,
+    callGasLimit: AA_GAS.callGasLimit,
+    verificationGasLimit: AA_GAS.verificationGasLimit,
+    preVerificationGas: AA_GAS.preVerificationGas,
+    maxFeePerGas: fees.maxFeePerGas,
+    maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+    signature: '0x' as Hex,
+  }
+  const userOpHash = aa.getUserOpHash(op, cfg.entryPoint, cfg.chainId)
+  return { op, userOpHash }
+}
+
+/** 解析链上残留 session 的 sessionId：① 历史登记行（最近一次 enable 最可能残留）；
+ *  ② relay session store（网关表被清时兜底，product 维度隔离）。导出供单测。 */
+export async function resolveExistingSessionId(
+  subscriber: string,
+  agentId: number,
+  planId: number,
+  accountAddress: string,
+): Promise<string | null> {
+  const { rows } = await getPool().query(
+    `SELECT session_id FROM aa_auto_renew
+     WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3 AND session_id IS NOT NULL
+     ORDER BY updated_at DESC LIMIT 1`,
+    [subscriber.toLowerCase(), agentId, planId],
+  )
+  if (rows[0]?.session_id) return String(rows[0].session_id)
+  try {
+    const list = await relayRequest(
+      `/v1/session?chain=${encodeURIComponent(config.aaRelayChain)}&product=${AA_RELAY_PRODUCT}&account=${accountAddress}`,
+    )
+    const policies = Array.isArray(list) ? list : []
+    // 取最后一条（store 按插入序，最后 = 最近一次 enable 的 session，最可能是链上残留）
+    if (policies.length > 0) return String(policies[policies.length - 1].sessionId)
+  } catch {
+    // 查询失败按不可解析处理
+  }
+  return null
+}
+
+/** 撤销链上 session（owner 对 disableUserOpHash 的 eth_sign 裸 ECDSA 签名）。
+ *  上链前重建 draft 并校验 userOpHash 与前端签名一致（防 nonce 变化导致签名失配）。 */
+export async function revokeAutoRenew(p: {
+  subscriber: string
+  agentId: number
+  planId: number
+  disableUserOpHash: string
+  ownerSignature: string
+}): Promise<{ revoked: boolean; userOpHash: string; txHash: string | null }> {
+  if (!isAutoRenewEnabled()) throw new Error('Auto-renew (ERC-4337) not enabled on this gateway')
+  const { rows } = await getPool().query(
+    `SELECT account_address, session_id FROM aa_auto_renew
+     WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
+    [p.subscriber.toLowerCase(), p.agentId, p.planId],
+  )
+  const row = rows[0]
+  if (!row?.account_address || !row?.session_id) {
+    const err = new Error('no session to revoke (call enable or disable first)') as Error & { status?: number }
+    err.status = 404
+    throw err
+  }
+  const { op, userOpHash } = await buildDisableUserOpDraft(String(row.account_address), String(row.session_id))
+  if (userOpHash.toLowerCase() !== p.disableUserOpHash.toLowerCase()) {
+    const err = new Error('session state changed since the revoke request was prepared — retry enable') as Error & {
+      status?: number
+    }
+    err.status = 409
+    throw err
+  }
+  op.signature = p.ownerSignature as Hex
+  const result = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: true }, 150_000)
+  const revoked = Boolean(result?.receipt?.success)
+  if (revoked) {
+    log.info(
+      `[aa-autorenew] session revoked on-chain: sub=${p.subscriber} plan=${p.planId} account=${row.account_address} op=${result?.userOpHash}`,
+    )
+  } else {
+    log.warn(`[aa-autorenew] revoke op failed on-chain: sub=${p.subscriber} plan=${p.planId} op=${result?.userOpHash}`)
+  }
+  return {
+    revoked,
+    userOpHash: result?.userOpHash as string,
+    txHash: result?.receipt?.txHash ?? null,
+  }
+}
+
+// ============================================================================
 // 用户操作：enable / confirm / disable / status
 // ============================================================================
 
@@ -261,6 +398,10 @@ export async function createAutoRenew(p: CreateAutoRenewParams): Promise<{
   sessionSigner: string
   digest: string
   validUntil: string
+  /** L12：账户链上残留旧 session，需先撤销（前端签名 disableUserOpHash 后调 revoke）再重试 enable */
+  needsSessionRevoke?: boolean
+  disableUserOpHash?: string
+  disableSessionId?: string
 }> {
   if (!isAutoRenewEnabled()) throw new Error('Auto-renew (ERC-4337) not enabled on this gateway')
   const pool = getPool()
@@ -293,7 +434,44 @@ export async function createAutoRenew(p: CreateAutoRenewParams): Promise<{
     throw err
   }
 
-  // ② aa-relay 创建 session（生成 session key + 策略落库 + 预测账户地址）
+  // ② 预测智能账户地址（owner + salt 0 + kernel v3.0-beta，与 aa-relay 一致；
+  //    ensureAccountDeployed 后续会复算并校验 relay 返回地址一致）
+  const aa = await loadAaSdk()
+  const cfg = getAaChainConfig()
+  const { factoryData } = aa.encodeKernelFactoryData(cfg, p.subscriber as Address, 0n, cfg.kernelVersion)
+  const predictedAccount = (await aa.predictWithFactoryGetAddress(cfg, factoryData)) as string
+
+  // ③ L12 自愈：账户链上已绑定旧 session（Kernel v3 单 session，enableSession
+  //    覆盖被拒 → FailedOp AA23/AA24）。先返回撤销 draft 由前端签名上链，再重试
+  //    enable。disable UserOp 推进 currentNonce，故必须在本次 digest 生成前撤销。
+  if (await hasOnChainSession(predictedAccount)) {
+    const oldSessionId = await resolveExistingSessionId(p.subscriber, p.agentId, p.planId, predictedAccount)
+    if (!oldSessionId) {
+      const err = new Error(
+        'smart account has an existing on-chain session that cannot be auto-revoked — please contact support',
+      ) as Error & { status?: number }
+      err.status = 409
+      throw err
+    }
+    const { userOpHash } = await buildDisableUserOpDraft(predictedAccount, oldSessionId)
+    log.info(
+      `[aa-autorenew] on-chain session residue detected — revoke first: sub=${p.subscriber} account=${predictedAccount} session=${oldSessionId.slice(0, 10)}…`,
+    )
+    return {
+      needsSessionRevoke: true,
+      accountAddress: predictedAccount,
+      accountDeployed: true,
+      disableSessionId: oldSessionId,
+      disableUserOpHash: userOpHash,
+      // enable 专属字段置空（前端在 needsSessionRevoke 分支不消费）
+      sessionId: '',
+      sessionSigner: '',
+      digest: '',
+      validUntil: '',
+    }
+  }
+
+  // ④ aa-relay 创建 session（生成 session key + 策略落库 + 预测账户地址）
   const now = Math.floor(Date.now() / 1000)
   const validUntil = now + config.aaAutoRenewSessionDays * 86400
   const priceWei = BigInt(p.planPriceWei)
@@ -328,12 +506,10 @@ export async function createAutoRenew(p: CreateAutoRenewParams): Promise<{
   const sessionSigner = relay.signer as string
   const sessionKey = relay.sessionKey as string
 
-  // ③ 部署智能账户（digest 依赖已部署账户的 currentNonce）
+  // ⑤ 部署智能账户（digest 依赖已部署账户的 currentNonce）
   const accountDeployed = await ensureAccountDeployed(accountAddress as Address, p.subscriber as Address)
 
-  // ④ 重建 policy + 构造 ENABLE draft → digest（owner 需签名）
-  const aa = await loadAaSdk()
-  const cfg = getAaChainConfig()
+  // ⑥ 重建 policy + 构造 ENABLE draft → digest（owner 需签名）
   const policy = {
     network: 'evm',
     sessionId,
@@ -351,7 +527,7 @@ export async function createAutoRenew(p: CreateAutoRenewParams): Promise<{
     gas: { ...AA_GAS, ...(await estimateFees()) },
   })
 
-  // ⑤ 登记 aa_auto_renew（pending，待用户签名确认；重复开启时覆盖为最新 session）
+  // ⑦ 登记 aa_auto_renew（pending，待用户签名确认；重复开启时覆盖为最新 session）
   const encKey = encryptApiKey(sessionKey, config.masterEncryptionKey)
   await pool.query(
     `INSERT INTO aa_auto_renew
@@ -478,8 +654,14 @@ export interface DisableAutoRenewParams {
   planId: number
 }
 
-/** disable：本地停用（后续不再续订）；返回 disableCallData 供前端可选链上撤销 session */
-export async function disableAutoRenew(p: DisableAutoRenewParams): Promise<{ disableCallData?: string }> {
+/** disable：本地停用（后续不再续订）。同时构造链上撤销 draft（disableUserOpHash），
+ *  前端 eth_sign 后调 revokeAutoRenew 才能真正撤销链上 session（L12 防残留）。 */
+export async function disableAutoRenew(p: DisableAutoRenewParams): Promise<{
+  disableCallData?: string
+  disableUserOpHash?: string
+  accountAddress?: string
+  sessionId?: string
+}> {
   const pool = getPool()
   const { rows } = await pool.query(
     `SELECT account_address, session_id FROM aa_auto_renew
@@ -498,6 +680,9 @@ export async function disableAutoRenew(p: DisableAutoRenewParams): Promise<{ dis
     [p.subscriber.toLowerCase(), p.agentId, p.planId],
   )
   let disableCallData: string | undefined
+  let disableUserOpHash: string | undefined
+  const accountAddress = rows[0].account_address ? String(rows[0].account_address) : undefined
+  const sessionId = rows[0].session_id ? String(rows[0].session_id) : undefined
   try {
     const relay = await relayRequest('/v1/session/disable', {
       chain: config.aaRelayChain,
@@ -506,11 +691,16 @@ export async function disableAutoRenew(p: DisableAutoRenewParams): Promise<{ dis
       sessionId: rows[0].session_id,
     })
     disableCallData = relay?.disableCallData
+    // 链上撤销 draft：owner 签名后调 POST /billing/auto-renew/revoke 上链
+    if (accountAddress && sessionId) {
+      const draft = await buildDisableUserOpDraft(accountAddress, sessionId)
+      disableUserOpHash = draft.userOpHash
+    }
   } catch {
     // 本地停用已生效；链上撤销需要 owner 签名上链，可后续处理
   }
   log.info(`[aa-autorenew] disabled: sub=${p.subscriber} plan=${p.planId}`)
-  return { disableCallData }
+  return { disableCallData, disableUserOpHash, accountAddress, sessionId }
 }
 
 /** status：用户的自动续订登记列表（含订阅/计划/资金视图，供前端展示与充值引导） */

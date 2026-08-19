@@ -52,6 +52,12 @@ export interface EnableAutoRenewResult {
   /** EIP-712 enable digest — sign with raw eth_sign (not personal_sign) */
   digest: string
   validUntil: string
+  /** L12 自愈：账户链上残留旧 session（Kernel v3 单 session），需先撤销再 enable */
+  needsSessionRevoke?: boolean
+  /** 残留 session 的 disable UserOp hash（owner eth_sign 后交 revokeAutoRenew 上链） */
+  disableUserOpHash?: string
+  /** 残留 session id（展示用） */
+  disableSessionId?: string
 }
 
 export interface ConfirmAutoRenewResult {
@@ -123,16 +129,30 @@ export async function resumeAutoRenew(
   return (await res.json()) as { ok: boolean }
 }
 
+/** POST /api/v1/billing/auto-renew/revoke — 链上撤销 session（L12：owner 签名 disable UserOp 上链） */
+export async function revokeAutoRenew(
+  accessToken: string,
+  body: { agentId: number; planId: number; disableUserOpHash: string; ownerSignature: string },
+): Promise<{ revoked: boolean; userOpHash: string; txHash: string | null }> {
+  const res = await gatewayFetch('/api/v1/billing/auto-renew/revoke', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS(accessToken) },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw await parseError(res)
+  return (await res.json()) as { revoked: boolean; userOpHash: string; txHash: string | null }
+}
+
 /** POST /api/v1/billing/auto-renew/disable — stop future renewals */
 export async function disableAutoRenew(
   accessToken: string,
   body: { agentId: number; planId: number },
-): Promise<{ disableCallData?: string }> {
+): Promise<{ disableCallData?: string; disableUserOpHash?: string; accountAddress?: string; sessionId?: string }> {
   const res = await gatewayFetch('/api/v1/billing/auto-renew/disable', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS(accessToken) },
     body: JSON.stringify(body),
   })
   if (!res.ok) throw await parseError(res)
-  return (await res.json()) as { disableCallData?: string }
+  return (await res.json()) as { disableCallData?: string; disableUserOpHash?: string; accountAddress?: string; sessionId?: string }
 }

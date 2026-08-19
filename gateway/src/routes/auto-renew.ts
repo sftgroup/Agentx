@@ -7,7 +7,8 @@
 //   POST /billing/auto-renew/enable    开启：创建 session + 部署账户 → 返回 digest
 //   POST /billing/auto-renew/confirm   提交 eth_sign 签名 → 上链授权生效
 //   POST /billing/auto-renew/resume    恢复被暂停（失败护栏/资金不足）的自动续订
-//   POST /billing/auto-renew/disable   停用（本地；返回 disableCallData 可选链上撤销）
+//   POST /billing/auto-renew/revoke    链上撤销 session（owner 签名 disable UserOp 上链）
+//   POST /billing/auto-renew/disable   停用（本地；返回 disableUserOpHash 供 revoke 上链）
 // ---------------------------------------------------------------------------
 
 import { Router, Request, Response } from 'express'
@@ -15,6 +16,7 @@ import {
   createAutoRenew,
   confirmAutoRenew,
   disableAutoRenew,
+  revokeAutoRenew,
   resumeAutoRenew,
   listAutoRenew,
   getAccountFunding,
@@ -146,6 +148,41 @@ router.post('/auto-renew/resume', async (req: Request, res: Response) => {
     res.json({ ok: true })
   } catch (err) {
     log.error(`auto-renew resume failed: ${(err as Error).message}`)
+    res.status((err as Error & { status?: number }).status ?? 500).json({ error: (err as Error).message })
+  }
+})
+
+// POST /billing/auto-renew/revoke — 链上撤销 session（owner 签名 disable UserOp 上链；L12 残留自愈）
+router.post('/auto-renew/revoke', requireEnabled, async (req: Request, res: Response) => {
+  try {
+    if (!req.tenant) {
+      res.status(401).json({ error: 'Authentication required' })
+      return
+    }
+    const subscriber = req.tenant.walletAddress as string
+    const { agentId, planId, disableUserOpHash, ownerSignature } = req.body ?? {}
+    if (!agentId || !planId || !disableUserOpHash || !ownerSignature) {
+      res.status(400).json({ error: 'agentId, planId, disableUserOpHash, ownerSignature required' })
+      return
+    }
+    if (!/^0x[0-9a-fA-F]{64}$/.test(String(disableUserOpHash))) {
+      res.status(400).json({ error: 'disableUserOpHash must be a 32-byte hex hash' })
+      return
+    }
+    if (!/^0x[0-9a-fA-F]{130}$/.test(String(ownerSignature))) {
+      res.status(400).json({ error: 'ownerSignature must be a 65-byte hex signature' })
+      return
+    }
+    const result = await revokeAutoRenew({
+      subscriber,
+      agentId: Number(agentId),
+      planId: Number(planId),
+      disableUserOpHash: String(disableUserOpHash),
+      ownerSignature: String(ownerSignature),
+    })
+    res.json(result)
+  } catch (err) {
+    log.error(`auto-renew revoke failed: ${(err as Error).message}`)
     res.status((err as Error & { status?: number }).status ?? 500).json({ error: (err as Error).message })
   }
 })
