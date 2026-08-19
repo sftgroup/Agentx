@@ -132,7 +132,15 @@ export async function resumeAutoRenew(
 /** POST /api/v1/billing/auto-renew/revoke — 链上撤销 session（L12：owner 签名 disable UserOp 上链） */
 export async function revokeAutoRenew(
   accessToken: string,
-  body: { agentId: number; planId: number; disableUserOpHash: string; ownerSignature: string },
+  body: {
+    agentId: number
+    planId: number
+    disableUserOpHash: string
+    ownerSignature: string
+    /** L12 残留兜底：登记表行缺失时回传 enable 响应的 accountAddress/disableSessionId */
+    accountAddress?: string
+    sessionId?: string
+  },
 ): Promise<{ revoked: boolean; userOpHash: string; txHash: string | null }> {
   const res = await gatewayFetch('/api/v1/billing/auto-renew/revoke', {
     method: 'POST',

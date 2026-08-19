@@ -127,6 +127,9 @@ export function AutoRenewCard({ agentId, planId, subscriptionId, planPriceWei, p
           agentId, planId,
           disableUserOpHash: draft.disableUserOpHash,
           ownerSignature: revokeSig,
+          // L12 残留兜底：登记表行被清空时网关仍能定位旧 session
+          accountAddress: draft.accountAddress,
+          sessionId: draft.disableSessionId,
         })
         draft = await enableAutoRenew(accessToken, {
           agentId, planId, subscriptionId, planPriceWei,

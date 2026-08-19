@@ -160,7 +160,7 @@ router.post('/auto-renew/revoke', requireEnabled, async (req: Request, res: Resp
       return
     }
     const subscriber = req.tenant.walletAddress as string
-    const { agentId, planId, disableUserOpHash, ownerSignature } = req.body ?? {}
+    const { agentId, planId, disableUserOpHash, ownerSignature, accountAddress, sessionId } = req.body ?? {}
     if (!agentId || !planId || !disableUserOpHash || !ownerSignature) {
       res.status(400).json({ error: 'agentId, planId, disableUserOpHash, ownerSignature required' })
       return
@@ -173,12 +173,23 @@ router.post('/auto-renew/revoke', requireEnabled, async (req: Request, res: Resp
       res.status(400).json({ error: 'ownerSignature must be a 65-byte hex signature' })
       return
     }
+    // L12 残留兜底：登记表行被清空时，enable 响应回传 accountAddress/disableSessionId
+    if (accountAddress && !/^0x[0-9a-fA-F]{40}$/.test(String(accountAddress))) {
+      res.status(400).json({ error: 'accountAddress must be a 20-byte hex address' })
+      return
+    }
+    if (sessionId && !/^0x[0-9a-fA-F]{64}$/.test(String(sessionId))) {
+      res.status(400).json({ error: 'sessionId must be a 32-byte hex value' })
+      return
+    }
     const result = await revokeAutoRenew({
       subscriber,
       agentId: Number(agentId),
       planId: Number(planId),
       disableUserOpHash: String(disableUserOpHash),
       ownerSignature: String(ownerSignature),
+      ...(accountAddress ? { accountAddress: String(accountAddress) } : {}),
+      ...(sessionId ? { sessionId: String(sessionId) } : {}),
     })
     res.json(result)
   } catch (err) {

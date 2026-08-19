@@ -42,6 +42,27 @@ vi.mock('../src/services/chain-data-reader', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
+// L12 撤销 draft 构建会走真实 RPC（getNonce / fee 估算），测试环境 stub 掉
+vi.mock('viem', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('viem')>()
+  return {
+    ...actual,
+    createPublicClient: () => ({
+      readContract: vi.fn(async () => 0n),
+      getStorageAt: vi.fn(async () => '0x' + '00'.repeat(32)),
+      getBalance: vi.fn(async () => 0n),
+      getGasPrice: vi.fn(async () => 1n),
+      waitForTransactionReceipt: vi.fn(async () => ({ status: 'success' })),
+    }),
+  }
+})
+
+vi.mock('@0xinfrax/aa-sdk', () => ({
+  encodeDisableSessionCall: vi.fn(() => '0x1234'),
+  getUserOpHash: vi.fn(() => '0x' + 'ab'.repeat(32)),
+  estimateFeesPerGas: vi.fn(async () => ({ maxFeePerGas: 1n, maxPriorityFeePerGas: 1n })),
+}))
+
 import { resolveCurrentSubscription, resumeAutoRenew, runAutoRenewScan, resolveExistingSessionId, revokeAutoRenew } from '../src/services/aa-autorenew'
 
 const EOA = '0x1111111111111111111111111111111111111111'
@@ -215,5 +236,28 @@ describe('revokeAutoRenew — 链上撤销守卫', () => {
       ownerSignature: '0x' + '11'.repeat(65),
     }).catch((e: Error & { status?: number }) => e)
     expect(err.status).toBe(404)
+  })
+
+  it('登记行缺失但调用方回传 accountAddress/sessionId（L12 残留兜底）→ 完整走通撤销上链', async () => {
+    queryMock.mockImplementation(async () => ({ rows: [] }))
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ code: 0, data: { userOpHash: '0x' + 'ab'.repeat(32), receipt: { success: true, txHash: '0x' + 'cd'.repeat(32) } } }),
+    })) as any
+    vi.stubGlobal('fetch', fetchSpy)
+    const r = await revokeAutoRenew({
+      subscriber: EOA,
+      agentId: 1,
+      planId: 1,
+      // 与 mock getUserOpHash 返回一致 → 通过哈希一致性校验，进入 relay 广播
+      disableUserOpHash: '0x' + 'ab'.repeat(32),
+      ownerSignature: '0x' + '11'.repeat(65),
+      accountAddress: ACCOUNT,
+      sessionId: '0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+    })
+    expect(r.revoked).toBe(true)
+    expect(fetchSpy).toHaveBeenCalled()
+    vi.unstubAllGlobals()
   })
 })

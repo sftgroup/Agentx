@@ -335,6 +335,9 @@ export async function revokeAutoRenew(p: {
   planId: number
   disableUserOpHash: string
   ownerSignature: string
+  /** L12 残留兜底：登记表行被清空时由调用方回传 enable 响应里的 accountAddress/disableSessionId */
+  accountAddress?: string
+  sessionId?: string
 }): Promise<{ revoked: boolean; userOpHash: string; txHash: string | null }> {
   if (!isAutoRenewEnabled()) throw new Error('Auto-renew (ERC-4337) not enabled on this gateway')
   const { rows } = await getPool().query(
@@ -343,12 +346,16 @@ export async function revokeAutoRenew(p: {
     [p.subscriber.toLowerCase(), p.agentId, p.planId],
   )
   const row = rows[0]
-  if (!row?.account_address || !row?.session_id) {
+  // DB 优先；登记表行缺失（历史残留场景）时回退到 enable 响应的兜底参数。
+  // 完整性仍由重建 draft 的 userOpHash 比对保证：签名绑定 op，sessionId 传错则哈希失配 → 409。
+  const accountAddress = row?.account_address ?? p.accountAddress
+  const sessionId = row?.session_id ?? p.sessionId
+  if (!accountAddress || !sessionId) {
     const err = new Error('no session to revoke (call enable or disable first)') as Error & { status?: number }
     err.status = 404
     throw err
   }
-  const { op, userOpHash } = await buildDisableUserOpDraft(String(row.account_address), String(row.session_id))
+  const { op, userOpHash } = await buildDisableUserOpDraft(String(accountAddress), String(sessionId))
   if (userOpHash.toLowerCase() !== p.disableUserOpHash.toLowerCase()) {
     const err = new Error('session state changed since the revoke request was prepared — retry enable') as Error & {
       status?: number
@@ -361,10 +368,10 @@ export async function revokeAutoRenew(p: {
   const revoked = Boolean(result?.receipt?.success)
   if (revoked) {
     log.info(
-      `[aa-autorenew] session revoked on-chain: sub=${p.subscriber} plan=${p.planId} account=${row.account_address} op=${result?.userOpHash}`,
+      `[aa-autorenew] session revoked on-chain: sub=${p.subscriber} plan=${p.planId} account=${accountAddress} session=${String(sessionId).slice(0, 10)}… op=${result?.userOpHash}`,
     )
   } else {
-    log.warn(`[aa-autorenew] revoke op failed on-chain: sub=${p.subscriber} plan=${p.planId} op=${result?.userOpHash}`)
+    log.warn(`[aa-autorenew] revoke op failed on-chain: sub=${p.subscriber} plan=${p.planId} account=${accountAddress} op=${result?.userOpHash}`)
   }
   return {
     revoked,
