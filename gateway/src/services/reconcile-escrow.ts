@@ -15,7 +15,7 @@
 import { createPublicClient, http, type Address } from 'viem'
 import { getPool } from '../lib/db'
 import { config } from '../config'
-import { sendAlert } from './aa-autorenew'
+import { sendAlert } from '../lib/alert'
 import { log } from './chain-data-reader'
 
 /** 计费相关事件面（只同步 charged/refunded，deposited/withdrawn 不参与对账） */
@@ -162,8 +162,11 @@ export async function runEscrowReconciliation(): Promise<EscrowReconcileResult> 
 
   const pool = getPool()
   const fixedFee = BigInt(config.aaRelayServiceFeeWei)
-  const minRatio = config.aaEscrowReconcileMinRatio
-  const maxRatio = config.aaEscrowReconcileMaxRatio
+  // 阈值换算用纯 bigint 有理数比较（避免 BigInt→Number 往返丢精度）：
+  //   ratio 放大 RATIO_SCALE 倍取整，floor(expected×min) / ceil(expected×max)。
+  const RATIO_SCALE = 1000n
+  const minRatioScaled = BigInt(Math.round(config.aaEscrowReconcileMinRatio * 1000))
+  const maxRatioScaled = BigInt(Math.round(config.aaEscrowReconcileMaxRatio * 1000))
 
   // 每账户聚合净扣费
   const { rows: nets } = await pool.query(
@@ -200,7 +203,7 @@ export async function runEscrowReconciliation(): Promise<EscrowReconcileResult> 
     }
     if (renewCount <= 0) continue
     // 漏计费：有续订记录但净扣费显著低于期望
-    if (net < BigInt(Math.floor(Number(expected) * minRatio))) {
+    if (net < (expected * minRatioScaled) / RATIO_SCALE) {
       result.anomalies.push({
         account, subscriber: reg.subscriber, agentId: reg.agent_id, planId: reg.plan_id,
         kind: 'missing', renewCount, expectedWei: expected.toString(), netWei: net.toString(),
@@ -209,7 +212,7 @@ export async function runEscrowReconciliation(): Promise<EscrowReconcileResult> 
       continue
     }
     // 重复/多扣：净扣费显著高于 条数×(固定费+gas 余量)（maxRatio 已含 revoke/gas 波动余量）
-    if (net > BigInt(Math.ceil(Number(expected) * maxRatio))) {
+    if (net > (expected * maxRatioScaled + RATIO_SCALE - 1n) / RATIO_SCALE) {
       result.anomalies.push({
         account, subscriber: reg.subscriber, agentId: reg.agent_id, planId: reg.plan_id,
         kind: 'excess', renewCount, expectedWei: expected.toString(), netWei: net.toString(),

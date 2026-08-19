@@ -40,6 +40,8 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { getPool } from '../lib/db'
 import { config } from '../config'
 import { encryptApiKey, decryptApiKey } from '../lib/crypto'
+import { sendAlert } from '../lib/alert'
+import { checkFundingSufficiency, type AccountFunding } from '../lib/aa-funding'
 import { log } from './chain-data-reader'
 
 const AA_RELAY_PRODUCT = 'agentx-auto-renew'
@@ -212,7 +214,7 @@ export async function ensureAccountDeployed(accountAddress: Address, ownerAddres
 /** 智能账户资金视图（gas 自付预检：native / EntryPoint deposit / InfraXEscrow 三类）。
  *  实证见 docs/infrax-bundler-restore-handoff.md §5：native 付订阅费、EP deposit 付
  *  gas、escrow 付 relay A-10 服务费，三者 per-account 独立记账。 */
-export async function getAccountFunding(accountAddress: string): Promise<{ nativeWei: bigint; epDepositWei: bigint; escrowWei: bigint }> {
+export async function getAccountFunding(accountAddress: string): Promise<AccountFunding> {
   const client = aaPublicClient()
   const cfg = getAaChainConfig()
   const [nativeWei, epDepositWei, escrowWei] = await Promise.all([
@@ -809,26 +811,6 @@ export async function resolveCurrentSubscription(
   return { subscription: sub, pointerMoved }
 }
 
-/** 告警：配置了 AA_ALERT_WEBHOOK_URL 则 POST JSON（10s 超时）；未配置仅 log.error。
- *  导出供 escrow 对账（e5）等模块复用。 */
-export async function sendAlert(subject: string, detail: Record<string, unknown>): Promise<void> {
-  const msg = { subject, time: new Date().toISOString(), ...detail }
-  if (!config.aaAlertWebhookUrl) {
-    log.error(`[aa-autorenew][ALERT] ${subject} ${JSON.stringify(detail)}`)
-    return
-  }
-  try {
-    await fetch(config.aaAlertWebhookUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(msg),
-      signal: AbortSignal.timeout(10_000),
-    })
-  } catch (err) {
-    log.error(`[aa-autorenew] alert webhook failed: ${(err as Error).message}`)
-  }
-}
-
 /** 暂停续订（失败护栏）：扫描只处理 enabled 行，暂停后不再骚扰重试；用户充值后 resume */
 async function pauseAutoRenew(subscriber: string, agentId: number, planId: number, reason: string): Promise<void> {
   await getPool().query(
@@ -896,8 +878,9 @@ export async function resumeAutoRenew(p: DisableAutoRenewParams): Promise<void> 
  * 检查智能账户三类资金，任一不足则向 webhook 提前告警（不等续订失败才报）。
  *   - 已进入续订窗口（到期前 windowSec 内）→ 跳过，交给 renewOne ⑦ 的资金预检处理；
  *   - 告警节流：同登记距上次告警 < AA_ALERT_MIN_INTERVAL_SEC → 跳过（防每轮扫描轰炸）。
- * 判定口径与 renewOne ⑦ 一致（实证见 docs/infrax-bundler-restore-handoff.md §5）：
- *   escrow 付服务费（需 ≥ 2×固定费留余量）、native 付订阅费、native+EP deposit 付订阅费+gas。
+ * 判定口径与 renewOne ⑦ 共用 checkFundingSufficiency（lib/aa-funding），但阈值不同：
+ *   e4 提前告警更严格（escrow ≥ 2×固定费留充值缓冲、native ≥ 订阅价），
+ *   renewOne ⑦ 是续订时实际硬门槛（escrow ≥ 1×固定费、仅要求 gas 非零）。
  * 返回 null=未进入窗口；否则 { alerted, shortages }。
  */
 export async function watchFunding(
@@ -913,20 +896,15 @@ export async function watchFunding(
   if (expiresAt <= 0 || nowSec < expiresAt - config.aaAlertAheadSec) return null
   // ② 已进入续订窗口 → 交给 renewOne 的资金预检（此处跳过，避免与失败护栏重复）
   if (expiresAt <= nowSec + config.aaAutoRenewWindowSec) return null
-  // ③ 资金检查
+  // ③ 资金检查（统一判定，escrow 留 2× 余量 + 要求 native ≥ 订阅价）
   const funding = await getAccountFunding(row.account_address)
   const priceWei = BigInt(resolved.subscription.amount_wei ?? 0)
-  const fee2x = BigInt(config.aaRelayServiceFeeWei) * 2n
-  const shortages: string[] = []
-  if (funding.escrowWei < fee2x) {
-    shortages.push(`escrow ${funding.escrowWei} wei < 2×服务费 ${fee2x} wei`)
-  }
-  if (priceWei > 0n && funding.nativeWei < priceWei) {
-    shortages.push(`native ${funding.nativeWei} wei < 订阅费 ${priceWei} wei`)
-  }
-  if (funding.nativeWei + funding.epDepositWei < priceWei) {
-    shortages.push(`native+gas存款 ${funding.nativeWei + funding.epDepositWei} wei < 订阅费 ${priceWei} wei`)
-  }
+  const shortages = checkFundingSufficiency(
+    funding,
+    priceWei,
+    BigInt(config.aaRelayServiceFeeWei),
+    { escrowMargin: 2n, requirePrice: true },
+  )
   if (shortages.length === 0) return { alerted: false, shortages }
   // ④ 告警节流：距上次告警 < 最小间隔 → 跳过
   const { rows } = await pool.query(
@@ -1025,18 +1003,17 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
   //      不足 relay 会拒绝/扣费失败 → 直接不提交；
   //    - EntryPoint deposit → UserOp gas（bundler 按实际用量结算，未用部分退还）；
   //    - native 余额 → execute value（订阅费）。
+  // 与 watchFunding（e4）共用 checkFundingSufficiency，此处为续订实际硬门槛：
+  //   escrow ≥ 1×固定费、gas 两类资金至少一项非零（不要求 native ≥ 订阅价，历史口径）。
   const funding = await getAccountFunding(row.account_address)
-  if (funding.escrowWei < BigInt(config.aaRelayServiceFeeWei)) {
-    await markRenewError(
-      subscriber,
-      agentId,
-      planId,
-      `escrow balance too low (${funding.escrowWei} wei < ${config.aaRelayServiceFeeWei} wei) — top up smart account escrow`,
-    )
-    return null
-  }
-  if (funding.epDepositWei <= 0n && funding.nativeWei <= 0n) {
-    await markRenewError(subscriber, agentId, planId, 'smart account unfunded — top up OXA for gas')
+  const fundingShortages = checkFundingSufficiency(
+    funding,
+    BigInt(priceWei ?? 0),
+    BigInt(config.aaRelayServiceFeeWei),
+    { escrowMargin: 1n, requirePrice: false },
+  )
+  if (fundingShortages.length > 0) {
+    await markRenewError(subscriber, agentId, planId, fundingShortages.join('; '))
     return null
   }
 

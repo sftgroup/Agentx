@@ -45,7 +45,7 @@ vi.mock('../src/services/chain-data-reader', () => ({
 }))
 
 const sendAlertMock = vi.hoisted(() => vi.fn())
-vi.mock('../src/services/aa-autorenew', () => ({ sendAlert: sendAlertMock }))
+vi.mock('../src/lib/alert', () => ({ sendAlert: sendAlertMock }))
 
 import { runEscrowReconciliation } from '../src/services/reconcile-escrow'
 import { config } from '../src/config'
