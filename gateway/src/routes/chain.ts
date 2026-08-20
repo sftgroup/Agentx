@@ -78,6 +78,10 @@ router.get('/agents/:agentId', async (req: Request, res: Response, next) => {
   try {
     const chain = resolveChain(req)
     const agentId = Number(req.params.agentId)
+    if (!Number.isInteger(agentId) || agentId <= 0) {
+      res.status(400).json({ error: 'Invalid agent id' })
+      return
+    }
     const [exists, metadata] = await Promise.all([
       chainDataReader.agentExists(chain, agentId),
       chainDataReader.getAgentMetadata(chain, agentId),
@@ -96,6 +100,10 @@ router.get('/plans/:planId', async (req: Request, res: Response, next) => {
   try {
     const chain = resolveChain(req)
     const planId = Number(req.params.planId)
+    if (!Number.isInteger(planId) || planId <= 0) {
+      res.status(400).json({ error: 'Invalid plan id' })
+      return
+    }
     const plan = await chainDataReader.getPlan(chain, planId)
     log.info(`GET /chain/plans/${planId} (chain=${chain}) → agentId=${plan.agentId} period="${plan.period}" active=${plan.active} in ${Date.now() - t0}ms`)
     res.json({ chain, plan: serializePlan(plan) })

@@ -23,6 +23,21 @@ router.get('/', async (req: Request, res: Response) => {
   }
 })
 
+// GET /api/v1/skills/my — Publisher's submitted skills (JWT auth)
+// NOTE: must be declared BEFORE /:id so express doesn't swallow '/my' as an id.
+router.get('/my', async (req: Request, res: Response) => {
+  try {
+    const user = req.tenant?.walletAddress
+    if (!user) return res.status(401).json({ error: 'Authentication required' })
+
+    const skills = await getSkillService().listByPublisher(user)
+    res.json({ skills })
+  } catch (err) {
+    console.error('[Skills] My list error:', err)
+    res.status(500).json({ error: 'Failed to list your skills' })
+  }
+})
+
 // GET /api/v1/skills/:id — Skill detail (public)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
@@ -38,8 +53,8 @@ router.get('/:id', async (req: Request, res: Response) => {
 // POST /api/v1/skills — Submit a new skill for review (JWT auth)
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user
-    if (!user?.address) return res.status(401).json({ error: 'Authentication required' })
+    const user = req.tenant?.walletAddress
+    if (!user) return res.status(401).json({ error: 'Authentication required' })
 
     const { name, description, category, inputSchema, outputSchema } = req.body
     if (!name || !description || !category || !inputSchema) {
@@ -52,7 +67,7 @@ router.post('/', async (req: Request, res: Response) => {
       category: String(category),
       inputSchema,
       outputSchema,
-      publisher: user.address,
+      publisher: user,
     })
 
     res.status(201).json(skill)
