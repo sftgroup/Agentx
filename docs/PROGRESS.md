@@ -616,6 +616,7 @@
 | B 端申请端到端闭环（2026-08-21） | 公开 `/channel/apply` 建申请 → admin `/applications/:id/decide` 审批通过自动建 active channel（share_bps=125）→ C211 归因成功 / C214 幂等 / C215 链上凭据落库 / C213 停用拒绝 → 测试渠道已停用清理，全通过 |
 | R19 成功套餐绑定（2026-08-21） | `0xd8e2cf…` 钱包 EIP-191 登录 → 查 pro plan → 链上转账补足 ~29 OXA → `purpose=tenant-plan` 购买 → plan=pro 绑定成功 + `quotaDaily` 生效（拒绝路径此前已验证） |
 | /apply 页 UI 回归（2026-08-21） | `/apply` 已入 e2e 套件（ui-audit.cjs）：hero 渲染 / 收益 3 卡片 / 8 表单字段 / C217 空表单 Submit 禁用 + 必填补齐启用 / 0 JS 错误；本地实跑 3 PASS |
+| e2e workflow 首次真实触发（2026-08-21） | `workflow_dispatch` 触发 run 32420199995（commit 36dacbd）全绿：deps/chromium 安装 → 订阅 fixture（幂等未重复付费）→ Chat E2E → UI audit（C117–C274 含 /apply）→ 截图上传，结论 **success** |
 
 ---
 
