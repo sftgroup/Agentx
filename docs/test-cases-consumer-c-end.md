@@ -777,3 +777,30 @@ flowchart LR
 **发现的产品缺口（非本次引入；① 已补实现修复，② 已修复）**：
 - ① ~~任务路径不写 `usage_logs`~~ **已修复（本次补实现，2026-08-20）**：原为前端并行任务路径 `POST /sessions/:sid/tasks` 的平台 token 计费仅累加租户 quota（Redis `quota:<tenant>`，见 `updateQuota`），不写 `usage_logs`（仅 `POST /chat/completions` 路径写入 `routes/chat.ts`），导致 `/api/v1/tenant/usage` 对任务型对话恒返回空。**修复**：链路补齐——conversation 服务 `done` 事件新增 `model/agentId/toolCalls`（[agent-runner.ts](file:///home/steven/Agentx/conversation-service/src/services/agent-runner.ts#L184-L193)）、task-billing 回调携带 tokens 拆分/model/agentId/toolCalls（[task-manager.ts](file:///home/steven/Agentx/conversation-service/src/services/task-manager.ts#L349-L399)）；网关 `sse-usage` 提取新字段（[sse-usage.ts](file:///home/steven/Agentx/gateway/src/services/sse-usage.ts#L13-L24)），任务路径两计费通道（SSE `pipeTaskSSE` [chat-tasks.ts](file:///home/steven/Agentx/gateway/src/routes/chat-tasks.ts#L106-L117) + 后台回调 [internal-task-billing.ts](file:///home/steven/Agentx/gateway/src/routes/internal-task-billing.ts#L77-L88)）在 `markTaskBilled` 幂等守卫下写 `usage_logs`（platform 模式，key_source='platform'、provider='openai'、model/prompt/completion/tool_calls/agent_id 全量）；单轮回退路径 `/agent/runs` 一并补齐（[agent-runs.ts](file:///home/steven/Agentx/gateway/src/routes/agent-runs.ts#L119-L131)）。**实跑验证**（生产，部署后）：任务完成 → `/tenant/usage?days=7` 由空变为 `summary:[{key_source:platform, total_tokens:833, request_count:1}]`；usage_logs 落库 `platform|openai|deepseek-chat|786|47|833|0|1`（与 done 事件精确一致）；SSE 订阅任务实测 3 任务 = 3 行、tokens 精确、**双通道幂等不重复计**。已部署生产 `agentx-gateway` + `agentx-conversation`（pm2 重启），改动待 commit。**加固（2026-08-20 复审）**：幂等表 `billedTaskIds` 由无界 Set 改为带 TTL（30min 惰性+定时清理，[task-billing.ts](file:///home/steven/Agentx/gateway/src/services/task-billing.ts)）；回调通道 `updateQuota` 失败不再丢明细（try/catch 守护，[internal-task-billing.ts](file:///home/steven/Agentx/gateway/src/routes/internal-task-billing.ts#L80-L95)）；SSE/单轮路径 usage_logs 写改为 fire-and-forget 不挂起 handler（[chat-tasks.ts](file:///home/steven/Agentx/gateway/src/routes/chat-tasks.ts#L106-L118) / [agent-runs.ts](file:///home/steven/Agentx/gateway/src/routes/agent-runs.ts#L119-L131)）。复验：SSE 双通道 1 任务=1 行、819 tokens 精确。已部署生产 `agentx-gateway`（pm2 重启）。
 - ② ~~定时任务到点触发时无订阅再校验~~ **已修复（本次补实现，2026-08-20）**：`schedule-daemon.processDue`（[schedule-daemon.ts](file:///home/steven/Agentx/gateway/src/services/schedule-daemon.ts#L72-L78)）在 P9 门卫后新增 `canAccessAgent(s.tenant, s.agent_id)` 触发时订阅/拥有校验——无订阅且非拥有则 `recordRun('failed', 'AGENT_ACCESS_DENIED')` 且不建任务。**实跑验证**：无订阅到点触发 → run=failed/AGENT_ACCESS_DENIED、未建任务（C174 PASS）；有订阅 → 仍 triggered + 建任务（C82 回归 PASS）。已部署生产 `agentx-gateway`（pm2 重启），改动待 commit。
+
+### B2 补测（2026-08-21，B 端申请端到端闭环 + R19 成功套餐绑定）
+
+> 目标：补上 §12（C211–C215）在**需要 admin 审批 + active channel** 前提下的真实闭环；并补 R19 成功套餐绑定路径（此前仅拒绝路径已验证）。
+
+**B 端申请端到端闭环**（脚本 `/tmp/agentx-e2e/bend-close.cjs`，X-Admin-Key 审批）：
+
+| 步骤 | 用例 | 结果 | 实测证据 |
+|---|---|---|---|
+| 公开提交入驻申请 | C216 | PASS | `POST /channel/apply` → 201 `{ application:{ id, status:'pending' } }` |
+| admin 审批通过自动建 channel | — | PASS | `POST /admin/applications/:id/decide { decision:'approved', share_bps:125 }` → 200 + 自动创建 active channel（share_bps=125） |
+| 归因成功 | C211 | PASS | `POST /channel/attribute` → 200 `{ attributed:true }`，`channel_attributions` 落库 |
+| 归因幂等 | C214 | PASS | 同 subscriber+agent+channel 重复 attribute → `{ attributed:false }`（保留首次） |
+| 归因携带链上凭据 | C215 | PASS | 带 txHash/amountPaid 归因 → 字段落库（对账/分成依据） |
+| 未知/非活跃渠道拒绝 | C213 | PASS | 渠道停用后 attribute → 404 `Unknown or inactive channel` |
+| 清理 | — | PASS | 测试渠道已停用，测试数据已清理 |
+
+**R19 成功套餐绑定**（`0xd8e2cf…` 钱包，链上转账补足 ~29 OXA 后）：
+
+| 步骤 | 结果 | 实测证据 |
+|---|---|---|
+| EIP-191 钱包登录 | PASS | challenge → sign → verify 200 → JWT |
+| 查 pro plan 金额 | PASS | `/plans` 返回 pro 套餐 |
+| 链上转账到 payTo 补足余额 | PASS | 转账后余额 ≥ 套餐金额 |
+| `purpose=tenant-plan` 购买 pro | PASS | `POST /payments` → 200，`planSlug=pro`，plan 绑定 + `quotaDaily` 即时生效 |
+
+> UI 侧：/apply 页回归已入 `e2e/scripts/ui-audit.cjs`（C216/C217，详见 journeys 文档「UI 层深查结果」）。

@@ -1,6 +1,6 @@
 # AgentX — Decentralized AI Agent Platform
 
-> SDK v0.11.7 · Contracts on Sepolia + OxaChain L1 · Production: `https://agentx.0xainet.top` · Last updated: 2026-08-20
+> SDK v0.11.7 · Contracts on Sepolia + OxaChain L1 · Production: `https://agentx.0xainet.top` · Last updated: 2026-08-21
 
 AgentX is a decentralized AI Agent platform that enables publishers to create, encrypt, and distribute AI Agents on-chain, while subscribers can purchase and run them with autonomous ReAct AgentLoop inference — all secured by E2E encryption and on-chain subscription gating.
 
@@ -37,6 +37,10 @@ Agentx/
 │   │   └── agent/       #   — hooks/, dashboard/ (Agent 仪表板组件)
 │   ├── hooks/           #   — aimarket/, user/ 数据获取 hooks
 │   └── lib/             #   — i18n, ipfs, wagmi 配置
+├── e2e/                 # C 端 UI 回归 + 链上订阅 E2E 套件（playwright-core + 注入钱包）
+│   ├── lib/provider.cjs #   — 钱包注入/MetaMask 模拟 + OXA RPC 隧道 + PASS/FAIL 日志
+│   ├── scripts/         #   — ui-audit.cjs（C117–C274 含 /apply）、chat.cjs
+│   └── onchain/         #   — subscribe.cjs 链上订阅 fixture（幂等）
 ├── docs/                 # 设计/需求文档 + 统一任务进度清单 (PROGRESS.md)
 ├── .ua/                 # 知识图谱 (Understand-Anything v2.9.4)
 │   └── knowledge-graph.json  # 509 节点 · 451 边 · 8 架构层 · 8 步导览
@@ -204,6 +208,9 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 | [MCP_SETUP.md](./MCP_SETUP.md) | MCP protocol configuration |
 | [REFACTORING_NOTES.md](./REFACTORING_NOTES.md) | 2026-08 refactor: decoupling + dead-code cleanup notes |
 | [CODE_REVIEW_REPORT.md](./CODE_REVIEW_REPORT.md) | Code review findings & fix tasklist (22 issues, all resolved) |
+| [test-cases-consumer-c-end.md](./docs/test-cases-consumer-c-end.md) | C 端逐条用例库（369 条：支付/订阅/渠道归因/入驻申请/技能市场等，含生产实跑记录） |
+| [test-cases-consumer-journeys.md](./docs/test-cases-consumer-journeys.md) | C 端完整用户旅程（J1–J10 旅程式操作路径 + UI 层逐页审计 + 链上订阅 fixture） |
+| [e2e/](./e2e/) | C 端 UI 回归 + 链上订阅 E2E 套件（ui-audit/chat/subscribe + GitHub Actions e2e.yml 手动·nightly） |
 
 ---
 

@@ -1,8 +1,8 @@
 # AgentX Deployment Guide
 
-> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-10
+> Production: `43.159.60.46` (Gateway + Conversation + Frontend) · Last updated: 2026-08-21
 > Server code: `~/Agentx` @ main · SDK published: `@agentxv2/sdk@0.11.7`（依赖 `@0xinfrax/payments@0.1.4`）
-> ⚠️ 测试策略（2026-08-07 起）：**所有功能/回归测试一律在生产环境 `43.159.60.46` 直接进行**（不再使用独立测试服务器）
+> ⚠️ 测试策略（2026-08-07 起）：**所有功能/回归测试一律在生产环境 `43.159.60.46` 直接进行**（不再使用独立测试服务器）。C 端 UI/链上订阅 E2E 套件已入库 [`e2e/`](../e2e/)，经 GitHub Actions [`e2e.yml`](../.github/workflows/e2e.yml) 手动/nightly 复跑（2026-08-21 首次真实触发全绿，run 32420199995）
 
 ---
 

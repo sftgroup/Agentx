@@ -316,7 +316,7 @@
 
 ### UI 层深查结果（2026-08-21，playwright + 注入钱包）
 
-针对「前端 UI 层」用例段（C110–C210 + C263–C274）的逐页实跑审计（脚本 `/tmp/agentx-e2e/ui-tabs.cjs` + `/tmp/agentx-e2e/schedules-e2e.cjs`，前置 fiat 订阅注入 + RPM 240）：
+针对「前端 UI 层」用例段（C110–C210 + C263–C274 + /apply）的逐页实跑审计。脚本已入库为 **`e2e/scripts/ui-audit.cjs`**（GitHub Actions `e2e.yml` 手动/nightly 复跑；早期 /tmp 版本见 `ui-tabs.cjs` + `schedules-e2e.cjs`，前置 fiat 订阅注入 + RPM 240）：
 
 | 页面/用例 | 结果 | 备注 |
 |---|---|---|
@@ -331,10 +331,11 @@
 | 聊天页引导（C110） | ✅ | 未连接 → Connect Wallet Required/Checking |
 | 聊天 UI（C147/C148） | ⚠️ SKIP | 测试钱包仅 fiat 订阅、无链上订阅 → SubscriptionGuard 付费墙（预期行为，需链上订阅环境才能展开聊天 UI） |
 | 订阅列表（C10A/C210） | ✅ | Active/Expiring Soon/Expired Tabs + 到期告警横幅 |
+| **/apply 渠道入驻页（C216/C217 UI）** | ✅ | **2026-08-21 新增回归**：hero 渲染 / 收益 3 卡片 / 8 表单字段 / C217 空表单 Submit 禁用 + 必填补齐启用（只验证校验联动，不真实提交以免污染生产）/ 0 JS 错误 |
 | 定时任务（C164/C170/C171 + J7-H） | ✅ | 创建 one_time / 停用 / 删除全流程，console=0 |
 | A2A 页（C155/C158/C7A） | ✅ | 面板/过滤/任务区渲染（2026-08-20 实跑，页面本轮未改动） |
 
-**汇总：43 PASS / 0 FAIL / 1 SKIP（SKIP=聊天 UI 需链上订阅环境）**
+**汇总：44 PASS / 0 FAIL / 1 SKIP（SKIP=聊天 UI 需链上订阅环境）**——`e2e/scripts/ui-audit.cjs` 本地实跑与本结果一致，且 2026-08-21 经 GitHub Actions `e2e.yml` workflow_dispatch（run 32420199995）首次真实触发全绿。
 
 ### 本轮修复记录（2026-08-21）
 1. **Platform API Key 认证竞态**（commit `7be4c9b`）：`/user/settings` 的 `PlatformApiKey` 卡原先自行 challenge/sign/verify，与 `useGatewayAuth` 并发对同一钱包取 challenge → 后取者覆盖前者的 pending nonce → 其中一个 verify 401「Challenge expired or not found」，卡片首次挂载显示红色错误。修复 = `PlatformApiKey` 改为复用父级 `useGatewayAuth` 的 JWT 直接 `GET /api/v1/auth/api-key`，消除二次 challenge；实测 auth 调用由「2× challenge + 1× 401 verify」降为「1× challenge + 1× verify 200」。

@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-08-21 — /apply 页 UI 回归入套件 + R19 成功绑定/B 端闭环 + e2e workflow 首次触发
+
+- **/apply 页 UI 回归入库**（commit `36dacbd`）：`e2e/scripts/ui-audit.cjs` 新增 `applyPage`——hero 渲染 / 收益 3 卡片 / 8 表单字段 / **C217 空表单 Submit 禁用 + 必填补齐启用**（只验证校验联动，不真实提交以免污染生产）/ 0 JS 错误；本地实跑 3 PASS（ui-audit 全套 **44 PASS / 0 FAIL / 1 SKIP**）
+- **R19 成功套餐绑定闭环**（`36dacbd` 落档）：测试钱包 `0xd8e2cf…` EIP-191 登录 → 链上转账补足 ~29 OXA → `purpose=tenant-plan` 购买 pro → plan=pro 绑定成功 + `quotaDaily` 即时生效（拒绝路径此前已验证）
+- **B 端申请端到端闭环**（`36dacbd` 落档）：公开 `/channel/apply` 建申请 → admin `/applications/:id/decide` 审批自动建 active channel → C211 归因成功 / C214 幂等 / C215 链上凭据落库 / C213 停用拒绝 → 测试渠道已清理
+- **e2e workflow 首次真实触发**（commit `3429c96`）：`workflow_dispatch` run 32420199995 全绿（commit 36dacbd）——deps/chromium 安装 → 订阅 fixture（幂等未重复付费）→ Chat E2E → UI audit（C117–C274 含 /apply）→ 截图上传，结论 **success**；secrets（E2E_TEST_WALLET_PK / E2E_TEST_ACCOUNT）实跑验证可用
+- **文档**：PROGRESS.md 追加 4 项实测记录（B端闭环 / R19 成功绑定 / /apply 回归 / e2e workflow 首次触发）
+
+---
+
 ## 2026-08-21 — 自动续订广播切换异步（REQ-3 闭环）+ 文档归档
 
 - **infraX REQ-3 正式确认（2026-08-21）**：预扣构成无调整（实测 ~0.0025 OXA/次）；退差同步/异步统一（实扣=固定费+actualGasCost 多退少补、广播失败全额退、失败重试 3 次、对账 ref 带 `:refund`/`:extra` 后缀）；无硬性 SLA（端到端 ~40-60s，客户端超时建议 ≥150s）；异步模式已支持（`wait:false` → 严格 202 + opHash + `GET /v1/userops/:hash` 轮询状态机）；限额 perTx=1/perDay=10 OXA（`GET /v1/plans` 含 limits）。详见 [aa-auto-renew-funding-requirements-infrax.md](docs/aa-auto-renew-funding-requirements-infrax.md) §3.1
