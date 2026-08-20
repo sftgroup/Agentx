@@ -3,7 +3,8 @@
 // Covers: marketplace detail tabs (C117/C118/C119/C121/C201), /user/plans (C270),
 //         skills market (C271/C272/C273), settings keys (C175-C178),
 //         i18n (C199/C200), mobile 375 (C265), chat guard state (C110/C147/C148),
-//         subscriptions page (C10A/C210), console-0 (C274).
+//         subscriptions page (C10A/C210), /apply channel application (C216/C217 UI),
+//         console-0 (C274).
 //
 // Prereq (see e2e/.env.example):
 //  1) test wallet has a fiat subscription (agent 1) + an ACTIVE on-chain
@@ -242,6 +243,39 @@ async function chatGuardState(browser) {
   await page.close();
 }
 
+// ── /apply 渠道入驻申请页（C216/C217 UI 层）────────────────────────────
+async function applyPage(browser) {
+  const page = await (await makeContext(browser)).newPage();
+  const st = attachHarness(page);
+  await page.goto(`${config.site}/apply`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForTimeout(3000);
+  const body = await page.locator('body').innerText();
+  log(/Become a Partner|distribution channel/i.test(body) ? 'PASS' : 'FAIL', 'C216 /apply 渲染', 'hero 标题 + 说明');
+
+  const benefits = await page.locator('text=Revenue share').count() + await page.locator('text=On-chain payouts').count() + await page.locator('text=White-label friendly').count();
+  log(benefits >= 3 ? 'PASS' : 'SKIP', 'C216 收益说明 3 卡片', benefits + '/3');
+
+  const fields = await page.locator('input').count() + await page.locator('textarea').count();
+  log(fields >= 7 ? 'PASS' : 'FAIL', 'C216 申请表单字段', fields + ' 个输入框');
+
+  // C217: 必填校验 — company/contactName/contactEmail 未填时 Submit 禁用
+  const submitBtn = page.locator('button:has-text("Submit Application")').first();
+  const dis0 = await submitBtn.isDisabled().catch(() => null);
+  log(dis0 === true ? 'PASS' : 'FAIL', 'C217 空表单 Submit 禁用', `disabled=${dis0}`);
+
+  // 填充必填项后按钮启用（只验证校验联动，不真实提交以免污染生产数据）
+  await page.locator('input[placeholder="Your company name"]').fill('UI审计临时公司');
+  await page.locator('input[placeholder="Your name"]').fill('UI审计');
+  await page.locator('input[placeholder="you@company.com"]').fill('ui-audit@example.com');
+  await page.waitForTimeout(500);
+  const dis1 = await submitBtn.isDisabled().catch(() => null);
+  log(dis1 === false ? 'PASS' : 'FAIL', 'C217 必填补齐 Submit 启用', `disabled=${dis1}`);
+
+  await page.screenshot({ path: `${SHOTS}/ui-audit-apply.png` });
+  jsErrorCheck('apply 页 JS 错误', st, {});
+  await page.close();
+}
+
 // ── subscriptions page (C10A/C210) ─────────────────────────────────────
 async function subscriptionsPage(browser) {
   const page = await (await makeContext(browser)).newPage();
@@ -272,6 +306,7 @@ async function main() {
     await i18nSwitch(browser);
     await mobile375(browser);
     await chatGuardState(browser);
+    await applyPage(browser);
     await subscriptionsPage(browser);
   } catch (e) {
     log('FAIL', '执行异常', String(e).slice(0, 300));

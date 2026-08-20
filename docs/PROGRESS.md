@@ -466,7 +466,7 @@
   - **链上闭环**：向 payTo 充值 0.5 OXA → `/x402/verify` 记账（余额 0.5 OXA）；pro 套餐金额不足购买 → 422 拒绝且 plan 不绑定
   - **A2A 按次**：未拥有 agent 66 委派 → 余额扣 0.001 OXA + `a2a_pay_log` 审计 1 行，同 ref 幂等
   - **UI**：`/b`、`/apply`、`/user/billing`、`/admin`、`/` 浏览器验证全部正常渲染无 JS 错误；首页顶栏补 Business 入口
-  - **遗留**：成功套餐绑定需 ~29 OXA 链上付款（测试钱包余额约 9 OXA，待补充后验证成功绑定路径；拒绝路径已验证）
+  - **遗留（✅ 已闭环，2026-08-21）**：成功套餐绑定此前需 ~29 OXA 链上付款（测试钱包余额约 9 OXA）。已向 `0x70997970C51812dc3A010C7d01b50e0d17dc79C8` 转账补足后，用 `0xd8e2cf…` 钱包经 `purpose=tenant-plan` 购买 pro 成功，plan 绑定 + `quotaDaily` 即时生效（拒绝路径此前已验证）
 
 ### T 通用支付能力接入（t1~t9，✅ 9/9 完成，2026-08-18 归档，生产生效）
 
@@ -613,6 +613,9 @@
 | C 端用户旅程 E2E（注入钱包，2026-08-20） | 生产 `https://agentx.0xainet.top` 全链路 **39 PASS / 0 FAIL / 1 SKIP**（J1-H/J1-E1/J2/J4/J8/J9/J10 + 无注入 probe 对照）；J9 懒认证验证通过；详见 [test-cases-consumer-journeys.md](test-cases-consumer-journeys.md) 附录。期间修复 2 个真实缺陷（见下） |
 | 跨秒首次登录 401（`23881be`） | 服务端用权威 `challenge.timestamp` 重建验签 message（不再信任客户端 timestamp）；前端传挑战返回的 timestamp。J1-H challenge→sign→verify 200 复验 |
 | J9 订阅解码错位（`15d218f`） | `getSubscriptionDetail`/`getPlan` 链上为嵌套结构（前导 offset + tuple），ABI 误写平铺 outputs → viem 扁平解码越界。修复 = 单具名 tuple + `useSubscription.ts` 数组解构改对象访问；本地 eth_call 实证 sub 10/27 与 plan 1/5 解码正常；J9 console=0 |
+| B 端申请端到端闭环（2026-08-21） | 公开 `/channel/apply` 建申请 → admin `/applications/:id/decide` 审批通过自动建 active channel（share_bps=125）→ C211 归因成功 / C214 幂等 / C215 链上凭据落库 / C213 停用拒绝 → 测试渠道已停用清理，全通过 |
+| R19 成功套餐绑定（2026-08-21） | `0xd8e2cf…` 钱包 EIP-191 登录 → 查 pro plan → 链上转账补足 ~29 OXA → `purpose=tenant-plan` 购买 → plan=pro 绑定成功 + `quotaDaily` 生效（拒绝路径此前已验证） |
+| /apply 页 UI 回归（2026-08-21） | `/apply` 已入 e2e 套件（ui-audit.cjs）：hero 渲染 / 收益 3 卡片 / 8 表单字段 / C217 空表单 Submit 禁用 + 必填补齐启用 / 0 JS 错误；本地实跑 3 PASS |
 
 ---
 
