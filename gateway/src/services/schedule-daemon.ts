@@ -9,6 +9,7 @@
 
 import { getPool } from '../lib/db'
 import { getConversationProxy } from './conversation-proxy'
+import { canAccessAgent } from './agent-access'
 
 const POLL_INTERVAL_MS = 30_000
 const MAX_DUE_PER_TICK = 20
@@ -65,6 +66,14 @@ async function processDue(s: any): Promise<void> {
   try {
     if (!(await parallelTasksEnabled(s.tenant))) {
       await recordRun(s.id, null, 'failed', 'PARALLEL_TASKS_DISABLED')
+      return
+    }
+
+    // Trigger-time subscription re-check (C174): schedules may be created
+    // without a subscription (C83), but the daemon must not fire for agents
+    // the tenant no longer owns or subscribes to — record failed and skip.
+    if (!(await canAccessAgent(s.tenant, s.agent_id))) {
+      await recordRun(s.id, null, 'failed', 'AGENT_ACCESS_DENIED')
       return
     }
 
