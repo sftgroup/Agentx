@@ -42,6 +42,12 @@ export interface AgentRunSSEEvent {
   iterations?: number
   /** LLM billing source — 'byok' (tenant key) or 'platform' (AgentX official key). */
   llmSource?: 'byok' | 'platform'
+  /** Model actually used by the resolved LLM provider (usage_logs.model). */
+  model?: string
+  /** Agent id this run belongs to — null for inline prompt/skills mode (usage_logs.agent_id). */
+  agentId?: number | null
+  /** Number of tool calls executed in this run (usage_logs.tool_calls). */
+  toolCalls?: number
   error?: string
   /** On-chain delegation approval payload (rail: onchain) — the user's wallet must create the A2A task */
   approval?: OnChainApprovalRequest
@@ -181,6 +187,9 @@ export class AgentRunnerService {
         usage: result.usage,
         iterations: result.totalIterations,
         llmSource,
+        model: llmProvider?.model,
+        agentId: runAgentId || null,
+        toolCalls: result.toolCalls.length,
       }
 
       // 6. Memory store on session end

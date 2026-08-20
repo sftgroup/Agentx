@@ -12,7 +12,15 @@ import type { Response as ExpressResponse } from 'express'
 
 export interface SseUsage {
   totalTokens: number
+  promptTokens: number
+  completionTokens: number
   llmSource?: 'byok' | 'platform'
+  /** Model actually used (from the done event) — usage_logs.model. */
+  model?: string
+  /** Agent id of the run — usage_logs.agent_id. */
+  agentId?: number | null
+  /** Number of tool calls executed in the run — usage_logs.tool_calls. */
+  toolCalls?: number
 }
 
 /**
@@ -58,8 +66,18 @@ export async function pipeSSEWithUsage(
               ? (ev.payload as Record<string, unknown>)
               : ev
           if (inner.type === 'done') {
-            const usage = inner.usage as { totalTokens?: number } | undefined
-            onUsage({ totalTokens: usage?.totalTokens ?? 0, llmSource: inner.llmSource as 'byok' | 'platform' | undefined })
+            const usage = inner.usage as
+              | { totalTokens?: number; promptTokens?: number; completionTokens?: number }
+              | undefined
+            onUsage({
+              totalTokens: usage?.totalTokens ?? 0,
+              promptTokens: usage?.promptTokens ?? 0,
+              completionTokens: usage?.completionTokens ?? 0,
+              llmSource: inner.llmSource as 'byok' | 'platform' | undefined,
+              model: typeof inner.model === 'string' ? inner.model : undefined,
+              agentId: typeof inner.agentId === 'number' ? inner.agentId : undefined,
+              toolCalls: typeof inner.toolCalls === 'number' ? inner.toolCalls : undefined,
+            })
           }
         } catch {
           // ignore malformed SSE lines

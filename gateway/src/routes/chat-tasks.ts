@@ -87,14 +87,34 @@ async function pipeTaskSSE(
   })
 
   let platformTokens = 0
-  await pipeSSEWithUsage(upstream, res, ({ totalTokens, llmSource }) => {
+  let promptTokens = 0
+  let completionTokens = 0
+  let toolCalls = 0
+  let model: string | undefined
+  let agentId: number | null = null
+  await pipeSSEWithUsage(upstream, res, ({ totalTokens, promptTokens: pt, completionTokens: ct, llmSource, model: m, agentId: aid, toolCalls: tc }) => {
     if (llmSource === 'platform' && totalTokens > 0) {
       platformTokens += totalTokens
+      promptTokens += pt
+      completionTokens += ct
+      toolCalls += tc ?? 0
+      if (m) model = m
+      if (aid !== undefined && aid !== null) agentId = aid
     }
   })
 
   if (platformTokens > 0 && tenantId && markTaskBilled(taskId)) {
     updateQuota(tenantId, platformTokens).catch(() => {})
+    // Task-path usage detail (platform mode) — mirrors chat.ts so multi-task
+    // conversations show up in /tenant/usage. Fire-and-forget: never blocks
+    // the (already-ended) SSE response.
+    getPool()
+      .query(
+        `INSERT INTO usage_logs (tenant_id, key_source, provider, model, tokens_prompt, tokens_completion, tokens_total, tool_calls, agent_id)
+         VALUES ($1, 'platform', 'openai', $2, $3, $4, $5, $6, $7)`,
+        [tenantId, model || 'unknown', promptTokens, completionTokens, platformTokens, toolCalls, agentId],
+      )
+      .catch(() => { /* usage logging is non-critical */ })
   }
 }
 

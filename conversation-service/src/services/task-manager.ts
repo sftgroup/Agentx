@@ -288,6 +288,8 @@ export class TaskManager {
     let usage: unknown = null
     let iterations: number | null = null
     let llmSource: 'byok' | 'platform' | null = null
+    let model: string | null = null
+    let toolCalls = 0
 
     try {
       for await (const event of this.runner.streamRun(request, { signal: controller.signal })) {
@@ -298,6 +300,8 @@ export class TaskManager {
           usage = event.usage ?? null
           iterations = event.iterations ?? null
           llmSource = event.llmSource ?? null
+          model = event.model ?? null
+          toolCalls = event.toolCalls ?? 0
         }
         seq += 1
         const record: TaskEvent = { seq, type: event.type, payload: event }
@@ -344,7 +348,7 @@ export class TaskManager {
 
     // Report platform-mode usage to the Gateway for quota metering (idempotent
     // on the gateway side) — covers tasks that complete with no SSE subscriber.
-    this.reportBilling(taskId, task.tenant, usage, llmSource)
+    this.reportBilling(taskId, task.tenant, usage, llmSource, model, task.agentId, toolCalls)
   }
 
   /**
@@ -357,12 +361,17 @@ export class TaskManager {
     tenantAddress: string,
     usage: unknown,
     llmSource: 'byok' | 'platform' | null,
+    model: string | null,
+    agentId: number | null,
+    toolCalls: number,
   ): Promise<void> {
     if (llmSource !== 'platform' || !config.gatewayUrl || !config.orchestrateToken) return
-    const totalTokens =
-      usage && typeof usage === 'object'
-        ? Number((usage as { totalTokens?: unknown }).totalTokens ?? 0)
-        : 0
+    const u = (usage && typeof usage === 'object' ? usage : {}) as {
+      promptTokens?: unknown
+      completionTokens?: unknown
+      totalTokens?: unknown
+    }
+    const totalTokens = Number(u.totalTokens ?? 0)
     if (!Number.isFinite(totalTokens) || totalTokens <= 0) return
     try {
       await fetch(`${config.gatewayUrl}/api/v1/internal/task-billing`, {
@@ -371,7 +380,17 @@ export class TaskManager {
           'Content-Type': 'application/json',
           'X-Orchestrate-Token': config.orchestrateToken,
         },
-        body: JSON.stringify({ taskId, tenantAddress, totalTokens, llmSource }),
+        body: JSON.stringify({
+          taskId,
+          tenantAddress,
+          totalTokens,
+          promptTokens: Number(u.promptTokens ?? 0),
+          completionTokens: Number(u.completionTokens ?? 0),
+          llmSource,
+          model: model || undefined,
+          agentId: agentId ?? undefined,
+          toolCalls,
+        }),
         signal: AbortSignal.timeout(10_000),
       })
     } catch (err) {

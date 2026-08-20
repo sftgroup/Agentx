@@ -30,7 +30,12 @@ interface TaskBillingBody {
   taskId?: unknown
   tenantAddress?: unknown
   totalTokens?: unknown
+  promptTokens?: unknown
+  completionTokens?: unknown
   llmSource?: unknown
+  model?: unknown
+  agentId?: unknown
+  toolCalls?: unknown
 }
 
 // POST /api/v1/internal/task-billing — meter a completed task's platform tokens
@@ -40,7 +45,12 @@ router.post('/', async (req: Request, res: Response) => {
     const taskId = String(body.taskId ?? '')
     const tenantAddress = String(body.tenantAddress ?? '')
     const totalTokens = Number(body.totalTokens ?? 0)
+    const promptTokens = Number(body.promptTokens ?? 0)
+    const completionTokens = Number(body.completionTokens ?? 0)
     const llmSource = String(body.llmSource ?? '')
+    const model = String(body.model ?? '').trim()
+    const agentId = body.agentId == null ? null : Number(body.agentId)
+    const toolCalls = Number(body.toolCalls ?? 0)
 
     if (!taskId || !tenantAddress || tenantAddress === 'unknown') {
       return res.status(400).json({ error: 'taskId and tenantAddress are required' })
@@ -64,8 +74,24 @@ router.post('/', async (req: Request, res: Response) => {
       return res.json({ ok: true, skipped: 'no tenant record' })
     }
 
+    // Idempotent claim stays EARLY (synchronous, before any await) so the SSE
+    // channel + this callback can never double-meter the same task even when
+    // both fire concurrently.
     markTaskBilled(taskId)
-    await updateQuota(tenantId, totalTokens)
+    // Best-effort quota meter — a transient Redis outage must not drop the
+    // usage detail below nor lose the task forever (it stays claimed).
+    try {
+      await updateQuota(tenantId, totalTokens)
+    } catch { /* non-critical */ }
+    // Background-task usage detail (platform mode) — mirrors chat.ts so tasks
+    // completed without an SSE subscriber still appear in /tenant/usage.
+    try {
+      await getPool().query(
+        `INSERT INTO usage_logs (tenant_id, key_source, provider, model, tokens_prompt, tokens_completion, tokens_total, tool_calls, agent_id)
+         VALUES ($1, 'platform', 'openai', $2, $3, $4, $5, $6, $7)`,
+        [tenantId, model || 'unknown', promptTokens, completionTokens, totalTokens, toolCalls, agentId],
+      )
+    } catch { /* usage logging is non-critical */ }
     return res.json({ ok: true })
   } catch (err) {
     return res.status(500).json({ error: (err as Error).message })

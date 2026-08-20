@@ -97,18 +97,37 @@ router.post('/runs', (req: Request, res: Response, next: () => void) => {
     })
 
     let platformTokens = 0
-    await pipeSSEWithUsage(upstream, res, ({ totalTokens, llmSource }) => {
+    let promptTokens = 0
+    let completionTokens = 0
+    let toolCalls = 0
+    let model: string | undefined
+    let usageAgentId: number | null = null
+    await pipeSSEWithUsage(upstream, res, ({ totalTokens, promptTokens: pt, completionTokens: ct, llmSource, model: m, agentId: aid, toolCalls: tc }) => {
       // Only count when the run actually used the platform LLM key. Fall back to
       // the header heuristic for older conversation-service versions that don't
       // emit llmSource yet.
       const isPlatform = llmSource === 'platform' || (llmSource === undefined && !headerApiKey && !tenantKeyId)
       if (isPlatform && totalTokens > 0) {
         platformTokens += totalTokens
+        promptTokens += pt
+        completionTokens += ct
+        toolCalls += tc ?? 0
+        if (m) model = m
+        if (aid !== undefined && aid !== null) usageAgentId = aid
       }
     })
     // Meter after the stream closes — fire-and-forget, never blocks the response.
     if (platformTokens > 0 && req.tenant) {
       updateQuota(req.tenant.id, platformTokens).catch(() => {})
+      // Single-turn path usage detail (platform mode) — mirrors chat.ts so the
+      // /agent/runs fallback also shows up in /tenant/usage. Fire-and-forget.
+      getPool()
+        .query(
+          `INSERT INTO usage_logs (tenant_id, key_source, provider, model, tokens_prompt, tokens_completion, tokens_total, tool_calls, agent_id)
+           VALUES ($1, 'platform', 'openai', $2, $3, $4, $5, $6, $7)`,
+          [req.tenant.id, model || 'unknown', promptTokens, completionTokens, platformTokens, toolCalls, usageAgentId],
+        )
+        .catch(() => { /* usage logging is non-critical */ })
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
