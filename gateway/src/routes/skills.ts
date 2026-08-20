@@ -4,6 +4,7 @@
 import { Router, Request, Response } from 'express'
 import { getSkillService } from '../services/skill-service'
 import { adminAuth } from '../middleware/adminAuth'
+import { apiKeyAuth, authMiddleware } from '../middleware/auth'
 
 const router = Router()
 
@@ -50,8 +51,8 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// POST /api/v1/skills — Submit a new skill for review (JWT auth)
-router.post('/', async (req: Request, res: Response) => {
+// POST /api/v1/skills — Submit a new skill for review (JWT / X-Api-Key auth)
+router.post('/', apiKeyAuth, authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = req.tenant?.walletAddress
     if (!user) return res.status(401).json({ error: 'Authentication required' })
