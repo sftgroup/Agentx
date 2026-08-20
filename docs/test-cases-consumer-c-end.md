@@ -716,3 +716,43 @@ flowchart LR
 3. **故障/安全（C245–C262）**：在独立测试环境执行（重启服务、停 Redis/PG、篡改 token/XFF/Origin），勿在共享生产租户上做破坏性注入；`channel`（C211–C222）为公开端点，用测试渠道 id 与测试归因数据避免污染真实对账。
 4. **回归提醒**：链上用例（C32/C37/C128/C132 订阅/取消、C156/C160 A2A、C185–C198 AA）依赖钱包/链上凭据与 AA 栈，未配置时跳过或 mock；fiat（C38/C44/C130、C239/C244）依赖 Stripe，未配置跳过；限流用例（C206–C208、C259）在低配额测试租户上执行避免污染共享租户。
 5. **数据清理**：每次全量执行前重置 `x402_balances`、`usage_logs`、`chain_subscriptions`、`schedule_runs`、`channel_attributions`（保留既有真实订阅/归因），清理 `aa_auto_renew`（AA 回归），避免配额/余额污染断言；浏览器 localStorage 清空（history/session 键）保证会话恢复用例从干净态开始。
+
+---
+
+## 附：执行结果（2026-08-20 全量 API 实跑）
+
+> 执行方式：生产直连 `https://agentx.0xainet.top`，`/tmp/agentx-cend/run-all.cjs`（ethers 钱包签名登录 + fetch 重试/限速），覆盖 §2/§3/§5/§6/§8/§9/§12/§13/§14/§15/§17/§19A–H/§20A–F 的 API 用例。
+
+### 汇总
+
+| 指标 | 值 |
+|---|---|
+| 总用例 | **204** |
+| PASS | **155** |
+| SKIP | **49**（均为合理跳过，见下） |
+| FAIL | **0** |
+
+### 本次实跑发现并修复的缺陷（生产已部署，commits 674a18b / 1bd1bdc / 79c5e01）
+
+| # | 缺陷 | 根因 | 修复 |
+|---|---|---|---|
+| 1 | `GET /skills/my` 恒 401 | 文件尾部残留重复 `/my` 定义（用 `req.user`，后注册优先覆盖前面已加鉴权的路由） | 删除重复定义，统一用 `req.tenant`；`/my` 与 `POST /skills` 挂 `apiKeyAuth + authMiddleware` |
+| 2 | 并发槽泄漏 → 租户后续请求误 429 | `tenantRateLimiter` 仅监听 `res 'finish'` 释放槽位；响应挂起/客户端中止（如 SSE 断开）时 `finish` 不触发 → 槽位泄漏至 Redis key 过期 | 同时监听 `finish` + `close`，幂等释放 |
+| 3 | `DELETE/POST /tenant/keys/:keyId` 非 UUID → 请求挂起 | `tenant_api_keys.id` 为 UUID 列，传 `999999` 抛 PG `invalid input syntax`；路由为无 `asyncHandler` 的原始 async 处理 → Express 4 不传播 rejection → 响应永不完成 | 非法 UUID 直接返回 404 `Key not found` |
+| 4 | `chat/completions` BYOK `tenant_key_id` 非 UUID → 500 | 同上 PG UUID 错误，被外层 catch 兜成 500 | 校验 UUID，非法返回 400 `Tenant API key not found or inactive` |
+| 5 | `GET /tenant/usage?days=abc` → 请求挂起 | `parseInt('abc')=NaN` → `INTERVAL '1 day' * NaN` → PG `interval out of range` → 原始 async 处理挂起 | 校验 `days` 为 1–365 整数，非法返回 400 |
+
+### SKIP 分类（49 条，均为环境/前置依赖，非缺陷）
+
+- **需故障注入**（C342–C347、C351、C364）：断 PG / 断 Redis / RPC 故障 / 未知错误泄漏——按执行策略勿在共享生产租户注入。
+- **需链上/订阅/配额状态**（C49/C52/C53/C63/C67/C68/C69/C82/C88/C89/C170/C174/C239–C243、C363）：需真实运行任务、余额不足、配额耗尽、未订阅 agent、fiat 未配置等。
+- **需管理/管理员操作**（C11、C227、C236、C257、C258、C275、C299、C300）。
+- **需测试渠道 active 状态**（C211/C214/C215）：渠道入驻申请为 `pending`，归因需 active channel。
+- **会影响共享租户/真实数据**（C181/C183 key 轮换、C105 全局限流 >1000、C93 跨天配额重置、C101/C319 生产已启用特性、C328/C329 fiat、C337/C366–C368 SSE 长连接）。
+- **需跨端/浏览器**（C110–C210、C263–C274 前端 UI 层）：本表为 API 层实跑，UI 层见 `test-cases-consumer-journeys.md`（J1 钱包登录旅程 39 用例已实跑）与 `test-cases-aa-auto-renew.md`。
+
+### 产物与复跑
+
+- 逐条结果：`/tmp/agentx-cend/run6.log`（155 PASS / 49 SKIP / 0 FAIL）；CSV：`/tmp/agentx-cend/report-cend.csv`（204 行）。
+- 复跑：`cd /tmp/agentx-cend && node run-all.cjs`（前置：SSH tunnel :19506 → `rpc-oxa.0xainet.top`、测试钱包私钥 `PK`、租户 `rate_limit_rpm` 临时提至 240——**实跑后已回滚至 5**，复跑需再提）。
+- 数据清理已执行：rate_limit_rpm 240→5、E2E 技能 6 条、E2E 渠道申请 6 条、软删测试 schedules 均已清理，`channel_attributions` 0 行残留。
