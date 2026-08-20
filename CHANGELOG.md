@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-08-21 — C 端 UI 回归套件入库（e2e/）+ 链上订阅 fixture
+
+- **e2e 套件纳入仓库**（原 /tmp 临时脚本，支持 CI 复跑）：
+  - `e2e/lib/provider.cjs`：钱包注入（MetaMask 模拟 + 真实签名）+ OXA RPC 隧道 + PASS/FAIL 日志公共库
+  - `e2e/scripts/chat.cjs`：C147/C148 真实聊天流——发送消息并严格等待"用户消息后的非空助手气泡"（修复此前靠 UI 头部文案误匹配的假阳性），并抓 `/agent/runs`、`/sessions`、`/tasks` 请求
+  - `e2e/scripts/ui-audit.cjs`：C117–C274 全量 UI 审计（市场详情/plans/技能市场/settings 密钥/i18n/移动端/聊天守卫/订阅页），39 PASS / 0 FAIL
+  - `e2e/onchain/subscribe.cjs`：链上订阅 fixture（`--run` 幂等创建 SubscriptionManager.subscribe，仅未激活时付费 0.001 OXA）
+  - `e2e/package.json` + `e2e/.env.example`（`.env` 已 gitignore）
+- **CI**：`.github/workflows/e2e.yml`（手动/nightly，非 push 阻断——驱动线上站点、消耗真实 gas/LLM），支持无隧道直连公网 RPC 或经 secrets 配置隧道
+- **修复**：C178 删除仅针对"UI审计临时"标签行（避免误删真实 key）并清理累积 fixture；C177 Validate 断言改为捕获真实反馈（HTTP/文案）
+- **前置**：测试钱包需 agent 1 的 fiat 订阅 + 链上订阅（后者由 subscribe.cjs 自动确保）
+
+---
+
 ## 2026-08-18 — 发布 sdk@0.11.7（Agent 钱包 API + @0xinfrax/payments 0.1.4）
 
 - **@agentxv2/sdk@0.11.7 已发布 npm**（minor，补 2e95909 遗漏的 npm 发布——0.11.6 未含 agent-wallet 模块）：

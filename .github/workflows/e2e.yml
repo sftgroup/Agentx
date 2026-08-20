@@ -1,0 +1,79 @@
+# AgentX E2E — C-end UI + on-chain subscription regression (manual / nightly)
+#
+# Runs the repo e2e suite (e2e/lib + e2e/onchain + e2e/scripts) against the live
+# C-end site. Deliberately NOT part of push/PR CI: it drives a live site and
+# spends real gas + LLM tokens, so it is manual-dispatch / nightly only.
+#
+# Required repo secrets:
+#   E2E_TEST_WALLET_PK   funded test wallet private key (fiat + on-chain sub for agent 1)
+#   E2E_TEST_ACCOUNT     its address
+# Optional secrets (with defaults):
+#   E2E_SITE             site under test               default https://agentx.0xainet.top
+#   E2E_RPC_HOST         OXA RPC host                  default rpc-oxa.0xainet.top
+#   E2E_RPC_TUNNEL_HOST  tunnel host for RPC           default = RPC_HOST (direct TLS 443)
+#   E2E_RPC_TUNNEL_PORT  tunnel port for RPC           default 443
+#     If the runner cannot reach the RPC directly over TLS 443, point the tunnel
+#     vars at an SSH tunnel / proxy that forwards to rpc-oxa.0xainet.top:443.
+name: E2E (manual/nightly)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 2 * * *'   # nightly 02:20 UTC
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: UI audit + chat + on-chain sub
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SITE: ${{ secrets.E2E_SITE || 'https://agentx.0xainet.top' }}
+      TEST_WALLET_PK: ${{ secrets.E2E_TEST_WALLET_PK }}
+      TEST_ACCOUNT: ${{ secrets.E2E_TEST_ACCOUNT }}
+      TEST_CHAIN_ID: '19505'
+      RPC_HOST: ${{ secrets.E2E_RPC_HOST || 'rpc-oxa.0xainet.top' }}
+      RPC_TUNNEL_HOST: ${{ secrets.E2E_RPC_TUNNEL_HOST || secrets.E2E_RPC_HOST || 'rpc-oxa.0xainet.top' }}
+      RPC_TUNNEL_PORT: ${{ secrets.E2E_RPC_TUNNEL_PORT || '443' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install e2e deps
+        working-directory: e2e
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium (+ system deps)
+        working-directory: e2e
+        run: |
+          npx playwright-core install chromium
+          sudo npx playwright-core install-deps chromium
+          echo "CHROME_PATH=$(find ~/.cache/ms-playwright -name chrome -type f | head -1)" >> "$GITHUB_ENV"
+
+      - name: On-chain subscription fixture (idempotent, pays only if inactive)
+        working-directory: e2e
+        run: node onchain/subscribe.cjs --run
+
+      - name: Chat E2E (C147/C148 real SSE reply)
+        working-directory: e2e
+        run: node scripts/chat.cjs
+
+      - name: UI audit (C117–C274)
+        working-directory: e2e
+        run: node scripts/ui-audit.cjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-shots
+          path: e2e/shots/
+          if-no-files-found: ignore

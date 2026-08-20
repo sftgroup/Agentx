@@ -34,9 +34,14 @@ sdk/.npmrc
 e2e_*.js
 package-lock.json
 package.json
-# Exception: `payments/` is a standalone npm package — its package.json must be
-# tracked so the gateway `file:../payments` dependency resolves from a fresh clone.
+# Exception: `payments/` and `e2e/` are standalone npm packages — their package.json /
+# package-lock.json must be tracked so deps resolve from a fresh clone (CI runs e2e).
 !payments/package.json
+!e2e/package.json
+!e2e/package-lock.json
+
+# e2e runtime artifacts (screenshots, on-chain fixture state)
+e2e/shots/
 
 # Knowledge Graph — track core files, ignore intermediates
 .ua/intermediate/
