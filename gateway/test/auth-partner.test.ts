@@ -8,8 +8,9 @@ import crypto from 'crypto'
 
 // vi.mock factories are hoisted — only vi.hoisted values are visible inside them.
 const queryMock = vi.hoisted(() => vi.fn())
-const { WALLET } = vi.hoisted(() => ({
+const { WALLET, verifyMessageMock } = vi.hoisted(() => ({
   WALLET: '0x1234567890abcdef1234567890abcdef12345678',
+  verifyMessageMock: vi.fn(() => '0x1234567890abcdef1234567890abcdef12345678'),
 }))
 
 vi.mock('../src/lib/db', () => ({
@@ -27,7 +28,7 @@ vi.mock('../src/config', () => ({
 
 // verifyMessage returns the wallet under test so signatures "always validate"
 vi.mock('ethers', () => ({
-  ethers: { verifyMessage: vi.fn(() => WALLET) },
+  ethers: { verifyMessage: verifyMessageMock },
 }))
 
 import { getChallenge, verifyChallenge, apiKeyAuth, getApiKey } from '../src/middleware/auth'
@@ -167,6 +168,27 @@ describe('C-end (user) sign-in keeps working', () => {
     const [sql, params] = insertCall as [string, unknown[]]
     expect(sql).toContain("'user'")
     expect(params).toEqual([WALLET, 'free-1', hash(body.api_key as string)])
+  })
+})
+
+// ── regression: cross-second 401 (2026-08-20, browser J1 流程实测发现) ──
+// 前端误用自身 Date.now()/1000 作为 verify 的 timestamp；服务端若用它重建
+// `agentx:auth:<ts>:<nonce>` 验签，跨秒即 401 Signature does not match.
+// 修复：服务端改用自己保存的 challenge.timestamp（权威值）重建 message。
+describe('verifyChallenge — server-timestamp authority (cross-second regression)', () => {
+  it('rebuilds the signed message from the stored challenge timestamp, ignoring a stale client timestamp', async () => {
+    const ch = await obtainChallenge(WALLET)
+    const staleTs = ch.timestamp + 5 // 模拟前端跨秒/偏差时间戳
+    const req = makeReq({
+      body: { wallet_address: WALLET, signature: '0xsig', timestamp: staleTs, nonce: ch.nonce },
+    })
+    const res = makeRes()
+    await verifyChallenge(req, res)
+    expect(res.status).not.toHaveBeenCalled()
+    // 必须用服务端权威 timestamp（challenge.timestamp）重建 message
+    expect(verifyMessageMock).toHaveBeenCalledWith(`agentx:auth:${ch.timestamp}:${ch.nonce}`, '0xsig')
+    // 绝不能使用客户端传入的 stale timestamp
+    expect(verifyMessageMock).not.toHaveBeenCalledWith(`agentx:auth:${staleTs}:${ch.nonce}`, '0xsig')
   })
 })
 

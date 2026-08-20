@@ -79,7 +79,7 @@ export function useGatewayAuth(gatewayUrl?: string, opts?: { lazy?: boolean }) {
 
     try {
       const challengeRes = await fetch(`${gatewayUrl}/api/v1/auth/challenge?address=${address}`)
-      const { challenge } = await challengeRes.json() as { challenge: string }
+      const { challenge, timestamp } = await challengeRes.json() as { challenge: string; timestamp: number }
 
       const signature = await walletClient.signMessage({
         account: walletClient.account!,
@@ -92,7 +92,7 @@ export function useGatewayAuth(gatewayUrl?: string, opts?: { lazy?: boolean }) {
         body: JSON.stringify({
           wallet_address: address,
           signature,
-          timestamp: Math.floor(Date.now() / 1000),
+          timestamp,
           nonce: challenge.split(':').pop(),
         }),
       })

@@ -313,7 +313,7 @@ function PlatformApiKey() {
     try {
       // Step 1: Auth via wallet signature
       const challengeRes = await fetch(`${gatewayUrl}/api/v1/auth/challenge?address=${address}`)
-      const { challenge } = await challengeRes.json()
+      const { challenge, timestamp } = await challengeRes.json()
       const signature = await walletClient.signMessage({
         account: walletClient.account!,
         message: challenge,
@@ -324,7 +324,7 @@ function PlatformApiKey() {
         body: JSON.stringify({
           wallet_address: address,
           signature,
-          timestamp: Math.floor(Date.now() / 1000),
+          timestamp,
           nonce: challenge.split(':').pop(),
         }),
       })

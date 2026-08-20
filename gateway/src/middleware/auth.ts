@@ -170,7 +170,10 @@ export async function verifyChallenge(req: Request, res: Response): Promise<void
     return
   }
 
-  const expectedMessage = `agentx:auth:${timestamp}:${nonce}`
+  // 使用服务端保存的 challenge timestamp（权威值）重建 message —— 不信任客户端
+  // 传入的 timestamp（前端若用自身 Date.now()/1000，跨秒时会重建出 +1 的 message，
+  // 导致签名校验失败 401 "Signature does not match wallet address"）。
+  const expectedMessage = `agentx:auth:${challenge.timestamp}:${challenge.nonce}`
   let recovered: string
   try {
     recovered = ethers.verifyMessage(expectedMessage, signature).toLowerCase()

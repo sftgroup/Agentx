@@ -62,6 +62,12 @@
 | C16 | X-Api-Key 鉴权 | C04 的 api_key | 访问受保护端点带 `X-Api-Key: agentx_…` | 200 |
 | C17 | 无效 API Key | — | 随机 `agentx_…` | 401 `Invalid API key` |
 
+> **🔧 2026-08-20 修复：跨秒首次登录 401（浏览器 J1 流程实测发现）**
+> **症状**：浏览器直连生产首次登录（`/user/billing` 自动 authenticate）`verify` 返回 401 `Signature does not match wallet address`，刷新后才成功——高延迟/慢网络下必现。
+> **根因**：服务端 `verifyChallenge` 用**请求体的 `timestamp`** 重建 `agentx:auth:<ts>:<nonce>` 验签；而前端 `useGatewayAuth`/`usePartnerGatewayAuth`/`settings/page.tsx` 传的是**自身 `Date.now()/1000`**（非 challenge 返回的 timestamp）。跨秒时重建 message 的 ts 比签名时 +1 → 验签失败。
+> **修复**：① 服务端 [auth.ts](gateway/src/middleware/auth.ts) 改用**服务端保存的 `challenge.timestamp`**（权威值）重建 message，不再信任客户端 timestamp；② 前端 3 处改传 challenge 响应的 `timestamp`。gateway 157/157（含新增回归用例 `verifyChallenge — server-timestamp authority`）、前端 tsc 0 错。
+> **生产部署**：需重新构建部署 gateway + frontend 后生效（本机测试已通过，生产待部署复验）。
+
 ---
 
 ## 3. 市场与链上浏览（公开端点）
