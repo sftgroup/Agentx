@@ -14,13 +14,13 @@ import { Loader2, ShieldCheck, Wallet } from 'lucide-react'
 import { GATEWAY_URL } from '@/lib/gateway'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
 import { listAutoRenew, type AutoRenewRow } from '@/lib/auto-renew'
-import { SUBSCRIPTION_MANAGER_V1_ABI } from '@/abis/SubscriptionManagerV1'
+import { SUBSCRIPTION_MANAGER_ABI } from '@/abis/SubscriptionManager'
 
 interface SmartSub {
   subscriptionId: bigint
   agentId: bigint
   status: number
-  endDate: bigint
+  expiresAt: bigint
   isActive: boolean
 }
 
@@ -50,27 +50,34 @@ export function SmartAccountSubscriptionsCard() {
         if (publicClient && smAddress && /^0x[a-fA-F0-9]{40}$/.test(smAddress)) {
           for (const acc of accounts) {
             try {
-              const raw = (await publicClient.readContract({
+              const ids = (await publicClient.readContract({
                 address: smAddress as `0x${string}`,
-                abi: SUBSCRIPTION_MANAGER_V1_ABI,
+                abi: SUBSCRIPTION_MANAGER_ABI,
                 functionName: 'getUserSubscriptions',
                 args: [acc as `0x${string}`],
-              })) as any[]
+              })) as unknown as bigint[]
               const now = BigInt(Math.floor(Date.now() / 1000))
-              results[acc] = raw
-                .filter((s: any) => s && Number(s.subscriptionId) > 0)
-                .map((s: any) => {
-                  const status = Number(s.status)
-                  const endDate = BigInt(s.endDate?.toString() || '0')
-                  const isActive = status === 0 && endDate + BigInt(3 * 24 * 60 * 60) > now
-                  return {
-                    subscriptionId: BigInt(s.subscriptionId.toString()),
-                    agentId: BigInt(s.agentId.toString()),
+              const list: SmartSub[] = []
+              for (const id of ids) {
+                try {
+                  const d = (await publicClient.readContract({
+                    address: smAddress as `0x${string}`,
+                    abi: SUBSCRIPTION_MANAGER_ABI,
+                    functionName: 'getSubscriptionDetail',
+                    args: [id],
+                  })) as any
+                  const status = Number(d.status)
+                  const expiresAt = BigInt(d.expiresAt?.toString() || '0')
+                  list.push({
+                    subscriptionId: BigInt(d.subscriptionId.toString()),
+                    agentId: BigInt(d.agentId.toString()),
                     status,
-                    endDate,
-                    isActive,
-                  }
-                })
+                    expiresAt,
+                    isActive: status === 0 && expiresAt + BigInt(3 * 24 * 60 * 60) > now,
+                  })
+                } catch { /* skip individual detail failure */ }
+              }
+              results[acc] = list
             } catch {
               results[acc] = []
             }
@@ -143,7 +150,7 @@ export function SmartAccountSubscriptionsCard() {
                 <div key={s.subscriptionId.toString()} className="text-xs text-text-muted flex items-center gap-2 pl-5">
                   <span className="text-green-400">●</span>
                   <span>Agent #{s.agentId.toString()}</span>
-                  <span className="text-text-muted/70">ends {new Date(Number(s.endDate) * 1000).toLocaleDateString()}</span>
+                  <span className="text-text-muted/70">ends {new Date(Number(s.expiresAt) * 1000).toLocaleDateString()}</span>
                 </div>
               ))}
               {subs.length > 0 && active.length === 0 && (

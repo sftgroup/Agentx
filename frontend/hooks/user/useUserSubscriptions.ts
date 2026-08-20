@@ -4,7 +4,7 @@
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useCallback } from 'react'
-import { SUBSCRIPTION_MANAGER_V1_ABI } from '@/abis/SubscriptionManagerV1'
+import { SUBSCRIPTION_MANAGER_ABI } from '@/abis/SubscriptionManager'
 import { ZERO_ADDRESS } from '@/components/agent/hooks/contract-address'
 
 // 环境变量验证
@@ -171,16 +171,43 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
       }
 
       try {
-        // 获取基础订阅信息
-        const subscriptionData = await publicClient.readContract({
+        // v3 合约：getUserSubscriptions 返回 uint256[]（订阅 ID 列表），详情走 getSubscriptionDetail
+        const ids = await publicClient.readContract({
           address: subscriptionManagerAddress,
-          abi: SUBSCRIPTION_MANAGER_V1_ABI,
+          abi: SUBSCRIPTION_MANAGER_ABI,
           functionName: 'getUserSubscriptions',
           args: [address]
-        }) as any[]
+        }) as unknown as bigint[]
 
-        // 转换数据格式
-        const transformedData = transformSubscriptionData(subscriptionData)
+        const subs: Subscription[] = []
+        const now = BigInt(Math.floor(Date.now() / 1000))
+        for (const id of ids) {
+          const d = await publicClient.readContract({
+            address: subscriptionManagerAddress,
+            abi: SUBSCRIPTION_MANAGER_ABI,
+            functionName: 'getSubscriptionDetail',
+            args: [id]
+          }) as any
+          if (!d || Number(d.subscriptionId) === 0 || Number(d.agentId) === 0) continue
+          const status = Number(d.status)
+          const expiresAt = BigInt(d.expiresAt?.toString() || '0')
+          const startedAt = BigInt(d.startedAt?.toString() || '0')
+          subs.push({
+            subscriptionId: BigInt(d.subscriptionId.toString()),
+            planId: BigInt(0), // v3 无 planId（按 agent+period 订阅）
+            agentId: BigInt(d.agentId.toString()),
+            subscriber: (typeof d.subscriber === 'string' && d.subscriber.startsWith('0x')) ? d.subscriber as `0x${string}` : ZERO_ADDRESS,
+            status: status as SubscriptionStatus,
+            startDate: startedAt,
+            nextBillingDate: expiresAt,
+            endDate: expiresAt,
+            currentUsage: BigInt(d.amountPaid?.toString() || '0'),
+            totalPaid: BigInt(d.amountPaid?.toString() || '0'),
+            createdAt: BigInt(0),
+            isActive: status === SubscriptionStatus.Active && expiresAt + BigInt(3 * 24 * 60 * 60) > now,
+          })
+        }
+        const transformedData = subs
         return transformedData
       } catch (err) {
         console.error('❌ 获取用户订阅失败:', err)
@@ -224,7 +251,7 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
     try {
       const planData = await publicClient.readContract({
         address: subscriptionManagerAddress,
-        abi: SUBSCRIPTION_MANAGER_V1_ABI,
+        abi: SUBSCRIPTION_MANAGER_ABI,
         functionName: 'getPlan',
         args: [BigInt(planId)]
       }) as any
@@ -233,17 +260,19 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
         return null
       }
 
+      // v3 getPlan 返回: planId/agentId/creator/price/period(string)/active/payToken/trialDays
+      const periodMap: Record<string, BillingPeriod> = { day: BillingPeriod.Daily, week: BillingPeriod.Weekly, month: BillingPeriod.Monthly, quarter: BillingPeriod.Quarterly, year: BillingPeriod.Yearly }
       const plan: SubscriptionPlan = {
         planId: BigInt(planData.planId?.toString() || '0'),
         agentId: BigInt(planData.agentId?.toString() || '0'),
-        name: planData.name || '',
-        description: planData.description || '',
-        token: planData.token as `0x${string}`,
+        name: planData.period || '',
+        description: '',
+        token: (planData.payToken as `0x${string}`) || ZERO_ADDRESS,
         price: BigInt(planData.price?.toString() || '0'),
-        billingPeriod: Number(planData.billingPeriod) as BillingPeriod,
-        maxUsage: BigInt(planData.maxUsage?.toString() || '0'),
-        isActive: Boolean(planData.isActive),
-        createdAt: BigInt(planData.createdAt?.toString() || '0')
+        billingPeriod: periodMap[String(planData.period || 'month')] ?? BillingPeriod.Monthly,
+        maxUsage: BigInt(0),
+        isActive: Boolean(planData.active),
+        createdAt: BigInt(0)
       }
 
       return plan
@@ -260,14 +289,16 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
     }
 
     try {
-      const isActive = await publicClient.readContract({
+      // v3 无 isSubscriptionActive，改用 getSubscriptionDetail 读 status
+      const d = await publicClient.readContract({
         address: subscriptionManagerAddress,
-        abi: SUBSCRIPTION_MANAGER_V1_ABI,
-        functionName: 'isSubscriptionActive',
+        abi: SUBSCRIPTION_MANAGER_ABI,
+        functionName: 'getSubscriptionDetail',
         args: [BigInt(subscriptionId)]
-      }) as boolean
-
-      return isActive
+      }) as any
+      if (!d || Number(d.subscriptionId) === 0) return false
+      const now = BigInt(Math.floor(Date.now() / 1000))
+      return Number(d.status) === SubscriptionStatus.Active && BigInt(d.expiresAt.toString()) + BigInt(3 * 24 * 60 * 60) > now
     } catch (err) {
       console.error('检查订阅活跃状态失败:', err)
       return false
@@ -289,7 +320,7 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
       // 修复：正确构建 writeContract 参数
       const contractConfig: any = {
         address: subscriptionManagerAddress,
-        abi: SUBSCRIPTION_MANAGER_V1_ABI,
+        abi: SUBSCRIPTION_MANAGER_ABI,
         functionName: 'processPayment',
         args: [BigInt(subscriptionId)],
       }
@@ -329,7 +360,7 @@ export function useUserSubscriptions(): UseUserSubscriptionsReturn {
       
       const hash = await writeContractAsync({
         address: subscriptionManagerAddress,
-        abi: SUBSCRIPTION_MANAGER_V1_ABI,
+        abi: SUBSCRIPTION_MANAGER_ABI,
         functionName: 'cancelSubscription',
         args: [BigInt(subscriptionId)]
       })
@@ -374,43 +405,38 @@ export function useSubscriptionDetail(subscriptionId: number) {
       }
 
       try {
-        // 直接获取单个订阅详情
-        const subscriptionData = await publicClient.readContract({
+        // v3 合约：getSubscriptionDetail(uint256) 返回订阅详情 struct
+        const d = await publicClient.readContract({
           address: getSubscriptionManagerAddress(),
-          abi: SUBSCRIPTION_MANAGER_V1_ABI,
-          functionName: 'getSubscription',
+          abi: SUBSCRIPTION_MANAGER_ABI,
+          functionName: 'getSubscriptionDetail',
           args: [BigInt(subscriptionId)]
         }) as any
 
-        if (!subscriptionData || Number(subscriptionData.subscriptionId) === 0) {
+        if (!d || Number(d.subscriptionId) === 0) {
           return null
         }
 
-        // 转换数据格式
-        const transformedData = transformSubscriptionData([subscriptionData])
-        return transformedData[0] || null
+        const status = Number(d.status)
+        const expiresAt = BigInt(d.expiresAt?.toString() || '0')
+        const now = BigInt(Math.floor(Date.now() / 1000))
+        return {
+          subscriptionId: BigInt(d.subscriptionId.toString()),
+          planId: BigInt(0), // v3 无 planId
+          agentId: BigInt(d.agentId.toString()),
+          subscriber: (typeof d.subscriber === 'string' && d.subscriber.startsWith('0x')) ? d.subscriber as `0x${string}` : ZERO_ADDRESS,
+          status: status as SubscriptionStatus,
+          startDate: BigInt(d.startedAt?.toString() || '0'),
+          nextBillingDate: expiresAt,
+          endDate: expiresAt,
+          currentUsage: BigInt(d.amountPaid?.toString() || '0'),
+          totalPaid: BigInt(d.amountPaid?.toString() || '0'),
+          createdAt: BigInt(0),
+          isActive: status === SubscriptionStatus.Active && expiresAt + BigInt(3 * 24 * 60 * 60) > now,
+        }
       } catch (err) {
         console.error('获取订阅详情失败:', err)
-        
-        // 如果单个订阅查询失败，尝试从用户订阅列表中查找
-        try {
-          const allSubscriptions = await publicClient.readContract({
-            address: getSubscriptionManagerAddress(),
-            abi: SUBSCRIPTION_MANAGER_V1_ABI,
-            functionName: 'getUserSubscriptions',
-            args: [address]
-          }) as any[]
-
-          const transformedData = transformSubscriptionData(allSubscriptions)
-          const subscription = transformedData.find(
-            (sub: Subscription) => Number(sub.subscriptionId) === subscriptionId
-          )
-
-          return subscription || null
-        } catch (fallbackError) {
-          console.error('备用查询也失败:', fallbackError)
-          throw err
-        }
+        throw err
       }
     },
     enabled: !!subscriptionId && !!publicClient && !!address && isConnected,
@@ -419,7 +445,6 @@ export function useSubscriptionDetail(subscriptionId: number) {
   })
 }
 
-// 获取活跃订阅的Hook
 export function useActiveSubscriptions() {
   const { subscriptions, isLoading, isError, error } = useUserSubscriptions()
   
