@@ -24,5 +24,7 @@ export const SUBSCRIPTION_MANAGER_ABI = [
   { name: 'getUserSubscriptions', type: 'function', stateMutability: 'view',
     inputs: [{ name: 'user', type: 'address' }], outputs: [{ name: '', type: 'uint256[]' }] },
   { name: 'getSubscriptionDetail', type: 'function', stateMutability: 'view', inputs: [{ name: 'subscriptionId', type: 'uint256' }],
-    outputs: [{ name: 'subscriptionId', type: 'uint256' }, { name: 'subscriber', type: 'address' }, { name: 'agentId', type: 'uint256' }, { name: 'status', type: 'uint8' }, { name: 'startedAt', type: 'uint256' }, { name: 'expiresAt', type: 'uint256' }, { name: 'period', type: 'string' }, { name: 'payToken', type: 'address' }, { name: 'amountPaid', type: 'uint256' }, { name: 'trialActive', type: 'bool' }, { name: 'trialEndsAt', type: 'uint256' }, { name: 'fundsReleased', type: 'bool' }] },
+    outputs: [{ name: '', type: 'tuple', components: [
+      { name: 'subscriptionId', type: 'uint256' }, { name: 'subscriber', type: 'address' }, { name: 'agentId', type: 'uint256' }, { name: 'status', type: 'uint8' }, { name: 'startedAt', type: 'uint256' }, { name: 'expiresAt', type: 'uint256' }, { name: 'period', type: 'string' }, { name: 'payToken', type: 'address' }, { name: 'amountPaid', type: 'uint256' }, { name: 'trialActive', type: 'bool' }, { name: 'trialEndsAt', type: 'uint256' }, { name: 'fundsReleased', type: 'bool' }
+    ] }] },
 ] as const

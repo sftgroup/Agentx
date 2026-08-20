@@ -247,18 +247,16 @@ export function useSubscription(): UseSubscriptionReturn {
   const getSubscription = useCallback(async (sid:number) => {
     if (!publicClient||!address) return null
     try {
-      const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getSubscriptionDetail', args:[BigInt(sid)] })
-      const [sId,s,aId,status,started,expires,period] = r as unknown as [bigint,string,bigint,number,bigint,bigint,string]
-      return { subscriptionId:Number(sId),agentId:Number(aId),subscriber:s,status,startDate:Number(started),endDate:Number(expires),period,totalPaid:BigInt(0),createdAt:0 }
+      const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getSubscriptionDetail', args:[BigInt(sid)] }) as any
+      return { subscriptionId:Number(r.subscriptionId),agentId:Number(r.agentId),subscriber:r.subscriber,status:Number(r.status),startDate:Number(r.startedAt),endDate:Number(r.expiresAt),period:r.period,totalPaid:BigInt(0),createdAt:0 }
     } catch { return null }
   }, [publicClient,address])
 
   const getSubscriptionDetail = useCallback(async (sid:number) => {
     if (!publicClient) return null
     try {
-      const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getSubscriptionDetail', args:[BigInt(sid)] })
-      const [sId,s,aId,status,started,expires,period,pt,amt,tA,tE,fR] = r as [bigint,string,bigint,number,bigint,bigint,string,string,bigint,boolean,bigint,boolean]
-      return { subscriptionId:Number(sId),subscriber:s,agentId:Number(aId),status,startedAt:Number(started),expiresAt:Number(expires),period,payToken:pt,amountPaid:amt,trialActive:tA,trialEndsAt:Number(tE),fundsReleased:fR }
+      const r = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getSubscriptionDetail', args:[BigInt(sid)] }) as any
+      return { subscriptionId:Number(r.subscriptionId),subscriber:r.subscriber,agentId:Number(r.agentId),status:Number(r.status),startedAt:Number(r.startedAt),expiresAt:Number(r.expiresAt),period:r.period,payToken:r.payToken,amountPaid:r.amountPaid,trialActive:r.trialActive,trialEndsAt:Number(r.trialEndsAt),fundsReleased:r.fundsReleased }
     } catch { return null }
   }, [publicClient])
 
@@ -269,9 +267,8 @@ export function useSubscription(): UseSubscriptionReturn {
       const dets: Subscription[] = []
       for (const id of ids) {
         try {
-          const d = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getSubscriptionDetail', args:[id] })
-          const [sid,s,aId,status,started,expires,period] = d as unknown as [bigint,string,bigint,number,bigint,bigint,string]
-          dets.push({ subscriptionId:Number(sid),agentId:Number(aId),subscriber:s,status,startDate:Number(started),endDate:Number(expires),period,totalPaid:BigInt(0),createdAt:0 })
+          const d = await publicClient.readContract({ address:CONTRACT_ADDR, abi:SUBSCRIPTION_MANAGER_ABI, functionName:'getSubscriptionDetail', args:[id] }) as any
+          dets.push({ subscriptionId:Number(d.subscriptionId),agentId:Number(d.agentId),subscriber:d.subscriber,status:Number(d.status),startDate:Number(d.startedAt),endDate:Number(d.expiresAt),period:d.period,totalPaid:BigInt(0),createdAt:0 })
         } catch { /* skip */ }
       }
       setSubs(dets); return dets
