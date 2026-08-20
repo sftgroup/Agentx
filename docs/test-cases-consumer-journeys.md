@@ -288,3 +288,32 @@
 | J8 Billing 与密钥 | §9（C84–C93）+ §9A（C175–C184） | C311–C315（tenant 边界）、C322–C323（x402/payments 缺参） |
 | J9 订阅管理与自动续订 | §10（C94–C101）+ §10A（C185–C198） | C307–C310（AA 缺参/签名与 revoke 格式校验） |
 | J10 账户安全与退出 | §11（C102–C109）+ §18（C263–C265） | §17（C253–C262 安全渗透/多租户）、C276/C278（认证边界） |
+
+---
+
+## 附：生产实跑结果（2026-08-20，playwright + 注入钱包）
+
+> 执行工具：`/tmp/agentx-e2e/e2e.cjs`（playwright-core + 注入 `window.ethereum`，节点侧用测试钱包私钥签名；oxachain RPC 经生产 SSH 转发 `127.0.0.1:19506` → `rpc-oxa.0xainet.top`）。测试钱包 `0xd8e2…2812`（`~/agentx-prod-test-wallet.txt`）。
+
+| 旅程 | 结果 | 备注 |
+|---|---|---|
+| probe（无注入对照） | ✅ | 无注入打开 `/` 与 `/user/billing` 0 hydration 错误（证明 #418 为注入伪影而非真实缺陷） |
+| J1-H 钱包登录与会话 | ✅ | connect → 地址显示 → challenge/sign/verify 200 → tenant/me 200 → Billing 渲染 → 刷新仍保持连接 |
+| J1-E1 拒绝签名 | ✅ | 拒绝签名后 verify 未成功，保持未登录 |
+| J2 市场浏览 | ✅ | 卡片 50 个 → 搜索过滤 50→0 → 详情 → 非法 id 优雅降级；console=0 |
+| J4 对话使用 | ✅ | 连接后进受保护页自动登录（verify 200）；#418×10 注入伪影已记录 |
+| J8 Billing 与用量 | ✅ | 自动登录；套餐/用量/x402 余额全部渲染；#418×9 注入伪影已记录 |
+| J9 订阅管理与自动续订 | ✅ | **懒认证**（未点 Sign in 前无 challenge/verify）→ 订阅列表渲染 → 点 Sign in 后 verify 200；AutoRenewCard SKIP（测试钱包当前无 auto-renew 登记）；**console=0**（ABI 解码修复后无报错） |
+| J10 断开连接 | ✅ | 断开回到 Connect Wallet → 受保护页引导连接；console=0 |
+
+**汇总：39 PASS / 0 FAIL / 1 SKIP**（2026-08-20 复跑，J4/J8/J9 曾因 ABI 解码错位 FAIL，修复后全绿，见下）。
+
+### 本轮修复记录
+1. **跨秒 401**（commit `23881be`）：服务端用权威 `challenge.timestamp` 重建验签 message，前端传挑战返回的 timestamp。
+2. **J9 订阅解码错位**（commit `15d218f`）：`getSubscriptionDetail`/`getPlan` 链上返回**嵌套结构（前导 offset + tuple）**，前端 ABI 误写为**平铺 outputs** → viem 扁平解码把 offset 词当 subscriptionId、动态 string 越界（`Position out of bounds`）。修复 = outputs 改为**单个具名 tuple** + `useSubscription.ts` 三处数组解构改对象访问。本地 eth_call 实证 sub 10/27 与 plan 1/5 全部解码正常。
+3. **ABI 清理**（commit `8860a1d`）：删除已无引用的 `SubscriptionManagerV1.ts`。
+4. **注入钱包 hydration 伪影**（e2e.cjs）：模拟真实连接流（初态未连接，点击 connect 后持久化）→ 消除 SSR/客户端连接态不一致导致的 #423/#425；#418 按已知伪影记录。
+
+### 环境依赖（复跑前提）
+- 生产 SSH 转发 `127.0.0.1:19506` 需手动拉起：`ssh -N -L 19506:rpc-oxa.0xainet.top:443 pocketx-prod`（密码认证用 `~/.ssh/agentx-askpass.sh`）。
+- Chromium 需 fontconfig：`FONTCONFIG_FILE/FONTCONFIG_PATH=/tmp/agentx-e2e/fontconf`（系统无基础字体配置时 `<input>` 渲染崩溃）。

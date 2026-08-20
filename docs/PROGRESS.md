@@ -606,6 +606,9 @@
 | R8 SDK 子路径 | `dist/index.d.mts` 无 `useAgentRunner`、`dist/react` 有；前端导入 `@agentxv2/sdk/react` 后 typecheck + build 全绿 |
 | R9 revenue ERC20 | 生产 revenue 返回正确；`pay_token=0x0`（native sentinel）排除出 ERC20 分组 |
 | R10 定时任务冒烟 | 生产 13/14 PASS（创建/列表/启停/删除/一次性触发/周期触发/P9 gate failed 记录）；cleanup 后 0 残留 |
+| C 端用户旅程 E2E（注入钱包，2026-08-20） | 生产 `https://agentx.0xainet.top` 全链路 **39 PASS / 0 FAIL / 1 SKIP**（J1-H/J1-E1/J2/J4/J8/J9/J10 + 无注入 probe 对照）；J9 懒认证验证通过；详见 [test-cases-consumer-journeys.md](test-cases-consumer-journeys.md) 附录。期间修复 2 个真实缺陷（见下） |
+| 跨秒首次登录 401（`23881be`） | 服务端用权威 `challenge.timestamp` 重建验签 message（不再信任客户端 timestamp）；前端传挑战返回的 timestamp。J1-H challenge→sign→verify 200 复验 |
+| J9 订阅解码错位（`15d218f`） | `getSubscriptionDetail`/`getPlan` 链上为嵌套结构（前导 offset + tuple），ABI 误写平铺 outputs → viem 扁平解码越界。修复 = 单具名 tuple + `useSubscription.ts` 数组解构改对象访问；本地 eth_call 实证 sub 10/27 与 plan 1/5 解码正常；J9 console=0 |
 
 ---
 
