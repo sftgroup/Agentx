@@ -194,7 +194,7 @@ const result = await client.chat({ agentId: 42, message: '你好', enableMemory:
 
 | Doc | Content |
 |-----|---------|
-| [PROGRESS.md](./docs/PROGRESS.md) | **统一任务清单与进度**（P0–P4 全部任务状态 / 待办 / 生产环境 / 合约地址 / 验证记录） |
+| [PROGRESS.md](./docs/PROGRESS.md) | **统一任务清单与进度**（已完成任务归档摘要 / 待办（唯一 R4 外部前提）/ 生产环境 / 合约地址 / 验证记录） |
 | [publish-subscribe-pay.md](./docs/publish-subscribe-pay.md) | **发布 / 订阅 / 付费 集成指南**（三轨支付 + 多 Agent 编排分层 + category 必填） |
 | [integration-callers.md](./docs/integration-callers.md) | 调用方（业务团队）接入指南：Key / 会话任务 / MCP / 错误码 |
 | [sdk-integration-example.md](./docs/sdk-integration-example.md) | 第三方服务接入样例：SDK / MCP / REST 三通道可运行示例 |
