@@ -223,6 +223,13 @@ router.post('/rotate-key', async (req: Request, res: Response) => {
 // GET /api/v1/tenant/usage
 router.get('/usage', async (req: Request, res: Response) => {
   const days = parseInt(req.query.days as string || '30', 10)
+  // Guard non-numeric / out-of-range days — a NaN here would surface as a PG
+  // "interval out of range" error and, in this un-awaited handler, hang the
+  // request (see also DELETE /keys/:keyId UUID guard).
+  if (!Number.isInteger(days) || days < 1 || days > 365) {
+    res.status(400).json({ error: 'days must be an integer between 1 and 365' })
+    return
+  }
   const pool = getPool()
 
   const [summaryRow, timelineRows] = await Promise.all([
