@@ -63,8 +63,9 @@ export function aaPublicClient() {
 }
 
 /** aa-relay 统一调用（X-API-Key 鉴权；code!==0 或非 2xx 抛错）。
- *  timeoutMs：默认 30s；/v1/userops(wait:true) 需覆盖 relay 的
- *  charge（escrow 上链 ~12s）+ bundler 模拟/收据轮询（≤120s）总耗时 → 150s。 */
+ *  timeoutMs：默认 30s；/v1/session/revoke(wait:true) 等同步接口需覆盖 relay 的
+ *  charge（escrow 上链 ~12s）+ bundler 模拟/收据轮询（≤120s）总耗时 → 150s。
+ *  /v1/userops 的长耗时广播请走 submitUserOp（异步 202 + 轮询，避免长连接超时）。 */
 export async function relayRequest(path: string, body?: unknown, timeoutMs = 30_000): Promise<any> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
@@ -83,6 +84,37 @@ export async function relayRequest(path: string, body?: unknown, timeoutMs = 30_
   } finally {
     clearTimeout(timer)
   }
+}
+
+/** /v1/userops 异步提交 + 轮询收据（infraX REQ-3 正式口径，2026-08-21）：
+ *  提交 wait:false → 立即 202 + userOpHash（长连接解耦，避免代理/网关超时）；
+ *  随后 GET /v1/userops/:hash 轮询状态机 { status: pending|confirmed|reverted, receipt }。
+ *  异步收据后 relay 后台自动结算退差（与同步同口径）。
+ *  pollMs 内仍 pending 视为超时返回（预扣保留、仅告警），调用方按非致命处理。 */
+export interface UserOpSubmission {
+  userOpHash: string
+  status: 'pending' | 'confirmed' | 'reverted'
+  receipt?: any
+}
+export async function submitUserOp(
+  op: any,
+  opts: { pollMs?: number; pollIntervalMs?: number } = {},
+): Promise<UserOpSubmission> {
+  const { pollMs = 150_000, pollIntervalMs = 5_000 } = opts
+  const res = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: false }, 30_000)
+  const userOpHash: string = res?.userOpHash ?? res?.opHash
+  if (!userOpHash) throw new Error(`aa-relay /v1/userops (wait:false) returned no userOpHash: ${JSON.stringify(res)}`)
+  let status: UserOpSubmission['status'] =
+    res?.status === 'confirmed' || res?.status === 'reverted' ? res.status : 'pending'
+  let receipt: any = res?.receipt ?? null
+  const deadline = Date.now() + pollMs
+  while (status === 'pending' && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, pollIntervalMs))
+    const q = await relayRequest(`/v1/userops/${userOpHash}`, undefined, 30_000)
+    status = q?.status === 'confirmed' || q?.status === 'reverted' ? q.status : 'pending'
+    receipt = q?.receipt ?? receipt
+  }
+  return { userOpHash, status, receipt }
 }
 
 /** EIP-1559 fee 估算（失败用兜底，不阻断流程） */

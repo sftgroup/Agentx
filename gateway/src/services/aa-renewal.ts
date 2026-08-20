@@ -27,7 +27,7 @@ import {
   isAutoRenewEnabled,
   loadAaSdk,
   parsePolicy,
-  relayRequest,
+  submitUserOp,
 } from '../lib/aa-relay'
 import { getAccountFunding } from './aa-account'
 import { log } from './chain-data-reader'
@@ -330,8 +330,9 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
      WHERE subscriber = $1 AND agent_id = $2 AND plan_id = $3`,
     [subscriber.toLowerCase(), agentId, planId],
   )
-  const result = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: true }, 150_000)
-  const success = Boolean(result?.receipt?.success)
+  // 异步提交（wait:false → 202 + userOpHash）后轮询收据，解耦长连接（infraX REQ-3 口径）
+  const result = await submitUserOp(op, { pollMs: 150_000 })
+  const success = result.status === 'confirmed' && Boolean(result.receipt?.success)
   if (success) {
     await pool.query(
       `UPDATE aa_auto_renew SET renew_count = renew_count + 1, last_renew_tx = $2, last_renew_err = NULL,
@@ -356,7 +357,12 @@ async function renewOne(row: any, nowSec: number, windowSec: number): Promise<bo
     log.info(`[aa-renewal] renewed plan ${planId} for ${subscriber} (op=${result.userOpHash})`)
     return true
   }
-  await markRenewError(subscriber, agentId, planId, `renewal op failed on-chain (op=${result.userOpHash})`)
+  if (result.status === 'reverted') {
+    await markRenewError(subscriber, agentId, planId, `renewal op reverted on-chain (op=${result.userOpHash})`)
+  } else {
+    // pending 超时：预扣保留、非致命；冷却期内不再重提，由下次 scan 复查（op 可能已确认）
+    await markRenewError(subscriber, agentId, planId, `renewal op pending at timeout (op=${result.userOpHash})`)
+  }
   return false
 }
 

@@ -36,6 +36,7 @@ import {
   parsePolicy,
   relayRequest,
   stringifyPolicy,
+  submitUserOp,
 } from '../lib/aa-relay'
 import { ensureAccountDeployed, hasOnChainSession, resolveExistingSessionId } from './aa-account'
 
@@ -409,9 +410,10 @@ export async function confirmAutoRenew(p: ConfirmAutoRenewParams): Promise<{
     signMessage: async () => p.ownerSignature as Hex,
   }
   const op = await aa.signEnableUserOp({ chainConfig: cfg, draft, ownerSigner, agentSigner })
-  const result = await relayRequest('/v1/userops', { chain: config.aaRelayChain, op, wait: true }, 150_000)
+  // 异步提交 + 轮询（wait:false → 202 + userOpHash），解耦 enable 长连接（infraX REQ-3 口径）
+  const result = await submitUserOp(op, { pollMs: 150_000 })
 
-  const receiptSuccess = Boolean(result?.receipt?.success)
+  const receiptSuccess = result.status === 'confirmed' && Boolean(result.receipt?.success)
   if (receiptSuccess) {
     await pool.query(
       `UPDATE aa_auto_renew SET renew_status = 'enabled', last_renew_err = NULL,

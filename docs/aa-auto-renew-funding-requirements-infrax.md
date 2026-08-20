@@ -4,7 +4,7 @@
 > 日期：2026-08-19
 > 接收方：InfraX（`projects/escrow` / `projects/aa-relay`）
 > 性质：aa-relay A-10 计费 + InfraXEscrow 的**充值路径闭环**增量需求（不覆盖 `PAYMASTER_ONCHAIN_ESCROW_DESIGN.md` 的通用托管设计，与之衔接）
-> 状态：待 infraX 评审排期
+> 状态：✅ 全部确认/落地（2026-08-21 infraX 正式答复；REQ-1/REQ-2 已生产上线，REQ-3 官方口径见 §3.1）
 
 ---
 
@@ -69,6 +69,38 @@ AgentX ERC-4337 自动续订已于 2026-08-19 全链路打通（enable → confi
 - 收据后退差语义：`refund/extra`（多退少补）、广播失败全额退还；
 - 计费往返耗时（AgentX 实测 charge ~12s + bundler 模拟 ~24s+）与 **SLA/超时建议值**（AgentX 网关已用 150s 超时；建议 relay 文档给出推荐客户端超时）；
 - 可选：relay 异步提交模式（`POST /v1/userops` 返回 opHash 即 202，收据走 `GET /v1/userops/:hash` 轮询），消除长连接超时耦合。
+
+### 3.1 REQ-3 官方确认口径（infraX，2026-08-21 正式答复）
+
+> REQ-1（`InfraXEscrow.depositFor`）、REQ-2（ledger-balance/资金总览/402 文案）均已生产上线。
+
+**1. 预扣构成 — 确认，无调整**
+单次 UserOp 预扣 = 固定费（`AA_USEROP_FEE_WEI`，默认 0.0001 OXA）+ 预估 gas（`callGasLimit`+`verificationGasLimit`+`preVerificationGas`）× `maxFeePerGas`。生产实测预扣约 **0.0025 OXA/次**。
+
+**2. 退差语义 — 确认，同步/异步已统一**
+- 收据后：实际扣费 = 固定费 + `actualGasCost`，**多退少补**（refund / extra）；
+- 广播失败：**全额退还**预扣；
+- 结算/退款失败：自动重试 3 次（指数退避 800ms/1.6s/3.2s；402 余额不足类业务错误不重试）；
+- 对账事件：`Charged(user, amount, ref)` / `Refunded(user, amount, ref)`，退差/追扣 ref 带 `:refund` / `:extra` 后缀。
+
+**3. 耗时与 SLA — 有实测，无硬性官方 SLA**
+| 阶段 | 耗时 |
+|---|---|
+| escrow charge 上链确认 | ~12s |
+| bundler 模拟 + 广播 + 收据 | ~24s+ |
+| 端到端（charge→settle） | ~40-60s |
+
+客户端超时建议 **≥150s**（AgentX 当前 150s 合理）；长耗时场景建议用异步模式解耦。
+
+**4. 异步提交模式 — 已支持，返回 202**
+- `POST /v1/userops` body 传 `wait:false` → 立即返回 **202 Accepted + opHash**（已从 200 调整为严格 202）；
+- 收据轮询：`GET /v1/userops/:hash` → 新增状态机 `{status: pending | confirmed | reverted, receipt}`；
+- 异步收据后在**后台自动结算退差**（与同步同口径，不再"成功不退差"）；120s 无收据保留预扣仅告警。
+
+**附加 — 限额（已透出，供前端充值引导参考）**
+链上默认 `perTx=1 OXA / perDay=10 OXA`（按计费账户维度）。自动续订单次 ~0.0025 OXA，默认限额单账户每日可支撑约 **4000 次续订**；如需更大额度可用 `setChargeLimit(account, perTx, perDay)` 定制（owner 可调全局默认）。`GET /v1/plans` 响应含 `limits` 字段。
+
+> **AgentX 落点（2026-08-21）**：gateway 续订 / enable 的 `/v1/userops` 广播已切换为 `wait:false` + `GET /v1/userops/:hash` 轮询（`lib/aa-relay.ts` 的 `submitUserOp`，pollMs 150s）；`/v1/session/revoke` 仍按契约 `wait:true`。对账沿用 `Charged/Refunded` 事件（ref 后缀语义见上）。
 
 ### REQ-4（P2，AgentX 自理备选，不依赖合约升级）self-pay 充值路径
 

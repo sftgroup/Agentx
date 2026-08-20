@@ -510,6 +510,7 @@
 > 来源：aa-relay A-10 计费（escrow 模式）——每次 UserOp 向 `op.sender`（智能账户）预扣固定费 + 预估 gas；余额取自链上 `InfraXEscrow(0x8bf8ffee…).balanceOf(sender)`，`deposit()` 只记 `msg.sender` → **用户如何给智能账户充值 escrow 是当前唯一产品闭环缺口**。需求文档：[aa-auto-renew-funding-requirements-infrax.md](aa-auto-renew-funding-requirements-infrax.md)（REQ-1~5 + §4 AgentX 侧自理）。
 > **资金模型（链上实证）**：订阅费 = 子账户 native 余额（execute value）；UserOp gas = 子账户 EntryPoint deposit；relay 服务费（约 0.00246 OXA/次）= 子账户在 InfraXEscrow 的 `_balances[account]`。三类资金按账户独立记账，EOA 与子账户互不共用。
 > **2026-08-20 infraX 交付确认**：REQ-1 已落地（`InfraXEscrow.depositFor` 合约升级已部署，impl `0x5ff86381…`）、REQ-2 已交付（ledger-balance 503 修复 + 资金总览 + 402 文案修正）→ **主路径确定，AgentX 前端直接按一次 `depositFor` 引导选型，self-pay fallback（e3）关闭**；REQ-3 价目文档状态待 infraX 确认。
+> **2026-08-21 infraX 正式答复 REQ-3（全部闭环）**：预扣构成确认无调整（实测 ~0.0025 OXA/次）；退差语义统一（实扣=固定费+actualGasCost 多退少补、广播失败全额退、失败重试 3 次、对账 ref 带 `:refund`/`:extra` 后缀）；无硬性 SLA（端到端 ~40-60s，客户端超时建议 ≥150s）；异步模式已支持（`wait:false` → 严格 202 + opHash，`GET /v1/userops/:hash` 轮询状态机，异步收据后同样后台退差）；限额 perTx=1/perDay=10 OXA（`GET /v1/plans` 含 limits）。详见需求文档 §3.1。
 
 | # | Task | 状态 | 依赖 / 备注 |
 |---|---|---|---|
@@ -518,7 +519,8 @@
 | **e3** | 【fallback 已关闭】自动续订 session 白名单增加 `escrow.deposit()` 条目（self-pay 充值） | ⏸ 不采用 | REQ-1 已落地，无需 fallback（REQ-4 关闭） |
 | **e4** | 余额不足主动告警：gateway 在 escrow 不足时提前发送站内/邮件通知（现状 `renewOne` ⑦ 已有 escrow 预检 + 失败护栏自动暂停，缺「提前主动通知」与恢复引导） | ✅ 完成 | `watchFunding` 资金巡检（到期前 `AA_ALERT_AHEAD_SEC` 提前窗口，缺 escrow/native/gas 任一项 → `sendAlert` webhook 告警；`AA_ALERT_MIN_INTERVAL_SEC` 节流防轰炸；已进入续订窗口交给 `renewOne` ⑦ 预检）。迁移 028 加 `last_funding_alert_at`；scan 集成（alerts 计数） |
 | **e5** | 计费对账：escrow `Charged/Refunded` 事件与本地 `renew_log` 对账任务 | ✅ 完成 | [reconcile-escrow.ts](../gateway/src/services/reconcile-escrow.ts)：增量同步 escrow Charged/Refunded 事件（迁移 029 `aa_escrow_events` + `aa_escrow_sync`，块跨度分页；**首次同步直接从最近 `AA_ESCROW_SYNC_BLOCK_SPAN` 块起算，不从区块 0 回填**，首轮即追平）→ 每账户净扣费 vs `renew_log` 条数×固定费（`AA_ESCROW_RECONCILE_MIN/MAX_RATIO`）→ 漏计费/重复扣费/净额为负三类告警；追平前不判定防误报；daemon 注册 |
-| **e6** | 【infraX 侧前置】REQ-1 `InfraXEscrow.depositFor(address user)` 合约升级 + REQ-2 relay 资金总览端点 / 402 `topupHint` 文案修正 + REQ-3 价目文档 | ✅ 已交付（REQ-1/2）；REQ-3 待确认 | REQ-1 impl `0x5ff86381…` 已部署；REQ-2 已上线（见 funding-requirements §3） |
+| **e6** | 【infraX 侧前置】REQ-1 `InfraXEscrow.depositFor(address user)` 合约升级 + REQ-2 relay 资金总览端点 / 402 `topupHint` 文案修正 + REQ-3 价目文档 | ✅ 已交付/已确认（REQ-1/2/3 全部闭环，2026-08-21） | REQ-1 impl `0x5ff86381…` 已部署；REQ-2 已上线；REQ-3 官方口径见 funding-requirements §3.1 |
+| **e7** | 【REQ-3 落点】gateway 续订 / enable 的 `/v1/userops` 广播切换为异步（`wait:false` → 202 + opHash，`GET /v1/userops/:hash` 轮询收据），解耦长连接；`/v1/session/revoke` 保持契约 `wait:true` | ✅ 完成（2026-08-21） | [lib/aa-relay.ts](../gateway/src/lib/aa-relay.ts) 新增 `submitUserOp`（pollMs 150s）；aa-renewal（renewOne ⑧）/ aa-session（confirm）接入；reverted 与 pending 超时区分非致命错误，冷却期防重不变 |
 
 - **验收标准**：① EOA 单笔 tx 调 `depositFor(子账户)` 入账成功，`balanceOf(子账户)` 即时可见；② 子账户 escrow 余额充足时 relay 广播 UserOp 不再 402；③ 前端可引导用户完成智能账户充值并展示三类资金视图；④ 余额不足时用户收到提前通知，补齐后自动恢复续订。
 

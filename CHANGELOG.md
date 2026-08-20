@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-08-21 — 自动续订广播切换异步（REQ-3 闭环）+ 文档归档
+
+- **infraX REQ-3 正式确认（2026-08-21）**：预扣构成无调整（实测 ~0.0025 OXA/次）；退差同步/异步统一（实扣=固定费+actualGasCost 多退少补、广播失败全额退、失败重试 3 次、对账 ref 带 `:refund`/`:extra` 后缀）；无硬性 SLA（端到端 ~40-60s，客户端超时建议 ≥150s）；异步模式已支持（`wait:false` → 严格 202 + opHash + `GET /v1/userops/:hash` 轮询状态机）；限额 perTx=1/perDay=10 OXA（`GET /v1/plans` 含 limits）。详见 [aa-auto-renew-funding-requirements-infrax.md](docs/aa-auto-renew-funding-requirements-infrax.md) §3.1
+- **gateway 广播切换异步**：续订（aa-renewal `renewOne`）与 enable 确认（aa-session `confirmAutoRenew`）的 `/v1/userops` 由 `wait:true`（长连接 150s）改为 `wait:false` + 轮询收据——[lib/aa-relay.ts](gateway/src/lib/aa-relay.ts) 新增 `submitUserOp`（pollMs 150s）；reverted / pending 超时区分处理（非致命，冷却期防重不变）；`/v1/session/revoke` 保持契约 `wait:true`
+- **文档**：需求文档状态 → ✅ 全部确认/落地；PROGRESS.md T2-B REQ-3/e6 → 闭环，新增 e7 落点行
+- 验证：gateway `tsc --noEmit` 通过；aa-autorenew + aa-auto-renew-api 单测 59/59 通过
+
+---
+
 ## 2026-08-21 — C 端 UI 回归套件入库（e2e/）+ 链上订阅 fixture
 
 - **e2e 套件纳入仓库**（原 /tmp 临时脚本，支持 CI 复跑）：
