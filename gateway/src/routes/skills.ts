@@ -24,9 +24,9 @@ router.get('/', async (req: Request, res: Response) => {
   }
 })
 
-// GET /api/v1/skills/my — Publisher's submitted skills (JWT auth)
+// GET /api/v1/skills/my — Publisher's submitted skills (JWT / X-Api-Key auth)
 // NOTE: must be declared BEFORE /:id so express doesn't swallow '/my' as an id.
-router.get('/my', async (req: Request, res: Response) => {
+router.get('/my', apiKeyAuth, authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = req.tenant?.walletAddress
     if (!user) return res.status(401).json({ error: 'Authentication required' })
@@ -75,20 +75,6 @@ router.post('/', apiKeyAuth, authMiddleware, async (req: Request, res: Response)
   } catch (err) {
     console.error('[Skills] Submit error:', err)
     res.status(500).json({ error: 'Failed to submit skill' })
-  }
-})
-
-// GET /api/v1/skills/my — Publisher's submitted skills (JWT auth)
-router.get('/my', async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user
-    if (!user?.address) return res.status(401).json({ error: 'Authentication required' })
-
-    const skills = await getSkillService().listByPublisher(user.address)
-    res.json({ skills })
-  } catch (err) {
-    console.error('[Skills] My list error:', err)
-    res.status(500).json({ error: 'Failed to list your skills' })
   }
 })
 
