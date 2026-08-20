@@ -337,7 +337,7 @@
 **汇总：43 PASS / 0 FAIL / 1 SKIP（SKIP=聊天 UI 需链上订阅环境）**
 
 ### 本轮修复记录（2026-08-21）
-1. **Platform API Key 认证竞态**（commit `0ea21d2`）：`/user/settings` 的 `PlatformApiKey` 卡原先自行 challenge/sign/verify，与 `useGatewayAuth` 并发对同一钱包取 challenge → 后取者覆盖前者的 pending nonce → 其中一个 verify 401「Challenge expired or not found」，卡片首次挂载显示红色错误。修复 = `PlatformApiKey` 改为复用父级 `useGatewayAuth` 的 JWT 直接 `GET /api/v1/auth/api-key`，消除二次 challenge；实测 auth 调用由「2× challenge + 1× 401 verify」降为「1× challenge + 1× verify 200」。
+1. **Platform API Key 认证竞态**（commit `7be4c9b`）：`/user/settings` 的 `PlatformApiKey` 卡原先自行 challenge/sign/verify，与 `useGatewayAuth` 并发对同一钱包取 challenge → 后取者覆盖前者的 pending nonce → 其中一个 verify 401「Challenge expired or not found」，卡片首次挂载显示红色错误。修复 = `PlatformApiKey` 改为复用父级 `useGatewayAuth` 的 JWT 直接 `GET /api/v1/auth/api-key`，消除二次 challenge；实测 auth 调用由「2× challenge + 1× 401 verify」降为「1× challenge + 1× verify 200」。
 2. **C178 删除按钮选择器**：实际 DOM 中 `Trash2` 图标 class 为 `lucide-trash2`（无连字符），审计脚本 `svg.lucide-trash-2` 修正为 `svg.lucide-trash2`。
 
 ### 环境依赖（复跑前提）
