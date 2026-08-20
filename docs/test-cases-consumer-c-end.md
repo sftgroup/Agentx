@@ -732,6 +732,8 @@ flowchart LR
 | SKIP | **49**（均为合理跳过，见下） |
 | FAIL | **0** |
 
+> **B1 组补测（2026-08-20，独立运行）**：主套件 SKIP 中的 8 条平台任务流/定时触发用例，在「测试租户注入有效订阅 + RPM 临时提至 240」后已实测通过：**C49 / C67 / C68 / C69 / C82 / C170 / C174 / C299 = 8 PASS**（C174 原为产品缺口，本次补实现后跑通，见「已修复缺口②」）。
+
 ### 本次实跑发现并修复的缺陷（生产已部署，commits 674a18b / 1bd1bdc / 79c5e01）
 
 | # | 缺陷 | 根因 | 修复 |
@@ -742,11 +744,11 @@ flowchart LR
 | 4 | `chat/completions` BYOK `tenant_key_id` 非 UUID → 500 | 同上 PG UUID 错误，被外层 catch 兜成 500 | 校验 UUID，非法返回 400 `Tenant API key not found or inactive` |
 | 5 | `GET /tenant/usage?days=abc` → 请求挂起 | `parseInt('abc')=NaN` → `INTERVAL '1 day' * NaN` → PG `interval out of range` → 原始 async 处理挂起 | 校验 `days` 为 1–365 整数，非法返回 400 |
 
-### SKIP 分类（49 条，均为环境/前置依赖，非缺陷）
+### SKIP 分类（主套件 49 条；其中 8 条已由 B1 补测解锁，见下）
 
 - **需故障注入**（C342–C347、C351、C364）：断 PG / 断 Redis / RPC 故障 / 未知错误泄漏——按执行策略勿在共享生产租户注入。
-- **需链上/订阅/配额状态**（C49/C52/C53/C63/C67/C68/C69/C82/C88/C89/C170/C174/C239–C243、C363）：需真实运行任务、余额不足、配额耗尽、未订阅 agent、fiat 未配置等。
-- **需管理/管理员操作**（C11、C227、C236、C257、C258、C275、C299、C300）。
+- **需链上/订阅/配额状态**（C52/C53/C63/C88/C89/C239–C243、C363）：需余额不足、配额耗尽、未订阅 agent、fiat 未配置等。原属此类的 C49/C67/C68/C69/C82/C170/C174/C299 已由 B1 补测解锁（注入订阅后实测 PASS；C174 经补实现后跑通，见「已修复缺口②」）。
+- **需管理/管理员操作**（C11、C227、C236、C257、C258、C275、C300）。
 - **需测试渠道 active 状态**（C211/C214/C215）：渠道入驻申请为 `pending`，归因需 active channel。
 - **会影响共享租户/真实数据**（C181/C183 key 轮换、C105 全局限流 >1000、C93 跨天配额重置、C101/C319 生产已启用特性、C328/C329 fiat、C337/C366–C368 SSE 长连接）。
 - **需跨端/浏览器**（C110–C210、C263–C274 前端 UI 层）：本表为 API 层实跑，UI 层见 `test-cases-consumer-journeys.md`（J1 钱包登录旅程 39 用例已实跑）与 `test-cases-aa-auto-renew.md`。
@@ -756,3 +758,22 @@ flowchart LR
 - 逐条结果：`/tmp/agentx-cend/run6.log`（155 PASS / 49 SKIP / 0 FAIL）；CSV：`/tmp/agentx-cend/report-cend.csv`（204 行）。
 - 复跑：`cd /tmp/agentx-cend && node run-all.cjs`（前置：SSH tunnel :19506 → `rpc-oxa.0xainet.top`、测试钱包私钥 `PK`、租户 `rate_limit_rpm` 临时提至 240——**实跑后已回滚至 5**，复跑需再提）。
 - 数据清理已执行：rate_limit_rpm 240→5、E2E 技能 6 条、E2E 渠道申请 6 条、软删测试 schedules 均已清理，`channel_attributions` 0 行残留。
+
+### B1 补测（2026-08-20，`/tmp/agentx-cend/suite-b1.cjs`）
+
+前置：向测试租户注入有效 `fiat_subscriptions`（agent 1 / plan 1 / active），租户 `rate_limit_rpm` 临时提至 240；实跑后订阅已删除、RPM 已回滚 5、测试 schedules 已清理。
+
+| # | 用例 | 结果 | 实测证据 |
+|---|---|---|---|
+| C49 | 平台 quota 计费落库 | PASS | 平台任务完成后 Redis `quota:<tenant>` 由 3319 → 5047（增量 1728 = done 事件 totalTokens，精确一致） |
+| C67 | 任务 SSE 事件流 | PASS | `GET /tasks/:id/events` → 4 个 SSE 事件（text + done 含 usage/llmSource=platform） |
+| C68 | 取消任务 | PASS | 建任务后立即 `DELETE /tasks/:id` → 200，任务终态 `cancelled` |
+| C69 | 平台 token 计费一次 | PASS | done 事件 `usage.totalTokens=1728`、`llmSource=platform`，双通道幂等 |
+| C82 | 定时触发创建任务 | PASS | one_time 到点后 schedule-daemon 触发，`/schedules/:id/runs` 记录 `status=triggered` + task_id |
+| C170 | 停用不再触发 | PASS | 停用 schedule 到点后 `runs` 为空 |
+| C299 | re-enable 自动重排 | PASS | interval schedule disable→enable 往返，`next_run_at` 保持未来（未到期不立即触发） |
+| C174 | 触发时再校验订阅 failed | PASS（已修复） | 撤销订阅后实测：schedule 创建 201（C83 相符）→ 到点触发 run 记录 `failed`（error=AGENT_ACCESS_DENIED，task_id=null），**未创建任务**；由本次补实现后实测通过，见「已修复缺口②」 |
+
+**发现的产品缺口（非本次引入，需产品/后端确认）**：
+- ① 前端并行任务路径 `POST /sessions/:sid/tasks` 的平台 token 计费仅累加租户 quota（Redis `quota:<tenant>`，见 `updateQuota`），**不写 `usage_logs`**（`usage_logs` 仅 `POST /chat/completions` 路径写入，`routes/chat.ts`）。文档 C49 预期「usage_logs 落库 + quota_used 累加」中前半段未落地——`/api/v1/tenant/usage` 对任务型对话恒返回空。是否需任务路径补写 `usage_logs` 请产品/后端确认。
+- ② ~~定时任务到点触发时无订阅再校验~~ **已修复（本次补实现，2026-08-20）**：`schedule-daemon.processDue`（[schedule-daemon.ts](file:///home/steven/Agentx/gateway/src/services/schedule-daemon.ts#L72-L78)）在 P9 门卫后新增 `canAccessAgent(s.tenant, s.agent_id)` 触发时订阅/拥有校验——无订阅且非拥有则 `recordRun('failed', 'AGENT_ACCESS_DENIED')` 且不建任务。**实跑验证**：无订阅到点触发 → run=failed/AGENT_ACCESS_DENIED、未建任务（C174 PASS）；有订阅 → 仍 triggered + 建任务（C82 回归 PASS）。已部署生产 `agentx-gateway`（pm2 重启），改动待 commit。
