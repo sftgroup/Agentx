@@ -67,6 +67,7 @@ export function useGatewayAuth(gatewayUrl?: string, opts?: { lazy?: boolean }) {
   const [context, setContext] = useState<GatewayContext | null>(null)
   const tokenRef = useRef<string | null>(null)
   const expiringRef = useRef(false)
+  const authInFlightRef = useRef(false)
 
   const authenticate = useCallback(async () => {
     if (!gatewayUrl || !isConnected || !address || !walletClient) {
@@ -74,6 +75,15 @@ export function useGatewayAuth(gatewayUrl?: string, opts?: { lazy?: boolean }) {
       setContext(null)
       return
     }
+
+    // Coalesce concurrent authenticate() runs. isConnected/address/walletClient settle in
+    // rapid succession after connect, so the mount effect can invoke authenticate twice in
+    // flight. Each call fetches its own challenge; the second overwrites the first's nonce
+    // on the gateway, so the first verify returns 401 and whichever call resolves last wins
+    // the state — leaving isAuthenticated=false even though a later verify succeeded.
+    // Only the first in-flight attempt runs; later calls during that window are no-ops.
+    if (authInFlightRef.current) return
+    authInFlightRef.current = true
 
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
@@ -131,6 +141,8 @@ export function useGatewayAuth(gatewayUrl?: string, opts?: { lazy?: boolean }) {
         isAuthenticated: false,
       })
       setContext(null)
+    } finally {
+      authInFlightRef.current = false
     }
   }, [gatewayUrl, isConnected, address, walletClient])
 

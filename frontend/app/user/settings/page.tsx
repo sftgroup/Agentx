@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Settings, Plus, Trash2, Check, X, Zap, Key, Copy, Eye, EyeOff, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react'
-import { useAccount, useWalletClient } from 'wagmi'
+import { useAccount } from 'wagmi'
 import { useGatewayAuth } from '@/hooks/useGatewayAuth'
 import { GATEWAY_URL_OPTIONAL } from '@/lib/gateway'
 
@@ -121,7 +121,7 @@ export default function SettingsPage() {
         )}
 
         {/* ── Platform API Key ─────────────────────────────────────── */}
-        <PlatformApiKey />
+        <PlatformApiKey accessToken={accessToken} />
 
         {/* ── Own LLM Keys (server-stored BYOK) ───────────────────── */}
         <div className="space-y-3">
@@ -295,9 +295,7 @@ function KeyForm({ busy, onSubmit, onCancel }: {
 
 // ── Platform API Key (existing) ────────────────────────────────────────────
 
-function PlatformApiKey() {
-  const { address, isConnected } = useAccount()
-  const { data: walletClient } = useWalletClient()
+function PlatformApiKey({ accessToken }: { accessToken: string | null }) {
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -307,33 +305,16 @@ function PlatformApiKey() {
   const gatewayUrl = GATEWAY_URL_OPTIONAL
 
   const fetchApiKey = useCallback(async () => {
-    if (!gatewayUrl || !isConnected || !address || !walletClient) return
+    if (!gatewayUrl || !accessToken) return
     setLoading(true)
     setError(null)
     try {
-      // Step 1: Auth via wallet signature
-      const challengeRes = await fetch(`${gatewayUrl}/api/v1/auth/challenge?address=${address}`)
-      const { challenge, timestamp } = await challengeRes.json()
-      const signature = await walletClient.signMessage({
-        account: walletClient.account!,
-        message: challenge,
-      })
-      const verifyRes = await fetch(`${gatewayUrl}/api/v1/auth/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          wallet_address: address,
-          signature,
-          timestamp,
-          nonce: challenge.split(':').pop(),
-        }),
-      })
-      const verifyData = await verifyRes.json()
-      if (!verifyRes.ok) throw new Error(verifyData.error || 'Auth failed')
-
-      // Step 2: Fetch API key
+      // Reuse the parent's gateway JWT (useGatewayAuth) — no second
+      // challenge/sign/verify. An independent challenge would overwrite the
+      // first hook's pending nonce (one pending challenge per wallet), making
+      // one of the two verifies 401 "Challenge expired or not found".
       const keyRes = await fetch(`${gatewayUrl}/api/v1/auth/api-key`, {
-        headers: { Authorization: `Bearer ${verifyData.access_token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       })
       const keyData = await keyRes.json()
       if (!keyRes.ok) throw new Error(keyData.error || 'Failed to fetch API key')
@@ -344,11 +325,11 @@ function PlatformApiKey() {
     } finally {
       setLoading(false)
     }
-  }, [gatewayUrl, isConnected, address, walletClient])
+  }, [gatewayUrl, accessToken])
 
   useEffect(() => {
-    if (isConnected && !apiKey) fetchApiKey()
-  }, [isConnected, fetchApiKey, apiKey])
+    if (accessToken && !apiKey) fetchApiKey()
+  }, [accessToken, fetchApiKey, apiKey])
 
   const copyToClipboard = async () => {
     if (!apiKey) return
@@ -357,7 +338,7 @@ function PlatformApiKey() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  if (!isConnected) {
+  if (!accessToken) {
     return (
       <div className="glass-card p-6">
         <div className="flex items-center gap-3 mb-4">

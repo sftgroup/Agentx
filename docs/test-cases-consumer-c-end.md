@@ -751,7 +751,7 @@ flowchart LR
 - **需管理/管理员操作**（C11、C227、C236、C257、C258、C275、C300）。
 - **需测试渠道 active 状态**（C211/C214/C215）：渠道入驻申请为 `pending`，归因需 active channel。
 - **会影响共享租户/真实数据**（C181/C183 key 轮换、C105 全局限流 >1000、C93 跨天配额重置、C101/C319 生产已启用特性、C328/C329 fiat、C337/C366–C368 SSE 长连接）。
-- **需跨端/浏览器**（C110–C210、C263–C274 前端 UI 层）：本表为 API 层实跑，UI 层见 `test-cases-consumer-journeys.md`（J1 钱包登录旅程 39 用例已实跑）与 `test-cases-aa-auto-renew.md`。
+- **需跨端/浏览器**（C110–C210、C263–C274 前端 UI 层）：本表为 API 层实跑，UI 层见 `test-cases-consumer-journeys.md`（J1 钱包登录 39 用例 + **2026-08-21 UI 层深查 43 PASS / 0 FAIL / 1 SKIP**，SKIP=聊天 UI 需链上订阅环境）与 `test-cases-aa-auto-renew.md`。
 
 ### 产物与复跑
 

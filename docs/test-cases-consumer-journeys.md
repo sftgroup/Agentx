@@ -314,6 +314,32 @@
 3. **ABI 清理**（commit `8860a1d`）：删除已无引用的 `SubscriptionManagerV1.ts`。
 4. **注入钱包 hydration 伪影**（e2e.cjs）：模拟真实连接流（初态未连接，点击 connect 后持久化）→ 消除 SSR/客户端连接态不一致导致的 #423/#425；#418 按已知伪影记录。
 
+### UI 层深查结果（2026-08-21，playwright + 注入钱包）
+
+针对「前端 UI 层」用例段（C110–C210 + C263–C274）的逐页实跑审计（脚本 `/tmp/agentx-e2e/ui-tabs.cjs` + `/tmp/agentx-e2e/schedules-e2e.cjs`，前置 fiat 订阅注入 + RPM 240）：
+
+| 页面/用例 | 结果 | 备注 |
+|---|---|---|
+| 市场详情 4 Tab（C117/C118/C119/C121） | ✅ | Overview/Skills/Reviews/Pricing 渲染，console=0 |
+| 未知 agent（C201） | ✅ | Not Found 页优雅降级，console=0 |
+| /user/plans（C270） | ✅ | 标题渲染，console=0 |
+| 技能市场（C271/C272/C273） | ✅ | 5 分类过滤、提交表单必填校验、我的技能空态，console=0 |
+| /user/settings 密钥管理（C175–C178） | ✅ | Add/Validate/Delete 全流程；C178 删除按钮选择器已修正（DOM 图标 class 为 `lucide-trash2`） |
+| Platform API Key 卡（auth 竞态） | ✅ | **修复**：原与 useGatewayAuth 并发双 challenge → 单 verify 401「Challenge expired」，改为复用父级 JWT 后单 challenge/verify 200（见下） |
+| 双语言（C199/C200） | ✅ | zh-Hant 切换 + 刷新后 0 hydration/JS error |
+| 移动端 375px（C265） | ✅ | 市场/聊天页无横向溢出 |
+| 聊天页引导（C110） | ✅ | 未连接 → Connect Wallet Required/Checking |
+| 聊天 UI（C147/C148） | ⚠️ SKIP | 测试钱包仅 fiat 订阅、无链上订阅 → SubscriptionGuard 付费墙（预期行为，需链上订阅环境才能展开聊天 UI） |
+| 订阅列表（C10A/C210） | ✅ | Active/Expiring Soon/Expired Tabs + 到期告警横幅 |
+| 定时任务（C164/C170/C171 + J7-H） | ✅ | 创建 one_time / 停用 / 删除全流程，console=0 |
+| A2A 页（C155/C158/C7A） | ✅ | 面板/过滤/任务区渲染（2026-08-20 实跑，页面本轮未改动） |
+
+**汇总：43 PASS / 0 FAIL / 1 SKIP（SKIP=聊天 UI 需链上订阅环境）**
+
+### 本轮修复记录（2026-08-21）
+1. **Platform API Key 认证竞态**（commit `0ea21d2`）：`/user/settings` 的 `PlatformApiKey` 卡原先自行 challenge/sign/verify，与 `useGatewayAuth` 并发对同一钱包取 challenge → 后取者覆盖前者的 pending nonce → 其中一个 verify 401「Challenge expired or not found」，卡片首次挂载显示红色错误。修复 = `PlatformApiKey` 改为复用父级 `useGatewayAuth` 的 JWT 直接 `GET /api/v1/auth/api-key`，消除二次 challenge；实测 auth 调用由「2× challenge + 1× 401 verify」降为「1× challenge + 1× verify 200」。
+2. **C178 删除按钮选择器**：实际 DOM 中 `Trash2` 图标 class 为 `lucide-trash2`（无连字符），审计脚本 `svg.lucide-trash-2` 修正为 `svg.lucide-trash2`。
+
 ### 环境依赖（复跑前提）
 - 生产 SSH 转发 `127.0.0.1:19506` 需手动拉起：`ssh -N -L 19506:rpc-oxa.0xainet.top:443 pocketx-prod`（密码认证用 `~/.ssh/agentx-askpass.sh`）。
 - Chromium 需 fontconfig：`FONTCONFIG_FILE/FONTCONFIG_PATH=/tmp/agentx-e2e/fontconf`（系统无基础字体配置时 `<input>` 渲染崩溃）。
