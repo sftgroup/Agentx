@@ -2,7 +2,6 @@
 //
 // Single source of truth for the current on-chain SubscriptionManager.
 // All consumers MUST import from here instead of defining inline ABIs.
-// v1 consumers (legacy dashboard hooks) use `SubscriptionManagerV1.ts`.
 
 export const SUBSCRIPTION_MANAGER_ABI = [
   { name: 'platformFeeBps', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
