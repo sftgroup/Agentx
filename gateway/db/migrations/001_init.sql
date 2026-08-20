@@ -24,10 +24,10 @@ INSERT INTO plans (name, slug, price_monthly, quota_daily, quota_monthly, byok_e
 VALUES
   ('Free', 'free', 0, 0, 0, true, 5, 1, '[]', '{}'),
   ('Pro', 'pro', 29, 500000, 15000000, true, 30, 3,
-   '[{"provider":"openai","model":"gpt-4o-mini"},{"provider":"deepseek","model":"deepseek-chat"}]',
+   '[{"provider":"deepseek","model":"deepseek-chat"}]',
    '{"chat_history_cloud":true}'),
   ('Enterprise', 'enterprise', 299, 5000000, 150000000, true, 100, 10,
-   '[{"provider":"openai","model":"gpt-4o"},{"provider":"openai","model":"gpt-4o-mini"},{"provider":"deepseek","model":"deepseek-chat"},{"provider":"anthropic","model":"claude-3-5-sonnet-20240620"}]',
+   '[{"provider":"deepseek","model":"deepseek-chat"}]',
    '{"chat_history_cloud":true,"custom_models":true}')
 ON CONFLICT (slug) DO NOTHING;
 

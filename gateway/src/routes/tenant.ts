@@ -10,6 +10,24 @@ import { config } from '../config'
 
 const router = Router()
 
+// Intersect a plan's platform_models with the platform_api_keys that are
+// actually provisioned for that plan. A plan may advertise models (e.g.
+// gpt-4o-mini) that have no matching key — surfacing them makes the C-end
+// chat model selector offer models that can never run (500 on submit).
+// This is the single source of truth for "what platform models can this
+// tenant actually use".
+async function filterRunnablePlatformModels(planId: string | null, platformModels: any[]): Promise<any[]> {
+  if (!planId || !Array.isArray(platformModels) || platformModels.length === 0) return platformModels
+  const pool = getPool()
+  const { rows } = await pool.query(
+    `SELECT DISTINCT provider FROM platform_api_keys WHERE is_active = true AND $1 = ANY(plan_ids)`,
+    [planId]
+  )
+  if (rows.length === 0) return []
+  const providers = new Set(rows.map((r: { provider: string }) => r.provider))
+  return platformModels.filter((m: any) => m && typeof m.provider === 'string' && providers.has(m.provider))
+}
+
 // GET /api/v1/tenant/plans — list purchasable platform subscription tiers
 // (R19.3 / D11: shown in the B-end console "Choose a plan" picker and the
 // C-end Billing page; buy via POST /api/v1/payments purpose='tenant-plan').
@@ -53,7 +71,7 @@ router.get('/me', async (req: Request, res: Response) => {
     pool.query(`SELECT COALESCE(SUM(tokens_total), 0) as total_tokens, COALESCE(SUM(tool_calls), 0) as total_tool_calls FROM usage_logs WHERE tenant_id = $1 AND created_at > NOW() - INTERVAL '24 hours'`, [tenant!.id]),
   ])
 
-  const platformModels = planRow.rows[0] ? planRow.rows[0].platform_models : []
+  const platformModels = await filterRunnablePlatformModels(planId, planRow.rows[0] ? planRow.rows[0].platform_models : [])
   const planFeatures = planRow.rows[0] ? (planRow.rows[0].features || {}) : {}
   const planParallelTasks = typeof planFeatures.parallel_tasks === 'boolean' ? planFeatures.parallel_tasks : true
   // P9: effective capability = tenant override ?? plan.features.parallel_tasks ?? true
@@ -275,7 +293,7 @@ router.get('/models', async (req: Request, res: Response) => {
   ])
 
   res.json({
-    platform: planRow.rows[0]?.platform_models || [],
+    platform: await filterRunnablePlatformModels(planId, planRow.rows[0]?.platform_models || []),
     tenant_owned: keysRow.rows.map(r => ({
       id: r.id,
       provider: r.provider,
