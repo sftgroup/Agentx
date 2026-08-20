@@ -89,9 +89,18 @@ export async function tenantRateLimiter(
       return
     }
 
-    res.on('finish', () => {
+    // Release the slot exactly once. Listen to BOTH 'finish' (normal response
+    // sent) and 'close' (client aborted mid-request / SSE disconnect) — a hung
+    // or aborted response that never "finishes" would otherwise leak the slot
+    // and spuriously 429 the tenant until the Redis key expires.
+    let released = false
+    const release = () => {
+      if (released) return
+      released = true
       r.decr(concurrencyKey).catch(() => {})
-    })
+    }
+    res.on('finish', release)
+    res.on('close', release)
 
     next()
   } catch {

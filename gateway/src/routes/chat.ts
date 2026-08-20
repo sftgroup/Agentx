@@ -43,9 +43,17 @@ router.post('/chat/completions', async (req: Request, res: Response) => {
   try {
     if (key_source === 'tenant_owned' && tenant_key_id) {
       // ── BYOK Mode ──
+      // tenant_api_keys.id is a UUID column — guard malformed ids so a non-UUID
+      // input returns the intended 400 instead of a PG "invalid input syntax"
+      // error surfacing as a 500.
+      const tenantKeyUuid = String(tenant_key_id)
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantKeyUuid)) {
+        res.status(400).json({ error: 'Tenant API key not found or inactive' })
+        return
+      }
       const keyRow = await pool.query(
         `SELECT * FROM tenant_api_keys WHERE id = $1 AND tenant_id = $2 AND is_active = true`,
-        [tenant_key_id, tenant.id]
+        [tenantKeyUuid, tenant.id]
       )
       if (keyRow.rows.length === 0) {
         res.status(400).json({ error: 'Tenant API key not found or inactive' })

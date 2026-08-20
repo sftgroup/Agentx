@@ -135,9 +135,17 @@ router.post('/keys', async (req: Request, res: Response) => {
 // DELETE /api/v1/tenant/keys/:keyId
 router.delete('/keys/:keyId', async (req: Request, res: Response) => {
   const pool = getPool()
+  // tenant_api_keys.id is a UUID column — a non-UUID id would throw a PG error
+  // (unhandled → request hangs → leaks the tenant's concurrency slot), so treat
+  // malformed ids as "not found".
+  const keyId = String(req.params.keyId)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(keyId)) {
+    res.status(404).json({ error: 'Key not found' })
+    return
+  }
   const result = await pool.query(
     `DELETE FROM tenant_api_keys WHERE id = $1 AND tenant_id = $2 RETURNING id`,
-    [req.params.keyId, req.tenant!.id]
+    [keyId, req.tenant!.id]
   )
   if (result.rows.length === 0) {
     res.status(404).json({ error: 'Key not found' })
@@ -149,9 +157,14 @@ router.delete('/keys/:keyId', async (req: Request, res: Response) => {
 // POST /api/v1/tenant/keys/:keyId/validate
 router.post('/keys/:keyId/validate', async (req: Request, res: Response) => {
   const pool = getPool()
+  const keyId = String(req.params.keyId)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(keyId)) {
+    res.status(404).json({ error: 'Key not found' })
+    return
+  }
   const keyRow = await pool.query(
     `SELECT * FROM tenant_api_keys WHERE id = $1 AND tenant_id = $2`,
-    [req.params.keyId, req.tenant!.id]
+    [keyId, req.tenant!.id]
   )
   if (keyRow.rows.length === 0) {
     res.status(404).json({ error: 'Key not found' })
