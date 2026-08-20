@@ -349,8 +349,8 @@
 
 ## 8. 测试执行建议
 
-1. **L0 单元**：`gateway/test/aa-autorenew.test.ts` 已落地（14 条，2026-08-19）：`resolveCurrentSubscription` 双归属/指针前移、`resumeAutoRenew`、`runAutoRenewScan` 失败护栏、`resolveExistingSessionId` 兜底、`revokeAutoRenew`（404/兜底路径断言批量 execute 编码）。对资金计算、窗口/冷却判定等纯函数继续补 vitest + mock aa-sdk/relay。
-2. **L1 API**：supertest 挂载真实路由 + 内存 DB / 现有测试基座（参照 `test/billing.test.ts`）。新增 `resume` 端点需补回归用例。
-3. **L2 前端**：vitest + testing-library 渲染 AutoRenewCard（mock `useGatewayAuth`/`useWalletClient`/fetch），覆盖 91–110 及 paused/escrow 展示分支。
+1. **L0 单元**：`gateway/test/aa-autorenew.test.ts` 已落地（19 条，2026-08-19/20）：`resolveCurrentSubscription` 双归属/指针前移、`resumeAutoRenew`、`runAutoRenewScan` 失败护栏、`watchFunding`（e4 提前告警）、`resolveExistingSessionId` 兜底、`revokeAutoRenew`（404/兜底路径断言批量 execute 编码）；`reconcile-escrow.test.ts`（6 条，e5 对账）。对资金计算、窗口/冷却判定等纯函数继续补 vitest + mock aa-sdk/relay。
+2. **L1 API**：✅ **已落地（`gateway/test/aa-auto-renew-api.test.ts`，40 条，2026-08-20）**：supertest 挂载 `routes/auto-renew.ts` 全部 6 个端点（mock 服务层 `services/aa-autorenew`）。覆盖 requireEnabled 统一 503（enable/confirm/revoke，且 503 先于 auth）、401 认证守卫（6 端点）、参数校验 400（缺参 / ownerSignature·disableUserOpHash·accountAddress·sessionId 十六进制格式 / planPriceWei=0）、成功路径 200（funding BigInt→string、revoke L12 兜底 accountAddress/sessionId 透传）、错误映射（`err.status`→409/404，无 status→500）。网关全量 **156/156** 通过，tsc 0 错。
+3. **L2 前端**：✅ **已落地（2026-08-20，`frontend/test/auto-renew-card.test.tsx` 29 条 + `auto-renew-lib.test.ts` 6 条）**：新增 vitest + testing-library 基座（`vitest.config.mts`/`test/setup.ts`，devDeps：vitest/@vitejs/plugin-react/jsdom/@testing-library/*），mock `wagmi`/`useGatewayAuth`/`@/lib/auto-renew`，覆盖 91–109 及 paused/escrow 展示、L12 自愈（needsSessionRevoke→eth_sign(disable)→revoke→二次 enable）、充值三分支（Balance 直转 / Gas `depositTo`(0xb760faf9) / Escrow `depositFor`(0xaa67c919)）、resume 成功与 404、disable confirm 拒绝、copy 地址。前端 `npm test` **35/35 通过**，tsc 0 错。**用例 100 与代码差异**：eth_sign 被拒时 `handleSignAndConfirm` catch 置 step='error'（面板消失、仅错误条），并非"停留 pending-sign"，测试按代码实际行为断言。
 4. **L3 链上 E2E**：参照 infraX `aa-relay/scripts/aa-session-e2e.ts`，用测试钱包跑 111–122；用测试网/短周期计划缩短等待（临时调低 `AA_AUTO_RENEW_WINDOW_SEC`）。资金预检已由 2026-08-19 生产实证覆盖（三类资金 + 指针前移复验 0 renewed）。
 5. **优先级**：P0 失败护栏（L5–L11）已上线验证；后续补 L1/L2 层回归用例即可。
