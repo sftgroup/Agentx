@@ -7,11 +7,11 @@
 import { createPublicClient, http } from 'viem'
 import type { TFunction } from 'i18next'
 import { GATEWAY_URL } from '@/lib/gateway'
+import { oxaChain, A2A_REGISTRY } from '@/lib/wagmi/config'
 
 export { GATEWAY_URL }
-
-export const oxaChain = { id: 19505, name: 'OxaChain L1', nativeCurrency: { name: 'OXA', symbol: 'OXA', decimals: 18 }, rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_OXACHAIN_RPC_URL || 'https://rpc-oxa.0xainet.top'] } } }
-export const A2A_REGISTRY = (process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS || '0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86') as `0x${string}`
+// 链与合约地址统一来源为 lib/wagmi/config（此处 re-export 保持旧引用兼容）
+export { oxaChain, A2A_REGISTRY }
 
 export const publicClient = createPublicClient({ chain: oxaChain, transport: http() })
 

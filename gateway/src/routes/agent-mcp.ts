@@ -93,7 +93,7 @@ async function loadAgentSkills(agentId: number): Promise<AgentSkills | null> {
     let metadata: any = {}
     if (tokenURI.startsWith('ipfs://')) {
       const cid = tokenURI.replace('ipfs://', '')
-      const res = await fetch(`https://ipfs.io/ipfs/${cid}`)
+      const res = await fetch(`${config.ipfsGateway}/ipfs/${cid}`)
       metadata = await res.json()
     } else if (tokenURI.startsWith('https://')) {
       const res = await fetch(tokenURI)

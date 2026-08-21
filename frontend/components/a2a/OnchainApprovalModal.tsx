@@ -23,9 +23,8 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, useWalletCl
 import { Loader2, Check, AlertCircle, ExternalLink, Zap, Wallet, ArrowRight } from 'lucide-react'
 import { A2A_CREATE_TASK_ABI } from '@/abis/A2AProtocol'
 import type { OnChainApprovalPayload } from '@/hooks/useAgentChat'
+import { A2A_REGISTRY } from '@/lib/wagmi/config'
 import Link from 'next/link'
-
-const A2A_REGISTRY = (process.env.NEXT_PUBLIC_A2A_PROTOCOL_ADDRESS || '0x7F42a7dC4A0F3C107664C3750bE1B5B6fa6BEb86') as `0x${string}`
 
 // InfraXEscrow.deposit()（payable，无参，emit Deposited 事件）— 金库充值调用。
 const ESCROW_DEPOSIT_ABI = [

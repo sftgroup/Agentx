@@ -49,6 +49,9 @@ export const config = {
   conversationServiceUrl: process.env.CONVERSATION_SERVICE_URL || 'http://localhost:8100',
   conversationServiceToken: process.env.CONVERSATION_SERVICE_TOKEN || 'change-me-in-production',
 
+  // IPFS gateway used to resolve ipfs:// tokenURIs (agent metadata / skills).
+  ipfsGateway: process.env.IPFS_GATEWAY || 'https://ipfs.io',
+
   // Off-chain orchestration: shared token used by the Conversation Service to
   // call gateway internal endpoints (list/check) for sub-agent delegation.
   orchestrateToken: process.env.ORCHESTRATE_TOKEN || '',

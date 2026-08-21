@@ -10,6 +10,7 @@ import {
 import { useSubscription, type Subscription, SubscriptionStatus } from '../../hooks/useSubscription'
 import { useOnChainAgentRegistry as useAgentRegistry } from '../../hooks/useAgentRegistry'
 import { ZERO_ADDRESS } from '../../hooks/contract-address'
+import { KNOWN_TOKEN_META } from '@/lib/wagmi/config'
 
 // Re-export 接口，供同目录组件引用
 export type { Payment } from '../../hooks/usePaymentGateway'
@@ -110,12 +111,7 @@ export function useRevenueDisplay() {
   }, [])
 
   const getTokenSymbol = useCallback((tokenAddress: string): string => {
-    const tokenMap: Record<string, string> = {
-      [ZERO_ADDRESS]: 'ETH',
-      '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48': 'USDC',
-      '0x6B175474E89094C44Da98b954EedeAC495271d0F': 'DAI'
-    }
-    return tokenMap[tokenAddress] || tokenAddress.slice(0, 8) + '...'
+    return KNOWN_TOKEN_META[tokenAddress]?.symbol || tokenAddress.slice(0, 8) + '...'
   }, [])
 
   const getPaymentStatusDisplay = useCallback((status: PaymentStatus): { text: string; color: string } => {
