@@ -10,6 +10,7 @@ import { getPool } from '../lib/db'
 import { decryptApiKey } from '../lib/crypto'
 import { config } from '../config'
 import { updateQuota } from '../middleware/rate-limiter'
+import { recordUsage } from '../services/usage'
 
 const router = Router()
 
@@ -197,20 +198,17 @@ router.post('/chat/completions', async (req: Request, res: Response) => {
       reader.releaseLock()
     }
 
-    try {
-      await pool.query(
-        `INSERT INTO usage_logs (tenant_id, key_source, platform_key_id, tenant_key_id, provider, model, tokens_prompt, tokens_completion, tokens_total, tool_calls, agent_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [
-          tenant.id, keySource, platformKeyId, tenantKeyId,
-          keySource === 'platform' ? 'openai' : 'unknown',
-          resolvedModel,
-          totalPrompt, totalCompletion, totalTokens,
-          Array.isArray(tools) ? tools.length : 0,
-          null,
-        ]
-      )
-    } catch { /* usage logging is non-critical */ }
+    recordUsage({
+      tenantId: tenant.id,
+      keySource,
+      platformKeyId,
+      tenantKeyId,
+      model: resolvedModel,
+      tokensPrompt: totalPrompt,
+      tokensCompletion: totalCompletion,
+      tokensTotal: totalTokens,
+      toolCalls: Array.isArray(tools) ? tools.length : 0,
+    })
 
     if (keySource === 'platform' && totalTokens > 0) {
       updateQuota(tenant.id, totalTokens).catch(() => {})

@@ -16,6 +16,7 @@ import { config } from '../config'
 import { pipeSSEWithUsage } from '../services/sse-usage'
 import { updateQuota } from '../middleware/rate-limiter'
 import { markTaskBilled } from '../services/task-billing'
+import { recordUsage } from '../services/usage'
 
 const router = Router()
 
@@ -105,16 +106,19 @@ async function pipeTaskSSE(
 
   if (platformTokens > 0 && tenantId && markTaskBilled(taskId)) {
     updateQuota(tenantId, platformTokens).catch(() => {})
-    // Task-path usage detail (platform mode) — mirrors chat.ts so multi-task
-    // conversations show up in /tenant/usage. Fire-and-forget: never blocks
-    // the (already-ended) SSE response.
-    getPool()
-      .query(
-        `INSERT INTO usage_logs (tenant_id, key_source, provider, model, tokens_prompt, tokens_completion, tokens_total, tool_calls, agent_id)
-         VALUES ($1, 'platform', 'openai', $2, $3, $4, $5, $6, $7)`,
-        [tenantId, model || 'unknown', promptTokens, completionTokens, platformTokens, toolCalls, agentId],
-      )
-      .catch(() => { /* usage logging is non-critical */ })
+    // Task-path usage detail (platform mode) — shared recordUsage mirrors
+    // chat.ts so multi-task conversations show up in /tenant/usage.
+    // Fire-and-forget: never blocks the (already-ended) SSE response.
+    recordUsage({
+      tenantId,
+      keySource: 'platform',
+      model: model || 'unknown',
+      tokensPrompt: promptTokens,
+      tokensCompletion: completionTokens,
+      tokensTotal: platformTokens,
+      toolCalls,
+      agentId,
+    })
   }
 }
 

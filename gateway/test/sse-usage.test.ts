@@ -34,7 +34,7 @@ describe('pipeSSEWithUsage', () => {
     expect(res.status).toBe(200)
     expect(res.text).toContain('data: {"type":"text","content":"hi"}')
     expect(res.text).toContain('"totalTokens":150')
-    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 150, llmSource: 'platform' })
+    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 150, promptTokens: 100, completionTokens: 50, llmSource: 'platform' })
   })
 
   it('handles a done event split across multiple chunks', async () => {
@@ -51,7 +51,7 @@ describe('pipeSSEWithUsage', () => {
 
     const res = await request(app).get('/sse')
     expect(res.status).toBe(200)
-    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 25, llmSource: 'byok' })
+    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 25, promptTokens: 20, completionTokens: 5, llmSource: 'byok' })
     // Bytes must still arrive intact at the client.
     expect(res.text).toContain('"totalTokens":25')
   })
@@ -65,7 +65,7 @@ describe('pipeSSEWithUsage', () => {
     })
 
     await request(app).get('/sse')
-    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 0, llmSource: 'platform' })
+    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 0, promptTokens: 0, completionTokens: 0, llmSource: 'platform' })
   })
 
   it('extracts usage from the wrapped task format { seq, type, payload }', async () => {
@@ -81,7 +81,7 @@ describe('pipeSSEWithUsage', () => {
 
     const res = await request(app).get('/sse')
     expect(res.status).toBe(200)
-    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 100, llmSource: 'platform' })
+    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 100, promptTokens: 80, completionTokens: 20, llmSource: 'platform' })
     // Bytes forwarded unchanged
     expect(res.text).toContain('"totalTokens":100')
   })
@@ -101,7 +101,7 @@ describe('pipeSSEWithUsage', () => {
     const res = await request(app).get('/sse')
     expect(res.status).toBe(200)
     expect(onUsage).toHaveBeenCalledTimes(1)
-    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 9, llmSource: 'platform' })
+    expect(onUsage).toHaveBeenCalledWith({ totalTokens: 9, promptTokens: 0, completionTokens: 0, llmSource: 'platform' })
     expect(res.text).toContain('data: {"type":"done"')
   })
 })

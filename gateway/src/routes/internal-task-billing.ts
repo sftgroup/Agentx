@@ -13,6 +13,7 @@ import { config } from '../config'
 import { getPool } from '../lib/db'
 import { updateQuota } from '../middleware/rate-limiter'
 import { isTaskBilled, markTaskBilled } from '../services/task-billing'
+import { recordUsage } from '../services/usage'
 
 const router = Router()
 
@@ -83,15 +84,19 @@ router.post('/', async (req: Request, res: Response) => {
     try {
       await updateQuota(tenantId, totalTokens)
     } catch { /* non-critical */ }
-    // Background-task usage detail (platform mode) — mirrors chat.ts so tasks
-    // completed without an SSE subscriber still appear in /tenant/usage.
-    try {
-      await getPool().query(
-        `INSERT INTO usage_logs (tenant_id, key_source, provider, model, tokens_prompt, tokens_completion, tokens_total, tool_calls, agent_id)
-         VALUES ($1, 'platform', 'openai', $2, $3, $4, $5, $6, $7)`,
-        [tenantId, model || 'unknown', promptTokens, completionTokens, totalTokens, toolCalls, agentId],
-      )
-    } catch { /* usage logging is non-critical */ }
+    // Background-task usage detail (platform mode) — shared recordUsage mirrors
+    // chat.ts so tasks completed without an SSE subscriber still appear in
+    // /tenant/usage. Fire-and-forget: usage logging is non-critical.
+    recordUsage({
+      tenantId,
+      keySource: 'platform',
+      model: model || 'unknown',
+      tokensPrompt: promptTokens,
+      tokensCompletion: completionTokens,
+      tokensTotal: totalTokens,
+      toolCalls,
+      agentId,
+    })
     return res.json({ ok: true })
   } catch (err) {
     return res.status(500).json({ error: (err as Error).message })
